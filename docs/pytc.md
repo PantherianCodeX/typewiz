@@ -1,6 +1,6 @@
-## Typing Inspector
+## pytc
 
-The `typing_inspector` package collects typing diagnostics from Pyright and mypy and
+The `pytc` package collects typing diagnostics from Pyright, mypy, and other plugins and
 summarises them into a single manifest that highlights both the current enforcement surface
 and the remaining work across the repository.
 
@@ -9,7 +9,7 @@ and the remaining work across the repository.
 Run a full audit from the repository root:
 
 ```bash
-python -m typing_inspector audit --max-depth 3
+python -m pytc audit --max-depth 3
 ```
 
 This produces `typing_audit_manifest.json` (relative to the working directory) containing:
@@ -21,18 +21,19 @@ This produces `typing_audit_manifest.json` (relative to the working directory) c
 Options:
 
 - `--skip-current` / `--skip-full` – limit runs to the requested modes.
-- `--pyright-only` / `--mypy-only` – focus on a single tool.
+- `--runner <name>` – run a specific plugin (repeatable; default: all configured).
 - `--full-path <path>` – add directories to the full-run command.
 - `--manifest <path>` – override the output location.
 - `--dashboard-json`, `--dashboard-markdown`, `--dashboard-html` – write summaries in multiple formats.
+- `--plugin-arg runner=ARG` – forward an argument to a plugin.
 
 ### Dashboard summaries
 
 Generate a condensed dashboard view from an existing manifest:
 
 ```bash
-python -m typing_inspector dashboard --manifest typing_audit_manifest.json --format markdown --output typing_dashboard.md
-python -m typing_inspector dashboard --manifest typing_audit_manifest.json --format html --output typing_dashboard.html
+python -m pytc dashboard --manifest typing_audit_manifest.json --format markdown --output typing_dashboard.md
+python -m pytc dashboard --manifest typing_audit_manifest.json --format html --output typing_dashboard.html
 ```
 
 Supported formats:
@@ -41,9 +42,22 @@ Supported formats:
 - `markdown` – lightweight report for issue trackers or PR comments.
 - `html` – standalone dashboard with severity totals and hotspots.
 
-### Configuration (typing_inspector.toml)
+### Plugins
 
-Place a `typing_inspector.toml` in the project root or pass `--config` when running the CLI. Example:
+pytc loads runners from the built-in registry (`pyright`, `mypy`) and from any entry points exposed under
+the `pytc.plugins` group. Provide custom runners by implementing `pytc.plugins.base.TypingRunner` and
+declaring it in your package's `pyproject.toml`:
+
+```toml
+[project.entry-points."pytc.plugins"]
+my_runner = "my_package.runners:MyRunner"
+```
+
+Pass additional arguments with `--plugin-arg my_runner=--flag` or via the TOML config `plugin_args` section.
+
+### Configuration (pytc.toml)
+
+Place a `pytc.toml` in the project root or pass `--config` when running the CLI. Example:
 
 ```toml
 [audit]

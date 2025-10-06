@@ -4,17 +4,31 @@ from pathlib import Path
 
 import pytest
 
-from typing_inspector import AuditConfig, run_audit
-from typing_inspector.types import Diagnostic, RunResult
+from pytc import AuditConfig, run_audit
+from pytc.plugins.base import PluginCommand, PluginContext
+from pytc.types import Diagnostic, RunResult
+
+
+class StubRunner:
+    def __init__(self, result: RunResult) -> None:
+        self.name = "stub"
+        self._result = result
+
+    def generate_commands(self, context: PluginContext) -> list[PluginCommand]:
+        return [PluginCommand(self.name, "full", ["stub"])]
+
+    def execute(self, context: PluginContext, command: PluginCommand) -> RunResult:
+        return self._result
 
 
 @pytest.fixture
 def fake_run_result(tmp_path: Path) -> RunResult:
+    (tmp_path / "pkg").mkdir(exist_ok=True)
     diagnostics = [
         Diagnostic(
-            tool="pyright",
+            tool="stub",
             severity="error",
-            path=tmp_path / "module.py",
+            path=tmp_path / "pkg" / "module.py",
             line=1,
             column=1,
             code="reportGeneralTypeIssues",
@@ -23,9 +37,9 @@ def fake_run_result(tmp_path: Path) -> RunResult:
         )
     ]
     return RunResult(
-        tool="pyright",
-        mode="current",
-        command=["pyright"],
+        tool="stub",
+        mode="full",
+        command=["stub"],
         exit_code=1,
         duration_ms=5.0,
         diagnostics=diagnostics,
@@ -33,20 +47,16 @@ def fake_run_result(tmp_path: Path) -> RunResult:
 
 
 def test_run_audit_programmatic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run_result: RunResult) -> None:
-    def fake_pyright(*args, **kwargs):  # type: ignore[no-untyped-def]
-        return fake_run_result
+    monkeypatch.setattr("pytc.plugins.resolve_runners", lambda names: [StubRunner(fake_run_result)])
+    monkeypatch.setattr("pytc.api.resolve_runners", lambda names: [StubRunner(fake_run_result)])
 
-    def fake_mypy(*args, **kwargs):  # type: ignore[no-untyped-def]
-        return fake_run_result
-
-    monkeypatch.setattr("typing_inspector.api.run_pyright", fake_pyright)
-    monkeypatch.setattr("typing_inspector.api.run_mypy", fake_mypy)
-
-    override = AuditConfig(full_paths=["src"], dashboard_json=tmp_path / "summary.json")
+    (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8")
-    (tmp_path / "mypy.ini").write_text("[mypy]\n", encoding="utf-8")
-    result = run_audit(project_root=tmp_path, full_paths=["src"], override=override, build_summary_output=True)
+    override = AuditConfig(full_paths=["src"], dashboard_json=tmp_path / "summary.json", runners=["stub"])
+
+    result = run_audit(project_root=tmp_path, override=override, full_paths=["src"], build_summary_output=True)
 
     assert result.summary is not None
     assert result.summary["topFolders"]
+    assert result.error_count == 1
     assert (tmp_path / "summary.json").exists()

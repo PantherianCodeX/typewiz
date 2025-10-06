@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from typing_inspector.aggregate import summarise_run
-from typing_inspector.types import Diagnostic, RunResult
+from pytc.aggregate import summarise_run
+from pytc.types import Diagnostic, RunResult
 
 
 def make_diag(path: str, *, severity: str, line: int = 1, column: int = 1, code: str | None = None) -> Diagnostic:

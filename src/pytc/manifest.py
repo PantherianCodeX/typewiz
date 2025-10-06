@@ -12,7 +12,7 @@ from .aggregate import summarise_run
 from .typed_manifest import AggregatedData, ManifestData, RunPayload
 from .types import RunResult
 
-logger = logging.getLogger("typing_inspector")
+logger = logging.getLogger("pytc")
 
 
 @dataclass(slots=True)

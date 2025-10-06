@@ -1,7 +1,8 @@
-"""Typing Inspector package.
+"""pytc – Python Type Checker toolkit.
 
-Provides utilities for collecting typing diagnostics from pyright and mypy,
-aggregating them into a manifest that can be used for progress tracking.
+Provides utilities for collecting typing diagnostics from pyright, mypy, and
+custom plugins, aggregating them into manifests and dashboards for progress
+tracking.
 """
 
 from __future__ import annotations

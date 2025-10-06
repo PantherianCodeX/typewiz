@@ -5,7 +5,7 @@ from typing import Callable, Dict, List
 
 import pytest
 
-from typing_inspector.typed_manifest import ManifestData
+from pytc.typed_manifest import ManifestData
 
 
 @pytest.fixture

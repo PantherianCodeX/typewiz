@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Iterable
 
 
-logger = logging.getLogger("typing_inspector")
+logger = logging.getLogger("pytc")
 
 
 @dataclass(slots=True)
@@ -83,7 +83,7 @@ def _contains_python(path: Path) -> bool:
 
 def default_full_paths(root: Path) -> list[str]:
     candidates = [
-        "typing_inspector",
+        "pytc",
         "apps",
         "packages",
         "config",

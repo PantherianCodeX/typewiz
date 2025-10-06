@@ -1,19 +1,34 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 import pytest
 
-from typing_inspector.cli import main
-from typing_inspector.types import Diagnostic, RunResult
+from pytc.cli import main
+from pytc.plugins.base import PluginCommand, PluginContext
+from pytc.types import Diagnostic, RunResult
+
+
+class StubRunner:
+    def __init__(self, result: RunResult) -> None:
+        self.name = "stub"
+        self._result = result
+
+    def generate_commands(self, context: PluginContext) -> list[PluginCommand]:
+        return [PluginCommand(self.name, "current", ["stub"])]
+
+    def execute(self, context: PluginContext, command: PluginCommand) -> RunResult:
+        return self._result
 
 
 @pytest.fixture
 def fake_run(tmp_path: Path) -> RunResult:
+    (tmp_path / "pkg").mkdir(exist_ok=True)
     diag = Diagnostic(
-        tool="pyright",
+        tool="stub",
         severity="error",
-        path=tmp_path / "module.py",
+        path=tmp_path / "pkg" / "module.py",
         line=1,
         column=1,
         code="reportGeneralTypeIssues",
@@ -21,9 +36,9 @@ def fake_run(tmp_path: Path) -> RunResult:
         raw={},
     )
     return RunResult(
-        tool="pyright",
+        tool="stub",
         mode="current",
-        command=["pyright"],
+        command=["stub"],
         exit_code=1,
         duration_ms=1.0,
         diagnostics=[diag],
@@ -31,22 +46,17 @@ def fake_run(tmp_path: Path) -> RunResult:
 
 
 def test_cli_audit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: RunResult) -> None:
-    outputs = {}
+    monkeypatch.setattr("pytc.plugins.resolve_runners", lambda names: [StubRunner(fake_run)])
+    monkeypatch.setattr("pytc.api.resolve_runners", lambda names: [StubRunner(fake_run)])
 
-    def fake_pyright(*args, **kwargs):  # type: ignore[no-untyped-def]
-        return fake_run
-
-    def fake_mypy(*args, **kwargs):  # type: ignore[no-untyped-def]
-        return fake_run
-
-    monkeypatch.setattr("typing_inspector.cli.run_pyright", fake_pyright)
-    monkeypatch.setattr("typing_inspector.cli.run_mypy", fake_mypy)
+    (tmp_path / "pkg").mkdir(exist_ok=True)
+    (tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8")
 
     manifest_path = tmp_path / "manifest.json"
-    (tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8")
-    (tmp_path / "mypy.ini").write_text("[mypy]\n", encoding="utf-8")
     exit_code = main([
         "audit",
+        "--runner",
+        "stub",
         "--project-root",
         str(tmp_path),
         "--full-path",
@@ -59,19 +69,19 @@ def test_cli_audit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: Ru
         "warnings",
     ])
 
-    assert exit_code == 2  # fail on warnings triggered
+    assert exit_code == 2  # fail on warnings triggered (error counts)
     assert manifest_path.exists()
     assert (tmp_path / "dashboard.md").exists()
 
 
-def test_cli_dashboard_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: RunResult) -> None:
+def test_cli_dashboard_output(tmp_path: Path) -> None:
     manifest = {
         "generatedAt": "2025-01-01T00:00:00Z",
         "projectRoot": str(tmp_path),
         "runs": [],
     }
     manifest_path = tmp_path / "manifest.json"
-    manifest_path.write_text(__import__("json").dumps(manifest), encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
     exit_code = main([
         "dashboard",

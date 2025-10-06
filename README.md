@@ -1,19 +1,20 @@
-# typing-inspector
+# pytc
 
-Typing Inspector collects typing diagnostics from Pyright and mypy, aggregates them into a JSON
+pytc collects typing diagnostics from Pyright, mypy, and custom plugins, aggregates them into a JSON
 manifest, and renders dashboards to help teams plan stricter typing rollouts.
 
 ## Features
 
-- Run Pyright and mypy in both "current" (configured) and "full" (repository-wide) modes
+- Pluggable runner architecture with Pyright and mypy built in (extend via entry points)
+- Run configured runners in both "current" (configured scope) and "full" (repository-wide) modes
 - Aggregate per-file and per-folder statistics with rule/regression hints
-- Export dashboards in JSON or Markdown for issue trackers and retros
+- Export dashboards in JSON, Markdown, and HTML for issue trackers and retros
 - Designed for use in CI/nightly workflows and local audits
 
 ## Installation
 
 ```bash
-pip install typing-inspector
+pip install pytc
 ```
 
 ### Local development
@@ -30,32 +31,32 @@ pip install pytest  # enable test suite
 Generate a manifest and dashboard:
 
 ```bash
-python -m typing_inspector audit --max-depth 3 --manifest typing_audit.json
-python -m typing_inspector dashboard --manifest typing_audit.json --format markdown --output dashboard.md
-python -m typing_inspector dashboard --manifest typing_audit.json --format html --output dashboard.html
+python -m pytc audit --max-depth 3 --manifest typing_audit.json
+python -m pytc dashboard --manifest typing_audit.json --format markdown --output dashboard.md
+python -m pytc dashboard --manifest typing_audit.json --format html --output dashboard.html
 ```
 
 ### Logging
 
-Typing Inspector uses Python's standard `logging` module with the logger name `typing_inspector`.
+pytc uses Python's standard `logging` module with the logger name `pytc`.
 Configure it in your application to capture command execution details:
 
 ```python
 import logging
 
 logging.basicConfig(level=logging.INFO)
-logging.getLogger("typing_inspector").setLevel(logging.DEBUG)
+logging.getLogger("pytc").setLevel(logging.DEBUG)
 ```
 
-See the [docs](docs/typing_inspector.md) for detailed guidance and the export roadmap.
+See the [docs](docs/pytc.md) for detailed guidance and the export roadmap.
 
 ### Python API
 
-Use typing-inspector programmatically without the CLI:
+Use pytc programmatically without the CLI:
 
 ```python
 from pathlib import Path
-from typing_inspector import run_audit, AuditConfig
+from pytc import run_audit, AuditConfig
 
 # Minimal: discover config and run
 result = run_audit(project_root=Path.cwd(), build_summary_output=True)

@@ -91,7 +91,7 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
 
 def render_markdown(summary: dict[str, Any]) -> str:
     lines = [
-        f"# Typing Inspector Dashboard",
+        f"# pytc Dashboard",
         "",
         f"- Generated at: {summary.get('generatedAt')}",
         f"- Project root: `{summary.get('projectRoot')}`",

@@ -8,7 +8,7 @@ import logging
 from .types import Diagnostic, RunResult
 from .utils import require_json, run_command
 
-logger = logging.getLogger("typing_inspector")
+logger = logging.getLogger("pytc")
 
 def _make_diag_path(project_root: Path, file_path: str) -> Path:
     path = Path(file_path)
