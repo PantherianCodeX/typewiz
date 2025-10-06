@@ -7,6 +7,7 @@ aggregating them into a manifest that can be used for progress tracking.
 from __future__ import annotations
 
 from .dashboard import build_summary, load_manifest, render_markdown  # noqa: F401
+from .html_report import render_html  # noqa: F401
 from .config import AuditConfig, Config, load_config  # noqa: F401
 from .api import run_audit, AuditResult  # noqa: F401
 
@@ -15,6 +16,7 @@ __all__ = [
     "build_summary",
     "load_manifest",
     "render_markdown",
+    "render_html",
     "AuditConfig",
     "Config",
     "load_config",

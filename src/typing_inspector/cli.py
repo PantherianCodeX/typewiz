@@ -8,6 +8,7 @@ from typing import Iterable, Sequence
 
 from .config import load_config
 from .dashboard import build_summary, load_manifest, render_markdown
+from .html_report import render_html
 from .manifest import ManifestBuilder
 from .runner import run_mypy, run_pyright
 from .types import RunResult
@@ -95,12 +96,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     audit.add_argument("--dashboard-json", type=Path, default=None, help="Optional dashboard JSON output path")
     audit.add_argument("--dashboard-markdown", type=Path, default=None, help="Optional dashboard Markdown output path")
+    audit.add_argument("--dashboard-html", type=Path, default=None, help="Optional dashboard HTML output path")
 
     dashboard = subparsers.add_parser("dashboard", help="Render a summary from an existing manifest")
     dashboard.add_argument("--manifest", type=Path, required=True, help="Path to a typing audit manifest")
     dashboard.add_argument(
         "--format",
-        choices=["json", "markdown"],
+        choices=["json", "markdown", "html"],
         default="json",
         help="Output format (default: json)",
     )
@@ -142,6 +144,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         dashboard_json = _resolve_output_path(project_root, args.dashboard_json or config.audit.dashboard_json)
         dashboard_md = _resolve_output_path(project_root, args.dashboard_markdown or config.audit.dashboard_markdown)
+        dashboard_html = _resolve_output_path(project_root, args.dashboard_html or config.audit.dashboard_html)
 
         runs: list[RunResult] = []
 
@@ -185,7 +188,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         summary_data = builder.data
 
-        if dashboard_json or dashboard_md:
+        if dashboard_json or dashboard_md or dashboard_html:
             summary = build_summary(summary_data)
             if dashboard_json:
                 dashboard_json.parent.mkdir(parents=True, exist_ok=True)
@@ -193,6 +196,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             if dashboard_md:
                 dashboard_md.parent.mkdir(parents=True, exist_ok=True)
                 dashboard_md.write_text(render_markdown(summary), encoding="utf-8")
+            if dashboard_html:
+                dashboard_html.parent.mkdir(parents=True, exist_ok=True)
+                dashboard_html.write_text(render_html(summary), encoding="utf-8")
 
         _print_summary(runs)
 
@@ -210,8 +216,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         summary = build_summary(manifest)
         if args.format == "json":
             rendered = json.dumps(summary, indent=2) + "\n"
-        else:
+        elif args.format == "markdown":
             rendered = render_markdown(summary)
+        else:
+            rendered = render_html(summary)
 
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)

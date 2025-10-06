@@ -32,6 +32,7 @@ Generate a manifest and dashboard:
 ```bash
 python -m typing_inspector audit --max-depth 3 --manifest typing_audit.json
 python -m typing_inspector dashboard --manifest typing_audit.json --format markdown --output dashboard.md
+python -m typing_inspector dashboard --manifest typing_audit.json --format html --output dashboard.html
 ```
 
 See the [docs](docs/typing_inspector.md) for detailed guidance and the export roadmap.
@@ -49,8 +50,20 @@ result = run_audit(project_root=Path.cwd(), build_summary_output=True)
 print(result.summary)  # dict with top folders/files and rule counts
 
 # Advanced: override behavior
-override = AuditConfig(full_paths=["apps", "packages"], skip_current=False, skip_full=False, max_depth=3)
-result = run_audit(project_root=Path.cwd(), override=override, write_manifest_to=Path("typing_audit_manifest.json"))
+override = AuditConfig(
+    full_paths=["apps", "packages"],
+    skip_current=False,
+    skip_full=False,
+    max_depth=3,
+    dashboard_html=Path("reports/typing/summary.html"),
+)
+result = run_audit(
+    project_root=Path.cwd(),
+    override=override,
+    write_manifest_to=Path("typing_audit_manifest.json"),
+    build_summary_output=True,
+)
+print(result.summary["topFolders"][:3])
 
 # Manifest JSON payload
 manifest = result.manifest

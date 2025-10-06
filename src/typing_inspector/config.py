@@ -24,6 +24,7 @@ class AuditConfig:
     fail_on: str | None = None
     dashboard_json: Path | None = None
     dashboard_markdown: Path | None = None
+    dashboard_html: Path | None = None
 
 
 @dataclass(slots=True)
@@ -81,6 +82,7 @@ def _load_audit_config(base: Path, raw: dict[str, Any]) -> AuditConfig:
         audit.fail_on = fail_on.lower().strip()
     audit.dashboard_json = _as_path(base, raw.get("dashboard_json"))
     audit.dashboard_markdown = _as_path(base, raw.get("dashboard_markdown"))
+    audit.dashboard_html = _as_path(base, raw.get("dashboard_html"))
     return audit
 
 

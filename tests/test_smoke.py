@@ -50,3 +50,21 @@ def test_audit_and_dashboard(tmp_path: Path) -> None:
     )
     data = json.loads(dashboard.stdout)
     assert "runSummary" in data
+
+    # Programmatic API usage with overrides and HTML output
+    from typing_inspector import AuditConfig, run_audit
+
+    override = AuditConfig(
+        skip_full=True,
+        mypy_only=True,
+        full_paths=["src"],
+        manifest_path=tmp_path / "api_manifest.json",
+        dashboard_html=tmp_path / "dashboard.html",
+    )
+    result = run_audit(
+        project_root=repo_root,
+        override=override,
+        build_summary_output=True,
+    )
+    assert result.summary is not None
+    assert (tmp_path / "dashboard.html").exists()

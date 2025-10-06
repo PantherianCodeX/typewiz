@@ -43,7 +43,7 @@ dependencies = ["pyright>=1.1.392", "mypy>=1.8.0"]
 EOF
 ```
 
-Add `README.md` summarising usage and commands. Copy `docs/typing/typing_inspector.md` as a starting point.
+Add `README.md` summarising usage and commands. Copy `docs/typing_inspector.md` as a starting point.
 
 ### 4. Provide CLI entry points
 

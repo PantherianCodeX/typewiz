@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -89,6 +90,7 @@ def run_audit(
             fail_on=override.fail_on or ac.fail_on,
             dashboard_json=override.dashboard_json or ac.dashboard_json,
             dashboard_markdown=override.dashboard_markdown or ac.dashboard_markdown,
+            dashboard_html=override.dashboard_html or ac.dashboard_html,
         )
     else:
         ac = ac
@@ -121,11 +123,30 @@ def run_audit(
         builder.add_run(run, max_depth=depth)
     manifest = builder.data
 
-    if write_manifest_to is not None:
-        out = write_manifest_to if write_manifest_to.is_absolute() else (root / write_manifest_to)
+    target_manifest = write_manifest_to or ac.manifest_path
+    if target_manifest is not None:
+        out = target_manifest if target_manifest.is_absolute() else (root / target_manifest)
         out.parent.mkdir(parents=True, exist_ok=True)
         builder.write(out)
 
-    summary = build_summary(manifest) if build_summary_output else None
-    return AuditResult(manifest=manifest, runs=runs, summary=summary)
+    summary = build_summary(manifest) if (build_summary_output or ac.dashboard_json or ac.dashboard_markdown or ac.dashboard_html) else None
 
+    if summary is not None:
+        if ac.dashboard_json:
+            target = ac.dashboard_json if ac.dashboard_json.is_absolute() else (root / ac.dashboard_json)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+        if ac.dashboard_markdown:
+            from .dashboard import render_markdown
+
+            target = ac.dashboard_markdown if ac.dashboard_markdown.is_absolute() else (root / ac.dashboard_markdown)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(render_markdown(summary), encoding="utf-8")
+        if ac.dashboard_html:
+            from .html_report import render_html
+
+            target = ac.dashboard_html if ac.dashboard_html.is_absolute() else (root / ac.dashboard_html)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(render_html(summary), encoding="utf-8")
+
+    return AuditResult(manifest=manifest, runs=runs, summary=summary if build_summary_output else None)
