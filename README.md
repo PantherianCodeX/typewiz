@@ -35,3 +35,23 @@ python -m typing_inspector dashboard --manifest typing_audit.json --format markd
 ```
 
 See the [docs](docs/typing_inspector.md) for detailed guidance and the export roadmap.
+
+### Python API
+
+Use typing-inspector programmatically without the CLI:
+
+```python
+from pathlib import Path
+from typing_inspector import run_audit, AuditConfig
+
+# Minimal: discover config and run
+result = run_audit(project_root=Path.cwd(), build_summary_output=True)
+print(result.summary)  # dict with top folders/files and rule counts
+
+# Advanced: override behavior
+override = AuditConfig(full_paths=["apps", "packages"], skip_current=False, skip_full=False, max_depth=3)
+result = run_audit(project_root=Path.cwd(), override=override, write_manifest_to=Path("typing_audit_manifest.json"))
+
+# Manifest JSON payload
+manifest = result.manifest
+```

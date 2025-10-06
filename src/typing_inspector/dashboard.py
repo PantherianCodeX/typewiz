@@ -16,6 +16,8 @@ def build_summary(manifest: dict[str, Any]) -> dict[str, Any]:
     folder_totals: dict[str, Counter[str]] = defaultdict(Counter)
     folder_counts: dict[str, int] = defaultdict(int)
     file_entries: list[tuple[str, int, int]] = []
+    severity_totals: Counter[str] = Counter()
+    rule_totals: Counter[str] = Counter()
 
     for run in runs:
         key = f"{run.get('tool')}:{run.get('mode')}"
@@ -26,7 +28,11 @@ def build_summary(manifest: dict[str, Any]) -> dict[str, Any]:
             "warnings": summary.get("warnings", 0),
             "information": summary.get("information", 0),
             "total": summary.get("total", 0),
+            "severityBreakdown": summary.get("severityBreakdown", {}),
+            "ruleCounts": summary.get("ruleCounts", {}),
         }
+        severity_totals.update(summary.get("severityBreakdown", {}))
+        rule_totals.update(summary.get("ruleCounts", {}))
         for folder in run.get("perFolder", []):
             path = folder.get("path")
             if not path:
@@ -61,6 +67,8 @@ def build_summary(manifest: dict[str, Any]) -> dict[str, Any]:
         "generatedAt": manifest.get("generatedAt"),
         "projectRoot": manifest.get("projectRoot"),
         "runSummary": run_summary,
+        "severityTotals": dict(severity_totals),
+        "topRules": dict(rule_totals.most_common(20)),
         "topFolders": [
             {
                 "path": path,
@@ -121,6 +129,31 @@ def render_markdown(summary: dict[str, Any]) -> str:
     for file_entry in summary.get("topFiles", []):
         lines.append(f"| `{file_entry['path']}` | {file_entry['errors']} | {file_entry['warnings']} |")
 
+    if summary.get("topRules"):
+        lines.extend(
+            [
+                "",
+                "## Most Common Diagnostic Rules",
+                "",
+                "| Rule | Count |",
+                "| --- | ---: |",
+            ]
+        )
+        for rule, count in summary.get("topRules", {}).items():
+            lines.append(f"| `{rule}` | {count} |")
+
+    if summary.get("severityTotals"):
+        totals = summary["severityTotals"]
+        lines.extend(
+            [
+                "",
+                "## Severity Totals",
+                "",
+                f"- Errors: {totals.get('error', 0)}",
+                f"- Warnings: {totals.get('warning', 0)}",
+                f"- Information: {totals.get('information', 0)}",
+            ]
+        )
+
     lines.append("")
     return "\n".join(lines)
-

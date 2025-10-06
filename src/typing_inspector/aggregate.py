@@ -60,6 +60,9 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> dict:
     files: dict[str, FileSummary] = {}
     folder_levels: dict[int, dict[str, FolderSummary]] = {depth: {} for depth in range(1, max_depth + 1)}
 
+    severity_totals: Counter[str] = Counter()
+    rule_totals: Counter[str] = Counter()
+
     for diag in run.diagnostics:
         rel_path = str(diag.path).replace("\\", "/")
         summary = files.get(rel_path)
@@ -72,6 +75,10 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> dict:
             summary.warnings += 1
         else:
             summary.information += 1
+        severity_totals[diag.severity] += 1
+        if diag.code:
+            rule_totals[diag.code] += 1
+
         summary.diagnostics.append(
             {
                 "line": diag.line,
@@ -114,6 +121,8 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> dict:
             "warnings": sum(1 for diag in run.diagnostics if diag.severity == "warning"),
             "information": sum(1 for diag in run.diagnostics if diag.severity not in {"error", "warning"}),
             "total": len(run.diagnostics),
+            "severityBreakdown": dict(severity_totals),
+            "ruleCounts": dict(rule_totals.most_common()),
         },
         "perFile": [asdict(item) for item in file_list],
         "perFolder": folder_entries,
