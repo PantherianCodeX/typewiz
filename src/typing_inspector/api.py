@@ -7,6 +7,7 @@ from typing import Any, Sequence
 
 from .config import AuditConfig, Config, load_config
 from .dashboard import build_summary
+from .typed_manifest import ManifestData
 from .manifest import ManifestBuilder
 from .runner import run_mypy, run_pyright
 from .types import RunResult
@@ -15,7 +16,7 @@ from .utils import default_full_paths, python_executable, resolve_project_root
 
 @dataclass(slots=True)
 class AuditResult:
-    manifest: dict[str, Any]
+    manifest: ManifestData
     runs: list[RunResult]
     summary: dict[str, Any] | None = None
 

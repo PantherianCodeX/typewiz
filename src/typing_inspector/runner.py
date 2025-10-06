@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 from typing import Iterable, Sequence
+import logging
 
 from .types import Diagnostic, RunResult
 from .utils import require_json, run_command
 
+logger = logging.getLogger("typing_inspector")
 
 def _make_diag_path(project_root: Path, file_path: str) -> Path:
     path = Path(file_path)
@@ -23,6 +24,7 @@ def run_pyright(
     mode: str,
     command: Sequence[str],
 ) -> RunResult:
+    logger.info("Running pyright (%s)", " ".join(command))
     result = run_command(command, cwd=project_root)
     payload_str = result.stdout or result.stderr
     payload = require_json(payload_str)
@@ -45,7 +47,7 @@ def run_pyright(
                 raw=diag,
             )
         )
-    return RunResult(
+    run = RunResult(
         tool="pyright",
         mode=mode,
         command=list(command),
@@ -53,6 +55,8 @@ def run_pyright(
         duration_ms=result.duration_ms,
         diagnostics=diagnostics,
     )
+    logger.debug("pyright run completed: exit=%s diagnostics=%s", run.exit_code, len(run.diagnostics))
+    return run
 
 
 _MYPY_LINE = re.compile(
@@ -66,6 +70,7 @@ def run_mypy(
     mode: str,
     command: Sequence[str],
 ) -> RunResult:
+    logger.info("Running mypy (%s)", " ".join(command))
     result = run_command(command, cwd=project_root)
     diagnostics: list[Diagnostic] = []
     remaining_stderr = result.stderr.strip()
@@ -116,7 +121,7 @@ def run_mypy(
                 raw=data,
             )
         )
-    return RunResult(
+    run = RunResult(
         tool="mypy",
         mode=mode,
         command=list(command),
@@ -124,3 +129,5 @@ def run_mypy(
         duration_ms=result.duration_ms,
         diagnostics=diagnostics,
     )
+    logger.debug("mypy run completed: exit=%s diagnostics=%s", run.exit_code, len(run.diagnostics))
+    return run

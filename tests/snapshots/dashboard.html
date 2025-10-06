@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Typing Inspector Dashboard</title>
+  <style>
+    body{font-family:system-ui, sans-serif;margin:2rem;background:#f5f5f5;}
+    h1,h2{color:#2b4b80;}
+    table{border-collapse:collapse;width:100%;margin-bottom:1.5rem;background:white;}
+    th,td{border:1px solid #d0d7e2;padding:0.5rem;text-align:left;}
+    th{background:#e8edf7;}
+    section{margin-bottom:2rem;}
+    .metrics{display:flex;gap:1.5rem;}
+    .metric{background:white;border:1px solid #d0d7e2;padding:1rem;border-radius:6px;min-width:8rem;text-align:center;}
+    .metric strong{display:block;font-size:1.5rem;}
+  </style>
+</head>
+<body>
+  <h1>Typing Inspector Dashboard</h1>
+  <p><strong>Generated:</strong> 2025-01-01T00:00:00Z<br />
+     <strong>Project root:</strong> /repo</p>
+  <section>
+    <h2>Severity Totals</h2>
+    <div class="metrics">
+      <div class="metric"><strong>4</strong>Errors</div>
+      <div class="metric"><strong>2</strong>Warnings</div>
+      <div class="metric"><strong>1</strong>Information</div>
+    </div>
+  </section>
+  <section>
+    <h2>Run Summary</h2>
+    <table>
+      <thead><tr><th>Run</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Total</th><th>Command</th></tr></thead>
+      <tbody>
+        <tr><td>pyright:current</td><td>3</td><td>2</td><td>1</td><td>6</td><td><code>pyright --outputjson</code></td></tr>
+        <tr><td>mypy:full</td><td>1</td><td>0</td><td>0</td><td>1</td><td><code>python -m mypy</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section>
+    <h2>Top Diagnostic Rules</h2>
+    <table>
+      <thead><tr><th>Rule</th><th>Count</th></tr></thead><tbody>
+        <tr><td><code>reportUnknownMemberType</code></td><td>2</td></tr>
+        <tr><td><code>reportGeneralTypeIssues</code></td><td>1</td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section>
+    <h2>Top Folder Hotspots</h2>
+    <table>
+      <thead><tr><th>Folder</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Runs</th></tr></thead><tbody>
+        <tr><td>apps/platform/operations</td><td>2</td><td>1</td><td>0</td><td>2</td></tr>
+        <tr><td>packages/agents</td><td>1</td><td>1</td><td>0</td><td>1</td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section>
+    <h2>Top File Hotspots</h2>
+    <table>
+      <thead><tr><th>File</th><th>Errors</th><th>Warnings</th></tr></thead><tbody>
+        <tr><td>apps/platform/operations/admin.py</td><td>2</td><td>0</td></tr>
+        <tr><td>packages/core/agents.py</td><td>1</td><td>1</td></tr>
+      </tbody>
+    </table>
+  </section>
+</body>
+</html>

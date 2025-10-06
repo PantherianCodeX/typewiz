@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
+
+
+logger = logging.getLogger("typing_inspector")
 
 
 @dataclass(slots=True)
@@ -21,6 +25,7 @@ class CommandOutput:
 def run_command(args: Iterable[str], cwd: Path | None = None) -> CommandOutput:
     argv = list(args)
     start = time.perf_counter()
+    logger.debug("Executing command: %s", " ".join(argv))
     completed = subprocess.run(
         argv,
         cwd=str(cwd) if cwd else None,
@@ -29,6 +34,8 @@ def run_command(args: Iterable[str], cwd: Path | None = None) -> CommandOutput:
         text=True,
     )
     duration_ms = (time.perf_counter() - start) * 1000
+    if completed.returncode != 0:
+        logger.warning("Command failed (exit=%s): %s", completed.returncode, " ".join(argv))
     return CommandOutput(
         args=argv,
         stdout=completed.stdout,

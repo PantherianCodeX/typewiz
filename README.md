@@ -35,6 +35,18 @@ python -m typing_inspector dashboard --manifest typing_audit.json --format markd
 python -m typing_inspector dashboard --manifest typing_audit.json --format html --output dashboard.html
 ```
 
+### Logging
+
+Typing Inspector uses Python's standard `logging` module with the logger name `typing_inspector`.
+Configure it in your application to capture command execution details:
+
+```python
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logging.getLogger("typing_inspector").setLevel(logging.DEBUG)
+```
+
 See the [docs](docs/typing_inspector.md) for detailed guidance and the export roadmap.
 
 ### Python API

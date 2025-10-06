@@ -3,14 +3,18 @@ from __future__ import annotations
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Mapping
+
+from typing import cast
+
+from .typed_manifest import ManifestData
 
 
-def load_manifest(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+def load_manifest(path: Path) -> ManifestData:
+    return cast(ManifestData, json.loads(path.read_text(encoding="utf-8")))
 
 
-def build_summary(manifest: dict[str, Any]) -> dict[str, Any]:
+def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
     runs = manifest.get("runs", [])
     run_summary: dict[str, Any] = {}
     folder_totals: dict[str, Counter[str]] = defaultdict(Counter)

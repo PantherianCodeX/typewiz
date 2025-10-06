@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List, cast
 
+from .typed_manifest import (
+    AggregatedData,
+    FileDiagnostic,
+    FileEntry,
+    FolderEntry,
+)
 from .types import Diagnostic, RunResult
 
 
@@ -14,7 +20,7 @@ class FileSummary:
     errors: int = 0
     warnings: int = 0
     information: int = 0
-    diagnostics: list[dict] = field(default_factory=list)
+    diagnostics: list[FileDiagnostic] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -26,7 +32,7 @@ class FolderSummary:
     information: int = 0
     code_counts: Counter[str] = field(default_factory=Counter)
 
-    def to_dict(self) -> dict:
+    def to_folder_entry(self) -> FolderEntry:
         total = self.errors + self.warnings + self.information
         unknown = sum(count for code, count in self.code_counts.items() if "unknown" in code.lower())
         optional = sum(count for code, count in self.code_counts.items() if "optional" in code.lower())
@@ -45,18 +51,21 @@ class FolderSummary:
             top_rules = Counter(self.code_counts).most_common(3)
             for rule, count in top_rules:
                 recommendations.append(f"{rule}:{count}")
-        return {
-            "path": self.path,
-            "depth": self.depth,
-            "errors": self.errors,
-            "warnings": self.warnings,
-            "information": self.information,
-            "codeCounts": dict(self.code_counts),
-            "recommendations": recommendations,
-        }
+        return cast(
+            FolderEntry,
+            {
+                "path": self.path,
+                "depth": self.depth,
+                "errors": self.errors,
+                "warnings": self.warnings,
+                "information": self.information,
+                "codeCounts": dict(self.code_counts),
+                "recommendations": recommendations,
+            },
+        )
 
 
-def summarise_run(run: RunResult, *, max_depth: int = 3) -> dict:
+def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
     files: dict[str, FileSummary] = {}
     folder_levels: dict[int, dict[str, FolderSummary]] = {depth: {} for depth in range(1, max_depth + 1)}
 
@@ -79,15 +88,14 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> dict:
         if diag.code:
             rule_totals[diag.code] += 1
 
-        summary.diagnostics.append(
-            {
-                "line": diag.line,
-                "column": diag.column,
-                "severity": diag.severity,
-                "code": diag.code,
-                "message": diag.message,
-            }
-        )
+        file_diag: FileDiagnostic = {
+            "line": diag.line,
+            "column": diag.column,
+            "severity": diag.severity,
+            "code": diag.code,
+            "message": diag.message,
+        }
+        summary.diagnostics.append(file_diag)
 
         parts = [part for part in Path(rel_path).parts if part not in {".", ""}]
         for depth in range(1, min(len(parts), max_depth) + 1):
@@ -107,16 +115,30 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> dict:
                 bucket.code_counts[diag.code] += 1
 
     file_list = sorted(files.values(), key=lambda item: (-item.errors, -item.warnings, item.path))
-    folder_entries: list[dict] = []
+    folder_entries: list[FolderEntry] = []
     for depth in sorted(folder_levels):
         entries = sorted(
             folder_levels[depth].values(),
             key=lambda item: (-item.errors, -item.warnings, item.path),
         )
-        folder_entries.extend(entry.to_dict() for entry in entries)
+        folder_entries.extend(entry.to_folder_entry() for entry in entries)
 
-    return {
-        "summary": {
+    per_file: List[FileEntry] = [
+        cast(
+            FileEntry,
+            {
+                "path": item.path,
+                "errors": item.errors,
+                "warnings": item.warnings,
+                "information": item.information,
+                "diagnostics": item.diagnostics,
+            },
+        )
+        for item in file_list
+    ]
+
+    return AggregatedData(
+        summary={
             "errors": sum(1 for diag in run.diagnostics if diag.severity == "error"),
             "warnings": sum(1 for diag in run.diagnostics if diag.severity == "warning"),
             "information": sum(1 for diag in run.diagnostics if diag.severity not in {"error", "warning"}),
@@ -124,6 +146,6 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> dict:
             "severityBreakdown": dict(severity_totals),
             "ruleCounts": dict(rule_totals.most_common()),
         },
-        "perFile": [asdict(item) for item in file_list],
-        "perFolder": folder_entries,
-    }
+        perFile=per_file,
+        perFolder=folder_entries,
+    )
