@@ -16,6 +16,15 @@ manifest, and renders dashboards to help teams plan stricter typing rollouts.
 pip install typing-inspector
 ```
 
+### Local development
+
+```bash
+python -m venv .venv
+. .venv/bin/activate
+pip install -e .
+pip install pytest  # enable test suite
+```
+
 ## Usage
 
 Generate a manifest and dashboard:

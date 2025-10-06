@@ -13,8 +13,8 @@ Use the following checklist to promote `typing_inspector` into its own reusable 
 From the current project root:
 
 ```bash
-rsync -av --progress typing_inspector/ ../typing-inspector/typing_inspector/
-rsync -av docs/typing/typing_inspector.md ../typing-inspector/docs/
+rsync -av --progress src/typing_inspector/ ../typing-inspector/src/typing_inspector/
+rsync -av docs/typing_inspector.md ../typing-inspector/docs/
 ```
 
 Include example manifests to exercise the dashboard (optional):
@@ -79,4 +79,3 @@ Or vendor the package by committing the directory into another repo’s `libs/` 
 ### 8. Remove the embedded copy (optional)
 
 Once other repos transition, drop `typing_inspector/` from this project and replace CLI usages with the published package.
-

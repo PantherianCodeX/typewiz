@@ -1,5 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/vscode-pyright/schemas/pyrightconfig.schema.json",
-  "include": ["typing_inspector"],
-  "typeCheckingMode": "basic"
+  "include": ["src"],
+  "typeCheckingMode": "basic",
+  "executionEnvironments": [
+    {
+      "root": "src"
+    }
+  ]
 }

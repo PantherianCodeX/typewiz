@@ -12,7 +12,7 @@ Run a full audit from the repository root:
 python -m typing_inspector audit --max-depth 3
 ```
 
-This produces `docs/typing/typing_audit_manifest.json` containing:
+This produces `typing_audit_manifest.json` (relative to the working directory) containing:
 
 - All diagnostics from the current enforced configuration (`mode="current"`).
 - An expansive run across the project directories (`mode="full"`).
@@ -30,7 +30,7 @@ Options:
 Generate a condensed dashboard view from an existing manifest:
 
 ```bash
-python -m typing_inspector dashboard --manifest docs/typing/typing_audit_manifest.json --format markdown --output typing_dashboard.md
+python -m typing_inspector dashboard --manifest typing_audit_manifest.json --format markdown --output typing_dashboard.md
 ```
 
 Supported formats:
