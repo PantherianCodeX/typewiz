@@ -480,15 +480,15 @@ def run_audit(
             cache_flags.extend(f"exclude={path}" for path in engine_options.exclude)
             cache_key = cache.key_for(engine.name, mode, mode_paths, cache_flags)
             fingerprint_provider: Callable[[EngineContext, Sequence[str]], Sequence[str]]
+            # default no-op provider
+            def _fp(_c: EngineContext, _p: Sequence[str]) -> Sequence[str]:
+                return []
+            fingerprint_provider = _fp
             if hasattr(engine, "fingerprint_targets"):
                 fingerprint_provider = cast(
                     Callable[[EngineContext, Sequence[str]], Sequence[str]],
                     getattr(engine, "fingerprint_targets"),
                 )
-            else:
-                def _fp(_c: EngineContext, _p: Sequence[str]) -> Sequence[str]:
-                    return []
-            fingerprint_provider = _fp
             engine_fingerprints = _normalise_paths(
                 root,
                 fingerprint_provider(context, mode_paths),

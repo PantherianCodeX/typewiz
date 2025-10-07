@@ -4,7 +4,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, Mapping, Sequence
+from typing import Dict, Iterable, Mapping, Sequence, cast
 
 from .types import Diagnostic
 
@@ -81,44 +81,63 @@ class EngineCache:
             payload = json.loads(self.path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             return
-        for key, entry in payload.get("entries", {}).items():
-            diagnostics = entry.get("diagnostics", [])
-            file_hashes = entry.get("file_hashes", {})
-            command = entry.get("command", [])
+        entries = cast(dict[str, dict[str, object]], payload.get("entries", {}))
+        for key, entry in entries.items():
+            diagnostics_any = cast(list[object], entry.get("diagnostics", []))
+            file_hashes_any = cast(dict[str, object], entry.get("file_hashes", {}))
+            command_any = cast(list[object], entry.get("command", []))
             exit_code = entry.get("exit_code")
             duration_ms = entry.get("duration_ms")
-            plugin_args = entry.get("plugin_args", [])
-            include = entry.get("include", [])
-            exclude = entry.get("exclude", [])
+            plugin_args_any = cast(list[object], entry.get("plugin_args", []))
+            include_any = cast(list[object], entry.get("include", []))
+            exclude_any = cast(list[object], entry.get("exclude", []))
             profile = entry.get("profile")
             config_file = entry.get("config_file")
-            overrides = entry.get("overrides", [])
-            category_mapping = entry.get("category_mapping", {})
-            if (
-                isinstance(diagnostics, list)
-                and isinstance(file_hashes, dict)
-                and isinstance(command, list)
-                and isinstance(exit_code, int)
-                and isinstance(duration_ms, (int, float))
-                and isinstance(plugin_args, list)
-                and isinstance(include, list)
-                and isinstance(exclude, list)
-                and (isinstance(overrides, list))
-            ):
-                self._entries[key] = CacheEntry(
-                    command=[str(arg) for arg in command],
-                    exit_code=exit_code,
-                    duration_ms=float(duration_ms),
-                    diagnostics=diagnostics,
-                    file_hashes=file_hashes,
-                    profile=str(profile) if isinstance(profile, str) and profile.strip() else None,
-                    config_file=str(config_file) if isinstance(config_file, str) and config_file.strip() else None,
-                    plugin_args=[str(arg) for arg in plugin_args],
-                    include=[str(item) for item in include],
-                    exclude=[str(item) for item in exclude],
-                    overrides=[dict(item) for item in overrides if isinstance(item, dict)],
-                    category_mapping=_normalise_category_mapping(category_mapping if isinstance(category_mapping, dict) else {}),
-                )
+            overrides_any = cast(list[object], entry.get("overrides", []))
+            category_mapping_any = cast(dict[str, object], entry.get("category_mapping", {}))
+            # Defensive normalization and typing for JSON-loaded structures
+            command_list: list[str] = [str(a) for a in command_any]
+            plugin_args_list: list[str] = [str(a) for a in plugin_args_any]
+            include_list: list[str] = [str(i) for i in include_any]
+            exclude_list: list[str] = [str(i) for i in exclude_any]
+            overrides_list: list[dict[str, object]] = []
+            for i in overrides_any:
+                if isinstance(i, dict):
+                    overrides_list.append({str(k): v for k, v in i.items()})
+            file_hashes_map: dict[str, dict[str, object]] = {}
+            for k_any, v_any in file_hashes_any.items():
+                if not isinstance(k_any, str) or not isinstance(v_any, dict):
+                    continue
+                v_dict = cast(dict[object, object], v_any)
+                nested: dict[str, object] = {}
+                for kk, vv in v_dict.items():
+                    nested[str(kk)] = vv
+                file_hashes_map[k_any] = nested
+            diagnostics_list: list[dict[str, object]] = []
+            for d in diagnostics_any:
+                if isinstance(d, dict):
+                    norm: dict[str, object] = {}
+                    for k, v in d.items():
+                        norm[str(k)] = v
+                    diagnostics_list.append(norm)
+            exit_code_int = int(exit_code) if isinstance(exit_code, int) else 0
+            duration_val = float(duration_ms) if isinstance(duration_ms, (int, float)) else 0.0
+            self._entries[key] = CacheEntry(
+                command=command_list,
+                exit_code=exit_code_int,
+                duration_ms=duration_val,
+                diagnostics=diagnostics_list,
+                file_hashes=file_hashes_map,
+                profile=str(profile) if isinstance(profile, str) and profile.strip() else None,
+                config_file=str(config_file) if isinstance(config_file, str) and config_file.strip() else None,
+                plugin_args=plugin_args_list,
+                include=include_list,
+                exclude=exclude_list,
+                overrides=overrides_list,
+                category_mapping=_normalise_category_mapping(
+                    cast(Mapping[str, Sequence[str]] | None, category_mapping_any)
+                ),
+            )
 
     def save(self) -> None:
         if not self._dirty:

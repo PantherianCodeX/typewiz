@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from html import escape
-from typing import Any
+from typing import Any, List, cast
 from .readiness import CATEGORY_LABELS
 
 _TAB_ORDER = ("overview", "engines", "hotspots", "readiness", "runs")
@@ -237,8 +237,8 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
         parts.append(f"    <details open><summary><strong>{label}</strong> ({len(entries)})</summary>")
         parts.append("      <ul>")
         for entry in entries[:12]:
-            notes = entry.get("notes") or entry.get("recommendations") or []
-            note_text = f" — {', '.join(notes)}" if notes else ""
+            notes_list = cast(List[str], entry.get("notes") or entry.get("recommendations") or [])
+            note_text = f" — {', '.join(notes_list)}" if notes_list else ""
             parts.append(
                 f"        <li><code>{h(entry['path'])}</code> (diagnostics={entry['diagnostics']}){note_text}</li>"
             )

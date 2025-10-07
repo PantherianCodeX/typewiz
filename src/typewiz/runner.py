@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Sequence, TypedDict, NotRequired
+from typing import Sequence, Dict, Any, cast
 import logging
 
 from .engines.base import EngineResult
 from .types import Diagnostic
-from typing import Any, Dict
 from .utils import require_json, run_command
 
 logger = logging.getLogger("typewiz")
@@ -31,30 +30,14 @@ def run_pyright(
     payload_str = result.stdout or result.stderr
     payload: Dict[str, Any] = require_json(payload_str)
 
-    class _Pos(TypedDict):
-        line: int
-        character: int
-
-    class _Range(TypedDict):
-        start: _Pos
-
-    class _PyrightDiag(TypedDict, total=False):
-        filePath: str
-        file: str
-        severity: str
-        message: str
-        rule: str
-        range: _Range
-
     diagnostics: list[Diagnostic] = []
-    raw_diags = payload.get("generalDiagnostics", [])
-    for diag in raw_diags:  # type: ignore[assignment]
-        d = diag  # runtime trust
+    raw_diags = cast(list[Dict[str, Any]], payload.get("generalDiagnostics", []))
+    for d in raw_diags:
         file_path = str(d.get("filePath") or d.get("file") or "")
         if not file_path:
             continue
-        rng = d.get("range") or {}
-        start = rng.get("start") or {}
+        rng = cast(Dict[str, Any], d.get("range") or {})
+        start = cast(Dict[str, Any], rng.get("start") or {})
         diagnostics.append(
             Diagnostic(
                 tool="pyright",

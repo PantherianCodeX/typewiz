@@ -156,7 +156,7 @@ def _print_summary(
                     detail = "; ".join(parts) if parts else "no explicit changes"
                     detail_items.append((label, detail))
             else:
-                short = []
+                short: list[str] = []
                 for entry in overrides_data:
                     parts_short: list[str] = []
                     if entry.get("profile"):

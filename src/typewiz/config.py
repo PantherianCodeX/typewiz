@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, cast, Any
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator, ConfigDict
 
@@ -79,8 +79,8 @@ def _ensure_list(value: object | None) -> list[str] | None:
     if isinstance(value, str):
         stripped = value.strip()
         return [stripped] if stripped else []
-    result = []
-    for item in value if isinstance(value, Iterable) else []:
+    result: list[str] = []
+    for item in cast(Iterable[object], value) if isinstance(value, Iterable) else []:
         if isinstance(item, str):
             stripped = item.strip()
             if stripped:
