@@ -79,22 +79,35 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "generatedAt": manifest.get("generatedAt"),
         "projectRoot": manifest.get("projectRoot"),
-        "runSummary": run_summary,
-        "severityTotals": dict(severity_totals),
-        "topRules": dict(rule_totals.most_common(20)),
-        "topFolders": [
-            {
-                "path": path,
-                "errors": counts["errors"],
-                "warnings": counts["warnings"],
-                "information": counts["information"],
-                "participatingRuns": folder_counts[path],
-            }
-            for path, counts in top_folders
-        ],
-        "topFiles": [
-            {"path": path, "errors": errors, "warnings": warnings} for path, errors, warnings in top_files
-        ],
+        "tabs": {
+            "overview": {
+                "severityTotals": dict(severity_totals),
+                "runSummary": run_summary,
+            },
+            "engines": {
+                "runSummary": run_summary,
+            },
+            "hotspots": {
+                "topRules": dict(rule_totals.most_common(20)),
+                "topFolders": [
+                    {
+                        "path": path,
+                        "errors": counts["errors"],
+                        "warnings": counts["warnings"],
+                        "information": counts["information"],
+                        "participatingRuns": folder_counts[path],
+                    }
+                    for path, counts in top_folders
+                ],
+                "topFiles": [
+                    {"path": path, "errors": errors, "warnings": warnings}
+                    for path, errors, warnings in top_files
+                ],
+            },
+            "runs": {
+                "runSummary": run_summary,
+            },
+        },
     }
 
 
