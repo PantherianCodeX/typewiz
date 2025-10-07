@@ -8,123 +8,15 @@ from typing import Any, Dict, Mapping
 from typing import cast
 
 from .typed_manifest import ManifestData
-
-READINESS_STRICT_READY = "strict-ready"
-
-CATEGORY_PATTERNS: dict[str, tuple[str, ...]] = {
-    "unknownChecks": (
-        "unknown",
-        "missingtype",
-        "reportunknown",
-        "reportmissingtype",
-        "untyped",
-    ),
-    "optionalChecks": ("optional", "nonecheck", "maybeunbound"),
-    "unusedSymbols": ("unused", "warnunused", "redundant"),
-    "general": tuple(),
-}
-
-CATEGORY_CLOSE_THRESHOLD = {
-    "unknownChecks": 2,
-    "optionalChecks": 2,
-    "unusedSymbols": 4,
-    "general": 5,
-}
-
-STRICT_CLOSE_THRESHOLD = 3
-
-CATEGORY_LABELS = {
-    "unknownChecks": "Unknown type checks",
-    "optionalChecks": "Optional member checks",
-    "unusedSymbols": "Unused symbol warnings",
-    "general": "General diagnostics",
-}
+from .readiness import compute_readiness, CATEGORY_LABELS
 
 
 def load_manifest(path: Path) -> ManifestData:
     return cast(ManifestData, json.loads(path.read_text(encoding="utf-8")))
 
 
-def _collect_readiness(
-    folder_entries: list[dict[str, Any]]
-) -> dict[str, Any]:
-    readiness = {
-        "strict": {"ready": [], "close": [], "blocked": []},
-        "options": {
-            category: {"ready": [], "close": [], "blocked": [], "threshold": CATEGORY_CLOSE_THRESHOLD.get(category, 3)}
-            for category in CATEGORY_PATTERNS
-        },
-    }
-
-    def _bucket_code_counts(code_counts: dict[str, int]) -> dict[str, int]:
-        buckets = {category: 0 for category in CATEGORY_PATTERNS}
-        for rule, count in code_counts.items():
-            lowered = rule.lower()
-            matched_category = None
-            for category, patterns in CATEGORY_PATTERNS.items():
-                if category == "general":
-                    continue
-                if any(pattern in lowered for pattern in patterns):
-                    matched_category = category
-                    break
-            if matched_category is None:
-                matched_category = "general"
-            buckets[matched_category] += count
-        return buckets
-
-    def _status_for_category(category: str, count: int) -> str:
-        if count == 0:
-            return "ready"
-        close_threshold = CATEGORY_CLOSE_THRESHOLD.get(category, 3)
-        return "close" if count <= close_threshold else "blocked"
-
-    for entry in folder_entries:
-        code_counts = entry.get("codeCounts", {})
-        categories = _bucket_code_counts(code_counts)
-        category_status: dict[str, dict[str, Any]] = {}
-        for category, count in categories.items():
-            status = _status_for_category(category, count)
-            category_status[category] = {"status": status, "count": count}
-            readiness["options"][category][status].append(
-                {
-                    "path": entry["path"],
-                    "count": count,
-                    "errors": entry.get("errors", 0),
-                    "warnings": entry.get("warnings", 0),
-                }
-            )
-
-        total_diagnostics = entry.get("errors", 0) + entry.get("warnings", 0)
-        if total_diagnostics == 0:
-            strict_status = "ready"
-        else:
-            blocking_categories = [cat for cat, meta in category_status.items() if meta["status"] == "blocked" and cat != "general"]
-            if total_diagnostics <= STRICT_CLOSE_THRESHOLD and not blocking_categories:
-                strict_status = "close"
-            else:
-                strict_status = "blocked"
-
-        strict_entry = {
-            "path": entry["path"],
-            "errors": entry.get("errors", 0),
-            "warnings": entry.get("warnings", 0),
-            "information": entry.get("information", 0),
-            "diagnostics": total_diagnostics,
-            "categories": {cat: meta["count"] for cat, meta in category_status.items()},
-            "categoryStatus": {cat: meta["status"] for cat, meta in category_status.items()},
-            "recommendations": entry.get("recommendations", []),
-        }
-        if strict_status == "close":
-            blockers = [
-                f"{cat}: {category_status[cat]['count']}"
-                for cat in category_status
-                if category_status[cat]["status"] != "ready"
-            ]
-            strict_entry["notes"] = blockers
-
-        readiness["strict"][strict_status].append(strict_entry)
-
-    return readiness
+def _collect_readiness(folder_entries: list[dict[str, Any]]) -> dict[str, Any]:
+    return compute_readiness(folder_entries)
 
 
 def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
@@ -137,6 +29,8 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
     file_entries: list[tuple[str, int, int]] = []
     severity_totals: Counter[str] = Counter()
     rule_totals: Counter[str] = Counter()
+    category_totals: Counter[str] = Counter()
+    folder_category_totals: dict[str, Counter[str]] = defaultdict(Counter)
 
     for run in runs:
         key = f"{run.get('tool')}:{run.get('mode')}"
@@ -150,6 +44,7 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
             "total": summary.get("total", 0),
             "severityBreakdown": summary.get("severityBreakdown", {}),
             "ruleCounts": summary.get("ruleCounts", {}),
+            "categoryCounts": summary.get("categoryCounts", {}),
             "engineOptions": {
                 "profile": options.get("profile"),
                 "configFile": options.get("configFile"),
@@ -157,10 +52,12 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 "include": list(options.get("include", [])),
                 "exclude": list(options.get("exclude", [])),
                 "overrides": [dict(item) for item in options.get("overrides", [])],
+                "categoryMapping": dict(options.get("categoryMapping", {})),
             },
         }
         severity_totals.update(summary.get("severityBreakdown", {}))
         rule_totals.update(summary.get("ruleCounts", {}))
+        category_totals.update(summary.get("categoryCounts", {}))
         for folder in run.get("perFolder", []):
             path = folder.get("path")
             if not path:
@@ -171,6 +68,8 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
             folder_counts[path] += 1
             for code, count in folder.get("codeCounts", {}).items():
                 folder_code_totals[path][code] += count
+            for category, count in folder.get("categoryCounts", {}).items():
+                folder_category_totals[path][category] += count
             for rec in folder.get("recommendations", []):
                 folder_recommendations[path].add(rec)
         for entry in run.get("perFile", []):
@@ -196,6 +95,7 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 "information": counts["information"],
                 "participatingRuns": folder_counts[path],
                 "codeCounts": dict(folder_code_totals.get(path, {})),
+                "categoryCounts": dict(folder_category_totals.get(path, {})),
                 "recommendations": sorted(folder_recommendations.get(path, [])),
             }
         )
@@ -235,12 +135,14 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
         "projectRoot": manifest.get("projectRoot"),
         "runSummary": run_summary,
         "severityTotals": dict(severity_totals),
+        "categoryTotals": dict(category_totals),
         "topRules": top_rules_dict,
         "topFolders": top_folders_list,
         "topFiles": top_files_list,
         "tabs": {
             "overview": {
                 "severityTotals": dict(severity_totals),
+                "categoryTotals": dict(category_totals),
                 "runSummary": run_summary,
             },
             "engines": {

@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, List, cast
+from typing import Iterable, List, Mapping, cast
 
+from .readiness import CATEGORY_PATTERNS
 from .typed_manifest import (
     AggregatedData,
     FileDiagnostic,
@@ -31,11 +32,22 @@ class FolderSummary:
     warnings: int = 0
     information: int = 0
     code_counts: Counter[str] = field(default_factory=Counter)
+    category_counts: Counter[str] = field(default_factory=Counter)
+
+    def _unknown_count(self) -> int:
+        if self.category_counts:
+            return self.category_counts.get("unknownChecks", 0)
+        return sum(count for code, count in self.code_counts.items() if "unknown" in code.lower())
+
+    def _optional_count(self) -> int:
+        if self.category_counts:
+            return self.category_counts.get("optionalChecks", 0)
+        return sum(count for code, count in self.code_counts.items() if "optional" in code.lower())
 
     def to_folder_entry(self) -> FolderEntry:
         total = self.errors + self.warnings + self.information
-        unknown = sum(count for code, count in self.code_counts.items() if "unknown" in code.lower())
-        optional = sum(count for code, count in self.code_counts.items() if "optional" in code.lower())
+        unknown = self._unknown_count()
+        optional = self._optional_count()
         recommendations: list[str] = []
         if total == 0:
             recommendations.append("strict-ready")
@@ -60,9 +72,53 @@ class FolderSummary:
                 "warnings": self.warnings,
                 "information": self.information,
                 "codeCounts": dict(self.code_counts),
+                "categoryCounts": dict(self.category_counts),
                 "recommendations": recommendations,
             },
         )
+
+
+def _canonical_category_mapping(mapping: Mapping[str, Iterable[str]]) -> dict[str, tuple[str, ...]]:
+    canonical: dict[str, tuple[str, ...]] = {}
+    for key, raw_values in mapping.items():
+        if not isinstance(key, str):
+            continue
+        key_str = key.strip()
+        if not key_str:
+            continue
+        seen: set[str] = set()
+        cleaned: list[str] = []
+        for raw in raw_values:
+            if not isinstance(raw, str):
+                continue
+            candidate = raw.strip()
+            if not candidate:
+                continue
+            lowered = candidate.lower()
+            if lowered in seen:
+                continue
+            seen.add(lowered)
+            cleaned.append(lowered)
+        if cleaned:
+            canonical[key_str] = tuple(cleaned)
+    return canonical
+
+
+def _categorise_code(code: str | None, mapping: Mapping[str, Iterable[str]]) -> str:
+    code_lower = (code or "").lower()
+    if not code_lower:
+        return "general"
+    for category, patterns in mapping.items():
+        for pattern in patterns:
+            if pattern and pattern in code_lower:
+                return category
+    for category, patterns in CATEGORY_PATTERNS.items():
+        if category == "general":
+            continue
+        for pattern in patterns:
+            if pattern and pattern in code_lower:
+                return category
+    return "general"
 
 
 def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
@@ -71,6 +127,8 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
 
     severity_totals: Counter[str] = Counter()
     rule_totals: Counter[str] = Counter()
+    category_totals: Counter[str] = Counter()
+    category_mapping = _canonical_category_mapping(run.category_mapping)
 
     for diag in run.diagnostics:
         rel_path = str(diag.path).replace("\\", "/")
@@ -87,6 +145,8 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
         severity_totals[diag.severity] += 1
         if diag.code:
             rule_totals[diag.code] += 1
+        category = _categorise_code(diag.code, category_mapping)
+        category_totals[category] += 1
 
         file_diag: FileDiagnostic = {
             "line": diag.line,
@@ -113,6 +173,7 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
                 bucket.information += 1
             if diag.code:
                 bucket.code_counts[diag.code] += 1
+            bucket.category_counts[category] += 1
 
     for summary in files.values():
         summary.diagnostics.sort(key=lambda entry: (entry["line"], entry["column"]))
@@ -145,6 +206,7 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
             "total": len(run.diagnostics),
             "severityBreakdown": {key: severity_totals[key] for key in sorted(severity_totals)},
             "ruleCounts": {key: rule_totals[key] for key in sorted(rule_totals)},
+            "categoryCounts": {key: category_totals[key] for key in sorted(category_totals)},
         },
         perFile=per_file,
         perFolder=folder_entries,

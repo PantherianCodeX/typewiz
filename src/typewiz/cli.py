@@ -219,6 +219,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Default tab for HTML output",
     )
 
+    readiness = subparsers.add_parser("readiness", help="Show top-N candidates for strict typing")
+    readiness.add_argument("--manifest", type=Path, required=True, help="Path to a typing audit manifest")
+    readiness.add_argument("--level", choices=["folder", "file"], default="folder")
+    readiness.add_argument("--status", choices=["ready", "close", "blocked"], default="close")
+    readiness.add_argument("--limit", type=int, default=10)
+
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     if args.command == "audit":
@@ -316,6 +322,54 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             print(rendered, end="")
 
+        return 0
+
+    if args.command == "readiness":
+        manifest = load_manifest(args.manifest)
+        summary = build_summary(manifest)
+        if args.level == "folder":
+            readiness_tab = summary.get("tabs", {}).get("readiness", {})
+            strict = readiness_tab.get("strict", {})
+            candidates = strict.get(args.status, [])
+            # Sort by diagnostics then path
+            candidates = sorted(candidates, key=lambda e: (e.get("diagnostics", 0), e.get("path", "")))
+            for entry in candidates[: args.limit]:
+                notes = ", ".join(entry.get("notes", []) or entry.get("recommendations", []))
+                print(f"{entry['path']}  diag={entry.get('diagnostics', 0)}  notes={notes}")
+            return 0
+
+        # per-file readiness: aggregate diagnostics across runs
+        from collections import defaultdict
+        from .readiness import compute_readiness
+
+        file_map: dict[str, dict[str, Any]] = {}
+        for run in manifest.get("runs", []):
+            for f in run.get("perFile", []):
+                path = f.get("path")
+                if not path:
+                    continue
+                cur = file_map.setdefault(
+                    path,
+                    {"path": path, "errors": 0, "warnings": 0, "information": 0, "codeCounts": defaultdict(int)},
+                )
+                cur["errors"] += f.get("errors", 0)
+                cur["warnings"] += f.get("warnings", 0)
+                cur["information"] += f.get("information", 0)
+                for d in f.get("diagnostics", []):
+                    code = d.get("code") or ""
+                    if code:
+                        cur["codeCounts"][code] += 1
+        entries = []
+        for v in file_map.values():
+            v["codeCounts"] = dict(v["codeCounts"])  # flatten
+            entries.append(v)
+        readiness = compute_readiness(entries)
+        strict = readiness.get("strict", {})
+        candidates = strict.get(args.status, [])
+        candidates = sorted(candidates, key=lambda e: (e.get("diagnostics", 0), e.get("path", "")))
+        for entry in candidates[: args.limit]:
+            notes = ", ".join(entry.get("notes", []) or entry.get("recommendations", []))
+            print(f"{entry['path']}  diag={entry.get('diagnostics', 0)}  notes={notes}")
         return 0
 
     return 0

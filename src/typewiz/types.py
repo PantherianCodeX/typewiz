@@ -42,6 +42,7 @@ class RunResult:
     include: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
     overrides: list[dict[str, object]] = field(default_factory=list)
+    category_mapping: dict[str, list[str]] = field(default_factory=dict)
 
     def severity_counts(self) -> Counter[str]:
         counts: Counter[str] = Counter()

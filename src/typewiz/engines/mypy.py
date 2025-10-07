@@ -44,5 +44,28 @@ class MypyEngine(BaseEngine):
         command = self._build_command(context, paths)
         return run_mypy(context.project_root, mode=context.mode, command=command)
 
+    def category_mapping(self) -> dict[str, list[str]]:
+        return {
+            "unknownChecks": [
+                # Common mypy error codes indicating unknown/typing issues
+                "name-defined",  # missing name/type in scope
+                "var-annotated",
+                "assignment",
+                "arg-type",
+                "call-arg",
+                "override",
+                "return-value",
+                "index",
+            ],
+            "optionalChecks": [
+                "union-attr",
+                "none",
+                "possibly-unbound",
+            ],
+            "unusedSymbols": [
+                "unused-",
+            ],
+        }
+
 
 __all__ = ["MypyEngine"]

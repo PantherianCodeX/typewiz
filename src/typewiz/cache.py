@@ -4,7 +4,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, Sequence
+from typing import Dict, Iterable, Mapping, Sequence
 
 from .types import Diagnostic
 
@@ -24,6 +24,7 @@ class CacheEntry:
     include: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
     overrides: list[dict[str, object]] = field(default_factory=list)
+    category_mapping: dict[str, list[str]] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -38,6 +39,34 @@ class CachedRun:
     include: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
     overrides: list[dict[str, object]] = field(default_factory=list)
+    category_mapping: dict[str, list[str]] = field(default_factory=dict)
+
+
+def _normalise_category_mapping(mapping: Mapping[str, Sequence[str]] | None) -> dict[str, list[str]]:
+    if not mapping:
+        return {}
+    normalised: dict[str, list[str]] = {}
+    str_keys = [key for key in mapping if isinstance(key, str)]
+    for key in sorted(str_keys):
+        raw_values = mapping[key]
+        key_str = key.strip()
+        if not key_str:
+            continue
+        seen: set[str] = set()
+        values: list[str] = []
+        for raw in raw_values:
+            if not isinstance(raw, str):
+                continue
+            candidate = raw.strip()
+            if not candidate:
+                continue
+            lowered = candidate.lower()
+            if lowered in seen:
+                continue
+            seen.add(lowered)
+            values.append(candidate)
+        normalised[key_str] = values
+    return normalised
 
 
 class EngineCache:
@@ -67,6 +96,7 @@ class EngineCache:
             profile = entry.get("profile")
             config_file = entry.get("config_file")
             overrides = entry.get("overrides", [])
+            category_mapping = entry.get("category_mapping", {})
             if (
                 isinstance(diagnostics, list)
                 and isinstance(file_hashes, dict)
@@ -90,6 +120,7 @@ class EngineCache:
                     include=[str(item) for item in include],
                     exclude=[str(item) for item in exclude],
                     overrides=[dict(item) for item in overrides if isinstance(item, dict)],
+                    category_mapping=_normalise_category_mapping(category_mapping if isinstance(category_mapping, dict) else {}),
                 )
 
     def save(self) -> None:
@@ -109,6 +140,7 @@ class EngineCache:
                     "include": entry.include,
                     "exclude": entry.exclude,
                     "overrides": entry.overrides,
+                    "category_mapping": entry.category_mapping,
                 }
                 for key, entry in sorted(self._entries.items())
             }
@@ -157,6 +189,7 @@ class EngineCache:
             include=list(entry.include),
             exclude=list(entry.exclude),
             overrides=[dict(item) for item in entry.overrides],
+            category_mapping={k: list(v) for k, v in entry.category_mapping.items()},
         )
 
     def update(
@@ -174,6 +207,7 @@ class EngineCache:
         include: Sequence[str],
         exclude: Sequence[str],
         overrides: Sequence[dict[str, object]],
+        category_mapping: Mapping[str, Sequence[str]] | None,
     ) -> None:
         canonical_diags = sorted(diagnostics, key=lambda diag: (str(diag.path), diag.line, diag.column))
         self._entries[key] = CacheEntry(
@@ -200,6 +234,7 @@ class EngineCache:
             include=[str(path) for path in include],
             exclude=[str(path) for path in exclude],
             overrides=[dict(item) for item in overrides],
+            category_mapping=_normalise_category_mapping(category_mapping),
         )
         self._dirty = True
 

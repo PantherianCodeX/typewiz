@@ -4,7 +4,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 
 from .cache import EngineCache, collect_file_hashes
 from .config import (
@@ -67,6 +67,33 @@ def _merge_list(base: list[str], addition: Sequence[str]) -> list[str]:
             seen.add(value)
             result.append(value)
     return result
+
+
+def _normalise_category_mapping(mapping: Mapping[str, Sequence[str]] | None) -> dict[str, list[str]]:
+    if not mapping:
+        return {}
+    normalised: dict[str, list[str]] = {}
+    for key, raw_values in mapping.items():
+        if not isinstance(key, str):
+            continue
+        key_str = key.strip()
+        if not key_str:
+            continue
+        seen: set[str] = set()
+        values: list[str] = []
+        for raw in raw_values:
+            if not isinstance(raw, str):
+                continue
+            candidate = raw.strip()
+            if not candidate:
+                continue
+            lowered = candidate.lower()
+            if lowered in seen:
+                continue
+            seen.add(lowered)
+            values.append(candidate)
+        normalised[key_str] = values
+    return normalised
 
 
 def _merge_engine_settings_map(
@@ -254,8 +281,9 @@ def _relative_override_path(project_root: Path, override_path: Path) -> str:
 
 
 def _resolve_engine_options(
-    project_root: Path, audit_config: AuditConfig, engine_name: str
+    project_root: Path, audit_config: AuditConfig, engine
 ) -> EngineOptions:
+    engine_name = engine.name
     settings = audit_config.engine_settings.get(engine_name)
     profile_name = audit_config.active_profiles.get(engine_name)
     if not profile_name and settings:
@@ -363,6 +391,7 @@ def _resolve_engine_options(
         exclude=exclude,
         profile=profile_name,
         overrides=applied_details,
+        category_mapping=_normalise_category_mapping(getattr(engine, "category_mapping", lambda: {})()),
     )
 
 
@@ -426,7 +455,7 @@ def run_audit(
 
     runs: list[RunResult] = []
     for engine in engines:
-        engine_options = _resolve_engine_options(root, audit_config, engine.name)
+        engine_options = _resolve_engine_options(root, audit_config, engine)
         for mode in ("current", "full"):
             if mode == "current" and audit_config.skip_current:
                 continue
@@ -481,6 +510,7 @@ def run_audit(
                         include=list(cached_run.include),
                         exclude=list(cached_run.exclude),
                         overrides=[dict(item) for item in cached_run.overrides],
+                        category_mapping={k: list(v) for k, v in cached_run.category_mapping.items()},
                     )
                 )
                 continue
@@ -501,6 +531,7 @@ def run_audit(
                 include=engine_options.include,
                 exclude=engine_options.exclude,
                 overrides=engine_options.overrides,
+                category_mapping=engine_options.category_mapping,
             )
 
             runs.append(
@@ -518,6 +549,7 @@ def run_audit(
                     include=list(engine_options.include),
                     exclude=list(engine_options.exclude),
                     overrides=[dict(item) for item in engine_options.overrides],
+                    category_mapping={k: list(v) for k, v in engine_options.category_mapping.items()},
                 )
             )
 

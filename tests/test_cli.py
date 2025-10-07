@@ -41,6 +41,8 @@ class StubEngine:
             duration_ms=self._result.duration_ms,
             diagnostics=list(self._result.diagnostics),
         )
+    def category_mapping(self) -> dict[str, list[str]]:
+        return {}
 
 
 @pytest.fixture

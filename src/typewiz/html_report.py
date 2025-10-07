@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from html import escape
 from typing import Any
+from .readiness import CATEGORY_LABELS
 
 _TAB_ORDER = ("overview", "engines", "hotspots", "readiness", "runs")
 _TAB_LABELS = {
@@ -10,13 +11,6 @@ _TAB_LABELS = {
     "hotspots": "Hotspots",
     "readiness": "Readiness",
     "runs": "Run Logs",
-}
-
-CATEGORY_LABELS = {
-    "unknownChecks": "Unknown type checks",
-    "optionalChecks": "Optional member checks",
-    "unusedSymbols": "Unused symbol warnings",
-    "general": "General diagnostics",
 }
 
 

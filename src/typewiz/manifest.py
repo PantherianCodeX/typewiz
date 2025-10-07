@@ -40,6 +40,9 @@ class ManifestBuilder:
             "include": list(run.include),
             "exclude": list(run.exclude),
             "overrides": [dict(item) for item in run.overrides],
+            "categoryMapping": {
+                key: list(values) for key, values in sorted(run.category_mapping.items())
+            },
         }
         payload: RunPayload = {
             "tool": run.tool,

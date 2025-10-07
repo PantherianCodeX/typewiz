@@ -35,6 +35,9 @@ class StubEngine:
             diagnostics=list(self._result.diagnostics),
         )
 
+    def category_mapping(self) -> dict[str, list[str]]:
+        return {"unknownChecks": ["reportGeneralTypeIssues"]}
+
 
 @pytest.fixture
 def fake_run_result(tmp_path: Path) -> RunResult:
@@ -75,6 +78,15 @@ def test_run_audit_programmatic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
     assert result.summary["topFolders"]
     assert result.error_count == 1
     assert (tmp_path / "summary.json").exists()
+    full_run = next(run for run in result.runs if run.mode == "full")
+    assert full_run.category_mapping == {"unknownChecks": ["reportGeneralTypeIssues"]}
+    manifest_full_run = next(run for run in result.manifest["runs"] if run["mode"] == "full")
+    assert manifest_full_run["engineOptions"]["categoryMapping"] == {"unknownChecks": ["reportGeneralTypeIssues"]}
+    assert manifest_full_run["summary"]["categoryCounts"].get("unknownChecks") == 1
+    readiness = result.summary["tabs"]["readiness"]
+    unknown_close_entries = readiness["options"]["unknownChecks"]["close"]
+    assert unknown_close_entries
+    assert sum(entry["count"] for entry in unknown_close_entries) >= 1
 
 
 def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -101,10 +113,15 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
                 duration_ms=0.1,
                 diagnostics=[],
             )
+        def category_mapping(self) -> dict[str, list[str]]:
+            return {}
 
     engine = RecordingEngine()
     monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
     monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+    # ensure compatibility with new API method
+    if not hasattr(engine, "category_mapping"):
+        engine.category_mapping = lambda: {}
 
     (tmp_path / "src").mkdir(parents=True, exist_ok=True)
     (tmp_path / "extra").mkdir(parents=True, exist_ok=True)

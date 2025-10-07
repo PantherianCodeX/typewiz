@@ -19,7 +19,7 @@ class FileEntry(TypedDict):
     diagnostics: List[FileDiagnostic]
 
 
-class FolderEntry(TypedDict):
+class FolderEntryRequired(TypedDict):
     path: str
     depth: int
     errors: int
@@ -29,6 +29,10 @@ class FolderEntry(TypedDict):
     recommendations: List[str]
 
 
+class FolderEntry(FolderEntryRequired, total=False):
+    categoryCounts: Dict[str, int]
+
+
 class RunSummary(TypedDict, total=False):
     errors: int
     warnings: int
@@ -36,6 +40,7 @@ class RunSummary(TypedDict, total=False):
     total: int
     severityBreakdown: Dict[str, int]
     ruleCounts: Dict[str, int]
+    categoryCounts: Dict[str, int]
 
 
 class EngineOptionsEntry(TypedDict, total=False):
@@ -45,6 +50,7 @@ class EngineOptionsEntry(TypedDict, total=False):
     include: List[str]
     exclude: List[str]
     overrides: List[Dict[str, object]]
+    categoryMapping: Dict[str, List[str]]
 
 
 class RunPayload(TypedDict):

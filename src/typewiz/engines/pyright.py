@@ -34,5 +34,23 @@ class PyrightEngine(BaseEngine):
         command = self._build_command(context, paths)
         return run_pyright(context.project_root, mode=context.mode, command=command)
 
+    def category_mapping(self) -> dict[str, list[str]]:
+        return {
+            "unknownChecks": [
+                "reportUnknown",
+                "reportMissingType",
+                "reportUntyped",
+                "Unknown",
+            ],
+            "optionalChecks": [
+                "reportOptional",
+                "None",
+            ],
+            "unusedSymbols": [
+                "reportUnused",
+                "redundant",
+            ],
+        }
+
 
 __all__ = ["PyrightEngine"]

@@ -16,6 +16,7 @@ class EngineOptions:
     exclude: list[str]
     profile: str | None
     overrides: list[dict[str, object]] = field(default_factory=list)
+    category_mapping: dict[str, list[str]] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -42,3 +43,7 @@ class BaseEngine(Protocol):
 
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
         ...
+
+    def category_mapping(self) -> dict[str, list[str]]:
+        """Optional mapping from categories to rule substrings for readiness analysis."""
+        return {}
