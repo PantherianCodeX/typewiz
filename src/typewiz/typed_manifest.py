@@ -38,6 +38,14 @@ class RunSummary(TypedDict, total=False):
     ruleCounts: Dict[str, int]
 
 
+class EngineOptionsEntry(TypedDict, total=False):
+    profile: str | None
+    configFile: str | None
+    pluginArgs: List[str]
+    include: List[str]
+    exclude: List[str]
+
+
 class RunPayload(TypedDict):
     tool: str
     mode: str
@@ -47,6 +55,7 @@ class RunPayload(TypedDict):
     summary: RunSummary
     perFile: List[FileEntry]
     perFolder: List[FolderEntry]
+    engineOptions: EngineOptionsEntry
 
 
 class ManifestData(TypedDict):

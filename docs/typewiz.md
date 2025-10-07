@@ -1,0 +1,122 @@
+## typewiz
+
+The `typewiz` package collects typing diagnostics from Pyright, mypy, and other plugins and
+summarises them into a single manifest that highlights both the current enforcement surface
+and the remaining work across the repository.
+
+### Commands
+
+Run a full audit from the repository root:
+
+```bash
+python -m typewiz audit --max-depth 3
+```
+
+This produces `typing_audit_manifest.json` (relative to the working directory) containing:
+
+- All diagnostics from the current enforced configuration (`mode="current"`).
+- An expansive run across the project directories (`mode="full"`).
+- Aggregated per-file and per-folder summaries with recommendations for enabling stricter checks.
+
+Options:
+
+- `--skip-current` / `--skip-full` – limit runs to the requested modes.
+- `--runner <name>` – run a specific engine (repeatable; default: all registered).
+- `--full-path <path>` – add directories to the full-run command.
+- `--manifest <path>` – override the output location.
+- `--dashboard-json`, `--dashboard-markdown`, `--dashboard-html` – write summaries in multiple formats.
+- `--plugin-arg engine=ARG` – forward an argument to a specific engine (e.g. `--plugin-arg pyright=--pythonversion=3.12`).
+
+### Dashboard summaries
+
+Generate a condensed dashboard view from an existing manifest:
+
+```bash
+python -m typewiz dashboard --manifest typing_audit_manifest.json --format markdown --output typing_dashboard.md
+python -m typewiz dashboard --manifest typing_audit_manifest.json --format html --output typing_dashboard.html
+```
+
+Supported formats:
+
+- `json` (default) – machine readable summary.
+- `markdown` – lightweight report for issue trackers or PR comments.
+- `html` – standalone dashboard with severity totals and hotspots.
+
+### Engines & plugins
+
+typewiz loads engines from the built-in registry (`pyright`, `mypy`) and from any entry points exposed under
+the `typewiz.engines` group. Provide a custom engine by implementing the
+`typewiz.engines.base.BaseEngine` protocol and declaring it in your package's `pyproject.toml`:
+
+```toml
+[project.entry-points."typewiz.engines"]
+my_runner = "my_package.runners:MyRunner"
+```
+
+```python
+from typing import Sequence
+
+from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+
+
+class MyRunner(BaseEngine):
+    name = "my-runner"
+
+    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+        args = ["my-tool", *context.engine_options.plugin_args]
+        if context.engine_options.profile:
+            args.extend(["--profile", context.engine_options.profile])
+        command = [*args, *paths]
+        # execute subprocess here (see typewiz.engines.mypy for a template)
+        return EngineResult(
+            engine=self.name,
+            mode=context.mode,
+            command=command,
+            exit_code=0,
+            duration_ms=0.0,
+            diagnostics=[],
+        )
+```
+
+Expose additional arguments via the CLI with `--plugin-arg my-runner=--flag` or via the TOML config `plugin_args`
+section (see below).
+
+### Configuration (typewiz.toml)
+
+Place a `typewiz.toml` in the project root or pass `--config` when running the CLI. Example:
+
+```toml
+config_version = 0
+
+[audit]
+manifest_path = "reports/typing/manifest.json"
+full_paths = ["apps", "packages"]
+max_depth = 3
+skip_full = false
+skip_current = false
+runners = ["pyright", "mypy"]
+fail_on = "errors"
+
+[audit.plugin_args]
+pyright = ["--pythonversion", "3.12"]
+mypy = ["--strict"]
+dashboard_json = "reports/typing/summary.json"
+dashboard_markdown = "reports/typing/summary.md"
+dashboard_html = "reports/typing/summary.html"
+```
+
+The `config_version` field is required and validated; typewiz currently ships schema version `0`. All CLI flags
+override the config file values. Per-engine arguments are merged with CLI overrides and deduplicated to ensure
+stable command ordering.
+
+### Incremental cache
+
+Runs are cached in `.typewiz_cache.json`. The cache key combines the engine name, mode, command flags, and
+fingerprints (mtime, size, content hash) for all files under the configured `full_paths` and key config files
+(`pyrightconfig.json`, `mypy.ini`, `typewiz.toml`). When nothing relevant changes, typewiz reuses the cached
+diagnostics and exit code, dramatically reducing CI runtimes for steady-state checks.
+
+### Nightly pipeline
+
+The typing nightly workflow invokes the audit and publishes the manifest as a build artifact,
+allowing progress tracking without failing the pipeline while the codebase is still being migrated.

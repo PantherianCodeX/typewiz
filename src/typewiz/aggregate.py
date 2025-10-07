@@ -114,13 +114,13 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
             if diag.code:
                 bucket.code_counts[diag.code] += 1
 
-    file_list = sorted(files.values(), key=lambda item: (-item.errors, -item.warnings, item.path))
+    for summary in files.values():
+        summary.diagnostics.sort(key=lambda entry: (entry["line"], entry["column"]))
+
+    file_list = sorted(files.values(), key=lambda item: item.path)
     folder_entries: list[FolderEntry] = []
     for depth in sorted(folder_levels):
-        entries = sorted(
-            folder_levels[depth].values(),
-            key=lambda item: (-item.errors, -item.warnings, item.path),
-        )
+        entries = sorted(folder_levels[depth].values(), key=lambda item: item.path)
         folder_entries.extend(entry.to_folder_entry() for entry in entries)
 
     per_file: List[FileEntry] = [
@@ -143,8 +143,8 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
             "warnings": sum(1 for diag in run.diagnostics if diag.severity == "warning"),
             "information": sum(1 for diag in run.diagnostics if diag.severity not in {"error", "warning"}),
             "total": len(run.diagnostics),
-            "severityBreakdown": dict(severity_totals),
-            "ruleCounts": dict(rule_totals.most_common()),
+            "severityBreakdown": {key: severity_totals[key] for key in sorted(severity_totals)},
+            "ruleCounts": {key: rule_totals[key] for key in sorted(rule_totals)},
         },
         perFile=per_file,
         perFolder=folder_entries,

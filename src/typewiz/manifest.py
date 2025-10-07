@@ -12,7 +12,7 @@ from .aggregate import summarise_run
 from .typed_manifest import AggregatedData, ManifestData, RunPayload
 from .types import RunResult
 
-logger = logging.getLogger("pytc")
+logger = logging.getLogger("typewiz")
 
 
 @dataclass(slots=True)
@@ -33,6 +33,13 @@ class ManifestBuilder:
     def add_run(self, run: RunResult, *, max_depth: int = 3) -> None:
         logger.debug("Adding run: tool=%s mode=%s", run.tool, run.mode)
         summary: AggregatedData = summarise_run(run, max_depth=max_depth)
+        options = {
+            "profile": run.profile,
+            "configFile": str(run.config_file) if run.config_file else None,
+            "pluginArgs": list(run.plugin_args),
+            "include": list(run.include),
+            "exclude": list(run.exclude),
+        }
         payload: RunPayload = {
             "tool": run.tool,
             "mode": run.mode,
@@ -42,6 +49,7 @@ class ManifestBuilder:
             "summary": summary["summary"],
             "perFile": summary["perFile"],
             "perFolder": summary["perFolder"],
+            "engineOptions": options,
         }
         self.data["runs"].append(payload)
 

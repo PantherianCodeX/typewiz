@@ -1,4 +1,4 @@
-# pytc Dashboard
+# typewiz Dashboard
 
 - Generated at: 2025-01-01T00:00:00Z
 - Project root: `/repo`

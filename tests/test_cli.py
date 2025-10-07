@@ -1,25 +1,46 @@
 from __future__ import annotations
 
-from pathlib import Path
 import json
+from pathlib import Path
+from typing import Sequence
 
 import pytest
 
-from pytc.cli import main
-from pytc.plugins.base import PluginCommand, PluginContext
-from pytc.types import Diagnostic, RunResult
+from typewiz.cli import main
+from typewiz.engines.base import EngineContext, EngineResult
+from typewiz.types import Diagnostic, RunResult
 
 
-class StubRunner:
-    def __init__(self, result: RunResult) -> None:
+class StubEngine:
+    def __init__(self, result: RunResult, expected_profile: str | None = None) -> None:
         self.name = "stub"
         self._result = result
+        self.expected_profile = expected_profile
+        self.invocations: list[tuple[str, list[str], list[str]]] = []
 
-    def generate_commands(self, context: PluginContext) -> list[PluginCommand]:
-        return [PluginCommand(self.name, "current", ["stub"])]
-
-    def execute(self, context: PluginContext, command: PluginCommand) -> RunResult:
-        return self._result
+    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+        if self.expected_profile is not None:
+            assert context.engine_options.profile == self.expected_profile
+        self.invocations.append(
+            (context.mode, list(context.engine_options.plugin_args), list(paths))
+        )
+        if context.mode == "full":
+            return EngineResult(
+                engine=self.name,
+                mode=context.mode,
+                command=["stub", *paths],
+                exit_code=0,
+                duration_ms=0.2,
+                diagnostics=[],
+            )
+        return EngineResult(
+            engine=self.name,
+            mode=context.mode,
+            command=list(self._result.command),
+            exit_code=self._result.exit_code,
+            duration_ms=self._result.duration_ms,
+            diagnostics=list(self._result.diagnostics),
+        )
 
 
 @pytest.fixture
@@ -46,13 +67,16 @@ def fake_run(tmp_path: Path) -> RunResult:
 
 
 def test_cli_audit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: RunResult) -> None:
-    monkeypatch.setattr("pytc.plugins.resolve_runners", lambda names: [StubRunner(fake_run)])
-    monkeypatch.setattr("pytc.api.resolve_runners", lambda names: [StubRunner(fake_run)])
+    engine = StubEngine(fake_run, expected_profile="strict")
+    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
+    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
 
     (tmp_path / "pkg").mkdir(exist_ok=True)
     (tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8")
 
     manifest_path = tmp_path / "manifest.json"
+    dashboard_path = tmp_path / "dashboard.md"
+    dashboard_path.write_text("stale", encoding="utf-8")
     exit_code = main([
         "audit",
         "--runner",
@@ -64,14 +88,26 @@ def test_cli_audit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: Ru
         "--manifest",
         str(manifest_path),
         "--dashboard-markdown",
-        str(tmp_path / "dashboard.md"),
+        str(dashboard_path),
         "--fail-on",
         "warnings",
+        "--profile",
+        "stub=strict",
+        "--plugin-arg",
+        "stub=--cli-flag",
     ])
 
     assert exit_code == 2  # fail on warnings triggered (error counts)
     assert manifest_path.exists()
-    assert (tmp_path / "dashboard.md").exists()
+    assert dashboard_path.exists()
+    assert dashboard_path.read_text(encoding="utf-8") != "stale"
+    assert any(mode == "full" for mode, _, _ in engine.invocations)
+    assert all("--cli-flag" in args for _, args, _ in engine.invocations)
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    run_entry = manifest["runs"][0]
+    assert run_entry["engineOptions"]["profile"] == "strict"
+    assert run_entry["engineOptions"]["pluginArgs"] == ["--cli-flag"]
 
 
 def test_cli_dashboard_output(tmp_path: Path) -> None:

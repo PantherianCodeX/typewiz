@@ -35,10 +35,15 @@ class RunResult:
     exit_code: int
     duration_ms: float
     diagnostics: list[Diagnostic]
+    cached: bool = False
+    profile: str | None = None
+    config_file: Path | None = None
+    plugin_args: list[str] = field(default_factory=list)
+    include: list[str] = field(default_factory=list)
+    exclude: list[str] = field(default_factory=list)
 
     def severity_counts(self) -> Counter[str]:
         counts: Counter[str] = Counter()
         for diag in self.diagnostics:
             counts[diag.severity.lower()] += 1
         return counts
-

@@ -10,8 +10,15 @@ from pathlib import Path
 from typing import Iterable
 
 
-logger = logging.getLogger("pytc")
+logger = logging.getLogger("typewiz")
 
+ROOT_MARKERS: tuple[str, ...] = (
+    "typewiz.toml",
+    ".typewiz.toml",
+    "pyproject.toml",
+    "pyrightconfig.json",
+    "mypy.ini",
+)
 
 @dataclass(slots=True)
 class CommandOutput:
@@ -53,16 +60,27 @@ def require_json(payload: str, fallback: str | None = None) -> dict:
 
 
 def resolve_project_root(start: Path | None = None) -> Path:
-    if start is None:
-        start = Path.cwd()
-    marker = start / "pyrightconfig.json"
-    if marker.exists():
-        return start
-    for parent in start.parents:
-        marker = parent / "pyrightconfig.json"
-        if marker.exists():
-            return parent
-    raise FileNotFoundError("Unable to locate project root (missing pyrightconfig.json)")
+    base = (start or Path.cwd()).resolve()
+    if base.is_file():
+        base = base.parent
+
+    checked: list[Path] = []
+    for candidate in (base, *base.parents):
+        checked.append(candidate)
+        for marker in ROOT_MARKERS:
+            if (candidate / marker).exists():
+                return candidate
+
+    if start is not None:
+        if not base.exists():
+            raise FileNotFoundError(f"Provided project root {start} does not exist.")
+        return base
+
+    markers = ", ".join(ROOT_MARKERS)
+    searched = ", ".join(str(path) for path in checked)
+    raise FileNotFoundError(
+        f"Unable to locate project root starting from {base}; looked for {markers} in {searched}"
+    )
 
 
 def _contains_python(path: Path) -> bool:
@@ -83,7 +101,7 @@ def _contains_python(path: Path) -> bool:
 
 def default_full_paths(root: Path) -> list[str]:
     candidates = [
-        "pytc",
+        "typewiz",
         "apps",
         "packages",
         "config",

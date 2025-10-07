@@ -1,4 +1,4 @@
-"""pytc – Python Type Checker toolkit.
+"""typewiz – Python Type Checker toolkit.
 
 Provides utilities for collecting typing diagnostics from pyright, mypy, and
 custom plugins, aggregating them into manifests and dashboards for progress
@@ -25,4 +25,4 @@ __all__ = [
     "AuditResult",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.0.1"

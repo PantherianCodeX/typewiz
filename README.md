@@ -1,20 +1,22 @@
-# pytc
+# typewiz
 
-pytc collects typing diagnostics from Pyright, mypy, and custom plugins, aggregates them into a JSON
+typewiz collects typing diagnostics from Pyright, mypy, and custom plugins, aggregates them into a JSON
 manifest, and renders dashboards to help teams plan stricter typing rollouts.
+
+> **Status:** pre-release `0.0.1`. The API surface and manifest schema may still change until the first public publication.
 
 ## Features
 
-- Pluggable runner architecture with Pyright and mypy built in (extend via entry points)
-- Run configured runners in both "current" (configured scope) and "full" (repository-wide) modes
-- Aggregate per-file and per-folder statistics with rule/regression hints
-- Export dashboards in JSON, Markdown, and HTML for issue trackers and retros
-- Designed for use in CI/nightly workflows and local audits
+- Pluggable engine architecture with Pyright and mypy built in (extend via entry points)
+- Built-in incremental cache (`.typewiz_cache.json`) keyed on file fingerprints and engine flags
+- Deterministic diagnostics (sorted by path/line) and per-folder aggregates with actionable hints
+- Exports dashboards in JSON, Markdown, and HTML for issue trackers and retros
+- Designed for CI/nightly workflows with exit codes suitable for gating builds
 
 ## Installation
 
 ```bash
-pip install pytc
+pip install typewiz
 ```
 
 ### Local development
@@ -22,8 +24,7 @@ pip install pytc
 ```bash
 python -m venv .venv
 . .venv/bin/activate
-pip install -e .
-pip install pytest  # enable test suite
+pip install -e .[tests]
 ```
 
 ## Usage
@@ -31,32 +32,86 @@ pip install pytest  # enable test suite
 Generate a manifest and dashboard:
 
 ```bash
-python -m pytc audit --max-depth 3 --manifest typing_audit.json
-python -m pytc dashboard --manifest typing_audit.json --format markdown --output dashboard.md
-python -m pytc dashboard --manifest typing_audit.json --format html --output dashboard.html
+python -m typewiz audit --max-depth 3 --manifest typing_audit.json
+python -m typewiz dashboard --manifest typing_audit.json --format markdown --output dashboard.md
+python -m typewiz dashboard --manifest typing_audit.json --format html --output dashboard.html
 ```
+
+### Configuration
+
+typewiz looks for `typewiz.toml` (or `.typewiz.toml`) and validates it with a schema version header:
+
+```toml
+config_version = 0
+
+[audit]
+full_paths = ["src", "tests"]
+runners = ["pyright", "mypy"]
+fail_on = "errors"
+```
+
+The schema is stabilised via Pydantic 2; bumping `config_version` will reject outdated configs with a clear error.
+
+Layer engine-level settings and reusable profiles:
+
+```toml
+[audit.active_profiles]
+pyright = "strict"
+
+[audit.engines.pyright]
+plugin_args = ["--pythonversion", "3.12"]
+include = ["packages/api"]
+
+[audit.engines.pyright.profiles.strict]
+inherit = "baseline"
+plugin_args = ["--strict"]
+config_file = "configs/pyright-strict.json"
+
+[audit.engines.pyright.profiles.baseline]
+plugin_args = ["--warnings"]
+exclude = ["packages/legacy"]
+```
+
+`include` / `exclude` lists fine-tune the directories scanned per engine, while profiles encapsulate per-engine argument sets and optional config files. Select profiles through config or via the CLI using `--profile pyright=strict`.
+
+### Incremental caching
+
+Each engine stores its diagnostics in `.typewiz_cache.json`. The cache key captures:
+
+- engine name and mode (`current` / `full`)
+- plugin arguments and resolved command flags
+- file fingerprints (mtime, size, content hash) for all scanned paths and configs
+
+If nothing relevant changed, typewiz rehydrates diagnostics from the cache, keeping exit codes consistent while skipping the external tool invocation.
+
+Every manifest entry also records the resolved engine options (`engineOptions` block) so you can trace which profile, config file, include/exclude directives, and plugin arguments produced a run.
 
 ### Logging
 
-pytc uses Python's standard `logging` module with the logger name `pytc`.
+typewiz uses Python's standard `logging` module with the logger name `typewiz`.
 Configure it in your application to capture command execution details:
 
 ```python
 import logging
 
 logging.basicConfig(level=logging.INFO)
-logging.getLogger("pytc").setLevel(logging.DEBUG)
+logging.getLogger("typewiz").setLevel(logging.DEBUG)
 ```
 
-See the [docs](docs/pytc.md) for detailed guidance and the export roadmap.
+See the [docs](docs/typewiz.md) for detailed guidance and the export roadmap.
+
+### Extending typewiz
+
+Engines implement the `typewiz.engines.base.BaseEngine` protocol and are discovered through the `typewiz.engines`
+entry-point group. See [`docs/typewiz.md`](docs/typewiz.md) for a minimal template and lifecycle notes.
 
 ### Python API
 
-Use pytc programmatically without the CLI:
+Use typewiz programmatically without the CLI:
 
 ```python
 from pathlib import Path
-from pytc import run_audit, AuditConfig
+from typewiz import run_audit, AuditConfig
 
 # Minimal: discover config and run
 result = run_audit(project_root=Path.cwd(), build_summary_output=True)
@@ -81,3 +136,26 @@ print(result.summary["topFolders"][:3])
 # Manifest JSON payload
 manifest = result.manifest
 ```
+
+## Roadmap
+
+1. **Foundation hardening** *(in progress)*  
+   - Make CLI outputs idempotent (rewrite dashboards even when files exist)  
+   - Generalise project-root discovery beyond `pyrightconfig.json` and surface clearer errors  
+   - Tighten engine command construction with richer typing and validation hooks
+2. **Config layering & strong typing**  
+   - Introduce `ProjectConfig` and `EngineSettings` models with explicit defaults and overrides  
+   - Support engine-specific command templates, config files, and include/exclude directives  
+   - Enforce schema via Pydantic 2, emitting helpful guidance for misconfiguration
+3. **Profiles & execution directives**  
+   - Add named profiles per engine (e.g. `pyright.strict`, `mypy.incremental`) selectable via CLI/config  
+   - Allow profile inheritance for quick customization (base profile + overrides)  
+   - Resolve active profile order: CLI > profile > engine overrides > global defaults
+4. **Path-scoped configuration**  
+   - Read directory/file-level overrides (e.g. `[overrides."src/api"]`) to tweak runners and thresholds  
+   - Add glob support for opt-in/out paths per engine and profile  
+   - Persist directives into manifests for reproducible audits
+5. **Ecosystem integration**  
+   - Ship VS Code/IDE tasks that hydrate profiles and dashboards  
+   - Grow first-party engines (Pyre, Pytype) once profile API is stable  
+   - Prepare for PyPI release with migration guide covering new config surface

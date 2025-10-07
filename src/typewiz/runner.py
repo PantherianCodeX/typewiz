@@ -5,10 +5,11 @@ from pathlib import Path
 from typing import Iterable, Sequence
 import logging
 
+from .engines.base import EngineResult
 from .types import Diagnostic, RunResult
 from .utils import require_json, run_command
 
-logger = logging.getLogger("pytc")
+logger = logging.getLogger("typewiz")
 
 def _make_diag_path(project_root: Path, file_path: str) -> Path:
     path = Path(file_path)
@@ -23,7 +24,7 @@ def run_pyright(
     *,
     mode: str,
     command: Sequence[str],
-) -> RunResult:
+) -> EngineResult:
     logger.info("Running pyright (%s)", " ".join(command))
     result = run_command(command, cwd=project_root)
     payload_str = result.stdout or result.stderr
@@ -47,16 +48,17 @@ def run_pyright(
                 raw=diag,
             )
         )
-    run = RunResult(
-        tool="pyright",
+    diagnostics.sort(key=lambda d: (str(d.path), d.line, d.column))
+    engine_result = EngineResult(
+        engine="pyright",
         mode=mode,
         command=list(command),
         exit_code=result.exit_code,
         duration_ms=result.duration_ms,
         diagnostics=diagnostics,
     )
-    logger.debug("pyright run completed: exit=%s diagnostics=%s", run.exit_code, len(run.diagnostics))
-    return run
+    logger.debug("pyright run completed: exit=%s diagnostics=%s", engine_result.exit_code, len(engine_result.diagnostics))
+    return engine_result
 
 
 _MYPY_LINE = re.compile(
@@ -69,7 +71,7 @@ def run_mypy(
     *,
     mode: str,
     command: Sequence[str],
-) -> RunResult:
+) -> EngineResult:
     logger.info("Running mypy (%s)", " ".join(command))
     result = run_command(command, cwd=project_root)
     diagnostics: list[Diagnostic] = []
@@ -121,13 +123,14 @@ def run_mypy(
                 raw=data,
             )
         )
-    run = RunResult(
-        tool="mypy",
+    diagnostics.sort(key=lambda d: (str(d.path), d.line, d.column))
+    engine_result = EngineResult(
+        engine="mypy",
         mode=mode,
         command=list(command),
         exit_code=result.exit_code,
         duration_ms=result.duration_ms,
         diagnostics=diagnostics,
     )
-    logger.debug("mypy run completed: exit=%s diagnostics=%s", run.exit_code, len(run.diagnostics))
-    return run
+    logger.debug("mypy run completed: exit=%s diagnostics=%s", engine_result.exit_code, len(engine_result.diagnostics))
+    return engine_result
