@@ -130,7 +130,9 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
         def category_mapping(self) -> dict[str, list[str]]:
             return {}
 
-        def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+        def fingerprint_targets(
+            self, context: EngineContext, paths: Sequence[str]
+        ) -> Sequence[str]:
             return []
 
     engine = RecordingEngine()
@@ -198,7 +200,9 @@ def test_run_audit_respects_folder_overrides(
         def category_mapping(self) -> dict[str, list[str]]:
             return {}
 
-        def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+        def fingerprint_targets(
+            self, context: EngineContext, paths: Sequence[str]
+        ) -> Sequence[str]:
             return []
 
     engine = RecordingEngine()

@@ -67,7 +67,9 @@ class AuditConfig:
     dashboard_html: Path | None = None
     runners: list[str] | None = None
     plugin_args: dict[str, list[str]] = field(default_factory=_default_dict_str_liststr)
-    engine_settings: dict[str, EngineSettings] = field(default_factory=_default_dict_str_enginesettings)
+    engine_settings: dict[str, EngineSettings] = field(
+        default_factory=_default_dict_str_enginesettings
+    )
     active_profiles: dict[str, str] = field(default_factory=_default_dict_str_str)
     path_overrides: list[PathOverride] = field(default_factory=_default_list_path_override)
 
@@ -80,7 +82,9 @@ class Config:
 @dataclass(slots=True)
 class PathOverride:
     path: Path
-    engine_settings: dict[str, EngineSettings] = field(default_factory=_default_dict_str_enginesettings)
+    engine_settings: dict[str, EngineSettings] = field(
+        default_factory=_default_dict_str_enginesettings
+    )
     active_profiles: dict[str, str] = field(default_factory=_default_dict_str_str)
 
 

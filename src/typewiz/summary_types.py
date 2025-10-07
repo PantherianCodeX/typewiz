@@ -92,4 +92,3 @@ class SummaryData(TypedDict):
     topFolders: list[SummaryFolderEntry]
     topFiles: list[SummaryFileEntry]
     tabs: SummaryTabs
-

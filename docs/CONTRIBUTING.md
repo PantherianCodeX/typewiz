@@ -54,4 +54,3 @@ pytest -q                  # run tests
 pyright -p pyrightconfig.json  # strict type checks
 mypy --config-file mypy.ini     # strict type checks
 ```
-

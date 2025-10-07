@@ -1,3 +1,6 @@
+default_language_version:
+  python: python3.12
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
@@ -34,6 +37,6 @@ repos:
         pass_filenames: false
       - id: mypy
         name: mypy
-        entry: mypy --config-file mypy.ini
+        entry: .venv312/bin/mypy --config-file mypy.ini
         language: system
         pass_filenames: false
