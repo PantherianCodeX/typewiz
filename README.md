@@ -74,6 +74,14 @@ exclude = ["packages/legacy"]
 
 `include` / `exclude` lists fine-tune the directories scanned per engine, while profiles encapsulate per-engine argument sets and optional config files. Select profiles through config or via the CLI using `--profile pyright=strict`.
 
+CLI summaries stay compact by default; opt-in to richer output as needed:
+
+```bash
+python -m typewiz audit --summary-style expanded --summary-extra profile --summary-extra plugin-args
+```
+
+Supported extras include `profile`, `config`, `plugin-args`, `paths`, or `all`.
+
 ### Incremental caching
 
 Each engine stores its diagnostics in `.typewiz_cache.json`. The cache key captures:
