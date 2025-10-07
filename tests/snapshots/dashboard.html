@@ -15,7 +15,7 @@
     .metric{background:white;border:1px solid #d0d7e2;padding:1rem;border-radius:6px;min-width:8rem;text-align:center;}
     .metric strong{display:block;font-size:1.5rem;}
     .tabs{display:flex;gap:0.75rem;margin:1.5rem 0;}
-    .tabs button{border:1px solid #2b4b80;background:white;color:#2b4b80;padding:0.4rem 0.9rem;border-radius:999px;cursor:pointer;font-weight:600;}
+    .tabs button{border:1px solid #2b4b80;background:white;color:#2b4b80;padding:0.45rem 1rem;border-radius:999px;cursor:pointer;font-weight:600;}
     .tabs button.active{background:#2b4b80;color:white;}
     .tab-pane{margin-top:1.5rem;}
     .has-js .tab-pane{display:none;}
@@ -35,15 +35,16 @@
     <button type="button" data-tab-target="overview" role="tab" aria-selected="false">Overview</button>
     <button type="button" data-tab-target="engines" role="tab" aria-selected="false">Engine Details</button>
     <button type="button" data-tab-target="hotspots" role="tab" aria-selected="false">Hotspots</button>
+    <button type="button" data-tab-target="readiness" role="tab" aria-selected="false">Readiness</button>
     <button type="button" data-tab-target="runs" role="tab" aria-selected="false">Run Logs</button>
   </nav>
   <section class="tab-pane" data-tab-pane="overview">
     <section>
       <h2>Severity Totals</h2>
       <div class="metrics">
-        <div class="metric"><strong>4</strong>Errors</div>
-        <div class="metric"><strong>2</strong>Warnings</div>
-        <div class="metric"><strong>1</strong>Information</div>
+        <div class="metric"><strong>1</strong>Errors</div>
+        <div class="metric"><strong>1</strong>Warnings</div>
+        <div class="metric"><strong>0</strong>Information</div>
       </div>
     </section>
     <section>
@@ -51,8 +52,8 @@
       <table>
         <thead><tr><th>Run</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Total</th><th>Command</th></tr></thead>
         <tbody>
-          <tr><td>pyright:current</td><td>3</td><td>2</td><td>1</td><td>6</td><td><code>pyright --outputjson</code></td></tr>
-          <tr><td>mypy:full</td><td>1</td><td>0</td><td>0</td><td>1</td><td><code>python -m mypy</code></td></tr>
+          <tr><td>pyright:current</td><td>0</td><td>0</td><td>0</td><td>0</td><td><code>pyright --outputjson</code></td></tr>
+          <tr><td>mypy:full</td><td>1</td><td>1</td><td>0</td><td>2</td><td><code>python -m mypy</code></td></tr>
         </tbody>
       </table>
     </section>
@@ -87,32 +88,61 @@
     </details>
   </section>
   <section class="tab-pane" data-tab-pane="hotspots">
+    <h2>Hotspots</h2>
     <section>
-      <h2>Common Diagnostic Rules</h2>
+      <h3>Common Diagnostic Rules</h3>
       <table>
         <thead><tr><th>Rule</th><th>Count</th></tr></thead><tbody>
-          <tr><td><code>reportUnknownMemberType</code></td><td>2</td></tr>
+          <tr><td><code>reportUnknownMemberType</code></td><td>1</td></tr>
           <tr><td><code>reportGeneralTypeIssues</code></td><td>1</td></tr>
         </tbody>
       </table>
     </section>
     <section>
-      <h2>Top Folder Hotspots</h2>
+      <h3>Top Folder Hotspots</h3>
       <table>
         <thead><tr><th>Folder</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Runs</th></tr></thead><tbody>
-          <tr><td>apps/platform/operations</td><td>2</td><td>1</td><td>0</td><td>2</td></tr>
+          <tr><td>apps/platform/operations</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>
           <tr><td>packages/agents</td><td>1</td><td>1</td><td>0</td><td>1</td></tr>
         </tbody>
       </table>
     </section>
     <section>
-      <h2>Top File Hotspots</h2>
+      <h3>Top File Hotspots</h3>
       <table>
         <thead><tr><th>File</th><th>Errors</th><th>Warnings</th></tr></thead><tbody>
-          <tr><td>apps/platform/operations/admin.py</td><td>2</td><td>0</td></tr>
+          <tr><td>apps/platform/operations/admin.py</td><td>0</td><td>0</td></tr>
           <tr><td>packages/core/agents.py</td><td>1</td><td>1</td></tr>
         </tbody>
       </table>
+    </section>
+  </section>
+  <section class="tab-pane" data-tab-pane="readiness">
+    <h2>Strict Typing Readiness</h2>
+    <div class="metrics">
+      <div class="metric"><strong>1</strong>Ready</div>
+      <div class="metric"><strong>1</strong>Close</div>
+      <div class="metric"><strong>0</strong>Blocked</div>
+    </div>
+    <details open><summary><strong>Strict-ready folders</strong> (1)</summary>
+      <ul>
+        <li><code>apps/platform/operations</code> (diagnostics=0) — strict-ready</li>
+      </ul>
+    </details>
+    <details open><summary><strong>Close to strict</strong> (1)</summary>
+      <ul>
+        <li><code>packages/agents</code> (diagnostics=2) — unknownChecks: 1</li>
+      </ul>
+    </details>
+    <p><strong>Blocked:</strong> none</p>
+    <section>
+      <h3>Per-option readiness</h3>
+      <table><thead><tr><th>Option</th><th>Ready</th><th>Close</th><th>Blocked</th><th>Close threshold</th></tr></thead><tbody>
+        <tr><td>Unknown type checks</td><td>1</td><td>1</td><td>0</td><td>2</td></tr>
+        <tr><td>Optional member checks</td><td>1</td><td>0</td><td>0</td><td>2</td></tr>
+        <tr><td>Unused symbol warnings</td><td>1</td><td>0</td><td>0</td><td>4</td></tr>
+        <tr><td>General diagnostics</td><td>1</td><td>0</td><td>0</td><td>5</td></tr>
+      </tbody></table>
     </section>
   </section>
   <section class="tab-pane" data-tab-pane="runs">
@@ -120,10 +150,10 @@
     <details class="run-log" open>
       <summary><strong>pyright:current</strong> · command: <code>pyright --outputjson</code></summary>
       <ul>
-        <li>Errors: 3</li>
-        <li>Warnings: 2</li>
-        <li>Information: 1</li>
-        <li>Total diagnostics: 6</li>
+        <li>Errors: 0</li>
+        <li>Warnings: 0</li>
+        <li>Information: 0</li>
+        <li>Total diagnostics: 0</li>
         <li>Severity breakdown: {}</li>
       </ul>
     </details>
@@ -131,9 +161,9 @@
       <summary><strong>mypy:full</strong> · command: <code>python -m mypy</code></summary>
       <ul>
         <li>Errors: 1</li>
-        <li>Warnings: 0</li>
+        <li>Warnings: 1</li>
         <li>Information: 0</li>
-        <li>Total diagnostics: 1</li>
+        <li>Total diagnostics: 2</li>
         <li>Severity breakdown: {}</li>
       </ul>
     </details>
@@ -147,7 +177,7 @@
       const tabs=Array.from(document.querySelectorAll('[data-tab-target]'));
       const panes=Array.from(document.querySelectorAll('[data-tab-pane]'));
       function activate(name){
-        tabs.forEach(btn=>{const isActive=btn.dataset.tabTarget===name;btn.classList.toggle('active',isActive);btn.setAttribute('aria-selected',String(isActive));});
+        tabs.forEach(btn=>{const active=btn.dataset.tabTarget===name;btn.classList.toggle('active',active);btn.setAttribute('aria-selected',String(active));});
         panes.forEach(pane=>pane.classList.toggle('active',pane.dataset.tabPane===name));
       }
       let stored=null;

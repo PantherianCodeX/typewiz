@@ -38,10 +38,10 @@ def sample_summary() -> dict:
         "runSummary": {
             "pyright:current": {
                 "command": ["pyright", "--outputjson"],
-                "errors": 3,
-                "warnings": 2,
-                "information": 1,
-                "total": 6,
+                "errors": 0,
+                "warnings": 0,
+                "information": 0,
+                "total": 0,
                 "engineOptions": {
                     "profile": "baseline",
                     "configFile": "pyrightconfig.json",
@@ -59,9 +59,9 @@ def sample_summary() -> dict:
             "mypy:full": {
                 "command": ["python", "-m", "mypy"],
                 "errors": 1,
-                "warnings": 0,
+                "warnings": 1,
                 "information": 0,
-                "total": 1,
+                "total": 2,
                 "engineOptions": {
                     "profile": "strict",
                     "configFile": "mypy.ini",
@@ -77,15 +77,17 @@ def sample_summary() -> dict:
                 },
             },
         },
-        "severityTotals": {"error": 4, "warning": 2, "information": 1},
-        "topRules": {"reportUnknownMemberType": 2, "reportGeneralTypeIssues": 1},
+        "severityTotals": {"error": 1, "warning": 1, "information": 0},
+        "topRules": {"reportUnknownMemberType": 1, "reportGeneralTypeIssues": 1},
         "topFolders": [
             {
                 "path": "apps/platform/operations",
-                "errors": 2,
-                "warnings": 1,
+                "errors": 0,
+                "warnings": 0,
                 "information": 0,
-                "participatingRuns": 2,
+                "participatingRuns": 1,
+                "codeCounts": {},
+                "recommendations": ["strict-ready"],
             },
             {
                 "path": "packages/agents",
@@ -93,10 +95,12 @@ def sample_summary() -> dict:
                 "warnings": 1,
                 "information": 0,
                 "participatingRuns": 1,
+                "codeCounts": {"reportUnknownParameterType": 1},
+                "recommendations": ["resolve 1 unknown-type issues"],
             },
         ],
         "topFiles": [
-            {"path": "apps/platform/operations/admin.py", "errors": 2, "warnings": 0},
+            {"path": "apps/platform/operations/admin.py", "errors": 0, "warnings": 0},
             {"path": "packages/core/agents.py", "errors": 1, "warnings": 1},
         ],
     }
@@ -112,6 +116,62 @@ def sample_summary() -> dict:
             "topRules": summary["topRules"],
             "topFolders": summary["topFolders"],
             "topFiles": summary["topFiles"],
+        },
+        "readiness": {
+            "strict": {
+                "ready": [
+                    {
+                        "path": "apps/platform/operations",
+                        "errors": 0,
+                        "warnings": 0,
+                        "information": 0,
+                        "diagnostics": 0,
+                        "categories": {"unknownChecks": 0, "optionalChecks": 0, "unusedSymbols": 0, "general": 0},
+                        "categoryStatus": {"unknownChecks": "ready", "optionalChecks": "ready", "unusedSymbols": "ready", "general": "ready"},
+                        "recommendations": ["strict-ready"],
+                    }
+                ],
+                "close": [
+                    {
+                        "path": "packages/agents",
+                        "errors": 1,
+                        "warnings": 1,
+                        "information": 0,
+                        "diagnostics": 2,
+                        "categories": {"unknownChecks": 1, "optionalChecks": 0, "unusedSymbols": 0, "general": 0},
+                        "categoryStatus": {"unknownChecks": "close", "optionalChecks": "ready", "unusedSymbols": "ready", "general": "ready"},
+                        "recommendations": ["resolve 1 unknown-type issues"],
+                        "notes": ["unknownChecks: 1"],
+                    }
+                ],
+                "blocked": [],
+            },
+            "options": {
+                "unknownChecks": {
+                    "ready": [{"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}],
+                    "close": [{"path": "packages/agents", "count": 1, "errors": 1, "warnings": 1}],
+                    "blocked": [],
+                    "threshold": 2,
+                },
+                "optionalChecks": {
+                    "ready": [{"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}],
+                    "close": [],
+                    "blocked": [],
+                    "threshold": 2,
+                },
+                "unusedSymbols": {
+                    "ready": [{"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}],
+                    "close": [],
+                    "blocked": [],
+                    "threshold": 4,
+                },
+                "general": {
+                    "ready": [{"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}],
+                    "close": [],
+                    "blocked": [],
+                    "threshold": 5,
+                },
+            },
         },
         "runs": {
             "runSummary": summary["runSummary"],

@@ -3,7 +3,21 @@ from __future__ import annotations
 from html import escape
 from typing import Any
 
-_TAB_ORDER = ("overview", "engines", "hotspots", "runs")
+_TAB_ORDER = ("overview", "engines", "hotspots", "readiness", "runs")
+_TAB_LABELS = {
+    "overview": "Overview",
+    "engines": "Engine Details",
+    "hotspots": "Hotspots",
+    "readiness": "Readiness",
+    "runs": "Run Logs",
+}
+
+CATEGORY_LABELS = {
+    "unknownChecks": "Unknown type checks",
+    "optionalChecks": "Optional member checks",
+    "unusedSymbols": "Unused symbol warnings",
+    "general": "General diagnostics",
+}
 
 
 def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> str:
@@ -12,11 +26,16 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
     def h(text: str) -> str:
         return escape(text, quote=True)
 
-    top_rules = summary.get("topRules", {})
-    top_folders = summary.get("topFolders", [])
-    top_files = summary.get("topFiles", [])
-    severity = summary.get("severityTotals", {})
-    run_summary = summary.get("runSummary", {})
+    tabs = summary.get("tabs", {})
+    overview = tabs.get("overview", {})
+    run_summary = overview.get("runSummary", summary.get("runSummary", {}))
+    severity = overview.get("severityTotals", summary.get("severityTotals", {}))
+    hotspots = tabs.get("hotspots", {})
+    readiness = tabs.get("readiness", {})
+
+    top_rules = hotspots.get("topRules", summary.get("topRules", {}))
+    top_folders = hotspots.get("topFolders", summary.get("topFolders", []))
+    top_files = hotspots.get("topFiles", summary.get("topFiles", []))
 
     parts: list[str] = [
         "<!DOCTYPE html>",
@@ -24,7 +43,7 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
         "<head>",
         "  <meta charset=\"utf-8\" />",
         "  <title>typewiz Dashboard</title>",
-        "  <style>\n    :root{color-scheme:light dark;}\n    body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:2rem;background:#f5f5f5;color:#1f2330;}\n    h1,h2{color:#2b4b80;}\n    table{border-collapse:collapse;width:100%;margin-bottom:1.5rem;background:white;}\n    th,td{border:1px solid #d0d7e2;padding:0.5rem;text-align:left;}\n    th{background:#e8edf7;}\n    section{margin-bottom:2rem;}\n    .metrics{display:flex;flex-wrap:wrap;gap:1.5rem;}\n    .metric{background:white;border:1px solid #d0d7e2;padding:1rem;border-radius:6px;min-width:8rem;text-align:center;}\n    .metric strong{display:block;font-size:1.5rem;}\n    .tabs{display:flex;gap:0.75rem;margin:1.5rem 0;}\n    .tabs button{border:1px solid #2b4b80;background:white;color:#2b4b80;padding:0.4rem 0.9rem;border-radius:999px;cursor:pointer;font-weight:600;}\n    .tabs button.active{background:#2b4b80;color:white;}\n    .tab-pane{margin-top:1.5rem;}\n    .has-js .tab-pane{display:none;}\n    .has-js .tab-pane.active{display:block;}\n    .no-js .tabs{display:none;}\n    code{background:#eef1fb;padding:0.1rem 0.35rem;border-radius:4px;}\n    details{background:white;border:1px solid #d0d7e2;border-radius:8px;margin-bottom:1rem;padding:0.75rem;}\n    details[open]>summary{margin-bottom:0.5rem;}\n    summary{cursor:pointer;font-weight:600;}\n  </style>",
+        "  <style>\n    :root{color-scheme:light dark;}\n    body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:2rem;background:#f5f5f5;color:#1f2330;}\n    h1,h2{color:#2b4b80;}\n    table{border-collapse:collapse;width:100%;margin-bottom:1.5rem;background:white;}\n    th,td{border:1px solid #d0d7e2;padding:0.5rem;text-align:left;}\n    th{background:#e8edf7;}\n    section{margin-bottom:2rem;}\n    .metrics{display:flex;flex-wrap:wrap;gap:1.5rem;}\n    .metric{background:white;border:1px solid #d0d7e2;padding:1rem;border-radius:6px;min-width:8rem;text-align:center;}\n    .metric strong{display:block;font-size:1.5rem;}\n    .tabs{display:flex;gap:0.75rem;margin:1.5rem 0;}\n    .tabs button{border:1px solid #2b4b80;background:white;color:#2b4b80;padding:0.45rem 1rem;border-radius:999px;cursor:pointer;font-weight:600;}\n    .tabs button.active{background:#2b4b80;color:white;}\n    .tab-pane{margin-top:1.5rem;}\n    .has-js .tab-pane{display:none;}\n    .has-js .tab-pane.active{display:block;}\n    .no-js .tabs{display:none;}\n    code{background:#eef1fb;padding:0.1rem 0.35rem;border-radius:4px;}\n    details{background:white;border:1px solid #d0d7e2;border-radius:8px;margin-bottom:1rem;padding:0.75rem;}\n    details[open]>summary{margin-bottom:0.5rem;}\n    summary{cursor:pointer;font-weight:600;}\n  </style>",
         "</head>",
         f"<body class=\"no-js\" data-default-tab=\"{default_view}\">",
         "  <h1>typewiz Dashboard</h1>",
@@ -33,15 +52,9 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
         "  <nav class=\"tabs\" role=\"tablist\">",
     ]
 
-    tab_labels = {
-        "overview": "Overview",
-        "engines": "Engine Details",
-        "hotspots": "Hotspots",
-        "runs": "Run Logs",
-    }
     for tab in _TAB_ORDER:
         parts.append(
-            f"    <button type=\"button\" data-tab-target=\"{tab}\" role=\"tab\" aria-selected=\"false\">{tab_labels[tab]}</button>"
+            f"    <button type=\"button\" data-tab-target=\"{tab}\" role=\"tab\" aria-selected=\"false\">{_TAB_LABELS[tab]}</button>"
         )
     parts.append("  </nav>")
 
@@ -64,18 +77,21 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
             "        <tbody>",
         ]
     )
-    for key, data in run_summary.items():
-        cmd = " ".join(h(str(part)) for part in data.get("command", []))
-        parts.append(
-            "          <tr>"
-            f"<td>{h(key)}</td>"
-            f"<td>{data.get('errors', 0)}</td>"
-            f"<td>{data.get('warnings', 0)}</td>"
-            f"<td>{data.get('information', 0)}</td>"
-            f"<td>{data.get('total', 0)}</td>"
-            f"<td><code>{cmd}</code></td>"
-            "</tr>"
-        )
+    if run_summary:
+        for key, data in run_summary.items():
+            cmd = " ".join(h(str(part)) for part in data.get("command", []))
+            parts.append(
+                "          <tr>"
+                f"<td>{h(key)}</td>"
+                f"<td>{data.get('errors', 0)}</td>"
+                f"<td>{data.get('warnings', 0)}</td>"
+                f"<td>{data.get('information', 0)}</td>"
+                f"<td>{data.get('total', 0)}</td>"
+                f"<td><code>{cmd}</code></td>"
+                "</tr>"
+            )
+    else:
+        parts.append("          <tr><td colspan=\"6\"><em>No runs recorded</em></td></tr>")
     parts.extend(
         [
             "        </tbody>",
@@ -91,9 +107,9 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
         return " ".join(f"<code>{h(str(item))}</code>" for item in items)
 
     # Engine details tab
+    parts.append("  <section class=\"tab-pane\" data-tab-pane=\"engines\">")
+    parts.append("    <h2>Engine Details</h2>")
     if run_summary:
-        parts.append("  <section class=\"tab-pane\" data-tab-pane=\"engines\">")
-        parts.append("    <h2>Engine Details</h2>")
         for key, data in run_summary.items():
             options = data.get("engineOptions", {}) or {}
             profile_value = options.get("profile")
@@ -146,17 +162,18 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
                 "      </ul>",
                 "    </details>",
             ])
-        parts.append("  </section>")
     else:
-        parts.append("  <section class=\"tab-pane\" data-tab-pane=\"engines\"><p>No engine data available.</p></section>")
+        parts.append("    <p>No engine data available.</p>")
+    parts.append("  </section>")
 
     # Hotspots tab
     parts.append("  <section class=\"tab-pane\" data-tab-pane=\"hotspots\">")
+    parts.append("    <h2>Hotspots</h2>")
     if top_rules:
         parts.extend(
             [
                 "    <section>",
-                "      <h2>Common Diagnostic Rules</h2>",
+                "      <h3>Common Diagnostic Rules</h3>",
                 "      <table>",
                 "        <thead><tr><th>Rule</th><th>Count</th></tr></thead><tbody>",
             ]
@@ -165,48 +182,111 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
             parts.append(f"          <tr><td><code>{h(rule)}</code></td><td>{count}</td></tr>")
         parts.extend(["        </tbody>", "      </table>", "    </section>"])
     else:
-        parts.append("    <section><h2>Common Diagnostic Rules</h2><p>No diagnostic rules recorded.</p></section>")
+        parts.append("    <p>No diagnostic rules recorded.</p>")
 
+    parts.extend(
+        [
+            "    <section>",
+            "      <h3>Top Folder Hotspots</h3>",
+            "      <table>",
+            "        <thead><tr><th>Folder</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Runs</th></tr></thead><tbody>",
+        ]
+    )
     if top_folders:
-        parts.extend(
-            [
-                "    <section>",
-                "      <h2>Top Folder Hotspots</h2>",
-                "      <table>",
-                "        <thead><tr><th>Folder</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Runs</th></tr></thead><tbody>",
-            ]
-        )
         for folder in top_folders:
             parts.append(
                 f"          <tr><td>{h(folder['path'])}</td><td>{folder['errors']}</td><td>{folder['warnings']}</td><td>{folder['information']}</td><td>{folder['participatingRuns']}</td></tr>"
             )
-        parts.extend(["        </tbody>", "      </table>", "    </section>"])
     else:
-        parts.append("    <section><h2>Top Folder Hotspots</h2><p>No folder hotspots recorded.</p></section>")
+        parts.append("          <tr><td colspan=\"5\"><em>No folder hotspots</em></td></tr>")
+    parts.extend(["        </tbody>", "      </table>", "    </section>"])
 
+    parts.extend(
+        [
+            "    <section>",
+            "      <h3>Top File Hotspots</h3>",
+            "      <table>",
+            "        <thead><tr><th>File</th><th>Errors</th><th>Warnings</th></tr></thead><tbody>",
+        ]
+    )
     if top_files:
-        parts.extend(
-            [
-                "    <section>",
-                "      <h2>Top File Hotspots</h2>",
-                "      <table>",
-                "        <thead><tr><th>File</th><th>Errors</th><th>Warnings</th></tr></thead><tbody>",
-            ]
-        )
         for file_entry in top_files:
             parts.append(
                 f"          <tr><td>{h(file_entry['path'])}</td><td>{file_entry['errors']}</td><td>{file_entry['warnings']}</td></tr>"
             )
-        parts.extend(["        </tbody>", "      </table>", "    </section>"])
     else:
-        parts.append("    <section><h2>Top File Hotspots</h2><p>No file hotspots recorded.</p></section>")
+        parts.append("          <tr><td colspan=\"3\"><em>No file hotspots</em></td></tr>")
+    parts.extend(["        </tbody>", "      </table>", "    </section>"])
+    parts.append("  </section>")
+
+    # Readiness tab
+    parts.append("  <section class=\"tab-pane\" data-tab-pane=\"readiness\">")
+    parts.append("    <h2>Strict Typing Readiness</h2>")
+    strict = readiness.get("strict", {})
+    ready_list = strict.get("ready", [])
+    close_list = strict.get("close", [])
+    blocked_list = strict.get("blocked", [])
+    parts.extend(
+        [
+            "    <div class=\"metrics\">",
+            f"      <div class=\"metric\"><strong>{len(ready_list)}</strong>Ready</div>",
+            f"      <div class=\"metric\"><strong>{len(close_list)}</strong>Close</div>",
+            f"      <div class=\"metric\"><strong>{len(blocked_list)}</strong>Blocked</div>",
+            "    </div>",
+        ]
+    )
+
+    def _render_strict_entries(label: str, entries: list[dict[str, Any]]) -> None:
+        if not entries:
+            parts.append(f"    <p><strong>{label}:</strong> none</p>")
+            return
+        parts.append(f"    <details open><summary><strong>{label}</strong> ({len(entries)})</summary>")
+        parts.append("      <ul>")
+        for entry in entries[:12]:
+            notes = entry.get("notes") or entry.get("recommendations") or []
+            note_text = f" — {', '.join(notes)}" if notes else ""
+            parts.append(
+                f"        <li><code>{h(entry['path'])}</code> (diagnostics={entry['diagnostics']}){note_text}</li>"
+            )
+        if len(entries) > 12:
+            parts.append(f"        <li>… plus {len(entries) - 12} more</li>")
+        parts.append("      </ul>")
+        parts.append("    </details>")
+
+    _render_strict_entries("Strict-ready folders", ready_list)
+    _render_strict_entries("Close to strict", close_list)
+    _render_strict_entries("Blocked", blocked_list)
+
+    options = readiness.get("options", {})
+    if options:
+        parts.append("    <section>")
+        parts.append("      <h3>Per-option readiness</h3>")
+        parts.append(
+            "      <table><thead><tr><th>Option</th><th>Ready</th><th>Close</th><th>Blocked</th><th>Close threshold</th></tr></thead><tbody>"
+        )
+        for category, buckets in options.items():
+            label = CATEGORY_LABELS.get(category, category)
+            parts.append(
+                "        <tr>"
+                f"<td>{h(label)}</td>"
+                f"<td>{len(buckets.get('ready', []))}</td>"
+                f"<td>{len(buckets.get('close', []))}</td>"
+                f"<td>{len(buckets.get('blocked', []))}</td>"
+                f"<td>{buckets.get('threshold', 0)}</td>"
+                "</tr>"
+            )
+        parts.extend(["      </tbody></table>", "    </section>"])
+    else:
+        parts.append("    <p>No readiness data available.</p>")
     parts.append("  </section>")
 
     # Runs tab
     parts.append("  <section class=\"tab-pane\" data-tab-pane=\"runs\">")
     parts.append("    <h2>Run Logs</h2>")
-    if run_summary:
-        for key, data in run_summary.items():
+    runs_tab = tabs.get("runs", {})
+    run_details = runs_tab.get("runSummary", run_summary)
+    if run_details:
+        for key, data in run_details.items():
             breakdown = data.get("severityBreakdown", {})
             cmd = " ".join(h(str(part)) for part in data.get("command", []))
             parts.extend(
@@ -218,7 +298,7 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
                     f"        <li>Warnings: {data.get('warnings', 0)}</li>",
                     f"        <li>Information: {data.get('information', 0)}</li>",
                     f"        <li>Total diagnostics: {data.get('total', 0)}</li>",
-                    f"        <li>Severity breakdown: {breakdown}</li>",
+                    f"        <li>Severity breakdown: {breakdown if breakdown else {}}</li>",
                     "      </ul>",
                     "    </details>",
                 ]
@@ -229,7 +309,7 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
 
     parts.extend(
         [
-            "  <script>\n    (function(){\n      const body=document.body;\n      body.classList.remove('no-js');\n      body.classList.add('has-js');\n      const storageKey='typewiz-dashboard-tab';\n      const tabs=Array.from(document.querySelectorAll('[data-tab-target]'));\n      const panes=Array.from(document.querySelectorAll('[data-tab-pane]'));\n      function activate(name){\n        tabs.forEach(btn=>{const isActive=btn.dataset.tabTarget===name;btn.classList.toggle('active',isActive);btn.setAttribute('aria-selected',String(isActive));});\n        panes.forEach(pane=>pane.classList.toggle('active',pane.dataset.tabPane===name));\n      }\n      let stored=null;\n      try{stored=window.localStorage.getItem(storageKey);}catch(_){}\n      const initial=tabs.some(btn=>btn.dataset.tabTarget===stored) ? stored : body.dataset.defaultTab || 'overview';\n      activate(initial);\n      tabs.forEach(btn=>btn.addEventListener('click',()=>{const name=btn.dataset.tabTarget;activate(name);try{window.localStorage.setItem(storageKey,name);}catch(_){};}));\n    })();\n  </script>",
+            "  <script>\n    (function(){\n      const body=document.body;\n      body.classList.remove('no-js');\n      body.classList.add('has-js');\n      const storageKey='typewiz-dashboard-tab';\n      const tabs=Array.from(document.querySelectorAll('[data-tab-target]'));\n      const panes=Array.from(document.querySelectorAll('[data-tab-pane]'));\n      function activate(name){\n        tabs.forEach(btn=>{const active=btn.dataset.tabTarget===name;btn.classList.toggle('active',active);btn.setAttribute('aria-selected',String(active));});\n        panes.forEach(pane=>pane.classList.toggle('active',pane.dataset.tabPane===name));\n      }\n      let stored=null;\n      try{stored=window.localStorage.getItem(storageKey);}catch(_){}\n      const initial=tabs.some(btn=>btn.dataset.tabTarget===stored) ? stored : body.dataset.defaultTab || 'overview';\n      activate(initial);\n      tabs.forEach(btn=>btn.addEventListener('click',()=>{const name=btn.dataset.tabTarget;activate(name);try{window.localStorage.setItem(storageKey,name);}catch(_){};}));\n    })();\n  </script>",
             "</body>",
             "</html>",
         ]

@@ -11,33 +11,120 @@ from .typed_manifest import ManifestData
 
 READINESS_STRICT_READY = "strict-ready"
 
+CATEGORY_PATTERNS: dict[str, tuple[str, ...]] = {
+    "unknownChecks": (
+        "unknown",
+        "missingtype",
+        "reportunknown",
+        "reportmissingtype",
+        "untyped",
+    ),
+    "optionalChecks": ("optional", "nonecheck", "maybeunbound"),
+    "unusedSymbols": ("unused", "warnunused", "redundant"),
+    "general": tuple(),
+}
+
+CATEGORY_CLOSE_THRESHOLD = {
+    "unknownChecks": 2,
+    "optionalChecks": 2,
+    "unusedSymbols": 4,
+    "general": 5,
+}
+
+STRICT_CLOSE_THRESHOLD = 3
+
+CATEGORY_LABELS = {
+    "unknownChecks": "Unknown type checks",
+    "optionalChecks": "Optional member checks",
+    "unusedSymbols": "Unused symbol warnings",
+    "general": "General diagnostics",
+}
+
 
 def load_manifest(path: Path) -> ManifestData:
     return cast(ManifestData, json.loads(path.read_text(encoding="utf-8")))
 
 
 def _collect_readiness(
-    top_folders: list[tuple[str, Counter[str]]],
-    folder_entries: list[dict[str, Any]],
-) -> dict[str, list[dict[str, Any]]]:
-    strict_ready: list[dict[str, Any]] = []
-    close_ready: list[dict[str, Any]] = []
-
-    folder_index: dict[str, dict[str, Any]] = {entry["path"]: entry for entry in folder_entries}
-    for path, counts in top_folders:
-        entry = folder_index.get(path, {})
-        recommendations = entry.get("recommendations", [])
-        if not recommendations:
-            continue
-        if READINESS_STRICT_READY in recommendations:
-            strict_ready.append(entry)
-        else:
-            close_ready.append(entry)
-
-    return {
-        "strictReady": strict_ready,
-        "closeReady": close_ready,
+    folder_entries: list[dict[str, Any]]
+) -> dict[str, Any]:
+    readiness = {
+        "strict": {"ready": [], "close": [], "blocked": []},
+        "options": {
+            category: {"ready": [], "close": [], "blocked": [], "threshold": CATEGORY_CLOSE_THRESHOLD.get(category, 3)}
+            for category in CATEGORY_PATTERNS
+        },
     }
+
+    def _bucket_code_counts(code_counts: dict[str, int]) -> dict[str, int]:
+        buckets = {category: 0 for category in CATEGORY_PATTERNS}
+        for rule, count in code_counts.items():
+            lowered = rule.lower()
+            matched_category = None
+            for category, patterns in CATEGORY_PATTERNS.items():
+                if category == "general":
+                    continue
+                if any(pattern in lowered for pattern in patterns):
+                    matched_category = category
+                    break
+            if matched_category is None:
+                matched_category = "general"
+            buckets[matched_category] += count
+        return buckets
+
+    def _status_for_category(category: str, count: int) -> str:
+        if count == 0:
+            return "ready"
+        close_threshold = CATEGORY_CLOSE_THRESHOLD.get(category, 3)
+        return "close" if count <= close_threshold else "blocked"
+
+    for entry in folder_entries:
+        code_counts = entry.get("codeCounts", {})
+        categories = _bucket_code_counts(code_counts)
+        category_status: dict[str, dict[str, Any]] = {}
+        for category, count in categories.items():
+            status = _status_for_category(category, count)
+            category_status[category] = {"status": status, "count": count}
+            readiness["options"][category][status].append(
+                {
+                    "path": entry["path"],
+                    "count": count,
+                    "errors": entry.get("errors", 0),
+                    "warnings": entry.get("warnings", 0),
+                }
+            )
+
+        total_diagnostics = entry.get("errors", 0) + entry.get("warnings", 0)
+        if total_diagnostics == 0:
+            strict_status = "ready"
+        else:
+            blocking_categories = [cat for cat, meta in category_status.items() if meta["status"] == "blocked" and cat != "general"]
+            if total_diagnostics <= STRICT_CLOSE_THRESHOLD and not blocking_categories:
+                strict_status = "close"
+            else:
+                strict_status = "blocked"
+
+        strict_entry = {
+            "path": entry["path"],
+            "errors": entry.get("errors", 0),
+            "warnings": entry.get("warnings", 0),
+            "information": entry.get("information", 0),
+            "diagnostics": total_diagnostics,
+            "categories": {cat: meta["count"] for cat, meta in category_status.items()},
+            "categoryStatus": {cat: meta["status"] for cat, meta in category_status.items()},
+            "recommendations": entry.get("recommendations", []),
+        }
+        if strict_status == "close":
+            blockers = [
+                f"{cat}: {category_status[cat]['count']}"
+                for cat in category_status
+                if category_status[cat]["status"] != "ready"
+            ]
+            strict_entry["notes"] = blockers
+
+        readiness["strict"][strict_status].append(strict_entry)
+
+    return readiness
 
 
 def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
@@ -45,6 +132,8 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
     run_summary: dict[str, Any] = {}
     folder_totals: dict[str, Counter[str]] = defaultdict(Counter)
     folder_counts: dict[str, int] = defaultdict(int)
+    folder_code_totals: dict[str, Counter[str]] = defaultdict(Counter)
+    folder_recommendations: dict[str, set[str]] = defaultdict(set)
     file_entries: list[tuple[str, int, int]] = []
     severity_totals: Counter[str] = Counter()
     rule_totals: Counter[str] = Counter()
@@ -80,6 +169,10 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
             folder_totals[path]["warnings"] += folder.get("warnings", 0)
             folder_totals[path]["information"] += folder.get("information", 0)
             folder_counts[path] += 1
+            for code, count in folder.get("codeCounts", {}).items():
+                folder_code_totals[path][code] += count
+            for rec in folder.get("recommendations", []):
+                folder_recommendations[path].add(rec)
         for entry in run.get("perFile", []):
             errors = entry.get("errors", 0)
             warnings = entry.get("warnings", 0)
@@ -93,16 +186,19 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 )
             )
 
-    folder_entries_full = [
-        {
-            "path": path,
-            "errors": counts["errors"],
-            "warnings": counts["warnings"],
-            "information": counts["information"],
-            "participatingRuns": folder_counts[path],
-        }
-        for path, counts in folder_totals.items()
-    ]
+    folder_entries_full = []
+    for path, counts in folder_totals.items():
+        folder_entries_full.append(
+            {
+                "path": path,
+                "errors": counts["errors"],
+                "warnings": counts["warnings"],
+                "information": counts["information"],
+                "participatingRuns": folder_counts[path],
+                "codeCounts": dict(folder_code_totals.get(path, {})),
+                "recommendations": sorted(folder_recommendations.get(path, [])),
+            }
+        )
 
     top_folders = sorted(
         folder_totals.items(),
@@ -112,19 +208,24 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
         file_entries,
         key=lambda item: (-item[1], -item[2], item[0]),
     )[:25]
-    readiness = _collect_readiness(top_folders, folder_entries_full)
+    readiness = _collect_readiness(folder_entries_full)
 
     top_rules_dict = dict(rule_totals.most_common(20))
-    top_folders_list = [
-        {
-            "path": path,
-            "errors": counts["errors"],
-            "warnings": counts["warnings"],
-            "information": counts["information"],
-            "participatingRuns": folder_counts[path],
-        }
-        for path, counts in top_folders
-    ]
+    folder_entry_lookup = {entry["path"]: entry for entry in folder_entries_full}
+    top_folders_list = []
+    for path, counts in top_folders:
+        entry = folder_entry_lookup.get(path, {})
+        top_folders_list.append(
+            {
+                "path": path,
+                "errors": counts["errors"],
+                "warnings": counts["warnings"],
+                "information": counts["information"],
+                "participatingRuns": folder_counts[path],
+                "codeCounts": entry.get("codeCounts", {}),
+                "recommendations": entry.get("recommendations", []),
+            }
+        )
     top_files_list = [
         {"path": path, "errors": errors, "warnings": warnings} for path, errors, warnings in top_files
     ]
@@ -296,6 +397,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
         lines.append("| _No file hotspots_ | 0 | 0 |")
 
     lines.extend(["", "### Run logs"])
+    readiness_tab = tabs.get("readiness", {})
     runs_tab = tabs.get("runs", {})
     run_details = runs_tab.get("runSummary", run_summary)
     if run_details:
@@ -314,6 +416,39 @@ def render_markdown(summary: dict[str, Any]) -> str:
             )
     else:
         lines.append("- No runs recorded")
+
+    lines.extend(["", "### Readiness snapshot"])
+    strict = readiness_tab.get("strict", {})
+
+    def _format_entry_list(entries: list[dict[str, Any]], limit: int = 8) -> str:
+        if not entries:
+            return "—"
+        paths = [f"`{entry['path']}`" for entry in entries[:limit]]
+        if len(entries) > limit:
+            paths.append(f"… +{len(entries) - limit} more")
+        return ", ".join(paths)
+
+    lines.append(
+        f"- Ready for strict typing: {_format_entry_list(strict.get('ready', []))}"
+    )
+    lines.append(
+        f"- Close to strict typing: {_format_entry_list(strict.get('close', []))}"
+    )
+    lines.append(
+        f"- Blocked folders: {_format_entry_list(strict.get('blocked', []))}"
+    )
+
+    options = readiness_tab.get("options", {})
+    if options:
+        lines.extend(["", "#### Per-option readiness"])
+        for category, buckets in options.items():
+            label = CATEGORY_LABELS.get(category, category)
+            lines.append(f"- **{label}** (≤{buckets.get('threshold', 0)} to be close):")
+            for status in ("ready", "close", "blocked"):
+                entries = buckets.get(status, [])
+                lines.append(
+                    f"  - {status.title()}: {_format_entry_list(entries)}"
+                )
 
     lines.append("")
     return "\n".join(lines)

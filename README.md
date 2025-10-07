@@ -170,9 +170,9 @@ python -m typewiz dashboard --manifest typing_audit_manifest.json --format markd
 python -m typewiz dashboard --manifest typing_audit_manifest.json --format html --view engines --output typing_dashboard.html
 ```
 
-- `json` (default) – machine-readable summary with per-tab sections under `tabs.*`.
-- `markdown` – lightweight output for issues and PR comments (includes engine details and override digests).
-- `html` – interactive report with tabs for Overview, Engine Details, Hotspots, and Run Logs (choose the initial tab with `--view`).
+- `json` (default) – machine-readable summary with per-tab sections under `tabs.*` (overview, engines, hotspots, readiness, runs).
+- `markdown` – lightweight output for issues and PR comments (mirrors the tab content with override digests and readiness notes).
+- `html` – interactive report with tabs for Overview, Engine Details, Hotspots, Readiness, and Run Logs (choose the initial tab with `--view`).
 
 When `typewiz` writes dashboards during `audit`, you can control the default HTML tab with `--dashboard-view`, and the standalone `dashboard` command mirrors the same tabs across HTML/Markdown/JSON outputs.
 
@@ -196,9 +196,9 @@ When `typewiz` writes dashboards during `audit`, you can control the default HTM
    - Add glob support for opt-in/out paths per engine and profile
 5. **Dashboard experience** *(in progress)*  
    - Provide tabbed HTML dashboards with compact defaults and detailed drill-down views  
-   - Surface override analysis, run logs, and hotspots without overwhelming the main page  
+   - Surface override analysis, readiness (strict-ready / close / blocked), run logs, and hotspots without overwhelming the main page  
    - Add CLI toggles for default dashboard views in both audit and standalone commands  
-   - Align JSON/Markdown outputs with tab structure for downstream tooling
+   - Align JSON/Markdown outputs with tab structure for downstream tooling (including readiness metrics)
 6. **Ecosystem integration**  
    - Ship VS Code/IDE tasks that hydrate profiles and dashboards  
    - Grow first-party engines (Pyre, Pytype) once profile API is stable  

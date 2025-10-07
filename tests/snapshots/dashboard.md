@@ -5,16 +5,16 @@
 
 ## Overview
 
-- Errors: 4
-- Warnings: 2
-- Information: 1
+- Errors: 1
+- Warnings: 1
+- Information: 0
 
 ### Run summary
 
 | Run | Errors | Warnings | Information | Command |
 | --- | ---: | ---: | ---: | --- |
-| `pyright:current` | 3 | 2 | 1 | `pyright --outputjson` |
-| `mypy:full` | 1 | 0 | 0 | `python -m mypy` |
+| `pyright:current` | 0 | 0 | 0 | `pyright --outputjson` |
+| `mypy:full` | 1 | 1 | 0 | `python -m mypy` |
 
 ### Engine details
 
@@ -42,35 +42,58 @@
 
 | Rule | Count |
 | --- | ---: |
-| `reportUnknownMemberType` | 2 |
+| `reportUnknownMemberType` | 1 |
 | `reportGeneralTypeIssues` | 1 |
 
 #### Folder hotspots
 
 | Folder | Errors | Warnings | Information | Runs |
 | --- | ---: | ---: | ---: | ---: |
-| `apps/platform/operations` | 2 | 1 | 0 | 2 |
+| `apps/platform/operations` | 0 | 0 | 0 | 1 |
 | `packages/agents` | 1 | 1 | 0 | 1 |
 
 #### File hotspots
 
 | File | Errors | Warnings |
 | --- | ---: | ---: |
-| `apps/platform/operations/admin.py` | 2 | 0 |
+| `apps/platform/operations/admin.py` | 0 | 0 |
 | `packages/core/agents.py` | 1 | 1 |
 
 ### Run logs
 
 #### `pyright:current`
-- Errors: 3
-- Warnings: 2
-- Information: 1
-- Total diagnostics: 6
+- Errors: 0
+- Warnings: 0
+- Information: 0
+- Total diagnostics: 0
 - Severity breakdown: {}
 
 #### `mypy:full`
 - Errors: 1
-- Warnings: 0
+- Warnings: 1
 - Information: 0
-- Total diagnostics: 1
+- Total diagnostics: 2
 - Severity breakdown: {}
+
+### Readiness snapshot
+- Ready for strict typing: `apps/platform/operations`
+- Close to strict typing: `packages/agents`
+- Blocked folders: —
+
+#### Per-option readiness
+- **Unknown type checks** (≤2 to be close):
+  - Ready: `apps/platform/operations`
+  - Close: `packages/agents`
+  - Blocked: —
+- **Optional member checks** (≤2 to be close):
+  - Ready: `apps/platform/operations`
+  - Close: —
+  - Blocked: —
+- **Unused symbol warnings** (≤4 to be close):
+  - Ready: `apps/platform/operations`
+  - Close: —
+  - Blocked: —
+- **General diagnostics** (≤5 to be close):
+  - Ready: `apps/platform/operations`
+  - Close: —
+  - Blocked: —
