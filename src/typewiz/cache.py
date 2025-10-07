@@ -9,7 +9,8 @@ from typing import TypedDict, cast
 
 from .types import Diagnostic
 
-CACHE_FILENAME = ".typewiz_cache.json"
+CACHE_DIRNAME = ".typewiz_cache"
+CACHE_FILENAME = "cache.json"
 
 
 def _default_list_str() -> list[str]:
@@ -86,7 +87,7 @@ def _normalise_category_mapping(
 class EngineCache:
     def __init__(self, project_root: Path) -> None:
         self.project_root = project_root
-        self.path = project_root / CACHE_FILENAME
+        self.path = project_root / CACHE_DIRNAME / CACHE_FILENAME
         self._entries: dict[str, CacheEntry] = {}
         self._dirty = False
         self._load()
@@ -192,6 +193,7 @@ class EngineCache:
     def save(self) -> None:
         if not self._dirty:
             return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "entries": {
                 key: {

@@ -164,13 +164,13 @@ stable command ordering.
 
 ### Incremental cache
 
-Runs are cached in `.typewiz_cache.json`. The cache key combines the engine name, mode, command flags, and
+Runs are cached in `.typewiz_cache/cache.json`. The cache key combines the engine name, mode, command flags, and
 fingerprints (mtime, size, content hash) for all files under the configured `full_paths` and key config files
 (`pyrightconfig.json`, `mypy.ini`, `typewiz.toml`). When nothing relevant changes, typewiz reuses the cached
 diagnostics and exit code, dramatically reducing CI runtimes for steady-state checks.
 
 Because the cache is derived from source fingerprints rather than the full Python environment, installing new
-plugins or type stubs (for example, Django or DRF shims) may leave stale results behind. Clear `.typewiz_cache.json`
+plugins or type stubs (for example, Django or DRF shims) may leave stale results behind. Clear `.typewiz_cache/`
 after dependency or configuration changes that affect tool behaviour to force a fresh run. Cached entries now retain
 the upstream `toolSummary` block so manifests from reused runs still include the raw totals reported by each engine.
 

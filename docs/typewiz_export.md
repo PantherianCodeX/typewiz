@@ -60,7 +60,7 @@ This maps `typewiz` to the existing `main()` function.
 
 - Create `tests/test_smoke.py` with a simple `subprocess.run(["typewiz", "audit", "--skip-full"])`.
 - Add pre-commit or lint config if desired.
-- Add `.typewiz_cache.json` to `.gitignore` to avoid committing local caches.
+- Add `.typewiz_cache/` to `.gitignore` to avoid committing local caches.
 
 ### 6. Publish or vendor
 

@@ -332,6 +332,9 @@ def test_run_audit_cache_preserves_tool_summary(
     first_full = next(run for run in first.runs if run.mode == "full")
     assert first_full.cached is False
     assert first_full.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
+    cache_path = tmp_path / ".typewiz_cache" / "cache.json"
+    assert cache_path.exists()
+    assert not (tmp_path / ".typewiz_cache.json").exists()
     first_manifest_full = next(run for run in first.manifest["runs"] if run["mode"] == "full")
     assert first_manifest_full["toolSummary"]["total"] == 1
 

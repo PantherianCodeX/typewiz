@@ -8,7 +8,7 @@ manifest, and renders dashboards to help teams plan stricter typing rollouts.
 ## Features
 
 - Pluggable engine architecture with Pyright and mypy built in (extend via entry points)
-- Built-in incremental cache (`.typewiz_cache.json`) keyed on file fingerprints and engine flags
+- Built-in incremental cache (`.typewiz_cache/cache.json`) keyed on file fingerprints and engine flags
 - Deterministic diagnostics (sorted by path/line) and per-folder aggregates with actionable hints
 - Exports dashboards in JSON, Markdown, and HTML for issue trackers and retros
 - Captures each engine’s own summary totals (`toolSummary`) alongside parsed counts, warning when the two disagree
@@ -142,7 +142,7 @@ Overrides apply in addition to the root config: plugin arguments are merged and 
 
 ### Incremental caching
 
-Each engine stores its diagnostics in `.typewiz_cache.json`. The cache key captures:
+Each engine stores its diagnostics in `.typewiz_cache/cache.json`. The cache key captures:
 
 - engine name and mode (`current` / `full`)
 - plugin arguments and resolved command flags
@@ -151,7 +151,7 @@ Each engine stores its diagnostics in `.typewiz_cache.json`. The cache key captu
 If nothing relevant changed, typewiz rehydrates diagnostics from the cache, keeping exit codes consistent while skipping the external tool invocation.
 
 Because the cache is based on source fingerprints rather than the full Python environment, installing new plugins or
-type stubs can keep stale results alive. Delete `.typewiz_cache.json` after dependency or configuration changes that
+type stubs can keep stale results alive. Delete `.typewiz_cache/` after dependency or configuration changes that
 alter tool behaviour to force a fresh run. Cached runs still include the upstream `toolSummary` block so manifests
 capture the raw totals reported by each engine, even when served from the cache.
 
