@@ -18,6 +18,8 @@
 - Plugin args: `--lib`
 - Include paths: `apps`
 - Exclude paths: `apps/legacy`
+- Folder overrides:
+  - `apps/platform` (plugin args: `--warnings`)
 
 #### `mypy:full`
 - Profile: strict
@@ -25,6 +27,8 @@
 - Plugin args: `--strict`
 - Include paths: `packages`
 - Exclude paths: —
+- Folder overrides:
+  - `packages/legacy` (exclude: `packages/legacy`)
 
 ## Top Folder Hotspots
 

@@ -168,6 +168,7 @@ def _merge_configs(base: AuditConfig, override: AuditConfig | None) -> AuditConf
     )
     merged.active_profiles = dict(base_copy.active_profiles)
     merged.active_profiles.update({k: v for k, v in override.active_profiles.items() if v})
+    merged.path_overrides = _clone_path_overrides(base_copy.path_overrides)
     if override.path_overrides:
         merged.path_overrides.extend(_clone_path_overrides(override.path_overrides))
     return merged
@@ -245,6 +246,13 @@ def _normalise_override_entries(
     return normalised
 
 
+def _relative_override_path(project_root: Path, override_path: Path) -> str:
+    try:
+        return override_path.resolve().relative_to(project_root.resolve()).as_posix()
+    except ValueError:
+        return override_path.resolve().as_posix()
+
+
 def _resolve_engine_options(
     project_root: Path, audit_config: AuditConfig, engine_name: str
 ) -> EngineOptions:
@@ -287,36 +295,66 @@ def _resolve_engine_options(
         return (depth, item.path.as_posix())
 
     overrides = sorted(audit_config.path_overrides, key=_override_sort_key)
+    applied_details: list[dict[str, object]] = []
 
     for override in overrides:
+        before_profile = profile_name
+        before_args = list(plugin_args)
+        before_include = list(include)
+        before_exclude = list(exclude)
+
         override_profile = override.active_profiles.get(engine_name)
         if override_profile:
             profile_name = override_profile
         path_settings = override.engine_settings.get(engine_name)
-        if not path_settings:
-            continue
-        plugin_args = _merge_list(plugin_args, path_settings.plugin_args)
-        include_override = _normalise_override_entries(project_root, override.path, path_settings.include)
-        exclude_override = _normalise_override_entries(project_root, override.path, path_settings.exclude)
-        include = _merge_list(include, include_override)
-        exclude = _merge_list(exclude, exclude_override)
-        if path_settings.config_file:
-            config_file = path_settings.config_file
-        if path_settings.default_profile:
-            profile_name = path_settings.default_profile
-        profile_override = path_settings.profiles.get(profile_name) if path_settings.profiles else None
+        include_override: list[str] = []
+        exclude_override: list[str] = []
+        if path_settings:
+            plugin_args = _merge_list(plugin_args, path_settings.plugin_args)
+            include_override = _normalise_override_entries(project_root, override.path, path_settings.include)
+            exclude_override = _normalise_override_entries(project_root, override.path, path_settings.exclude)
+            include = _merge_list(include, include_override)
+            exclude = _merge_list(exclude, exclude_override)
+            if path_settings.config_file:
+                config_file = path_settings.config_file
+            if path_settings.default_profile:
+                profile_name = path_settings.default_profile
+        profile_override = None
+        if path_settings and path_settings.profiles:
+            profile_override = path_settings.profiles.get(profile_name)
         if profile_override:
             plugin_args = _merge_list(plugin_args, profile_override.plugin_args)
-            include = _merge_list(
-                include,
-                _normalise_override_entries(project_root, override.path, profile_override.include),
+            include_profile_override = _normalise_override_entries(
+                project_root, override.path, profile_override.include
             )
-            exclude = _merge_list(
-                exclude,
-                _normalise_override_entries(project_root, override.path, profile_override.exclude),
+            exclude_profile_override = _normalise_override_entries(
+                project_root, override.path, profile_override.exclude
             )
+            include = _merge_list(include, include_profile_override)
+            exclude = _merge_list(exclude, exclude_profile_override)
+            include_override = _merge_list(include_override, include_profile_override)
+            exclude_override = _merge_list(exclude_override, exclude_profile_override)
             if profile_override.config_file:
                 config_file = profile_override.config_file
+
+        after_args = [arg for arg in plugin_args if arg not in before_args]
+        after_include = [item for item in include if item not in before_include]
+        after_exclude = [item for item in exclude if item not in before_exclude]
+        profile_changed = profile_name != before_profile and profile_name is not None
+
+        if profile_changed or after_args or after_include or after_exclude:
+            entry: dict[str, object] = {
+                "path": _relative_override_path(project_root, override.path),
+            }
+            if profile_changed:
+                entry["profile"] = profile_name
+            if after_args:
+                entry["pluginArgs"] = after_args
+            if after_include:
+                entry["include"] = after_include
+            if after_exclude:
+                entry["exclude"] = after_exclude
+            applied_details.append(entry)
 
     return EngineOptions(
         plugin_args=plugin_args,
@@ -324,6 +362,7 @@ def _resolve_engine_options(
         include=include,
         exclude=exclude,
         profile=profile_name,
+        overrides=applied_details,
     )
 
 
@@ -441,6 +480,7 @@ def run_audit(
                         plugin_args=list(cached_run.plugin_args),
                         include=list(cached_run.include),
                         exclude=list(cached_run.exclude),
+                        overrides=[dict(item) for item in cached_run.overrides],
                     )
                 )
                 continue
@@ -460,6 +500,7 @@ def run_audit(
                 plugin_args=engine_options.plugin_args,
                 include=engine_options.include,
                 exclude=engine_options.exclude,
+                overrides=engine_options.overrides,
             )
 
             runs.append(
@@ -476,6 +517,7 @@ def run_audit(
                     plugin_args=list(engine_options.plugin_args),
                     include=list(engine_options.include),
                     exclude=list(engine_options.exclude),
+                    overrides=[dict(item) for item in engine_options.overrides],
                 )
             )
 

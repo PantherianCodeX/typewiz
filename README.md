@@ -80,7 +80,7 @@ CLI summaries stay compact by default; opt-in to richer output as needed:
 python -m typewiz audit --summary expanded --summary-fields profile,plugin-args
 ```
 
-`--summary full` expands output and automatically includes all fields (`profile`, `config`, `plugin-args`, `paths`).
+`--summary full` expands output and automatically includes every field (`profile`, `config`, `plugin-args`, `paths`, `overrides`).
 
 ### Folder overrides
 

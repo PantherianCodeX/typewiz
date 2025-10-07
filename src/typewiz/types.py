@@ -41,6 +41,7 @@ class RunResult:
     plugin_args: list[str] = field(default_factory=list)
     include: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
+    overrides: list[dict[str, object]] = field(default_factory=list)
 
     def severity_counts(self) -> Counter[str]:
         counts: Counter[str] = Counter()

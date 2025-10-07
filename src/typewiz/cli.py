@@ -14,7 +14,7 @@ from .types import RunResult
 from .utils import default_full_paths, resolve_project_root
 
 
-SUMMARY_FIELD_CHOICES = {"profile", "config", "plugin-args", "paths"}
+SUMMARY_FIELD_CHOICES = {"profile", "config", "plugin-args", "paths", "overrides"}
 
 
 def _format_list(values: Sequence[str]) -> str:
@@ -79,6 +79,42 @@ def _print_summary(
                 detail_items.append(("include", include_paths))
             if exclude_paths != "—" or style == "expanded":
                 detail_items.append(("exclude", exclude_paths))
+        overrides_data = [dict(item) for item in run.overrides]
+        if "overrides" in field_set and overrides_data:
+            if style == "expanded":
+                for entry in overrides_data:
+                    label = f"override {entry.get('path', '—')}"
+                    parts: list[str] = []
+                    if entry.get("profile"):
+                        parts.append(f"profile={entry['profile']}")
+                    if entry.get("pluginArgs"):
+                        parts.append(
+                            "plugin args=" + ", ".join(entry.get("pluginArgs", []))
+                        )
+                    if entry.get("include"):
+                        parts.append(
+                            "include=" + ", ".join(entry.get("include", []))
+                        )
+                    if entry.get("exclude"):
+                        parts.append(
+                            "exclude=" + ", ".join(entry.get("exclude", []))
+                        )
+                    detail = "; ".join(parts) if parts else "no explicit changes"
+                    detail_items.append((label, detail))
+            else:
+                short = []
+                for entry in overrides_data:
+                    parts: list[str] = []
+                    if entry.get("profile"):
+                        parts.append(f"profile={entry['profile']}")
+                    if entry.get("pluginArgs"):
+                        parts.append(
+                            "args=" + "/".join(entry.get("pluginArgs", []))
+                        )
+                    short.append(
+                        f"{entry.get('path', '—')}" + (f"({', '.join(parts)})" if parts else "")
+                    )
+                detail_items.append(("overrides", "; ".join(short)))
 
         header = f"[typewiz] {run.tool}:{run.mode} exit={run.exit_code} {summary} ({cmd})"
 

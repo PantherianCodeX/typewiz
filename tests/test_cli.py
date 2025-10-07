@@ -167,6 +167,18 @@ plugin_args = ["--strict"]
 """,
         encoding="utf-8",
     )
+    override_path = tmp_path / "extras" / "typewiz.dir.toml"
+    override_path.write_text(
+        """
+[active_profiles]
+stub = "strict"
+
+[engines.stub]
+plugin_args = ["--extras"]
+exclude = ["unused"]
+""",
+        encoding="utf-8",
+    )
 
     manifest_path = tmp_path / "manifest.json"
     dashboard_path = tmp_path / "dashboard.md"
@@ -195,10 +207,17 @@ plugin_args = ["--strict"]
 
     captured = capsys.readouterr()
     assert "- profile: strict" in captured.out
-    assert "- plugin args: --cli-flag, --strict" in captured.out
+    assert "- plugin args: --cli-flag, --strict, --extras" in captured.out
     assert "- include: extras" in captured.out
-    assert "- exclude: —" in captured.out
+    assert "- exclude: extras/unused" in captured.out
     assert "- config" not in captured.out
+
+    manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    full_run = next(run for run in manifest_data["runs"] if run["mode"] == "full")
+    engine_options = full_run["engineOptions"]
+    assert "--extras" in engine_options["pluginArgs"]
+    assert engine_options["overrides"]
+    assert any(entry["path"].endswith("extras") for entry in engine_options["overrides"])
 
     # Request full summary (includes every field automatically)
     exit_code = main([
@@ -221,3 +240,4 @@ plugin_args = ["--strict"]
 
     captured = capsys.readouterr()
     assert "- config: —" in captured.out
+    assert "override extras" in captured.out

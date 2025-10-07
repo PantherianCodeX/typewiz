@@ -78,6 +78,7 @@ def render_html(summary: dict[str, Any]) -> str:
             plugin_args = [str(arg) for arg in options.get("pluginArgs", []) or []]
             include = [str(item) for item in options.get("include", []) or []]
             exclude = [str(item) for item in options.get("exclude", []) or []]
+            overrides = [dict(item) for item in options.get("overrides", []) or []]
             profile_display = f"<code>{h(str(profile_value))}</code>" if profile_value else "—"
             config_display = f"<code>{h(str(config_value))}</code>" if config_value else "—"
             parts.extend(
@@ -90,10 +91,38 @@ def render_html(summary: dict[str, Any]) -> str:
                     f"        <li>Plugin args: {_as_code_list(plugin_args)}</li>",
                     f"        <li>Include paths: {_as_code_list(include)}</li>",
                     f"        <li>Exclude paths: {_as_code_list(exclude)}</li>",
-                    "      </ul>",
-                    "    </details>",
                 ]
             )
+            if overrides:
+                parts.append("        <li>Folder overrides:<ul>")
+                for entry in overrides:
+                    path = h(str(entry.get("path", "—")))
+                    detail_bits: list[str] = []
+                    if entry.get("profile"):
+                        detail_bits.append(f"profile=<code>{h(str(entry['profile']))}</code>")
+                    if entry.get("pluginArgs"):
+                        detail_bits.append(
+                            "plugin args="
+                            + " ".join(f"<code>{h(str(arg))}</code>" for arg in entry.get("pluginArgs", []))
+                        )
+                    if entry.get("include"):
+                        detail_bits.append(
+                            "include="
+                            + " ".join(f"<code>{h(str(item))}</code>" for item in entry.get("include", []))
+                        )
+                    if entry.get("exclude"):
+                        detail_bits.append(
+                            "exclude="
+                            + " ".join(f"<code>{h(str(item))}</code>" for item in entry.get("exclude", []))
+                        )
+                    if not detail_bits:
+                        detail_bits.append("no explicit changes")
+                    parts.append(f"          <li><code>{path}</code>: {'; '.join(detail_bits)}</li>")
+                parts.append("        </ul></li>")
+            parts.extend([
+                "      </ul>",
+                "    </details>",
+            ])
         parts.append("  </section>")
 
     if top_rules:

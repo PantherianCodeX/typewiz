@@ -48,6 +48,12 @@ def sample_summary() -> dict:
                     "pluginArgs": ["--lib"],
                     "include": ["apps"],
                     "exclude": ["apps/legacy"],
+                    "overrides": [
+                        {
+                            "path": "apps/platform",
+                            "pluginArgs": ["--warnings"],
+                        }
+                    ],
                 },
             },
             "mypy:full": {
@@ -62,6 +68,12 @@ def sample_summary() -> dict:
                     "pluginArgs": ["--strict"],
                     "include": ["packages"],
                     "exclude": [],
+                    "overrides": [
+                        {
+                            "path": "packages/legacy",
+                            "exclude": ["packages/legacy"],
+                        }
+                    ],
                 },
             },
         },

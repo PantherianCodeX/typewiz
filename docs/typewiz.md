@@ -27,7 +27,7 @@ Options:
 - `--dashboard-json`, `--dashboard-markdown`, `--dashboard-html` – write summaries in multiple formats.
 - `--plugin-arg engine=ARG` – forward an argument to a specific engine (e.g. `--plugin-arg pyright=--pythonversion=3.12`).
 - `--summary {compact,expanded,full}` – choose the CLI summary layout (`full` expands and shows every field).
-- `--summary-fields profile,paths` – comma-separated extras to display alongside the summary (ignored when `--summary full` is used).
+- `--summary-fields profile,paths,overrides` – comma-separated extras to display alongside the summary (ignored when `--summary full` is used).
 
 #### Directory overrides
 

@@ -41,6 +41,7 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 "pluginArgs": list(options.get("pluginArgs", [])),
                 "include": list(options.get("include", [])),
                 "exclude": list(options.get("exclude", [])),
+                "overrides": [dict(item) for item in options.get("overrides", [])],
             },
         }
         severity_totals.update(summary.get("severityBreakdown", {}))
@@ -134,6 +135,26 @@ def render_markdown(summary: dict[str, Any]) -> str:
                     f"- Exclude paths: {exclude}",
                 ]
             )
+            overrides = options.get("overrides", []) or []
+            if overrides:
+                lines.append("- Folder overrides:")
+                for override in overrides:
+                    path = override.get("path", "—")
+                    details: list[str] = []
+                    if override.get("profile"):
+                        details.append(f"profile={override['profile']}")
+                    if override.get("pluginArgs"):
+                        args_list = ", ".join(f"`{arg}`" for arg in override.get("pluginArgs", []))
+                        details.append(f"plugin args: {args_list}")
+                    if override.get("include"):
+                        inc_list = ", ".join(f"`{item}`" for item in override.get("include", []))
+                        details.append(f"include: {inc_list}")
+                    if override.get("exclude"):
+                        exc_list = ", ".join(f"`{item}`" for item in override.get("exclude", []))
+                        details.append(f"exclude: {exc_list}")
+                    if not details:
+                        details.append("no explicit changes")
+                    lines.append(f"  - `{path}` ({'; '.join(details)})")
 
     lines.extend(
         [

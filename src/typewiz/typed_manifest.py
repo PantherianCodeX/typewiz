@@ -44,6 +44,7 @@ class EngineOptionsEntry(TypedDict, total=False):
     pluginArgs: List[str]
     include: List[str]
     exclude: List[str]
+    overrides: List[Dict[str, object]]
 
 
 class RunPayload(TypedDict):

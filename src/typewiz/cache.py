@@ -23,6 +23,7 @@ class CacheEntry:
     plugin_args: list[str] = field(default_factory=list)
     include: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
+    overrides: list[dict[str, object]] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -36,6 +37,7 @@ class CachedRun:
     plugin_args: list[str] = field(default_factory=list)
     include: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
+    overrides: list[dict[str, object]] = field(default_factory=list)
 
 
 class EngineCache:
@@ -64,6 +66,7 @@ class EngineCache:
             exclude = entry.get("exclude", [])
             profile = entry.get("profile")
             config_file = entry.get("config_file")
+            overrides = entry.get("overrides", [])
             if (
                 isinstance(diagnostics, list)
                 and isinstance(file_hashes, dict)
@@ -73,6 +76,7 @@ class EngineCache:
                 and isinstance(plugin_args, list)
                 and isinstance(include, list)
                 and isinstance(exclude, list)
+                and (isinstance(overrides, list))
             ):
                 self._entries[key] = CacheEntry(
                     command=[str(arg) for arg in command],
@@ -85,6 +89,7 @@ class EngineCache:
                     plugin_args=[str(arg) for arg in plugin_args],
                     include=[str(item) for item in include],
                     exclude=[str(item) for item in exclude],
+                    overrides=[dict(item) for item in overrides if isinstance(item, dict)],
                 )
 
     def save(self) -> None:
@@ -103,6 +108,7 @@ class EngineCache:
                     "plugin_args": entry.plugin_args,
                     "include": entry.include,
                     "exclude": entry.exclude,
+                    "overrides": entry.overrides,
                 }
                 for key, entry in sorted(self._entries.items())
             }
@@ -150,6 +156,7 @@ class EngineCache:
             plugin_args=list(entry.plugin_args),
             include=list(entry.include),
             exclude=list(entry.exclude),
+            overrides=[dict(item) for item in entry.overrides],
         )
 
     def update(
@@ -166,6 +173,7 @@ class EngineCache:
         plugin_args: Sequence[str],
         include: Sequence[str],
         exclude: Sequence[str],
+        overrides: Sequence[dict[str, object]],
     ) -> None:
         canonical_diags = sorted(diagnostics, key=lambda diag: (str(diag.path), diag.line, diag.column))
         self._entries[key] = CacheEntry(
@@ -191,6 +199,7 @@ class EngineCache:
             plugin_args=[str(arg) for arg in plugin_args],
             include=[str(path) for path in include],
             exclude=[str(path) for path in exclude],
+            overrides=[dict(item) for item in overrides],
         )
         self._dirty = True
 

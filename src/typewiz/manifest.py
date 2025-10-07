@@ -39,6 +39,7 @@ class ManifestBuilder:
             "pluginArgs": list(run.plugin_args),
             "include": list(run.include),
             "exclude": list(run.exclude),
+            "overrides": [dict(item) for item in run.overrides],
         }
         payload: RunPayload = {
             "tool": run.tool,

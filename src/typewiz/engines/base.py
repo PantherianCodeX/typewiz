@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol, Sequence
 
@@ -15,6 +15,7 @@ class EngineOptions:
     include: list[str]
     exclude: list[str]
     profile: str | None
+    overrides: list[dict[str, object]] = field(default_factory=list)
 
 
 @dataclass(slots=True)

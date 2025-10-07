@@ -205,3 +205,9 @@ exclude = ["legacy"]
     run_payload = next(run for run in result.manifest["runs"] if run["mode"] == "full")
     assert run_payload["engineOptions"]["profile"] == "strict"
     assert "--billing" in run_payload["engineOptions"]["pluginArgs"]
+    overrides = run_payload["engineOptions"].get("overrides", [])
+    assert overrides
+    first_override = overrides[0]
+    assert first_override["path"].endswith("packages/billing")
+    assert first_override.get("profile") == "strict"
+    assert "--billing" in first_override.get("pluginArgs", [])
