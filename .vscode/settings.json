@@ -1,11 +1,27 @@
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-  "python.analysis.typeCheckingMode": "basic",
-  "python.analysis.extraPaths": [
-    "${workspaceFolder}/src"
-  ],
+  "python.analysis.diagnosticMode": "workspace",
+  // Use pytest with quiet default like tox
   "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
   "python.testing.pytestArgs": [
-    "tests"
-  ]
+    "-q"
+  ],
+  // mypy runs using project config
+  "mypy-type-checker.enabled": true,
+  "mypy-type-checker.args": [
+    "--config-file",
+    "mypy.ini"
+  ],
+  // Disable legacy mypy integration from Python extension
+  "python.linting.mypyEnabled": false,
+  // Pylance/pyright reads pyrightconfig.json (include: src)
+  // Don’t override typeCheckingMode here; use repo config
+  // Formatting and linting to match repo tools
+  "python.formatting.provider": "black",
+  "editor.formatOnSave": true,
+  "isort.args": [
+    "--profile",
+    "black"
+  ],
+  "ruff.enable": true
 }

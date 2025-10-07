@@ -1,3 +1,19 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Broadened rule set for better hygiene
+lint.select = ["E", "F", "I", "B", "UP"]
+lint.ignore = ["E501"]
+lint.per-file-ignores = {"tests/conftest.py" = ["E402"]}

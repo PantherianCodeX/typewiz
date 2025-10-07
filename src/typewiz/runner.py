@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-import re
-from pathlib import Path
-from typing import Sequence, Dict, Any, cast
 import logging
+import re
+from collections.abc import Sequence
+from pathlib import Path
+from typing import cast
 
 from .engines.base import EngineResult
 from .types import Diagnostic
-from .utils import require_json, run_command
+from .utils import JSONValue, as_int, as_list, as_mapping, as_str, require_json, run_command
 
 logger = logging.getLogger("typewiz")
+
 
 def _make_diag_path(project_root: Path, file_path: str) -> Path:
     path = Path(file_path)
@@ -28,24 +30,29 @@ def run_pyright(
     logger.info("Running pyright (%s)", " ".join(command))
     result = run_command(command, cwd=project_root)
     payload_str = result.stdout or result.stderr
-    payload: Dict[str, Any] = require_json(payload_str)
+    payload: dict[str, JSONValue] = require_json(payload_str)
 
     diagnostics: list[Diagnostic] = []
-    raw_diags = cast(list[Dict[str, Any]], payload.get("generalDiagnostics", []))
-    for d in raw_diags:
-        file_path = str(d.get("filePath") or d.get("file") or "")
+    raw_diags = as_list(payload.get("generalDiagnostics", []))
+    for item in raw_diags:
+        d = as_mapping(item)
+        file_path = as_str(d.get("filePath") or d.get("file") or "")
         if not file_path:
             continue
-        rng = cast(Dict[str, Any], d.get("range") or {})
-        start = cast(Dict[str, Any], rng.get("start") or {})
+        rng = as_mapping(d.get("range") or {})
+        start = as_mapping(rng.get("start") or {})
+        line_num = as_int(start.get("line", 0), 0) + 1  # pyright uses 0-based
+        col_num = as_int(start.get("character", 0), 0) + 1
+        rule_obj = d.get("rule")
+        rule = rule_obj if isinstance(rule_obj, str) else None
         diagnostics.append(
             Diagnostic(
                 tool="pyright",
                 severity=str(d.get("severity", "error")).lower(),
                 path=_make_diag_path(project_root, file_path),
-                line=int(start.get("line", 0)) + 1,
-                column=int(start.get("character", 0)) + 1,
-                code=d.get("rule"),
+                line=line_num,
+                column=col_num,
+                code=rule,
                 message=str(d.get("message", "")).strip(),
                 raw=d,
             )
@@ -59,7 +66,11 @@ def run_pyright(
         duration_ms=result.duration_ms,
         diagnostics=diagnostics,
     )
-    logger.debug("pyright run completed: exit=%s diagnostics=%s", engine_result.exit_code, len(engine_result.diagnostics))
+    logger.debug(
+        "pyright run completed: exit=%s diagnostics=%s",
+        engine_result.exit_code,
+        len(engine_result.diagnostics),
+    )
     return engine_result
 
 
@@ -122,7 +133,7 @@ def run_mypy(
                 column=int(data.get("column") or 0),
                 code=data.get("code"),
                 message=data["message"].strip(),
-                raw=data,
+                raw=cast(dict[str, object], dict(data)),
             )
         )
     diagnostics.sort(key=lambda d: (str(d.path), d.line, d.column))
@@ -134,5 +145,9 @@ def run_mypy(
         duration_ms=result.duration_ms,
         diagnostics=diagnostics,
     )
-    logger.debug("mypy run completed: exit=%s diagnostics=%s", engine_result.exit_code, len(engine_result.diagnostics))
+    logger.debug(
+        "mypy run completed: exit=%s diagnostics=%s",
+        engine_result.exit_code,
+        len(engine_result.diagnostics),
+    )
     return engine_result

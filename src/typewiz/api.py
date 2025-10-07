@@ -2,24 +2,19 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Sequence, Callable, cast
+from typing import cast
 
 from .cache import EngineCache, collect_file_hashes
-from .config import (
-    AuditConfig,
-    Config,
-    EngineProfile,
-    EngineSettings,
-    PathOverride,
-    load_config,
-)
+from .config import AuditConfig, Config, EngineProfile, EngineSettings, PathOverride, load_config
 from .dashboard import build_summary, render_markdown
 from .engines import EngineContext, EngineOptions, resolve_engines
 from .engines.base import BaseEngine
 from .html_report import render_html
 from .manifest import ManifestBuilder
+from .summary_types import SummaryData
 from .typed_manifest import ManifestData
 from .types import RunResult
 from .utils import default_full_paths, resolve_project_root
@@ -31,7 +26,7 @@ logger = logging.getLogger("typewiz")
 class AuditResult:
     manifest: ManifestData
     runs: list[RunResult]
-    summary: dict[str, object] | None = None
+    summary: SummaryData | None = None
     error_count: int = 0
     warning_count: int = 0
 
@@ -70,7 +65,9 @@ def _merge_list(base: list[str], addition: Sequence[str]) -> list[str]:
     return result
 
 
-def _normalise_category_mapping(mapping: Mapping[str, Sequence[str]] | None) -> dict[str, list[str]]:
+def _normalise_category_mapping(
+    mapping: Mapping[str, Sequence[str]] | None,
+) -> dict[str, list[str]]:
     if not mapping:
         return {}
     normalised: dict[str, list[str]] = {}
@@ -167,7 +164,9 @@ def _merge_configs(base: AuditConfig, override: AuditConfig | None) -> AuditConf
         manifest_path=override.manifest_path or base_copy.manifest_path,
         full_paths=override.full_paths or base_copy.full_paths,
         max_depth=override.max_depth or base_copy.max_depth,
-        skip_current=override.skip_current if override.skip_current is not None else base_copy.skip_current,
+        skip_current=(
+            override.skip_current if override.skip_current is not None else base_copy.skip_current
+        ),
         skip_full=override.skip_full if override.skip_full is not None else base_copy.skip_full,
         fail_on=override.fail_on or base_copy.fail_on,
         dashboard_json=override.dashboard_json or base_copy.dashboard_json,
@@ -336,8 +335,12 @@ def _resolve_engine_options(
         exclude_override: list[str] = []
         if path_settings:
             plugin_args = _merge_list(plugin_args, path_settings.plugin_args)
-            include_override = _normalise_override_entries(project_root, override.path, path_settings.include)
-            exclude_override = _normalise_override_entries(project_root, override.path, path_settings.exclude)
+            include_override = _normalise_override_entries(
+                project_root, override.path, path_settings.include
+            )
+            exclude_override = _normalise_override_entries(
+                project_root, override.path, path_settings.exclude
+            )
             include = _merge_list(include, include_override)
             exclude = _merge_list(exclude, exclude_override)
             if path_settings.config_file:
@@ -381,6 +384,9 @@ def _resolve_engine_options(
                 entry["exclude"] = after_exclude
             applied_details.append(entry)
 
+    # Query engine-provided category mapping for readiness analysis.
+    cat_map_input = cast(Mapping[str, Sequence[str]] | None, engine.category_mapping())
+
     return EngineOptions(
         plugin_args=plugin_args,
         config_file=config_file,
@@ -388,7 +394,7 @@ def _resolve_engine_options(
         exclude=exclude,
         profile=profile_name,
         overrides=applied_details,
-        category_mapping=_normalise_category_mapping(engine.category_mapping()),
+        category_mapping=_normalise_category_mapping(cat_map_input),
     )
 
 
@@ -442,9 +448,13 @@ def run_audit(
     audit_config = _merge_configs(cfg.audit, override)
 
     root = resolve_project_root(project_root)
-    raw_full_paths = list(full_paths) if full_paths else (audit_config.full_paths or default_full_paths(root))
+    raw_full_paths = (
+        list(full_paths) if full_paths else (audit_config.full_paths or default_full_paths(root))
+    )
     if not raw_full_paths:
-        raise ValueError("No directories to scan; configure 'full_paths' or pass 'full_paths' argument")
+        raise ValueError(
+            "No directories to scan; configure 'full_paths' or pass 'full_paths' argument"
+        )
 
     full_paths_normalised = _normalise_paths(root, raw_full_paths)
     engines = resolve_engines(audit_config.runners)
@@ -479,16 +489,10 @@ def run_audit(
             cache_flags.extend(f"include={path}" for path in engine_options.include)
             cache_flags.extend(f"exclude={path}" for path in engine_options.exclude)
             cache_key = cache.key_for(engine.name, mode, mode_paths, cache_flags)
-            fingerprint_provider: Callable[[EngineContext, Sequence[str]], Sequence[str]]
-            # default no-op provider
-            def _fp(_c: EngineContext, _p: Sequence[str]) -> Sequence[str]:
-                return []
-            fingerprint_provider = _fp
-            if hasattr(engine, "fingerprint_targets"):
-                fingerprint_provider = cast(
-                    Callable[[EngineContext, Sequence[str]], Sequence[str]],
-                    getattr(engine, "fingerprint_targets"),
-                )
+            fingerprint_provider = cast(
+                Callable[[EngineContext, Sequence[str]], Sequence[str]],
+                engine.fingerprint_targets,
+            )
             engine_fingerprints = _normalise_paths(
                 root,
                 fingerprint_provider(context, mode_paths),
@@ -519,7 +523,9 @@ def run_audit(
                         include=list(cached_run.include),
                         exclude=list(cached_run.exclude),
                         overrides=[dict(item) for item in cached_run.overrides],
-                        category_mapping={k: list(v) for k, v in cached_run.category_mapping.items()},
+                        category_mapping={
+                            k: list(v) for k, v in cached_run.category_mapping.items()
+                        },
                     )
                 )
                 continue
@@ -558,7 +564,9 @@ def run_audit(
                     include=list(engine_options.include),
                     exclude=list(engine_options.exclude),
                     overrides=[dict(item) for item in engine_options.overrides],
-                    category_mapping={k: list(v) for k, v in engine_options.category_mapping.items()},
+                    category_mapping={
+                        k: list(v) for k, v in engine_options.category_mapping.items()
+                    },
                 )
             )
 
@@ -575,20 +583,37 @@ def run_audit(
         out = manifest_target if manifest_target.is_absolute() else (root / manifest_target)
         builder.write(out)
 
-    should_build_summary = build_summary_output or audit_config.dashboard_json or audit_config.dashboard_markdown or audit_config.dashboard_html
+    should_build_summary = (
+        build_summary_output
+        or audit_config.dashboard_json
+        or audit_config.dashboard_markdown
+        or audit_config.dashboard_html
+    )
     summary = build_summary(manifest) if should_build_summary else None
 
     if summary is not None:
         if audit_config.dashboard_json:
-            target = audit_config.dashboard_json if audit_config.dashboard_json.is_absolute() else (root / audit_config.dashboard_json)
+            target = (
+                audit_config.dashboard_json
+                if audit_config.dashboard_json.is_absolute()
+                else (root / audit_config.dashboard_json)
+            )
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
         if audit_config.dashboard_markdown:
-            target = audit_config.dashboard_markdown if audit_config.dashboard_markdown.is_absolute() else (root / audit_config.dashboard_markdown)
+            target = (
+                audit_config.dashboard_markdown
+                if audit_config.dashboard_markdown.is_absolute()
+                else (root / audit_config.dashboard_markdown)
+            )
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(render_markdown(summary), encoding="utf-8")
         if audit_config.dashboard_html:
-            target = audit_config.dashboard_html if audit_config.dashboard_html.is_absolute() else (root / audit_config.dashboard_html)
+            target = (
+                audit_config.dashboard_html
+                if audit_config.dashboard_html.is_absolute()
+                else (root / audit_config.dashboard_html)
+            )
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(render_html(summary), encoding="utf-8")
 

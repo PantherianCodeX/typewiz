@@ -5,18 +5,26 @@ import logging
 import subprocess
 import sys
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Any, cast, Dict
-
+from typing import cast
 
 logger = logging.getLogger("typewiz")
+
+# JSON typing helpers
+# A recursive JSON value used for parsing engine outputs safely.
+# Use PEP 695 type alias for a clean, recursive definition under Python 3.12+
+type JSONValue = (
+    str | int | float | bool | None | dict[str, JSONValue] | list[JSONValue]
+)
 
 ROOT_MARKERS: tuple[str, ...] = (
     "typewiz.toml",
     ".typewiz.toml",
     "pyproject.toml",
 )
+
 
 @dataclass(slots=True)
 class CommandOutput:
@@ -34,8 +42,7 @@ def run_command(args: Iterable[str], cwd: Path | None = None) -> CommandOutput:
     completed = subprocess.run(
         argv,
         cwd=str(cwd) if cwd else None,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
     duration_ms = (time.perf_counter() - start) * 1000
@@ -50,11 +57,36 @@ def run_command(args: Iterable[str], cwd: Path | None = None) -> CommandOutput:
     )
 
 
-def require_json(payload: str, fallback: str | None = None) -> Dict[str, Any]:
+def require_json(payload: str, fallback: str | None = None) -> dict[str, JSONValue]:
     data_str = payload.strip() or (fallback or "")
     if not data_str:
         raise ValueError("Expected JSON output but received empty string")
-    return cast(Dict[str, Any], json.loads(data_str))
+    return cast(dict[str, JSONValue], json.loads(data_str))
+
+
+def as_mapping(value: object) -> dict[str, JSONValue]:
+    return cast(dict[str, JSONValue], value) if isinstance(value, dict) else {}
+
+
+def as_list(value: object) -> list[JSONValue]:
+    return cast(list[JSONValue], value) if isinstance(value, list) else []
+
+
+def as_str(value: object, default: str = "") -> str:
+    if isinstance(value, str):
+        return value
+    return default
+
+
+def as_int(value: object, default: int = 0) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    return default
 
 
 def resolve_project_root(start: Path | None = None) -> Path:

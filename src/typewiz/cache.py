@@ -2,13 +2,26 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, Mapping, Sequence, cast, TypedDict, Any
+from typing import TypedDict, cast
 
 from .types import Diagnostic
 
 CACHE_FILENAME = ".typewiz_cache.json"
+
+
+def _default_list_str() -> list[str]:
+    return []
+
+
+def _default_list_dict_obj() -> list[dict[str, object]]:
+    return []
+
+
+def _default_dict_str_liststr() -> dict[str, list[str]]:
+    return {}
 
 
 @dataclass(slots=True)
@@ -20,11 +33,11 @@ class CacheEntry:
     file_hashes: dict[str, dict[str, object]]
     profile: str | None = None
     config_file: str | None = None
-    plugin_args: list[str] = field(default_factory=list)
-    include: list[str] = field(default_factory=list)
-    exclude: list[str] = field(default_factory=list)
-    overrides: list[dict[str, object]] = field(default_factory=list)
-    category_mapping: dict[str, list[str]] = field(default_factory=dict)
+    plugin_args: list[str] = field(default_factory=_default_list_str)
+    include: list[str] = field(default_factory=_default_list_str)
+    exclude: list[str] = field(default_factory=_default_list_str)
+    overrides: list[dict[str, object]] = field(default_factory=_default_list_dict_obj)
+    category_mapping: dict[str, list[str]] = field(default_factory=_default_dict_str_liststr)
 
 
 @dataclass(slots=True)
@@ -35,14 +48,16 @@ class CachedRun:
     diagnostics: list[Diagnostic]
     profile: str | None = None
     config_file: Path | None = None
-    plugin_args: list[str] = field(default_factory=list)
-    include: list[str] = field(default_factory=list)
-    exclude: list[str] = field(default_factory=list)
-    overrides: list[dict[str, object]] = field(default_factory=list)
-    category_mapping: dict[str, list[str]] = field(default_factory=dict)
+    plugin_args: list[str] = field(default_factory=_default_list_str)
+    include: list[str] = field(default_factory=_default_list_str)
+    exclude: list[str] = field(default_factory=_default_list_str)
+    overrides: list[dict[str, object]] = field(default_factory=_default_list_dict_obj)
+    category_mapping: dict[str, list[str]] = field(default_factory=_default_dict_str_liststr)
 
 
-def _normalise_category_mapping(mapping: Mapping[str, Sequence[str]] | None) -> dict[str, list[str]]:
+def _normalise_category_mapping(
+    mapping: Mapping[str, Sequence[str]] | None
+) -> dict[str, list[str]]:
     if not mapping:
         return {}
     normalised: dict[str, list[str]] = {}
@@ -70,7 +85,7 @@ class EngineCache:
     def __init__(self, project_root: Path) -> None:
         self.project_root = project_root
         self.path = project_root / CACHE_FILENAME
-        self._entries: Dict[str, CacheEntry] = {}
+        self._entries: dict[str, CacheEntry] = {}
         self._dirty = False
         self._load()
 
@@ -90,7 +105,7 @@ class EngineCache:
             column: int
             code: str
             message: str
-            raw: Dict[str, Any]
+            raw: dict[str, object]
 
         class _EntryJson(TypedDict, total=False):
             command: list[str]
@@ -130,8 +145,12 @@ class EngineCache:
             plugin_args_list: list[str] = [str(a) for a in plugin_args_any]
             include_list: list[str] = [str(i) for i in include_any]
             exclude_list: list[str] = [str(i) for i in exclude_any]
-            overrides_list: list[dict[str, object]] = [{str(k): v for k, v in i.items()} for i in overrides_any]
-            file_hashes_map: dict[str, dict[str, object]] = {k: dict(v) for k, v in file_hashes_any.items()}
+            overrides_list: list[dict[str, object]] = [
+                {str(k): v for k, v in i.items()} for i in overrides_any
+            ]
+            file_hashes_map: dict[str, dict[str, object]] = {
+                k: dict(v) for k, v in file_hashes_any.items()
+            }
             diagnostics_list: list[dict[str, object]] = [dict(d) for d in diagnostics_any]
             exit_code_int = int(exit_code)
             duration_val = float(duration_ms)
@@ -142,7 +161,11 @@ class EngineCache:
                 diagnostics=diagnostics_list,
                 file_hashes=file_hashes_map,
                 profile=str(profile) if isinstance(profile, str) and profile.strip() else None,
-                config_file=str(config_file) if isinstance(config_file, str) and config_file.strip() else None,
+                config_file=(
+                    str(config_file)
+                    if isinstance(config_file, str) and config_file.strip()
+                    else None
+                ),
                 plugin_args=plugin_args_list,
                 include=include_list,
                 exclude=exclude_list,
@@ -199,7 +222,7 @@ class EngineCache:
             col_val = raw.get("column", 0)
             if isinstance(line_val, int):
                 line_num = line_val
-            elif isinstance(line_val, (str, bytes, bytearray)):
+            elif isinstance(line_val, str | bytes | bytearray):
                 try:
                     line_num = int(line_val)
                 except ValueError:
@@ -208,7 +231,7 @@ class EngineCache:
                 line_num = 0
             if isinstance(col_val, int):
                 col_num = col_val
-            elif isinstance(col_val, (str, bytes, bytearray)):
+            elif isinstance(col_val, str | bytes | bytearray):
                 try:
                     col_num = int(col_val)
                 except ValueError:
@@ -219,7 +242,11 @@ class EngineCache:
             code_val = raw.get("code")
             code_str = str(code_val) if isinstance(code_val, str) else None
             raw_val = raw.get("raw", {})
-            raw_dict: dict[str, object] = raw_val if isinstance(raw_val, dict) else {}
+            raw_dict: dict[str, object] = (
+                cast(dict[str, object], raw_val)
+                if isinstance(raw_val, dict)
+                else cast(dict[str, object], {})
+            )
 
             diagnostics.append(
                 Diagnostic(
@@ -265,7 +292,9 @@ class EngineCache:
         overrides: Sequence[dict[str, object]],
         category_mapping: Mapping[str, Sequence[str]] | None,
     ) -> None:
-        canonical_diags = sorted(diagnostics, key=lambda diag: (str(diag.path), diag.line, diag.column))
+        canonical_diags = sorted(
+            diagnostics, key=lambda diag: (str(diag.path), diag.line, diag.column)
+        )
         self._entries[key] = CacheEntry(
             command=[str(arg) for arg in command],
             exit_code=exit_code,

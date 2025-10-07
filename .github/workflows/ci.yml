@@ -24,20 +24,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install tox
 
-      - name: Run tests (tox)
-        run: tox -e py312
-
-      - name: Run mypy (tox)
-        run: tox -e mypy
-
-      - name: Run pyright (tox)
-        run: tox -e pyright
-
-      - name: Install nox
-        run: pip install nox
-
-      - name: Run tests (nox)
-        run: nox -s tests-3.12
-
-      - name: Run typing (nox)
-        run: nox -s mypy pyright
+      - name: Run tox (tests + typing)
+        run: tox -e py312,mypy,pyright

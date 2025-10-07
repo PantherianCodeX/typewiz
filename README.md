@@ -15,11 +15,13 @@ manifest, and renders dashboards to help teams plan stricter typing rollouts.
 
 ## Installation
 
+Requires Python 3.12+.
+
 ```bash
 pip install typewiz
 ```
 
-### Local development
+### Local development (Python 3.12+)
 
 ```bash
 python -m venv .venv
@@ -53,7 +55,7 @@ mypy --config-file mypy.ini
 pyright -p pyrightconfig.json
 ```
 
-Standardized via tox and nox:
+Standardized via tox:
 
 ```bash
 # run unit tests
@@ -62,9 +64,7 @@ tox -e py312
 # run static typing checks
 tox -e mypy,pyright
 
-# or, with nox
-nox -s tests-3.12
-nox -s mypy pyright
+
 ```
 
 In CI, a GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests and both type checkers on every push/PR.
@@ -219,28 +219,28 @@ When `typewiz` writes dashboards during `audit`, you can control the default HTM
 
 ## Roadmap
 
-1. **Foundation hardening** *(in progress)*  
-   - Make CLI outputs idempotent (rewrite dashboards even when files exist)  
-   - Generalise project-root discovery beyond `pyrightconfig.json` and surface clearer errors  
+1. **Foundation hardening** *(in progress)*
+   - Make CLI outputs idempotent (rewrite dashboards even when files exist)
+   - Generalise project-root discovery beyond `pyrightconfig.json` and surface clearer errors
    - Tighten engine command construction with richer typing and validation hooks
-2. **Config layering & strong typing** *(done)*  
-   - Introduce `ProjectConfig` and `EngineSettings` models with explicit defaults and overrides  
-   - Support engine-specific command templates, config files, and include/exclude directives  
+2. **Config layering & strong typing** *(done)*
+   - Introduce `ProjectConfig` and `EngineSettings` models with explicit defaults and overrides
+   - Support engine-specific command templates, config files, and include/exclude directives
    - Enforce schema via Pydantic 2, emitting helpful guidance for misconfiguration
-3. **Profiles & execution directives** *(done)*  
-   - Add named profiles per engine (e.g. `pyright.strict`, `mypy.incremental`) selectable via CLI/config  
-   - Allow profile inheritance for quick customization (base profile + overrides)  
+3. **Profiles & execution directives** *(done)*
+   - Add named profiles per engine (e.g. `pyright.strict`, `mypy.incremental`) selectable via CLI/config
+   - Allow profile inheritance for quick customization (base profile + overrides)
    - Resolve active profile order: CLI > profile > engine overrides > global defaults
-4. **Path-scoped configuration** *(done)*  
-   - Read directory/file-level overrides via `typewiz.dir.toml` to tweak runners and thresholds  
-   - Merge include/exclude directives per engine profile and expose overrides in manifests and dashboards  
+4. **Path-scoped configuration** *(done)*
+   - Read directory/file-level overrides via `typewiz.dir.toml` to tweak runners and thresholds
+   - Merge include/exclude directives per engine profile and expose overrides in manifests and dashboards
    - Add glob support for opt-in/out paths per engine and profile
-5. **Dashboard experience** *(in progress)*  
-   - Provide tabbed HTML dashboards with compact defaults and detailed drill-down views  
-   - Surface override analysis, readiness (strict-ready / close / blocked), run logs, and hotspots without overwhelming the main page  
-   - Add CLI toggles for default dashboard views in both audit and standalone commands  
+5. **Dashboard experience** *(in progress)*
+   - Provide tabbed HTML dashboards with compact defaults and detailed drill-down views
+   - Surface override analysis, readiness (strict-ready / close / blocked), run logs, and hotspots without overwhelming the main page
+   - Add CLI toggles for default dashboard views in both audit and standalone commands
    - Align JSON/Markdown outputs with tab structure for downstream tooling (including readiness metrics)
-6. **Ecosystem integration**  
-   - Ship VS Code/IDE tasks that hydrate profiles and dashboards  
-   - Grow first-party engines (Pyre, Pytype) once profile API is stable  
+6. **Ecosystem integration**
+   - Ship VS Code/IDE tasks that hydrate profiles and dashboards
+   - Grow first-party engines (Pyre, Pytype) once profile API is stable
    - Prepare for PyPI release with migration guide covering new config surface

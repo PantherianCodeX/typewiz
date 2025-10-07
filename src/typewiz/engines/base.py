@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol, Sequence
+from typing import Protocol
 
 from ..config import AuditConfig
 from ..types import Diagnostic
+
+
+def _default_overrides() -> list[dict[str, object]]:
+    return []
+
+
+def _default_category_mapping() -> dict[str, list[str]]:
+    return {}
 
 
 @dataclass(slots=True)
@@ -15,8 +24,8 @@ class EngineOptions:
     include: list[str]
     exclude: list[str]
     profile: str | None
-    overrides: list[dict[str, object]] = field(default_factory=list)
-    category_mapping: dict[str, list[str]] = field(default_factory=dict)
+    overrides: list[dict[str, object]] = field(default_factory=_default_overrides)
+    category_mapping: dict[str, list[str]] = field(default_factory=_default_category_mapping)
 
 
 @dataclass(slots=True)
@@ -41,8 +50,7 @@ class EngineResult:
 class BaseEngine(Protocol):
     name: str
 
-    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
-        ...
+    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult: ...
 
     def category_mapping(self) -> dict[str, list[str]]:
         """Optional mapping from categories to rule substrings for readiness analysis."""

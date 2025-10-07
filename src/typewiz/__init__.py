@@ -7,10 +7,11 @@ tracking.
 
 from __future__ import annotations
 
+from .api import AuditResult, run_audit  # noqa: F401
+from .config import AuditConfig, Config, load_config  # noqa: F401
 from .dashboard import build_summary, load_manifest, render_markdown  # noqa: F401
 from .html_report import render_html  # noqa: F401
-from .config import AuditConfig, Config, load_config  # noqa: F401
-from .api import run_audit, AuditResult  # noqa: F401
+from .summary_types import SummaryData  # noqa: F401
 
 __all__ = [
     "__version__",
@@ -23,6 +24,7 @@ __all__ = [
     "load_config",
     "run_audit",
     "AuditResult",
+    "SummaryData",
 ]
 
 __version__ = "0.0.1"

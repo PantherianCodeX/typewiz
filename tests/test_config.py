@@ -81,7 +81,7 @@ def test_merge_config_merges_engine_settings() -> None:
         engine_settings={
             "stub": EngineSettings(
                 plugin_args=["--engine"],
-                profiles={"strict": EngineProfile(plugin_args=["--strict"])}
+                profiles={"strict": EngineProfile(plugin_args=["--strict"])},
             )
         },
         active_profiles={"stub": "strict"},

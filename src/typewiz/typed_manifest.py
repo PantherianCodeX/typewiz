@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, TypedDict
+from typing import TypedDict
 
 
 class FileDiagnostic(TypedDict):
@@ -16,7 +16,7 @@ class FileEntry(TypedDict):
     errors: int
     warnings: int
     information: int
-    diagnostics: List[FileDiagnostic]
+    diagnostics: list[FileDiagnostic]
 
 
 class FolderEntryRequired(TypedDict):
@@ -25,12 +25,12 @@ class FolderEntryRequired(TypedDict):
     errors: int
     warnings: int
     information: int
-    codeCounts: Dict[str, int]
-    recommendations: List[str]
+    codeCounts: dict[str, int]
+    recommendations: list[str]
 
 
 class FolderEntry(FolderEntryRequired, total=False):
-    categoryCounts: Dict[str, int]
+    categoryCounts: dict[str, int]
 
 
 class RunSummary(TypedDict, total=False):
@@ -38,40 +38,40 @@ class RunSummary(TypedDict, total=False):
     warnings: int
     information: int
     total: int
-    severityBreakdown: Dict[str, int]
-    ruleCounts: Dict[str, int]
-    categoryCounts: Dict[str, int]
+    severityBreakdown: dict[str, int]
+    ruleCounts: dict[str, int]
+    categoryCounts: dict[str, int]
 
 
 class EngineOptionsEntry(TypedDict, total=False):
     profile: str | None
     configFile: str | None
-    pluginArgs: List[str]
-    include: List[str]
-    exclude: List[str]
-    overrides: List[Dict[str, object]]
-    categoryMapping: Dict[str, List[str]]
+    pluginArgs: list[str]
+    include: list[str]
+    exclude: list[str]
+    overrides: list[dict[str, object]]
+    categoryMapping: dict[str, list[str]]
 
 
 class RunPayload(TypedDict):
     tool: str
     mode: str
-    command: List[str]
+    command: list[str]
     exitCode: int
     durationMs: float
     summary: RunSummary
-    perFile: List[FileEntry]
-    perFolder: List[FolderEntry]
+    perFile: list[FileEntry]
+    perFolder: list[FolderEntry]
     engineOptions: EngineOptionsEntry
 
 
 class ManifestData(TypedDict):
     generatedAt: str
     projectRoot: str
-    runs: List[RunPayload]
+    runs: list[RunPayload]
 
 
 class AggregatedData(TypedDict):
     summary: RunSummary
-    perFile: List[FileEntry]
-    perFolder: List[FolderEntry]
+    perFile: list[FileEntry]
+    perFolder: list[FolderEntry]

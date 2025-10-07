@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 import pytest
 
@@ -41,8 +41,12 @@ class StubEngine:
             duration_ms=self._result.duration_ms,
             diagnostics=list(self._result.diagnostics),
         )
+
     def category_mapping(self) -> dict[str, list[str]]:
         return {}
+
+    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+        return []
 
 
 @pytest.fixture
@@ -84,27 +88,29 @@ def test_cli_audit(
     manifest_path = tmp_path / "manifest.json"
     dashboard_path = tmp_path / "dashboard.md"
     dashboard_path.write_text("stale", encoding="utf-8")
-    exit_code = main([
-        "audit",
-        "--runner",
-        "stub",
-        "--project-root",
-        str(tmp_path),
-        "pkg",
-        "--manifest",
-        str(manifest_path),
-        "--dashboard-markdown",
-        str(dashboard_path),
-        "--fail-on",
-        "warnings",
-        "--profile",
-        "stub",
-        "strict",
-        "--plugin-arg",
-        "stub=--cli-flag",
-        "--summary",
-        "compact",
-    ])
+    exit_code = main(
+        [
+            "audit",
+            "--runner",
+            "stub",
+            "--project-root",
+            str(tmp_path),
+            "pkg",
+            "--manifest",
+            str(manifest_path),
+            "--dashboard-markdown",
+            str(dashboard_path),
+            "--fail-on",
+            "warnings",
+            "--profile",
+            "stub",
+            "strict",
+            "--plugin-arg",
+            "stub=--cli-flag",
+            "--summary",
+            "compact",
+        ]
+    )
 
     captured = capsys.readouterr()
 
@@ -131,13 +137,15 @@ def test_cli_dashboard_output(tmp_path: Path) -> None:
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 
-    exit_code = main([
-        "dashboard",
-        "--manifest",
-        str(manifest_path),
-        "--format",
-        "json",
-    ])
+    exit_code = main(
+        [
+            "dashboard",
+            "--manifest",
+            str(manifest_path),
+            "--format",
+            "json",
+        ]
+    )
     assert exit_code == 0
 
 
@@ -185,25 +193,27 @@ exclude = ["unused"]
     manifest_path = tmp_path / "manifest.json"
     dashboard_path = tmp_path / "dashboard.md"
     monkeypatch.chdir(tmp_path)
-    exit_code = main([
-        "audit",
-        "--runner",
-        "stub",
-        "src",
-        "--manifest",
-        str(manifest_path),
-        "--dashboard-markdown",
-        str(dashboard_path),
-        "--profile",
-        "stub",
-        "strict",
-        "--plugin-arg",
-        "stub=--cli-flag",
-        "--summary",
-        "expanded",
-        "--summary-fields",
-        "profile,plugin-args,paths",
-    ])
+    exit_code = main(
+        [
+            "audit",
+            "--runner",
+            "stub",
+            "src",
+            "--manifest",
+            str(manifest_path),
+            "--dashboard-markdown",
+            str(dashboard_path),
+            "--profile",
+            "stub",
+            "strict",
+            "--plugin-arg",
+            "stub=--cli-flag",
+            "--summary",
+            "expanded",
+            "--summary-fields",
+            "profile,plugin-args,paths",
+        ]
+    )
 
     assert exit_code == 0
 
@@ -220,23 +230,27 @@ exclude = ["unused"]
     assert "--extras" in engine_options["pluginArgs"]
 
 
-def test_cli_mode_only_full(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: RunResult) -> None:
+def test_cli_mode_only_full(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: RunResult
+) -> None:
     engine = StubEngine(fake_run)
     monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
     monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
 
     (tmp_path / "pkg").mkdir(exist_ok=True)
 
-    exit_code = main([
-        "audit",
-        "--runner",
-        "stub",
-        "--project-root",
-        str(tmp_path),
-        "--mode",
-        "full",
-        "pkg",
-    ])
+    exit_code = main(
+        [
+            "audit",
+            "--runner",
+            "stub",
+            "--project-root",
+            str(tmp_path),
+            "--mode",
+            "full",
+            "pkg",
+        ]
+    )
 
     assert exit_code == 0
     assert engine.invocations == [("full", [], ["pkg"])]
@@ -257,15 +271,17 @@ def test_cli_plugin_arg_validation(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
 
     with pytest.raises(SystemExit):
-        main([
-            "audit",
-            "--runner",
-            "stub",
-            "--project-root",
-            str(tmp_path),
-            "--plugin-arg",
-            "stub",
-        ])
+        main(
+            [
+                "audit",
+                "--runner",
+                "stub",
+                "--project-root",
+                str(tmp_path),
+                "--plugin-arg",
+                "stub",
+            ]
+        )
 
 
 def test_cli_init_writes_template(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -278,7 +294,9 @@ def test_cli_init_writes_template(tmp_path: Path, capsys: pytest.CaptureFixture[
     assert "config_version" in target.read_text(encoding="utf-8")
 
 
-def test_cli_audit_without_markers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: RunResult) -> None:
+def test_cli_audit_without_markers(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: RunResult
+) -> None:
     engine = StubEngine(fake_run)
     monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
     monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
@@ -287,14 +305,15 @@ def test_cli_audit_without_markers(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     (tmp_path / "pkg").mkdir(exist_ok=True)
     (tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8")
 
-    exit_code = main([
-        "audit",
-        "--runner",
-        "stub",
-        "pkg",
-    ])
+    exit_code = main(
+        [
+            "audit",
+            "--runner",
+            "stub",
+            "pkg",
+        ]
+    )
 
     assert exit_code == 0
     # Fallback root detection should still run both modes
     assert {mode for mode, *_ in engine.invocations} == {"current", "full"}
-

@@ -3,13 +3,12 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-
 from typing import cast
 
 from .aggregate import summarise_run
-from .typed_manifest import AggregatedData, ManifestData, RunPayload, EngineOptionsEntry
+from .typed_manifest import AggregatedData, EngineOptionsEntry, ManifestData, RunPayload
 from .types import RunResult
 
 logger = logging.getLogger("typewiz")
@@ -24,7 +23,7 @@ class ManifestBuilder:
         self.data = cast(
             ManifestData,
             {
-                "generatedAt": datetime.now(timezone.utc).isoformat(),
+                "generatedAt": datetime.now(UTC).isoformat(),
                 "projectRoot": str(self.project_root),
                 "runs": [],
             },

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, List, Mapping, cast
+from typing import cast
 
 from .readiness import CATEGORY_PATTERNS
-from .typed_manifest import (
-    AggregatedData,
-    FileDiagnostic,
-    FileEntry,
-    FolderEntry,
-)
+from .typed_manifest import AggregatedData, FileDiagnostic, FileEntry, FolderEntry
 from .types import RunResult
+
+
+def _default_file_diagnostics() -> list[FileDiagnostic]:
+    return []
 
 
 @dataclass(slots=True)
@@ -21,7 +21,11 @@ class FileSummary:
     errors: int = 0
     warnings: int = 0
     information: int = 0
-    diagnostics: list[FileDiagnostic] = field(default_factory=list)
+    diagnostics: list[FileDiagnostic] = field(default_factory=_default_file_diagnostics)
+
+
+def _default_counter_str() -> Counter[str]:
+    return Counter()
 
 
 @dataclass(slots=True)
@@ -31,8 +35,8 @@ class FolderSummary:
     errors: int = 0
     warnings: int = 0
     information: int = 0
-    code_counts: Counter[str] = field(default_factory=Counter)
-    category_counts: Counter[str] = field(default_factory=Counter)
+    code_counts: Counter[str] = field(default_factory=_default_counter_str)
+    category_counts: Counter[str] = field(default_factory=_default_counter_str)
 
     def _unknown_count(self) -> int:
         if self.category_counts:
@@ -119,7 +123,9 @@ def _categorise_code(code: str | None, mapping: Mapping[str, Iterable[str]]) -> 
 
 def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
     files: dict[str, FileSummary] = {}
-    folder_levels: dict[int, dict[str, FolderSummary]] = {depth: {} for depth in range(1, max_depth + 1)}
+    folder_levels: dict[int, dict[str, FolderSummary]] = {
+        depth: {} for depth in range(1, max_depth + 1)
+    }
 
     severity_totals: Counter[str] = Counter()
     rule_totals: Counter[str] = Counter()
@@ -180,7 +186,7 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
         entries = sorted(folder_levels[depth].values(), key=lambda item: item.path)
         folder_entries.extend(entry.to_folder_entry() for entry in entries)
 
-    per_file: List[FileEntry] = [
+    per_file: list[FileEntry] = [
         cast(
             FileEntry,
             {
@@ -198,7 +204,9 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
         summary={
             "errors": sum(1 for diag in run.diagnostics if diag.severity == "error"),
             "warnings": sum(1 for diag in run.diagnostics if diag.severity == "warning"),
-            "information": sum(1 for diag in run.diagnostics if diag.severity not in {"error", "warning"}),
+            "information": sum(
+                1 for diag in run.diagnostics if diag.severity not in {"error", "warning"}
+            ),
             "total": len(run.diagnostics),
             "severityBreakdown": {key: severity_totals[key] for key in sorted(severity_totals)},
             "ruleCounts": {key: rule_totals[key] for key in sorted(rule_totals)},

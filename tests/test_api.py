@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 import pytest
 
@@ -38,6 +38,9 @@ class StubEngine:
     def category_mapping(self) -> dict[str, list[str]]:
         return {"unknownChecks": ["reportGeneralTypeIssues"]}
 
+    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+        return []
+
 
 @pytest.fixture
 def fake_run_result(tmp_path: Path) -> RunResult:
@@ -64,15 +67,23 @@ def fake_run_result(tmp_path: Path) -> RunResult:
     )
 
 
-def test_run_audit_programmatic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run_result: RunResult) -> None:
-    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [StubEngine(fake_run_result)])
+def test_run_audit_programmatic(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run_result: RunResult
+) -> None:
+    monkeypatch.setattr(
+        "typewiz.engines.resolve_engines", lambda names: [StubEngine(fake_run_result)]
+    )
     monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [StubEngine(fake_run_result)])
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8")
-    override = AuditConfig(full_paths=["src"], dashboard_json=tmp_path / "summary.json", runners=["stub"])
+    override = AuditConfig(
+        full_paths=["src"], dashboard_json=tmp_path / "summary.json", runners=["stub"]
+    )
 
-    result = run_audit(project_root=tmp_path, override=override, full_paths=["src"], build_summary_output=True)
+    result = run_audit(
+        project_root=tmp_path, override=override, full_paths=["src"], build_summary_output=True
+    )
 
     assert result.summary is not None
     assert result.summary["topFolders"]
@@ -81,7 +92,9 @@ def test_run_audit_programmatic(monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
     full_run = next(run for run in result.runs if run.mode == "full")
     assert full_run.category_mapping == {"unknownChecks": ["reportGeneralTypeIssues"]}
     manifest_full_run = next(run for run in result.manifest["runs"] if run["mode"] == "full")
-    assert manifest_full_run["engineOptions"]["categoryMapping"] == {"unknownChecks": ["reportGeneralTypeIssues"]}
+    assert manifest_full_run["engineOptions"]["categoryMapping"] == {
+        "unknownChecks": ["reportGeneralTypeIssues"]
+    }
     assert manifest_full_run["summary"]["categoryCounts"].get("unknownChecks") == 1
     readiness = result.summary["tabs"]["readiness"]
     unknown_close_entries = readiness["options"]["unknownChecks"]["close"]
@@ -113,8 +126,12 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
                 duration_ms=0.1,
                 diagnostics=[],
             )
+
         def category_mapping(self) -> dict[str, list[str]]:
             return {}
+
+        def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+            return []
 
     engine = RecordingEngine()
     monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
@@ -158,7 +175,9 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     assert run_payload["engineOptions"]["include"] == ["extra"]
 
 
-def test_run_audit_respects_folder_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_run_audit_respects_folder_overrides(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     class RecordingEngine:
         name = "stub"
 
@@ -175,6 +194,12 @@ def test_run_audit_respects_folder_overrides(monkeypatch: pytest.MonkeyPatch, tm
                 duration_ms=0.1,
                 diagnostics=[],
             )
+
+        def category_mapping(self) -> dict[str, list[str]]:
+            return {}
+
+        def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+            return []
 
     engine = RecordingEngine()
     monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])

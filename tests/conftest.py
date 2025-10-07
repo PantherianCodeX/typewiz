@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sys
-from typing import Callable, Dict, List
+from collections.abc import Callable
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -10,8 +10,6 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 import pytest
-
-from typewiz.typed_manifest import ManifestData
 
 
 @pytest.fixture
@@ -126,8 +124,18 @@ def sample_summary() -> dict:
                         "warnings": 0,
                         "information": 0,
                         "diagnostics": 0,
-                        "categories": {"unknownChecks": 0, "optionalChecks": 0, "unusedSymbols": 0, "general": 0},
-                        "categoryStatus": {"unknownChecks": "ready", "optionalChecks": "ready", "unusedSymbols": "ready", "general": "ready"},
+                        "categories": {
+                            "unknownChecks": 0,
+                            "optionalChecks": 0,
+                            "unusedSymbols": 0,
+                            "general": 0,
+                        },
+                        "categoryStatus": {
+                            "unknownChecks": "ready",
+                            "optionalChecks": "ready",
+                            "unusedSymbols": "ready",
+                            "general": "ready",
+                        },
                         "recommendations": ["strict-ready"],
                     }
                 ],
@@ -138,8 +146,18 @@ def sample_summary() -> dict:
                         "warnings": 1,
                         "information": 0,
                         "diagnostics": 2,
-                        "categories": {"unknownChecks": 1, "optionalChecks": 0, "unusedSymbols": 0, "general": 0},
-                        "categoryStatus": {"unknownChecks": "close", "optionalChecks": "ready", "unusedSymbols": "ready", "general": "ready"},
+                        "categories": {
+                            "unknownChecks": 1,
+                            "optionalChecks": 0,
+                            "unusedSymbols": 0,
+                            "general": 0,
+                        },
+                        "categoryStatus": {
+                            "unknownChecks": "close",
+                            "optionalChecks": "ready",
+                            "unusedSymbols": "ready",
+                            "general": "ready",
+                        },
                         "recommendations": ["resolve 1 unknown-type issues"],
                         "notes": ["unknownChecks: 1"],
                     }
@@ -148,25 +166,33 @@ def sample_summary() -> dict:
             },
             "options": {
                 "unknownChecks": {
-                    "ready": [{"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}],
+                    "ready": [
+                        {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                    ],
                     "close": [{"path": "packages/agents", "count": 1, "errors": 1, "warnings": 1}],
                     "blocked": [],
                     "threshold": 2,
                 },
                 "optionalChecks": {
-                    "ready": [{"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}],
+                    "ready": [
+                        {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                    ],
                     "close": [],
                     "blocked": [],
                     "threshold": 2,
                 },
                 "unusedSymbols": {
-                    "ready": [{"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}],
+                    "ready": [
+                        {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                    ],
                     "close": [],
                     "blocked": [],
                     "threshold": 4,
                 },
                 "general": {
-                    "ready": [{"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}],
+                    "ready": [
+                        {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                    ],
                     "close": [],
                     "blocked": [],
                     "threshold": 5,

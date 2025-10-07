@@ -3,9 +3,10 @@ from __future__ import annotations
 import argparse
 import json
 import shlex
+from collections.abc import Sequence
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, List, Sequence, Any, cast
+from typing import cast
 
 from .api import run_audit
 from .config import AuditConfig, load_config
@@ -13,7 +14,6 @@ from .dashboard import build_summary, load_manifest, render_markdown
 from .html_report import render_html
 from .types import RunResult
 from .utils import default_full_paths, resolve_project_root
-
 
 SUMMARY_FIELD_CHOICES = {"profile", "config", "plugin-args", "paths", "overrides"}
 
@@ -144,9 +144,9 @@ def _print_summary(
                     parts: list[str] = []
                     if entry.get("profile"):
                         parts.append(f"profile={entry['profile']}")
-                    plugin_args_list = cast(List[str], entry.get("pluginArgs", []))
-                    include_list = cast(List[str], entry.get("include", []))
-                    exclude_list = cast(List[str], entry.get("exclude", []))
+                    plugin_args_list = cast(list[str], entry.get("pluginArgs", []))
+                    include_list = cast(list[str], entry.get("include", []))
+                    exclude_list = cast(list[str], entry.get("exclude", []))
                     if plugin_args_list:
                         parts.append("plugin args=" + ", ".join(plugin_args_list))
                     if include_list:
@@ -161,11 +161,12 @@ def _print_summary(
                     parts_short: list[str] = []
                     if entry.get("profile"):
                         parts_short.append(f"profile={entry['profile']}")
-                    plugin_args_list = cast(List[str], entry.get("pluginArgs", []))
+                    plugin_args_list = cast(list[str], entry.get("pluginArgs", []))
                     if plugin_args_list:
                         parts_short.append("args=" + "/".join(plugin_args_list))
                     short.append(
-                        f"{entry.get('path', '—')}" + (f"({', '.join(parts_short)})" if parts_short else "")
+                        f"{entry.get('path', '—')}"
+                        + (f"({', '.join(parts_short)})" if parts_short else "")
                     )
                 detail_items.append(("overrides", "; ".join(short)))
 
@@ -183,17 +184,15 @@ def _print_summary(
                 print(header)
 
 
-def _collect_plugin_args(entries: Sequence[str]) -> Dict[str, List[str]]:
-    result: Dict[str, List[str]] = {}
+def _collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {}
     for raw in entries:
         if "=" in raw:
             runner, arg = raw.split("=", 1)
         elif ":" in raw:
             runner, arg = raw.split(":", 1)
         else:
-            raise SystemExit(
-                f"Invalid --plugin-arg value '{raw}'. Use RUNNER=ARG (or RUNNER:ARG)."
-            )
+            raise SystemExit(f"Invalid --plugin-arg value '{raw}'. Use RUNNER=ARG (or RUNNER:ARG).")
         runner = runner.strip()
         if not runner:
             raise SystemExit("Runner name in --plugin-arg cannot be empty")
@@ -204,8 +203,8 @@ def _collect_plugin_args(entries: Sequence[str]) -> Dict[str, List[str]]:
     return result
 
 
-def _collect_profile_args(pairs: Sequence[Sequence[str]]) -> Dict[str, str]:
-    result: Dict[str, str] = {}
+def _collect_profile_args(pairs: Sequence[Sequence[str]]) -> dict[str, str]:
+    result: dict[str, str] = {}
     for entry in pairs:
         if len(entry) != 2:
             raise SystemExit("Each --profile option requires a runner and a profile name")
@@ -238,7 +237,6 @@ def _write_config_template(path: Path, *, force: bool) -> int:
     path.write_text(CONFIG_TEMPLATE, encoding="utf-8")
     print(f"[typewiz] Wrote starter config to {path}")
     return 0
-
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -368,7 +366,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Render a summary from an existing manifest",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    dashboard.add_argument("--manifest", type=Path, required=True, help="Path to a typing audit manifest.")
+    dashboard.add_argument(
+        "--manifest", type=Path, required=True, help="Path to a typing audit manifest."
+    )
     dashboard.add_argument(
         "--format",
         choices=["json", "markdown", "html"],
@@ -406,7 +406,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Show top-N candidates for strict typing",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    readiness.add_argument("--manifest", type=Path, required=True, help="Path to a typing audit manifest.")
+    readiness.add_argument(
+        "--manifest", type=Path, required=True, help="Path to a typing audit manifest."
+    )
     readiness.add_argument("--level", choices=["folder", "file"], default="folder")
     readiness.add_argument("--status", choices=["ready", "close", "blocked"], default="close")
     readiness.add_argument("--limit", type=int, default=10)
@@ -421,9 +423,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         project_root = resolve_project_root(args.project_root)
 
         cli_full_paths = [path for path in args.paths if path]
-        selected_full_paths = cli_full_paths or config.audit.full_paths or default_full_paths(project_root)
+        selected_full_paths = (
+            cli_full_paths or config.audit.full_paths or default_full_paths(project_root)
+        )
         if not selected_full_paths:
-            raise SystemExit("No paths found for full runs. Provide paths or configure 'full_paths'.")
+            raise SystemExit(
+                "No paths found for full runs. Provide paths or configure 'full_paths'."
+            )
 
         modes_specified, run_current, run_full = _normalise_modes(args.modes)
         override = AuditConfig(
@@ -463,7 +469,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
         _print_summary(result.runs, summary_fields, summary_style)
-        summary = result.summary or build_summary(result.manifest)
+        from .summary_types import SummaryData
+
+        summary: SummaryData = result.summary or build_summary(result.manifest)
 
         fail_on = (args.fail_on or config.audit.fail_on or "never").lower()
         error_count = sum(run.severity_counts().get("error", 0) for run in result.runs)
@@ -513,16 +521,30 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "readiness":
         manifest = load_manifest(args.manifest)
-        summary_map: Dict[str, Any] = build_summary(manifest)
-        readiness_tab = cast(Dict[str, Any], summary_map.get("tabs", {}).get("readiness", {}))
-        options_tab = cast(Dict[str, Any], readiness_tab.get("options", {}))
-        strict_tab = cast(Dict[str, Any], readiness_tab.get("strict", {}))
+        from .summary_types import ReadinessOptionsBucket, ReadinessTab, SummaryData, SummaryTabs
+
+        summary_map: SummaryData = build_summary(manifest)
+        tabs: SummaryTabs = summary_map["tabs"]
+        readiness_tab: ReadinessTab = tabs.get("readiness", {})
+        options_tab = readiness_tab.get("options", {})
+        # strict buckets are nested under readiness.strict
 
         if args.level == "folder":
-            bucket = options_tab.get("unknownChecks", {})
+            default_bucket: ReadinessOptionsBucket = {
+                "ready": [],
+                "close": [],
+                "blocked": [],
+                "threshold": 0,
+            }
+            bucket: ReadinessOptionsBucket = options_tab.get("unknownChecks", default_bucket)
+            if args.status == "ready":
+                status_bucket = bucket.get("ready", [])
+            elif args.status == "close":
+                status_bucket = bucket.get("close", [])
+            else:
+                status_bucket = bucket.get("blocked", [])
         else:
-            bucket = strict_tab
-        status_bucket = bucket.get(args.status, [])
+            status_bucket = readiness_tab.get("strict", {}).get(args.status, [])
         for entry in status_bucket[: args.limit]:
             path = entry.get("path", "<unknown>")
             count = entry.get("count") or entry.get("diagnostics") or 0

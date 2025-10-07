@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from html import escape
-from typing import Any, List, cast
+from typing import cast
+
 from .readiness import CATEGORY_LABELS
+from .summary_types import HotspotsTab, OverviewTab, ReadinessTab, SummaryData, SummaryTabs
 
 _TAB_ORDER = ("overview", "engines", "hotspots", "readiness", "runs")
 _TAB_LABELS = {
@@ -14,51 +16,51 @@ _TAB_LABELS = {
 }
 
 
-def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> str:
+def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
     default_view = default_view if default_view in _TAB_ORDER else "overview"
 
     def h(text: str) -> str:
         return escape(text, quote=True)
 
-    tabs = summary.get("tabs", {})
-    overview = tabs.get("overview", {})
-    run_summary = overview.get("runSummary", summary.get("runSummary", {}))
-    severity = overview.get("severityTotals", summary.get("severityTotals", {}))
-    hotspots = tabs.get("hotspots", {})
-    readiness = tabs.get("readiness", {})
+    tabs: SummaryTabs = summary["tabs"]
+    overview: OverviewTab = tabs["overview"]
+    run_summary = overview["runSummary"]
+    severity = overview["severityTotals"]
+    hotspots: HotspotsTab = tabs["hotspots"]
+    readiness: ReadinessTab = tabs["readiness"]
 
-    top_rules = hotspots.get("topRules", summary.get("topRules", {}))
-    top_folders = hotspots.get("topFolders", summary.get("topFolders", []))
-    top_files = hotspots.get("topFiles", summary.get("topFiles", []))
+    top_rules = hotspots["topRules"]
+    top_folders = hotspots["topFolders"]
+    top_files = hotspots["topFiles"]
 
     parts: list[str] = [
         "<!DOCTYPE html>",
-        "<html lang=\"en\">",
+        '<html lang="en">',
         "<head>",
-        "  <meta charset=\"utf-8\" />",
+        '  <meta charset="utf-8" />',
         "  <title>typewiz Dashboard</title>",
         "  <style>\n    :root{color-scheme:light dark;}\n    body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:2rem;background:#f5f5f5;color:#1f2330;}\n    h1,h2{color:#2b4b80;}\n    table{border-collapse:collapse;width:100%;margin-bottom:1.5rem;background:white;}\n    th,td{border:1px solid #d0d7e2;padding:0.5rem;text-align:left;}\n    th{background:#e8edf7;}\n    section{margin-bottom:2rem;}\n    .metrics{display:flex;flex-wrap:wrap;gap:1.5rem;}\n    .metric{background:white;border:1px solid #d0d7e2;padding:1rem;border-radius:6px;min-width:8rem;text-align:center;}\n    .metric strong{display:block;font-size:1.5rem;}\n    .tabs{display:flex;gap:0.75rem;margin:1.5rem 0;}\n    .tabs button{border:1px solid #2b4b80;background:white;color:#2b4b80;padding:0.45rem 1rem;border-radius:999px;cursor:pointer;font-weight:600;}\n    .tabs button.active{background:#2b4b80;color:white;}\n    .tab-pane{margin-top:1.5rem;}\n    .has-js .tab-pane{display:none;}\n    .has-js .tab-pane.active{display:block;}\n    .no-js .tabs{display:none;}\n    code{background:#eef1fb;padding:0.1rem 0.35rem;border-radius:4px;}\n    details{background:white;border:1px solid #d0d7e2;border-radius:8px;margin-bottom:1rem;padding:0.75rem;}\n    details[open]>summary{margin-bottom:0.5rem;}\n    summary{cursor:pointer;font-weight:600;}\n  </style>",
         "</head>",
-        f"<body class=\"no-js\" data-default-tab=\"{default_view}\">",
+        f'<body class="no-js" data-default-tab="{default_view}">',
         "  <h1>typewiz Dashboard</h1>",
-        f"  <p><strong>Generated:</strong> {h(str(summary.get('generatedAt', 'unknown')))}<br />",
-        f"     <strong>Project root:</strong> {h(str(summary.get('projectRoot', '')))}</p>",
-        "  <nav class=\"tabs\" role=\"tablist\">",
+        f"  <p><strong>Generated:</strong> {h(str(summary['generatedAt']))}<br />",
+        f"     <strong>Project root:</strong> {h(str(summary['projectRoot']))}</p>",
+        '  <nav class="tabs" role="tablist">',
     ]
 
     for tab in _TAB_ORDER:
         parts.append(
-            f"    <button type=\"button\" data-tab-target=\"{tab}\" role=\"tab\" aria-selected=\"false\">{_TAB_LABELS[tab]}</button>"
+            f'    <button type="button" data-tab-target="{tab}" role="tab" aria-selected="false">{_TAB_LABELS[tab]}</button>'
         )
     parts.append("  </nav>")
 
     # Overview tab
     parts.extend(
         [
-            "  <section class=\"tab-pane\" data-tab-pane=\"overview\">",
+            '  <section class="tab-pane" data-tab-pane="overview">',
             "    <section>",
             "      <h2>Severity Totals</h2>",
-            "      <div class=\"metrics\">",
+            '      <div class="metrics">',
             f"        <div class=\"metric\"><strong>{severity.get('error', 0)}</strong>Errors</div>",
             f"        <div class=\"metric\"><strong>{severity.get('warning', 0)}</strong>Warnings</div>",
             f"        <div class=\"metric\"><strong>{severity.get('information', 0)}</strong>Information</div>",
@@ -73,7 +75,7 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
     )
     if run_summary:
         for key, data in run_summary.items():
-            cmd = " ".join(h(str(part)) for part in data.get("command", []))
+            cmd = " ".join(h(part) for part in data.get("command", []))
             parts.append(
                 "          <tr>"
                 f"<td>{h(key)}</td>"
@@ -85,7 +87,7 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
                 "</tr>"
             )
     else:
-        parts.append("          <tr><td colspan=\"6\"><em>No runs recorded</em></td></tr>")
+        parts.append('          <tr><td colspan="6"><em>No runs recorded</em></td></tr>')
     parts.extend(
         [
             "        </tbody>",
@@ -101,22 +103,22 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
         return " ".join(f"<code>{h(str(item))}</code>" for item in items)
 
     # Engine details tab
-    parts.append("  <section class=\"tab-pane\" data-tab-pane=\"engines\">")
+    parts.append('  <section class="tab-pane" data-tab-pane="engines">')
     parts.append("    <h2>Engine Details</h2>")
     if run_summary:
         for key, data in run_summary.items():
             options = data.get("engineOptions", {}) or {}
             profile_value = options.get("profile")
             config_value = options.get("configFile")
-            plugin_args = [str(arg) for arg in options.get("pluginArgs", []) or []]
-            include = [str(item) for item in options.get("include", []) or []]
-            exclude = [str(item) for item in options.get("exclude", []) or []]
-            overrides = [dict(item) for item in options.get("overrides", []) or []]
+            plugin_args = options.get("pluginArgs", []) or []
+            include = options.get("include", []) or []
+            exclude = options.get("exclude", []) or []
+            overrides = options.get("overrides", []) or []
             profile_display = f"<code>{h(str(profile_value))}</code>" if profile_value else "—"
             config_display = f"<code>{h(str(config_value))}</code>" if config_value else "—"
             parts.extend(
                 [
-                    "    <details class=\"engine-options\" open>",
+                    '    <details class="engine-options" open>',
                     f"      <summary><strong>{h(key)}</strong></summary>",
                     "      <ul>",
                     f"        <li>Profile: {profile_display}</li>",
@@ -133,35 +135,47 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
                     detail_bits: list[str] = []
                     if entry.get("profile"):
                         detail_bits.append(f"profile=<code>{h(str(entry['profile']))}</code>")
-                    if entry.get("pluginArgs"):
+
+                    def _to_str_list(obj: object) -> list[str]:
+                        if isinstance(obj, list):
+                            from typing import cast as _cast
+
+                            return [str(x) for x in _cast(list[object], obj)]
+                        return []
+
+                    args_list = _to_str_list(entry.get("pluginArgs"))
+                    if args_list:
                         detail_bits.append(
-                            "plugin args="
-                            + " ".join(f"<code>{h(str(arg))}</code>" for arg in entry.get("pluginArgs", []))
+                            "plugin args=" + " ".join(f"<code>{h(arg)}</code>" for arg in args_list)
                         )
-                    if entry.get("include"):
+                    inc_list = _to_str_list(entry.get("include"))
+                    if inc_list:
                         detail_bits.append(
-                            "include="
-                            + " ".join(f"<code>{h(str(item))}</code>" for item in entry.get("include", []))
+                            "include=" + " ".join(f"<code>{h(item)}</code>" for item in inc_list)
                         )
-                    if entry.get("exclude"):
+                    exc_list = _to_str_list(entry.get("exclude"))
+                    if exc_list:
                         detail_bits.append(
-                            "exclude="
-                            + " ".join(f"<code>{h(str(item))}</code>" for item in entry.get("exclude", []))
+                            "exclude=" + " ".join(f"<code>{h(item)}</code>" for item in exc_list)
                         )
                     if not detail_bits:
                         detail_bits.append("no explicit changes")
-                    parts.append(f"          <li><code>{path}</code>: {'; '.join(detail_bits)}</li>")
+                    parts.append(
+                        f"          <li><code>{path}</code>: {'; '.join(detail_bits)}</li>"
+                    )
                 parts.append("        </ul></li>")
-            parts.extend([
-                "      </ul>",
-                "    </details>",
-            ])
+            parts.extend(
+                [
+                    "      </ul>",
+                    "    </details>",
+                ]
+            )
     else:
         parts.append("    <p>No engine data available.</p>")
     parts.append("  </section>")
 
     # Hotspots tab
-    parts.append("  <section class=\"tab-pane\" data-tab-pane=\"hotspots\">")
+    parts.append('  <section class="tab-pane" data-tab-pane="hotspots">')
     parts.append("    <h2>Hotspots</h2>")
     if top_rules:
         parts.extend(
@@ -192,7 +206,7 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
                 f"          <tr><td>{h(folder['path'])}</td><td>{folder['errors']}</td><td>{folder['warnings']}</td><td>{folder['information']}</td><td>{folder['participatingRuns']}</td></tr>"
             )
     else:
-        parts.append("          <tr><td colspan=\"5\"><em>No folder hotspots</em></td></tr>")
+        parts.append('          <tr><td colspan="5"><em>No folder hotspots</em></td></tr>')
     parts.extend(["        </tbody>", "      </table>", "    </section>"])
 
     parts.extend(
@@ -209,38 +223,40 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
                 f"          <tr><td>{h(file_entry['path'])}</td><td>{file_entry['errors']}</td><td>{file_entry['warnings']}</td></tr>"
             )
     else:
-        parts.append("          <tr><td colspan=\"3\"><em>No file hotspots</em></td></tr>")
+        parts.append('          <tr><td colspan="3"><em>No file hotspots</em></td></tr>')
     parts.extend(["        </tbody>", "      </table>", "    </section>"])
     parts.append("  </section>")
 
     # Readiness tab
-    parts.append("  <section class=\"tab-pane\" data-tab-pane=\"readiness\">")
+    parts.append('  <section class="tab-pane" data-tab-pane="readiness">')
     parts.append("    <h2>Strict Typing Readiness</h2>")
-    strict = readiness.get("strict", {})
+    strict = cast(dict[str, list[dict[str, object]]], readiness.get("strict", {}))
     ready_list = strict.get("ready", [])
     close_list = strict.get("close", [])
     blocked_list = strict.get("blocked", [])
     parts.extend(
         [
-            "    <div class=\"metrics\">",
-            f"      <div class=\"metric\"><strong>{len(ready_list)}</strong>Ready</div>",
-            f"      <div class=\"metric\"><strong>{len(close_list)}</strong>Close</div>",
-            f"      <div class=\"metric\"><strong>{len(blocked_list)}</strong>Blocked</div>",
+            '    <div class="metrics">',
+            f'      <div class="metric"><strong>{len(ready_list)}</strong>Ready</div>',
+            f'      <div class="metric"><strong>{len(close_list)}</strong>Close</div>',
+            f'      <div class="metric"><strong>{len(blocked_list)}</strong>Blocked</div>',
             "    </div>",
         ]
     )
 
-    def _render_strict_entries(label: str, entries: list[dict[str, Any]]) -> None:
+    def _render_strict_entries(label: str, entries: list[dict[str, object]]) -> None:
         if not entries:
             parts.append(f"    <p><strong>{label}:</strong> none</p>")
             return
-        parts.append(f"    <details open><summary><strong>{label}</strong> ({len(entries)})</summary>")
+        parts.append(
+            f"    <details open><summary><strong>{label}</strong> ({len(entries)})</summary>"
+        )
         parts.append("      <ul>")
         for entry in entries[:12]:
-            notes_list = cast(List[str], entry.get("notes") or entry.get("recommendations") or [])
+            notes_list = cast(list[str], entry.get("notes") or entry.get("recommendations") or [])
             note_text = f" — {', '.join(notes_list)}" if notes_list else ""
             parts.append(
-                f"        <li><code>{h(entry['path'])}</code> (diagnostics={entry['diagnostics']}){note_text}</li>"
+                f"        <li><code>{h(str(entry['path']))}</code> (diagnostics={entry['diagnostics']}){note_text}</li>"
             )
         if len(entries) > 12:
             parts.append(f"        <li>… plus {len(entries) - 12} more</li>")
@@ -251,14 +267,14 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
     _render_strict_entries("Close to strict", close_list)
     _render_strict_entries("Blocked", blocked_list)
 
-    options = readiness.get("options", {})
-    if options:
+    readiness_options = readiness.get("options", {})
+    if readiness_options:
         parts.append("    <section>")
         parts.append("      <h3>Per-option readiness</h3>")
         parts.append(
             "      <table><thead><tr><th>Option</th><th>Ready</th><th>Close</th><th>Blocked</th><th>Close threshold</th></tr></thead><tbody>"
         )
-        for category, buckets in options.items():
+        for category, buckets in readiness_options.items():
             label = CATEGORY_LABELS.get(category, category)
             parts.append(
                 "        <tr>"
@@ -275,9 +291,9 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
     parts.append("  </section>")
 
     # Runs tab
-    parts.append("  <section class=\"tab-pane\" data-tab-pane=\"runs\">")
+    parts.append('  <section class="tab-pane" data-tab-pane="runs">')
     parts.append("    <h2>Run Logs</h2>")
-    runs_tab = tabs.get("runs", {})
+    runs_tab = tabs["runs"]
     run_details = runs_tab.get("runSummary", run_summary)
     if run_details:
         for key, data in run_details.items():
@@ -285,7 +301,7 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
             cmd = " ".join(h(str(part)) for part in data.get("command", []))
             parts.extend(
                 [
-                    "    <details class=\"run-log\" open>",
+                    '    <details class="run-log" open>',
                     f"      <summary><strong>{h(key)}</strong> · command: <code>{cmd}</code></summary>",
                     "      <ul>",
                     f"        <li>Errors: {data.get('errors', 0)}</li>",
@@ -309,4 +325,4 @@ def render_html(summary: dict[str, Any], *, default_view: str = "overview") -> s
         ]
     )
 
-    return "\n".join(parts)
+    return "\n".join(parts) + "\n"

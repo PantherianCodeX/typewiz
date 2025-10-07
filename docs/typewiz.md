@@ -97,6 +97,42 @@ class MyRunner(BaseEngine):
 Expose additional arguments via the CLI with `--plugin-arg my-runner=--flag` or via the TOML config `plugin_args`
 section (see below).
 
+#### Engine Author Guide
+
+Engines are lightweight adapters that translate `typewiz` options into tool invocations and parse results.
+Implement the following on your engine class:
+
+- `name: str`
+  - A short identifier, e.g. `"pyright"`, `"mypy"`, used in CLI flags and manifests.
+
+- `run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult` (required)
+  - Construct the external command using:
+    - `context.engine_options.plugin_args`: merged/deduped args from CLI/config/profiles/overrides.
+    - `context.engine_options.config_file`: resolved config path if provided.
+    - `paths`: directories/files for the full run; empty for "current" mode.
+  - Execute your tool (see `typewiz.runner.run_pyright` / `run_mypy` as references) and return:
+    - `engine`: your `name`.
+    - `mode`: `"current"` or `"full"`.
+    - `command`: the argv used (for reproducibility and caching keys).
+    - `exit_code`, `duration_ms`.
+    - `diagnostics`: list of `Diagnostic` with stable path/line/column ordering.
+
+- `category_mapping(self) -> dict[str, list[str]]` (recommended)
+  - Map readiness categories to substrings of diagnostic codes for that tool, e.g.:
+    - `{ "unknownChecks": ["reportUnknown", "MissingType"], "optionalChecks": ["Optional", "None"], "unusedSymbols": ["Unused", "redundant"] }`.
+  - Used to drive the Readiness tab totals and recommendations; return an empty mapping if not applicable.
+
+- `fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]` (recommended)
+  - Return config files or extra inputs that should invalidate cache entries (e.g., `mypy.ini`, tool config, plugin lists).
+  - Always include the resolved engine-specific config when present; return an empty list if not needed.
+
+Best practices:
+
+- Keep command construction deterministic (sorted paths/args when applicable) to maximize cache hits.
+- Ensure diagnostics contain the original tool rule/code in `Diagnostic.code` when available.
+- Prefer JSON outputs for parsing stability; when parsing text, add resilient fallbacks and tests.
+- Use `EngineOptions.include`/`exclude` to honor per-engine path scoping and folder overrides.
+
 ### Configuration (typewiz.toml)
 
 Place a `typewiz.toml` in the project root or pass `--config` when running the CLI. Example:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Sequence, cast, TypedDict
+from collections.abc import Sequence
+from typing import TypedDict, cast
 
 # Category patterns and thresholds can be tuned here without touching renderers
 CATEGORY_PATTERNS: dict[str, tuple[str, ...]] = {
@@ -33,7 +34,7 @@ CATEGORY_LABELS = {
 }
 
 
-def _bucket_code_counts(code_counts: Dict[str, int]) -> Dict[str, int]:
+def _bucket_code_counts(code_counts: dict[str, int]) -> dict[str, int]:
     buckets = {category: 0 for category in CATEGORY_PATTERNS}
     for rule, count in code_counts.items():
         lowered = rule.lower()
@@ -62,18 +63,18 @@ class ReadinessEntry(TypedDict):
     errors: int
     warnings: int
     information: int
-    codeCounts: Dict[str, int]
-    categoryCounts: Dict[str, int]
-    recommendations: List[str]
+    codeCounts: dict[str, int]
+    categoryCounts: dict[str, int]
+    recommendations: list[str]
 
 
-def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> Dict[str, Any]:
+def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, object]:
     """Compute strict typing readiness for folders.
 
     Input folder_entries should contain keys: path, errors, warnings, information,
     and optionally codeCounts, recommendations.
     """
-    readiness: Dict[str, Any] = {
+    readiness: dict[str, object] = {
         "strict": {"ready": [], "close": [], "blocked": []},
         "options": {
             category: {
@@ -104,16 +105,19 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> Dict[str, Any
         else:
             code_counts = entry.get("codeCounts", {})
             categories = _bucket_code_counts(code_counts)
+
         class CategoryMeta(TypedDict):
             status: str
             count: int
-        category_status: Dict[str, CategoryMeta] = {}
+
+        category_status: dict[str, CategoryMeta] = {}
         for category in CATEGORY_PATTERNS:
             count = categories.get(category, 0)
             status = _status_for_category(category, count)
             category_status[category] = {"status": status, "count": count}
-            options_bucket = cast(Dict[str, Any], readiness["options"][category])
-            status_list = cast(List[Dict[str, Any]], options_bucket[status])
+            options_map = cast(dict[str, object], readiness["options"])
+            options_bucket = cast(dict[str, object], options_map[category])
+            status_list = cast(list[dict[str, object]], options_bucket[status])
             status_list.append(
                 {
                     "path": entry["path"],
@@ -127,7 +131,7 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> Dict[str, Any
         if total_diagnostics == 0:
             strict_status = "ready"
         else:
-            blocking_categories: List[str] = [
+            blocking_categories: list[str] = [
                 cat
                 for cat, meta in category_status.items()
                 if meta["status"] == "blocked" and cat != "general"
@@ -137,7 +141,7 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> Dict[str, Any
             else:
                 strict_status = "blocked"
 
-        strict_entry: Dict[str, Any] = {
+        strict_entry: dict[str, object] = {
             "path": entry["path"],
             "errors": entry.get("errors", 0),
             "warnings": entry.get("warnings", 0),
@@ -156,7 +160,8 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> Dict[str, Any
             if blockers:
                 strict_entry["notes"] = blockers
 
-        strict_bucket = cast(List[Dict[str, Any]], readiness["strict"][strict_status])
+        strict_map = cast(dict[str, object], readiness["strict"])
+        strict_bucket = cast(list[dict[str, object]], strict_map[strict_status])
         strict_bucket.append(strict_entry)
 
     return readiness

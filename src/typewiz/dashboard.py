@@ -2,26 +2,26 @@ from __future__ import annotations
 
 import json
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, Mapping, List, Sequence, cast
-
 from typing import cast
 
-from .typed_manifest import ManifestData
-from .readiness import compute_readiness, CATEGORY_LABELS, ReadinessEntry
+from .readiness import CATEGORY_LABELS, ReadinessEntry, compute_readiness
+from .summary_types import SummaryData, SummaryFileEntry, SummaryFolderEntry, SummaryRunEntry
+from .typed_manifest import ManifestData, RunPayload
 
 
 def load_manifest(path: Path) -> ManifestData:
     return cast(ManifestData, json.loads(path.read_text(encoding="utf-8")))
 
 
-def _collect_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, Any]:
+def _collect_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, object]:
     return compute_readiness(folder_entries)
 
 
-def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
-    runs = manifest.get("runs", [])
-    run_summary: dict[str, Any] = {}
+def build_summary(manifest: ManifestData) -> SummaryData:
+    runs = manifest["runs"]
+    run_summary: dict[str, SummaryRunEntry] = {}
     folder_totals: dict[str, Counter[str]] = defaultdict(Counter)
     folder_counts: dict[str, int] = defaultdict(int)
     folder_code_totals: dict[str, Counter[str]] = defaultdict(Counter)
@@ -32,12 +32,12 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
     category_totals: Counter[str] = Counter()
     folder_category_totals: dict[str, Counter[str]] = defaultdict(Counter)
 
-    for run in runs:
-        key = f"{run.get('tool')}:{run.get('mode')}"
+    for run in cast(Sequence[RunPayload], runs):
+        key = f"{run['tool']}:{run['mode']}"
         summary = run.get("summary", {})
         options = run.get("engineOptions", {})
         run_summary[key] = {
-            "command": run.get("command"),
+            "command": list(run.get("command", [])),
             "errors": summary.get("errors", 0),
             "warnings": summary.get("warnings", 0),
             "information": summary.get("information", 0),
@@ -85,7 +85,7 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 )
             )
 
-    folder_entries_full: List[ReadinessEntry] = []
+    folder_entries_full: list[ReadinessEntry] = []
     for path, counts in folder_totals.items():
         folder_entries_full.append(
             {
@@ -110,10 +110,14 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
     readiness = _collect_readiness(cast(Sequence[ReadinessEntry], folder_entries_full))
 
     top_rules_dict = dict(rule_totals.most_common(20))
-    folder_entry_lookup: Dict[str, ReadinessEntry] = {entry["path"]: entry for entry in folder_entries_full}
-    top_folders_list = []
+    folder_entry_lookup: dict[str, ReadinessEntry] = {
+        entry["path"]: entry for entry in folder_entries_full
+    }
+    top_folders_list: list[SummaryFolderEntry] = []
     for path, counts in top_folders:
-        entry = folder_entry_lookup.get(path, {})
+        folder_entry = folder_entry_lookup.get(path)
+        code_counts: dict[str, int] = dict(folder_entry["codeCounts"]) if folder_entry else {}
+        recommendations: list[str] = list(folder_entry["recommendations"]) if folder_entry else []
         top_folders_list.append(
             {
                 "path": path,
@@ -121,57 +125,61 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 "warnings": counts["warnings"],
                 "information": counts["information"],
                 "participatingRuns": folder_counts[path],
-                "codeCounts": entry.get("codeCounts", {}),
-                "recommendations": entry.get("recommendations", []),
+                "codeCounts": code_counts,
+                "recommendations": recommendations,
             }
         )
-    top_files_list = [
-        {"path": path, "errors": errors, "warnings": warnings} for path, errors, warnings in top_files
+    top_files_list: list[SummaryFileEntry] = [
+        {"path": path, "errors": errors, "warnings": warnings}
+        for path, errors, warnings in top_files
     ]
 
-    return {
-        "generatedAt": manifest.get("generatedAt"),
-        "projectRoot": manifest.get("projectRoot"),
-        "runSummary": run_summary,
-        "severityTotals": dict(severity_totals),
-        "categoryTotals": dict(category_totals),
-        "topRules": top_rules_dict,
-        "topFolders": top_folders_list,
-        "topFiles": top_files_list,
-        "tabs": {
-            "overview": {
-                "severityTotals": dict(severity_totals),
-                "categoryTotals": dict(category_totals),
-                "runSummary": run_summary,
-            },
-            "engines": {
-                "runSummary": run_summary,
-            },
-            "hotspots": {
-                "topRules": top_rules_dict,
-                "topFolders": top_folders_list,
-                "topFiles": top_files_list,
-            },
-            "readiness": readiness,
-            "runs": {
-                "runSummary": run_summary,
+    return cast(
+        SummaryData,
+        {
+            "generatedAt": manifest.get("generatedAt"),
+            "projectRoot": manifest.get("projectRoot"),
+            "runSummary": run_summary,
+            "severityTotals": dict(severity_totals),
+            "categoryTotals": dict(category_totals),
+            "topRules": top_rules_dict,
+            "topFolders": top_folders_list,
+            "topFiles": top_files_list,
+            "tabs": {
+                "overview": {
+                    "severityTotals": dict(severity_totals),
+                    "categoryTotals": dict(category_totals),
+                    "runSummary": run_summary,
+                },
+                "engines": {
+                    "runSummary": run_summary,
+                },
+                "hotspots": {
+                    "topRules": top_rules_dict,
+                    "topFolders": top_folders_list,
+                    "topFiles": top_files_list,
+                },
+                "readiness": readiness,
+                "runs": {
+                    "runSummary": run_summary,
+                },
             },
         },
-    }
+    )
 
 
-def render_markdown(summary: dict[str, Any]) -> str:
-    tabs = summary.get("tabs", {})
-    overview = tabs.get("overview", {})
-    run_summary = overview.get("runSummary", summary.get("runSummary", {}))
-    severity = overview.get("severityTotals", summary.get("severityTotals", {}))
-    hotspots = tabs.get("hotspots", {})
+def render_markdown(summary: SummaryData) -> str:
+    tabs = summary["tabs"]
+    overview = tabs["overview"]
+    run_summary = overview["runSummary"]
+    severity = overview["severityTotals"]
+    hotspots = tabs["hotspots"]
 
     lines: list[str] = [
         "# typewiz Dashboard",
         "",
-        f"- Generated at: {summary.get('generatedAt')}",
-        f"- Project root: `{summary.get('projectRoot')}`",
+        f"- Generated at: {summary['generatedAt']}",
+        f"- Project root: `{summary['projectRoot']}`",
     ]
 
     if severity:
@@ -209,7 +217,9 @@ def render_markdown(summary: dict[str, Any]) -> str:
             options = data.get("engineOptions", {})
             profile = options.get("profile") or "—"
             config_file = options.get("configFile") or "—"
-            plugin_args = ", ".join(f"`{arg}`" for arg in options.get("pluginArgs", []) or []) or "—"
+            plugin_args = (
+                ", ".join(f"`{arg}`" for arg in options.get("pluginArgs", []) or []) or "—"
+            )
             include = ", ".join(f"`{path}`" for path in options.get("include", []) or []) or "—"
             exclude = ", ".join(f"`{path}`" for path in options.get("exclude", []) or []) or "—"
             lines.extend(
@@ -227,18 +237,29 @@ def render_markdown(summary: dict[str, Any]) -> str:
             if overrides:
                 lines.append("- Folder overrides:")
                 for override in overrides:
-                    path = override.get("path", "—")
+                    path = str(override.get("path", "—"))
                     details: list[str] = []
                     if override.get("profile"):
                         details.append(f"profile={override['profile']}")
-                    if override.get("pluginArgs"):
-                        args_list = ", ".join(f"`{arg}`" for arg in override.get("pluginArgs", []))
+
+                    def _to_str_list(obj: object) -> list[str]:
+                        if isinstance(obj, list):
+                            from typing import cast as _cast
+
+                            return [str(x) for x in _cast(list[object], obj)]
+                        return []
+
+                    plugin_args_list = _to_str_list(override.get("pluginArgs"))
+                    if plugin_args_list:
+                        args_list = ", ".join(f"`{arg}`" for arg in plugin_args_list)
                         details.append(f"plugin args: {args_list}")
-                    if override.get("include"):
-                        inc_list = ", ".join(f"`{item}`" for item in override.get("include", []))
+                    include_list = _to_str_list(override.get("include"))
+                    if include_list:
+                        inc_list = ", ".join(f"`{item}`" for item in include_list)
                         details.append(f"include: {inc_list}")
-                    if override.get("exclude"):
-                        exc_list = ", ".join(f"`{item}`" for item in override.get("exclude", []))
+                    exclude_list = _to_str_list(override.get("exclude"))
+                    if exclude_list:
+                        exc_list = ", ".join(f"`{item}`" for item in exclude_list)
                         details.append(f"exclude: {exc_list}")
                     if not details:
                         details.append("no explicit changes")
@@ -263,7 +284,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
     else:
         lines.append("- No diagnostic rules recorded")
 
-    top_folders = hotspots.get("topFolders", summary.get("topFolders", []))
+    top_folders = hotspots.get("topFolders", [])
     lines.extend(
         [
             "",
@@ -281,7 +302,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
     else:
         lines.append("| _No folder hotspots_ | 0 | 0 | 0 | 0 |")
 
-    top_files = hotspots.get("topFiles", summary.get("topFiles", []))
+    top_files = hotspots.get("topFiles", [])
     lines.extend(
         [
             "",
@@ -293,13 +314,15 @@ def render_markdown(summary: dict[str, Any]) -> str:
     )
     if top_files:
         for file_entry in top_files:
-            lines.append(f"| `{file_entry['path']}` | {file_entry['errors']} | {file_entry['warnings']} |")
+            lines.append(
+                f"| `{file_entry['path']}` | {file_entry['errors']} | {file_entry['warnings']} |"
+            )
     else:
         lines.append("| _No file hotspots_ | 0 | 0 |")
 
     lines.extend(["", "### Run logs"])
     readiness_tab = tabs.get("readiness", {})
-    runs_tab = tabs.get("runs", {})
+    runs_tab = tabs["runs"]
     run_details = runs_tab.get("runSummary", run_summary)
     if run_details:
         for key, data in run_details.items():
@@ -321,7 +344,7 @@ def render_markdown(summary: dict[str, Any]) -> str:
     lines.extend(["", "### Readiness snapshot"])
     strict = readiness_tab.get("strict", {})
 
-    def _format_entry_list(entries: list[dict[str, Any]], limit: int = 8) -> str:
+    def _format_entry_list(entries: Sequence[dict[str, object]], limit: int = 8) -> str:
         if not entries:
             return "—"
         paths = [f"`{entry['path']}`" for entry in entries[:limit]]
@@ -329,27 +352,23 @@ def render_markdown(summary: dict[str, Any]) -> str:
             paths.append(f"… +{len(entries) - limit} more")
         return ", ".join(paths)
 
-    lines.append(
-        f"- Ready for strict typing: {_format_entry_list(strict.get('ready', []))}"
-    )
-    lines.append(
-        f"- Close to strict typing: {_format_entry_list(strict.get('close', []))}"
-    )
-    lines.append(
-        f"- Blocked folders: {_format_entry_list(strict.get('blocked', []))}"
-    )
+    ready_entries = cast(list[dict[str, object]], strict.get("ready", []))
+    close_entries = cast(list[dict[str, object]], strict.get("close", []))
+    blocked_entries = cast(list[dict[str, object]], strict.get("blocked", []))
 
-    options = readiness_tab.get("options", {})
-    if options:
+    lines.append(f"- Ready for strict typing: {_format_entry_list(ready_entries)}")
+    lines.append(f"- Close to strict typing: {_format_entry_list(close_entries)}")
+    lines.append(f"- Blocked folders: {_format_entry_list(blocked_entries)}")
+
+    readiness_options = readiness_tab.get("options", {})
+    if readiness_options:
         lines.extend(["", "#### Per-option readiness"])
-        for category, buckets in options.items():
+        for category, buckets in readiness_options.items():
             label = CATEGORY_LABELS.get(category, category)
             lines.append(f"- **{label}** (≤{buckets.get('threshold', 0)} to be close):")
             for status in ("ready", "close", "blocked"):
-                entries = buckets.get(status, [])
-                lines.append(
-                    f"  - {status.title()}: {_format_entry_list(entries)}"
-                )
+                entries = cast(list[dict[str, object]], buckets.get(status, []))
+                lines.append(f"  - {status.title()}: {_format_entry_list(entries)}")
 
     lines.append("")
     return "\n".join(lines)

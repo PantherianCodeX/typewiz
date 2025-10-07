@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from functools import lru_cache
 from importlib import metadata
-from typing import Dict, Iterable, List
 
 from .base import BaseEngine
 from .mypy import MypyEngine
@@ -11,15 +11,15 @@ from .pyright import PyrightEngine
 ENTRY_POINT_GROUP = "typewiz.engines"
 
 
-@lru_cache()
-def builtin_engines() -> Dict[str, BaseEngine]:
-    engines: List[BaseEngine] = [PyrightEngine(), MypyEngine()]
+@lru_cache
+def builtin_engines() -> dict[str, BaseEngine]:
+    engines: list[BaseEngine] = [PyrightEngine(), MypyEngine()]
     return {engine.name: engine for engine in engines}
 
 
-@lru_cache()
-def entrypoint_engines() -> Dict[str, BaseEngine]:
-    engines: Dict[str, BaseEngine] = {}
+@lru_cache
+def entrypoint_engines() -> dict[str, BaseEngine]:
+    engines: dict[str, BaseEngine] = {}
     try:
         eps = metadata.entry_points()
     except Exception:  # pragma: no cover
@@ -33,17 +33,17 @@ def entrypoint_engines() -> Dict[str, BaseEngine]:
     return dict(sorted(engines.items()))
 
 
-def engine_map() -> Dict[str, BaseEngine]:
+def engine_map() -> dict[str, BaseEngine]:
     mapping = dict(builtin_engines())
     mapping.update(entrypoint_engines())
     return mapping
 
 
-def resolve_engines(names: Iterable[str] | None) -> List[BaseEngine]:
+def resolve_engines(names: Iterable[str] | None) -> list[BaseEngine]:
     mapping = engine_map()
     if not names:
         return list(mapping.values())
-    resolved: List[BaseEngine] = []
+    resolved: list[BaseEngine] = []
     for name in names:
         if name not in mapping:
             raise ValueError(f"Unknown engine '{name}'")

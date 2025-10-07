@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Counter
+
+
+def _default_raw_mapping() -> Mapping[str, object]:
+    return {}
 
 
 @dataclass(slots=True)
@@ -14,7 +19,7 @@ class Diagnostic:
     column: int
     code: str | None
     message: str
-    raw: dict[str, Any] = field(default_factory=dict)
+    raw: Mapping[str, object] = field(default_factory=_default_raw_mapping)
 
     def category(self) -> str:
         code = (self.code or "").lower()
@@ -25,6 +30,18 @@ class Diagnostic:
         if "warnunused" in code:
             return "unused"
         return "general"
+
+
+def _default_str_list() -> list[str]:
+    return []
+
+
+def _default_overrides_list() -> list[dict[str, object]]:
+    return []
+
+
+def _default_category_mapping() -> dict[str, list[str]]:
+    return {}
 
 
 @dataclass(slots=True)
@@ -38,11 +55,11 @@ class RunResult:
     cached: bool = False
     profile: str | None = None
     config_file: Path | None = None
-    plugin_args: list[str] = field(default_factory=list)
-    include: list[str] = field(default_factory=list)
-    exclude: list[str] = field(default_factory=list)
-    overrides: list[dict[str, object]] = field(default_factory=list)
-    category_mapping: dict[str, list[str]] = field(default_factory=dict)
+    plugin_args: list[str] = field(default_factory=_default_str_list)
+    include: list[str] = field(default_factory=_default_str_list)
+    exclude: list[str] = field(default_factory=_default_str_list)
+    overrides: list[dict[str, object]] = field(default_factory=_default_overrides_list)
+    category_mapping: dict[str, list[str]] = field(default_factory=_default_category_mapping)
 
     def severity_counts(self) -> Counter[str]:
         counts: Counter[str] = Counter()
