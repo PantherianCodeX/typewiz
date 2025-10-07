@@ -29,6 +29,21 @@ Options:
 - `--summary {compact,expanded,full}` – choose the CLI summary layout (`full` expands and shows every field).
 - `--summary-fields profile,paths` – comma-separated extras to display alongside the summary (ignored when `--summary full` is used).
 
+#### Directory overrides
+
+Place a `typewiz.dir.toml` (or `.typewizdir.toml`) within a subdirectory to scope additional configuration to that tree:
+
+```toml
+[active_profiles]
+pyright = "strict"
+
+[engines.pyright]
+plugin_args = ["--project", "pyrightconfig.billing.json"]
+exclude = ["legacy"]
+```
+
+Paths in `include`/`exclude` are resolved relative to the override file; engine settings and profiles are merged with the root configuration.
+
 ### Dashboard summaries
 
 Generate a condensed dashboard view from an existing manifest:

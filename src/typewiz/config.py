@@ -48,11 +48,19 @@ class AuditConfig:
     plugin_args: dict[str, list[str]] = field(default_factory=dict)
     engine_settings: dict[str, EngineSettings] = field(default_factory=dict)
     active_profiles: dict[str, str] = field(default_factory=dict)
+    path_overrides: list["PathOverride"] = field(default_factory=list)
 
 
 @dataclass(slots=True)
 class Config:
     audit: AuditConfig = field(default_factory=AuditConfig)
+
+
+@dataclass(slots=True)
+class PathOverride:
+    path: Path
+    engine_settings: dict[str, EngineSettings] = field(default_factory=dict)
+    active_profiles: dict[str, str] = field(default_factory=dict)
 
 
 def _ensure_list(value: object | None) -> list[str] | None:
@@ -147,6 +155,29 @@ class EngineSettingsModel(BaseModel):
             raise ValueError(
                 f"default_profile '{self.default_profile}' is not defined in profiles"
             )
+        return self
+
+
+class PathOverrideModel(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    engines: Dict[str, EngineSettingsModel] = Field(default_factory=dict)
+    active_profiles: Dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _normalise(self) -> "PathOverrideModel":
+        engines = {}
+        for key in sorted(self.engines):
+            engines[key.strip()] = self.engines[key]
+        object.__setattr__(self, "engines", engines)
+        profiles = {}
+        for key, value in sorted(self.active_profiles.items()):
+            profiles[key.strip()] = value.strip()
+        object.__setattr__(self, "active_profiles", profiles)
+        for engine, profile in profiles.items():
+            settings = engines.get(engine)
+            if settings and profile:
+                # validation of profile presence happens when merged.
+                continue
         return self
 
 
@@ -259,6 +290,16 @@ def _engine_settings_from_model(model: EngineSettingsModel) -> EngineSettings:
     return settings
 
 
+def _path_override_from_model(path: Path, model: PathOverrideModel) -> PathOverride:
+    override = PathOverride(path=path)
+    override.engine_settings = {
+        name: _engine_settings_from_model(settings_model)
+        for name, settings_model in model.engines.items()
+    }
+    override.active_profiles = dict(model.active_profiles)
+    return override
+
+
 def _model_to_dataclass(model: AuditConfigModel) -> AuditConfig:
     data = model.model_dump(mode="python")
     engine_settings_models = model.engine_settings
@@ -288,6 +329,38 @@ def _resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:
         for profile in settings.profiles.values():
             if profile.config_file and not profile.config_file.is_absolute():
                 profile.config_file = (base_dir / profile.config_file).resolve()
+    for override in audit.path_overrides:
+        if not override.path.is_absolute():
+            override.path = (base_dir / override.path).resolve()
+        for settings in override.engine_settings.values():
+            if settings.config_file and not settings.config_file.is_absolute():
+                settings.config_file = (override.path / settings.config_file).resolve()
+            for profile in settings.profiles.values():
+                if profile.config_file and not profile.config_file.is_absolute():
+                    profile.config_file = (override.path / profile.config_file).resolve()
+
+
+def _discover_path_overrides(root: Path) -> list[PathOverride]:
+    overrides: list[PathOverride] = []
+    visited: set[Path] = set()
+    for filename in FOLDER_CONFIG_FILENAMES:
+        for config_path in sorted(root.rglob(filename)):
+            if not config_path.is_file():
+                continue
+            directory = config_path.parent.resolve()
+            try:
+                raw = toml.loads(config_path.read_text(encoding="utf-8"))
+            except Exception as exc:  # pragma: no cover - IO errors
+                raise ValueError(f"Unable to read {config_path}: {exc}") from exc
+            try:
+                model = PathOverrideModel.model_validate(raw)
+            except ValidationError as exc:
+                raise ValueError(f"Invalid typewiz directory override in {config_path}: {exc}") from exc
+            override = _path_override_from_model(directory, model)
+            overrides.append(override)
+            visited.add(directory)
+    overrides.sort(key=lambda item: (len(item.path.parts), item.path.as_posix()))
+    return overrides
 
 
 def load_config(explicit_path: Path | None = None) -> Config:
@@ -311,7 +384,14 @@ def load_config(explicit_path: Path | None = None) -> Config:
         except ValidationError as exc:  # pragma: no cover - configuration errors
             raise ValueError(f"Invalid typewiz configuration in {candidate}: {exc}") from exc
         audit = _model_to_dataclass(cfg_model.audit)
-        _resolve_path_fields(candidate.parent.resolve(), audit)
+        root = candidate.parent.resolve()
+        audit.path_overrides = _discover_path_overrides(root)
+        _resolve_path_fields(root, audit)
         return Config(audit=audit)
 
-    return Config()
+    root = Path.cwd().resolve()
+    cfg = Config()
+    cfg.audit.path_overrides = _discover_path_overrides(root)
+    _resolve_path_fields(root, cfg.audit)
+    return cfg
+FOLDER_CONFIG_FILENAMES: tuple[str, ...] = ("typewiz.dir.toml", ".typewizdir.toml")

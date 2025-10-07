@@ -109,3 +109,41 @@ def test_merge_config_merges_engine_settings() -> None:
     assert settings.profiles["strict"].plugin_args == ["--strict", "--stricter"]
     assert settings.profiles["lenient"].plugin_args == ["--lenient"]
     assert merged.active_profiles["stub"] == "lenient"
+
+
+def test_load_config_discovers_folder_overrides(tmp_path: Path) -> None:
+    config_path = tmp_path / "typewiz.toml"
+    config_path.write_text(
+        """
+config_version = 0
+
+[audit]
+full_paths = ["src"]
+""",
+        encoding="utf-8",
+    )
+    package_dir = tmp_path / "packages" / "billing"
+    package_dir.mkdir(parents=True, exist_ok=True)
+    override = package_dir / "typewiz.dir.toml"
+    override.write_text(
+        """
+[active_profiles]
+pyright = "strict"
+
+[engines.pyright]
+plugin_args = ["--project", "pyrightconfig.billing.json"]
+include = ["."]
+exclude = ["legacy"]
+""",
+        encoding="utf-8",
+    )
+
+    cfg = load_config(config_path)
+    assert cfg.audit.path_overrides
+    first = cfg.audit.path_overrides[0]
+    assert first.path == package_dir
+    assert first.active_profiles == {"pyright": "strict"}
+    settings = first.engine_settings["pyright"]
+    assert settings.plugin_args == ["--project", "pyrightconfig.billing.json"]
+    # Include defaults to folder when "." used
+    assert settings.include == ["."]

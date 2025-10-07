@@ -82,6 +82,22 @@ python -m typewiz audit --summary expanded --summary-fields profile,plugin-args
 
 `--summary full` expands output and automatically includes all fields (`profile`, `config`, `plugin-args`, `paths`).
 
+### Folder overrides
+
+Drop a `typewiz.dir.toml` (or `.typewizdir.toml`) inside any folder to tune engines for that subtree:
+
+```toml
+[active_profiles]
+pyright = "baseline"
+
+[engines.pyright]
+plugin_args = ["--project", "pyrightconfig.pkg.json"]
+include = ["."]
+exclude = ["legacy"]
+```
+
+Overrides apply in addition to the root config: plugin arguments are merged and deduplicated, profiles cascade, and relative include/exclude paths are resolved from the directory containing the override file.
+
 ### Incremental caching
 
 Each engine stores its diagnostics in `.typewiz_cache.json`. The cache key captures:

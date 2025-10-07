@@ -7,7 +7,14 @@ from pathlib import Path
 from typing import Sequence
 
 from .cache import EngineCache, collect_file_hashes
-from .config import AuditConfig, Config, EngineProfile, EngineSettings, load_config
+from .config import (
+    AuditConfig,
+    Config,
+    EngineProfile,
+    EngineSettings,
+    PathOverride,
+    load_config,
+)
 from .dashboard import build_summary, render_markdown
 from .engines import EngineContext, EngineOptions, resolve_engines
 from .html_report import render_html
@@ -95,6 +102,19 @@ def _merge_engine_settings_map(
     return result
 
 
+def _clone_path_overrides(overrides: Sequence[PathOverride]) -> list[PathOverride]:
+    cloned: list[PathOverride] = []
+    for override in overrides:
+        cloned.append(
+            PathOverride(
+                path=override.path,
+                engine_settings=_clone_engine_settings_map(override.engine_settings),
+                active_profiles=dict(override.active_profiles),
+            )
+        )
+    return cloned
+
+
 def _clone_config(source: AuditConfig) -> AuditConfig:
     return AuditConfig(
         manifest_path=source.manifest_path,
@@ -110,6 +130,7 @@ def _clone_config(source: AuditConfig) -> AuditConfig:
         plugin_args={k: list(v) for k, v in source.plugin_args.items()},
         engine_settings=_clone_engine_settings_map(source.engine_settings),
         active_profiles=dict(source.active_profiles),
+        path_overrides=_clone_path_overrides(source.path_overrides),
     )
 
 
@@ -147,6 +168,8 @@ def _merge_configs(base: AuditConfig, override: AuditConfig | None) -> AuditConf
     )
     merged.active_profiles = dict(base_copy.active_profiles)
     merged.active_profiles.update({k: v for k, v in override.active_profiles.items() if v})
+    if override.path_overrides:
+        merged.path_overrides.extend(_clone_path_overrides(override.path_overrides))
     return merged
 
 
@@ -201,6 +224,27 @@ def _fingerprint_targets(
     return ordered
 
 
+def _normalise_override_entries(
+    project_root: Path, override_path: Path, entries: Sequence[str]
+) -> list[str]:
+    if not entries:
+        entries = ["."]
+    normalised: list[str] = []
+    seen: set[str] = set()
+    for entry in entries:
+        candidate = Path(entry)
+        if not candidate.is_absolute():
+            candidate = (override_path / candidate).resolve()
+        try:
+            relative = candidate.resolve().relative_to(project_root.resolve()).as_posix()
+        except ValueError:
+            relative = candidate.resolve().as_posix()
+        if relative not in seen:
+            seen.add(relative)
+            normalised.append(relative)
+    return normalised
+
+
 def _resolve_engine_options(
     project_root: Path, audit_config: AuditConfig, engine_name: str
 ) -> EngineOptions:
@@ -233,6 +277,46 @@ def _resolve_engine_options(
         config_file = profile.config_file
     elif settings and settings.config_file:
         config_file = settings.config_file
+
+    def _override_sort_key(item: PathOverride) -> tuple[int, str]:
+        try:
+            rel = item.path.resolve().relative_to(project_root.resolve())
+            depth = len(rel.parts)
+        except ValueError:
+            depth = len(item.path.resolve().parts)
+        return (depth, item.path.as_posix())
+
+    overrides = sorted(audit_config.path_overrides, key=_override_sort_key)
+
+    for override in overrides:
+        override_profile = override.active_profiles.get(engine_name)
+        if override_profile:
+            profile_name = override_profile
+        path_settings = override.engine_settings.get(engine_name)
+        if not path_settings:
+            continue
+        plugin_args = _merge_list(plugin_args, path_settings.plugin_args)
+        include_override = _normalise_override_entries(project_root, override.path, path_settings.include)
+        exclude_override = _normalise_override_entries(project_root, override.path, path_settings.exclude)
+        include = _merge_list(include, include_override)
+        exclude = _merge_list(exclude, exclude_override)
+        if path_settings.config_file:
+            config_file = path_settings.config_file
+        if path_settings.default_profile:
+            profile_name = path_settings.default_profile
+        profile_override = path_settings.profiles.get(profile_name) if path_settings.profiles else None
+        if profile_override:
+            plugin_args = _merge_list(plugin_args, profile_override.plugin_args)
+            include = _merge_list(
+                include,
+                _normalise_override_entries(project_root, override.path, profile_override.include),
+            )
+            exclude = _merge_list(
+                exclude,
+                _normalise_override_entries(project_root, override.path, profile_override.exclude),
+            )
+            if profile_override.config_file:
+                config_file = profile_override.config_file
 
     return EngineOptions(
         plugin_args=plugin_args,

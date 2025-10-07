@@ -139,3 +139,69 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     run_payload = result.manifest["runs"][0]
     assert run_payload["engineOptions"]["profile"] == "strict"
     assert run_payload["engineOptions"]["include"] == ["extra"]
+
+
+def test_run_audit_respects_folder_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    class RecordingEngine:
+        name = "stub"
+
+        def __init__(self) -> None:
+            self.invocations: list[EngineContext] = []
+
+        def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+            self.invocations.append(context)
+            return EngineResult(
+                engine=self.name,
+                mode=context.mode,
+                command=["stub", context.mode],
+                exit_code=0,
+                duration_ms=0.1,
+                diagnostics=[],
+            )
+
+    engine = RecordingEngine()
+    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
+    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+
+    root_config = tmp_path / "typewiz.toml"
+    root_config.write_text(
+        """
+config_version = 0
+
+[audit]
+full_paths = ["packages"]
+runners = ["stub"]
+""",
+        encoding="utf-8",
+    )
+
+    packages = tmp_path / "packages"
+    billing = packages / "billing"
+    billing.mkdir(parents=True, exist_ok=True)
+    (billing / "module.py").write_text("x = 1\n", encoding="utf-8")
+    override = billing / "typewiz.dir.toml"
+    override.write_text(
+        """
+[active_profiles]
+stub = "strict"
+
+[engines.stub]
+plugin_args = ["--billing"]
+exclude = ["legacy"]
+""",
+        encoding="utf-8",
+    )
+
+    monkeypatch.chdir(tmp_path)
+    result = run_audit(project_root=tmp_path, config=None, build_summary_output=False)
+
+    assert engine.invocations
+    full_context = next(ctx for ctx in engine.invocations if ctx.mode == "full")
+    assert full_context.engine_options.profile == "strict"
+    assert "--billing" in full_context.engine_options.plugin_args
+    assert any("packages/billing" in path for path in full_context.engine_options.include)
+    assert any("packages/billing/legacy" in path for path in full_context.engine_options.exclude)
+
+    run_payload = next(run for run in result.manifest["runs"] if run["mode"] == "full")
+    assert run_payload["engineOptions"]["profile"] == "strict"
+    assert "--billing" in run_payload["engineOptions"]["pluginArgs"]
