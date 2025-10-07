@@ -237,6 +237,26 @@ def render_markdown(summary: SummaryData) -> str:
                     f"- Exclude paths: {exclude}",
                 ]
             )
+            # If the raw tool totals are present, surface them for transparency.
+            tool_totals = data.get("toolSummary")
+            if isinstance(tool_totals, dict) and tool_totals:
+                t_errors = int(tool_totals.get("errors", 0))
+                t_warnings = int(tool_totals.get("warnings", 0))
+                t_info = int(tool_totals.get("information", 0))
+                t_total = int(tool_totals.get("total", t_errors + t_warnings + t_info))
+                p_errors = int(data.get("errors", 0))
+                p_warnings = int(data.get("warnings", 0))
+                p_info = int(data.get("information", 0))
+                p_total = int(data.get("total", p_errors + p_warnings + p_info))
+                mismatch = t_errors != p_errors or t_warnings != p_warnings or t_total != p_total
+                mismatch_note = (
+                    f" (mismatch vs parsed: {p_errors}/{p_warnings}/{p_info} total={p_total})"
+                    if mismatch
+                    else ""
+                )
+                lines.append(
+                    f"- Tool totals: errors={t_errors}, warnings={t_warnings}, information={t_info}, total={t_total}{mismatch_note}"
+                )
             overrides = options.get("overrides", []) or []
             if overrides:
                 lines.append("- Folder overrides:")
