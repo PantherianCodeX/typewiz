@@ -12,7 +12,7 @@ from .typed_manifest import (
     FileEntry,
     FolderEntry,
 )
-from .types import Diagnostic, RunResult
+from .types import RunResult
 
 
 @dataclass(slots=True)
@@ -81,16 +81,12 @@ class FolderSummary:
 def _canonical_category_mapping(mapping: Mapping[str, Iterable[str]]) -> dict[str, tuple[str, ...]]:
     canonical: dict[str, tuple[str, ...]] = {}
     for key, raw_values in mapping.items():
-        if not isinstance(key, str):
-            continue
         key_str = key.strip()
         if not key_str:
             continue
         seen: set[str] = set()
         cleaned: list[str] = []
         for raw in raw_values:
-            if not isinstance(raw, str):
-                continue
             candidate = raw.strip()
             if not candidate:
                 continue

@@ -16,7 +16,7 @@ class CacheEntry:
     command: list[str]
     exit_code: int
     duration_ms: float
-    diagnostics: list[dict]
+    diagnostics: list[dict[str, object]]
     file_hashes: dict[str, dict[str, object]]
     profile: str | None = None
     config_file: str | None = None
@@ -46,8 +46,7 @@ def _normalise_category_mapping(mapping: Mapping[str, Sequence[str]] | None) -> 
     if not mapping:
         return {}
     normalised: dict[str, list[str]] = {}
-    str_keys = [key for key in mapping if isinstance(key, str)]
-    for key in sorted(str_keys):
+    for key in sorted(mapping):
         raw_values = mapping[key]
         key_str = key.strip()
         if not key_str:
@@ -55,8 +54,6 @@ def _normalise_category_mapping(mapping: Mapping[str, Sequence[str]] | None) -> 
         seen: set[str] = set()
         values: list[str] = []
         for raw in raw_values:
-            if not isinstance(raw, str):
-                continue
             candidate = raw.strip()
             if not candidate:
                 continue
@@ -162,19 +159,46 @@ class EngineCache:
 
         diagnostics: list[Diagnostic] = []
         for raw in entry.diagnostics:
-            path_str = raw.get("path")
-            if not isinstance(path_str, str):
+            path_val = raw.get("path")
+            if not isinstance(path_val, str):
                 continue
+            # Normalize numeric fields defensively
+            line_val = raw.get("line", 0)
+            col_val = raw.get("column", 0)
+            if isinstance(line_val, int):
+                line_num = line_val
+            elif isinstance(line_val, (str, bytes, bytearray)):
+                try:
+                    line_num = int(line_val)
+                except ValueError:
+                    line_num = 0
+            else:
+                line_num = 0
+            if isinstance(col_val, int):
+                col_num = col_val
+            elif isinstance(col_val, (str, bytes, bytearray)):
+                try:
+                    col_num = int(col_val)
+                except ValueError:
+                    col_num = 0
+            else:
+                col_num = 0
+
+            code_val = raw.get("code")
+            code_str = str(code_val) if isinstance(code_val, str) else None
+            raw_val = raw.get("raw", {})
+            raw_dict: dict[str, object] = raw_val if isinstance(raw_val, dict) else {}
+
             diagnostics.append(
                 Diagnostic(
                     tool=str(raw.get("tool", "")),
                     severity=str(raw.get("severity", "error")),
-                    path=Path(path_str),
-                    line=int(raw.get("line", 0)),
-                    column=int(raw.get("column", 0)),
-                    code=raw.get("code"),
+                    path=Path(path_val),
+                    line=line_num,
+                    column=col_num,
+                    code=code_str,
                     message=str(raw.get("message", "")),
-                    raw=dict(raw.get("raw", {})),
+                    raw=raw_dict,
                 )
             )
         diagnostics.sort(key=lambda diag: (str(diag.path), diag.line, diag.column))

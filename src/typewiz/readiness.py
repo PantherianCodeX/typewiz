@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, List, cast, TypedDict
 
 # Category patterns and thresholds can be tuned here without touching renderers
 CATEGORY_PATTERNS: dict[str, tuple[str, ...]] = {
@@ -58,7 +58,17 @@ def _status_for_category(category: str, count: int) -> str:
     return "close" if count <= close_threshold else "blocked"
 
 
-def compute_readiness(folder_entries: List[Dict[str, Any]]) -> Dict[str, Any]:
+class _FolderLike(TypedDict):
+    path: str
+    errors: int
+    warnings: int
+    information: int
+    codeCounts: Dict[str, int]
+    categoryCounts: Dict[str, int]
+    recommendations: List[str]
+
+
+def compute_readiness(folder_entries: List[_FolderLike]) -> Dict[str, Any]:
     """Compute strict typing readiness for folders.
 
     Input folder_entries should contain keys: path, errors, warnings, information,

@@ -4,7 +4,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Sequence, Callable
+from typing import Mapping, Sequence, Callable, cast
 
 from .cache import EngineCache, collect_file_hashes
 from .config import (
@@ -17,6 +17,7 @@ from .config import (
 )
 from .dashboard import build_summary, render_markdown
 from .engines import EngineContext, EngineOptions, resolve_engines
+from .engines.base import BaseEngine
 from .html_report import render_html
 from .manifest import ManifestBuilder
 from .typed_manifest import ManifestData
@@ -74,16 +75,12 @@ def _normalise_category_mapping(mapping: Mapping[str, Sequence[str]] | None) -> 
         return {}
     normalised: dict[str, list[str]] = {}
     for key, raw_values in mapping.items():
-        if not isinstance(key, str):
-            continue
         key_str = key.strip()
         if not key_str:
             continue
         seen: set[str] = set()
         values: list[str] = []
         for raw in raw_values:
-            if not isinstance(raw, str):
-                continue
             candidate = raw.strip()
             if not candidate:
                 continue
@@ -281,7 +278,7 @@ def _relative_override_path(project_root: Path, override_path: Path) -> str:
 
 
 def _resolve_engine_options(
-    project_root: Path, audit_config: AuditConfig, engine
+    project_root: Path, audit_config: AuditConfig, engine: BaseEngine
 ) -> EngineOptions:
     engine_name = engine.name
     settings = audit_config.engine_settings.get(engine_name)
@@ -391,7 +388,7 @@ def _resolve_engine_options(
         exclude=exclude,
         profile=profile_name,
         overrides=applied_details,
-        category_mapping=_normalise_category_mapping(getattr(engine, "category_mapping", lambda: {})()),
+        category_mapping=_normalise_category_mapping(engine.category_mapping()),
     )
 
 
@@ -482,11 +479,16 @@ def run_audit(
             cache_flags.extend(f"include={path}" for path in engine_options.include)
             cache_flags.extend(f"exclude={path}" for path in engine_options.exclude)
             cache_key = cache.key_for(engine.name, mode, mode_paths, cache_flags)
-            fingerprint_provider: Callable[[EngineContext, Sequence[str]], Sequence[str]] = getattr(  # type: ignore[assignment]
-                engine,
-                "fingerprint_targets",
-                lambda *args, **kwargs: [],
-            )
+            fingerprint_provider: Callable[[EngineContext, Sequence[str]], Sequence[str]]
+            if hasattr(engine, "fingerprint_targets"):
+                fingerprint_provider = cast(
+                    Callable[[EngineContext, Sequence[str]], Sequence[str]],
+                    getattr(engine, "fingerprint_targets"),
+                )
+            else:
+                def _fp(_c: EngineContext, _p: Sequence[str]) -> Sequence[str]:
+                    return []
+            fingerprint_provider = _fp
             engine_fingerprints = _normalise_paths(
                 root,
                 fingerprint_provider(context, mode_paths),

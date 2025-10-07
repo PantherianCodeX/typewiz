@@ -6,10 +6,20 @@ from typing import Dict, Iterable, List
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator, ConfigDict
 
+from typing import Protocol, Any, cast
+import importlib
+
+
+class _TomlModule(Protocol):
+    def loads(self, s: str) -> Any: ...
+
+
 try:  # Python 3.11+
-    import tomllib as toml  # type: ignore[assignment]
+    _toml_loaded = importlib.import_module("tomllib")
 except ModuleNotFoundError:  # pragma: no cover
-    import tomli as toml  # type: ignore[assignment]
+    _toml_loaded = importlib.import_module("tomli")  # fallback for <=3.10
+
+toml: _TomlModule = cast(_TomlModule, _toml_loaded)
 
 CONFIG_VERSION = 0
 

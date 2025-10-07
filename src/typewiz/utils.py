@@ -7,7 +7,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Any, cast, Dict
 
 
 logger = logging.getLogger("typewiz")
@@ -50,11 +50,11 @@ def run_command(args: Iterable[str], cwd: Path | None = None) -> CommandOutput:
     )
 
 
-def require_json(payload: str, fallback: str | None = None) -> dict:
+def require_json(payload: str, fallback: str | None = None) -> Dict[str, Any]:
     data_str = payload.strip() or (fallback or "")
     if not data_str:
         raise ValueError("Expected JSON output but received empty string")
-    return json.loads(data_str)
+    return cast(Dict[str, Any], json.loads(data_str))
 
 
 def resolve_project_root(start: Path | None = None) -> Path:

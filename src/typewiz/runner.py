@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence, TypedDict, NotRequired
 import logging
 
 from .engines.base import EngineResult
-from .types import Diagnostic, RunResult
+from .types import Diagnostic
+from typing import Any, Dict
 from .utils import require_json, run_command
 
 logger = logging.getLogger("typewiz")
@@ -28,24 +29,42 @@ def run_pyright(
     logger.info("Running pyright (%s)", " ".join(command))
     result = run_command(command, cwd=project_root)
     payload_str = result.stdout or result.stderr
-    payload = require_json(payload_str)
+    payload: Dict[str, Any] = require_json(payload_str)
+
+    class _Pos(TypedDict):
+        line: int
+        character: int
+
+    class _Range(TypedDict):
+        start: _Pos
+
+    class _PyrightDiag(TypedDict, total=False):
+        filePath: str
+        file: str
+        severity: str
+        message: str
+        rule: str
+        range: _Range
+
     diagnostics: list[Diagnostic] = []
-    for diag in payload.get("generalDiagnostics", []):
-        file_path = str(diag.get("filePath") or diag.get("file") or "")
+    raw_diags = payload.get("generalDiagnostics", [])
+    for diag in raw_diags:  # type: ignore[assignment]
+        d = diag  # runtime trust
+        file_path = str(d.get("filePath") or d.get("file") or "")
         if not file_path:
             continue
-        rng = diag.get("range") or {}
+        rng = d.get("range") or {}
         start = rng.get("start") or {}
         diagnostics.append(
             Diagnostic(
                 tool="pyright",
-                severity=str(diag.get("severity", "error")).lower(),
+                severity=str(d.get("severity", "error")).lower(),
                 path=_make_diag_path(project_root, file_path),
                 line=int(start.get("line", 0)) + 1,
                 column=int(start.get("character", 0)) + 1,
-                code=diag.get("rule"),
-                message=str(diag.get("message", "")).strip(),
-                raw=diag,
+                code=d.get("rule"),
+                message=str(d.get("message", "")).strip(),
+                raw=d,
             )
         )
     diagnostics.sort(key=lambda d: (str(d.path), d.line, d.column))
