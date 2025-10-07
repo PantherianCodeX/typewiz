@@ -196,6 +196,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit.add_argument("--dashboard-json", type=Path, default=None, help="Optional dashboard JSON output path")
     audit.add_argument("--dashboard-markdown", type=Path, default=None, help="Optional dashboard Markdown output path")
     audit.add_argument("--dashboard-html", type=Path, default=None, help="Optional dashboard HTML output path")
+    audit.add_argument(
+        "--dashboard-view",
+        choices=["overview", "engines", "hotspots", "runs"],
+        default="overview",
+        help="Default tab when writing the HTML dashboard",
+    )
 
     dashboard = subparsers.add_parser("dashboard", help="Render a summary from an existing manifest")
     dashboard.add_argument("--manifest", type=Path, required=True, help="Path to a typing audit manifest")
@@ -206,6 +212,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Output format (default: json)",
     )
     dashboard.add_argument("--output", type=Path, default=None, help="Optional output file")
+    dashboard.add_argument(
+        "--view",
+        choices=["overview", "engines", "hotspots", "runs"],
+        default="overview",
+        help="Default tab for HTML output",
+    )
 
     args = parser.parse_args(list(argv) if argv is not None else None)
 
@@ -281,7 +293,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.dashboard_markdown.write_text(render_markdown(summary), encoding="utf-8")
         if args.dashboard_html:
             args.dashboard_html.parent.mkdir(parents=True, exist_ok=True)
-            args.dashboard_html.write_text(render_html(summary), encoding="utf-8")
+            args.dashboard_html.write_text(
+                render_html(summary, default_view=args.dashboard_view),
+                encoding="utf-8",
+            )
 
         return exit_code
 
@@ -293,7 +308,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.format == "markdown":
             rendered = render_markdown(summary)
         else:
-            rendered = render_html(summary)
+            rendered = render_html(summary, default_view=args.view)
 
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)

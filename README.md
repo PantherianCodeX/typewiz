@@ -161,25 +161,44 @@ print(result.summary["topFolders"][:3])
 manifest = result.manifest
 ```
 
+### Dashboards
+
+Render dashboards from any manifest:
+
+```bash
+python -m typewiz dashboard --manifest typing_audit_manifest.json --format markdown --output typing_dashboard.md
+python -m typewiz dashboard --manifest typing_audit_manifest.json --format html --view engines --output typing_dashboard.html
+```
+
+- `json` (default) – machine-readable summary.
+- `markdown` – lightweight output for issues and PR comments.
+- `html` – interactive report with tabs for Overview, Engine Details, Hotspots, and Run Logs (choose the initial tab with `--view`).
+
+When `typewiz` writes HTML dashboards during `audit` (`--dashboard-html`), use `--dashboard-view` to set the default tab and keep the main screen focused on what matters.
+
 ## Roadmap
 
 1. **Foundation hardening** *(in progress)*  
    - Make CLI outputs idempotent (rewrite dashboards even when files exist)  
    - Generalise project-root discovery beyond `pyrightconfig.json` and surface clearer errors  
    - Tighten engine command construction with richer typing and validation hooks
-2. **Config layering & strong typing**  
+2. **Config layering & strong typing** *(done)*  
    - Introduce `ProjectConfig` and `EngineSettings` models with explicit defaults and overrides  
    - Support engine-specific command templates, config files, and include/exclude directives  
    - Enforce schema via Pydantic 2, emitting helpful guidance for misconfiguration
-3. **Profiles & execution directives**  
+3. **Profiles & execution directives** *(done)*  
    - Add named profiles per engine (e.g. `pyright.strict`, `mypy.incremental`) selectable via CLI/config  
    - Allow profile inheritance for quick customization (base profile + overrides)  
    - Resolve active profile order: CLI > profile > engine overrides > global defaults
-4. **Path-scoped configuration**  
-   - Read directory/file-level overrides (e.g. `[overrides."src/api"]`) to tweak runners and thresholds  
-   - Add glob support for opt-in/out paths per engine and profile  
-   - Persist directives into manifests for reproducible audits
-5. **Ecosystem integration**  
+4. **Path-scoped configuration** *(done)*  
+   - Read directory/file-level overrides via `typewiz.dir.toml` to tweak runners and thresholds  
+   - Merge include/exclude directives per engine profile and expose overrides in manifests and dashboards  
+   - Add glob support for opt-in/out paths per engine and profile
+5. **Dashboard experience** *(in progress)*  
+   - Provide tabbed HTML dashboards with compact defaults and detailed drill-down views  
+   - Surface override analysis, run logs, and hotspots without overwhelming the main page  
+   - Add CLI toggles for default dashboard views in both audit and standalone commands
+6. **Ecosystem integration**  
    - Ship VS Code/IDE tasks that hydrate profiles and dashboards  
    - Grow first-party engines (Pyre, Pytype) once profile API is stable  
    - Prepare for PyPI release with migration guide covering new config surface

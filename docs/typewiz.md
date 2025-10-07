@@ -28,6 +28,7 @@ Options:
 - `--plugin-arg engine=ARG` – forward an argument to a specific engine (e.g. `--plugin-arg pyright=--pythonversion=3.12`).
 - `--summary {compact,expanded,full}` – choose the CLI summary layout (`full` expands and shows every field).
 - `--summary-fields profile,paths,overrides` – comma-separated extras to display alongside the summary (ignored when `--summary full` is used).
+- `--dashboard-view overview` – set the default tab for HTML output (`overview`, `engines`, `hotspots`, or `runs`).
 
 #### Directory overrides
 
@@ -50,14 +51,12 @@ Generate a condensed dashboard view from an existing manifest:
 
 ```bash
 python -m typewiz dashboard --manifest typing_audit_manifest.json --format markdown --output typing_dashboard.md
-python -m typewiz dashboard --manifest typing_audit_manifest.json --format html --output typing_dashboard.html
+python -m typewiz dashboard --manifest typing_audit_manifest.json --format html --view engines --output typing_dashboard.html
 ```
 
-Supported formats:
-
 - `json` (default) – machine readable summary.
-- `markdown` – lightweight report for issue trackers or PR comments.
-- `html` – standalone dashboard with severity totals and hotspots.
+- `markdown` – compact textual report.
+- `html` – interactive dashboard with tabs for Overview, Engine Details, Hotspots, and Run Logs (`--view` chooses the initial tab).
 
 ### Engines & plugins
 
