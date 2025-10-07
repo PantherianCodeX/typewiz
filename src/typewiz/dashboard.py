@@ -9,9 +9,35 @@ from typing import cast
 
 from .typed_manifest import ManifestData
 
+READINESS_STRICT_READY = "strict-ready"
+
 
 def load_manifest(path: Path) -> ManifestData:
     return cast(ManifestData, json.loads(path.read_text(encoding="utf-8")))
+
+
+def _collect_readiness(
+    top_folders: list[tuple[str, Counter[str]]],
+    folder_entries: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    strict_ready: list[dict[str, Any]] = []
+    close_ready: list[dict[str, Any]] = []
+
+    folder_index: dict[str, dict[str, Any]] = {entry["path"]: entry for entry in folder_entries}
+    for path, counts in top_folders:
+        entry = folder_index.get(path, {})
+        recommendations = entry.get("recommendations", [])
+        if not recommendations:
+            continue
+        if READINESS_STRICT_READY in recommendations:
+            strict_ready.append(entry)
+        else:
+            close_ready.append(entry)
+
+    return {
+        "strictReady": strict_ready,
+        "closeReady": close_ready,
+    }
 
 
 def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
@@ -67,6 +93,17 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 )
             )
 
+    folder_entries_full = [
+        {
+            "path": path,
+            "errors": counts["errors"],
+            "warnings": counts["warnings"],
+            "information": counts["information"],
+            "participatingRuns": folder_counts[path],
+        }
+        for path, counts in folder_totals.items()
+    ]
+
     top_folders = sorted(
         folder_totals.items(),
         key=lambda item: (-item[1]["errors"], -item[1]["warnings"], item[0]),
@@ -75,6 +112,7 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
         file_entries,
         key=lambda item: (-item[1], -item[2], item[0]),
     )[:25]
+    readiness = _collect_readiness(top_folders, folder_entries_full)
 
     top_rules_dict = dict(rule_totals.most_common(20))
     top_folders_list = [
@@ -112,6 +150,7 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 "topFolders": top_folders_list,
                 "topFiles": top_files_list,
             },
+            "readiness": readiness,
             "runs": {
                 "runSummary": run_summary,
             },
