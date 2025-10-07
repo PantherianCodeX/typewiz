@@ -248,7 +248,7 @@ def collect_file_hashes(project_root: Path, paths: Iterable[str]) -> dict[str, d
         absolute = raw_path if raw_path.is_absolute() else (project_root / raw_path)
         absolute = absolute.resolve()
         if absolute.is_dir():
-            candidates = set()
+            candidates: set[Path] = set()
             for pattern in ("*.py", "*.pyi"):
                 candidates.update(absolute.rglob(pattern))
             for child in sorted(candidates):

@@ -4,7 +4,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Mapping, Sequence, Callable
 
 from .cache import EngineCache, collect_file_hashes
 from .config import (
@@ -348,7 +348,7 @@ def _resolve_engine_options(
             if path_settings.default_profile:
                 profile_name = path_settings.default_profile
         profile_override = None
-        if path_settings and path_settings.profiles:
+        if path_settings and profile_name and path_settings.profiles:
             profile_override = path_settings.profiles.get(profile_name)
         if profile_override:
             plugin_args = _merge_list(plugin_args, profile_override.plugin_args)
@@ -482,7 +482,7 @@ def run_audit(
             cache_flags.extend(f"include={path}" for path in engine_options.include)
             cache_flags.extend(f"exclude={path}" for path in engine_options.exclude)
             cache_key = cache.key_for(engine.name, mode, mode_paths, cache_flags)
-            fingerprint_provider = getattr(
+            fingerprint_provider: Callable[[EngineContext, Sequence[str]], Sequence[str]] = getattr(  # type: ignore[assignment]
                 engine,
                 "fingerprint_targets",
                 lambda *args, **kwargs: [],

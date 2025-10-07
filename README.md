@@ -29,23 +29,28 @@ pip install -e .[tests]
 
 ## Usage
 
-Generate a manifest and dashboard:
+Generate a manifest and dashboards (typewiz auto-detects common Python folders when `full_paths` is not configured):
 
 ```bash
-python -m typewiz audit --max-depth 3 --manifest typing_audit.json
-python -m typewiz dashboard --manifest typing_audit.json --format markdown --output dashboard.md
-python -m typewiz dashboard --manifest typing_audit.json --format html --output dashboard.html
+typewiz audit --max-depth 3 src tests --manifest typing_audit.json
+typewiz dashboard --manifest typing_audit.json --format markdown --output dashboard.md
+typewiz dashboard --manifest typing_audit.json --format html --output dashboard.html
 ```
+
+Running `typewiz audit` with no additional arguments also works — typewiz will analyse the current project using its built-in Pyright and mypy defaults.
+
+Pass extra flags to engines with `--plugin-arg runner=VALUE` (repeatable). When the value itself starts with a dash, keep the `runner=value` form to avoid ambiguity, e.g. `--plugin-arg pyright=--verifytypes`.
 
 ### Configuration
 
-typewiz looks for `typewiz.toml` (or `.typewiz.toml`) and validates it with a schema version header:
+typewiz looks for `typewiz.toml` (or `.typewiz.toml`) and validates it with a schema version header. Run `typewiz init` to scaffold a commented starter configuration, or copy `examples/typewiz.sample.toml` as a starting point.
 
 ```toml
 config_version = 0
 
 [audit]
-full_paths = ["src", "tests"]
+# Let typewiz auto-detect python packages by default. Uncomment to override.
+# full_paths = ["src", "tests"]
 runners = ["pyright", "mypy"]
 fail_on = "errors"
 ```
@@ -72,12 +77,12 @@ plugin_args = ["--warnings"]
 exclude = ["packages/legacy"]
 ```
 
-`include` / `exclude` lists fine-tune the directories scanned per engine, while profiles encapsulate per-engine argument sets and optional config files. Select profiles through config or via the CLI using `--profile pyright=strict`.
+`include` / `exclude` lists fine-tune the directories scanned per engine, while profiles encapsulate per-engine argument sets and optional config files. Select profiles through config or via the CLI using `--profile pyright strict`.
 
 CLI summaries stay compact by default; opt-in to richer output as needed:
 
 ```bash
-python -m typewiz audit --summary expanded --summary-fields profile,plugin-args
+typewiz audit --summary expanded --summary-fields profile,plugin-args
 ```
 
 `--summary full` expands output and automatically includes every field (`profile`, `config`, `plugin-args`, `paths`, `overrides`).

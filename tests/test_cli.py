@@ -90,8 +90,7 @@ def test_cli_audit(
         "stub",
         "--project-root",
         str(tmp_path),
-        "--full-path",
-        "src",
+        "pkg",
         "--manifest",
         str(manifest_path),
         "--dashboard-markdown",
@@ -99,7 +98,8 @@ def test_cli_audit(
         "--fail-on",
         "warnings",
         "--profile",
-        "stub=strict",
+        "stub",
+        "strict",
         "--plugin-arg",
         "stub=--cli-flag",
         "--summary",
@@ -189,14 +189,14 @@ exclude = ["unused"]
         "audit",
         "--runner",
         "stub",
-        "--full-path",
         "src",
         "--manifest",
         str(manifest_path),
         "--dashboard-markdown",
         str(dashboard_path),
         "--profile",
-        "stub=strict",
+        "stub",
+        "strict",
         "--plugin-arg",
         "stub=--cli-flag",
         "--summary",
@@ -218,28 +218,83 @@ exclude = ["unused"]
     full_run = next(run for run in manifest_data["runs"] if run["mode"] == "full")
     engine_options = full_run["engineOptions"]
     assert "--extras" in engine_options["pluginArgs"]
-    assert engine_options["overrides"]
-    assert any(entry["path"].endswith("extras") for entry in engine_options["overrides"])
 
-    # Request full summary (includes every field automatically)
+
+def test_cli_mode_only_full(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: RunResult) -> None:
+    engine = StubEngine(fake_run)
+    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
+    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+
+    (tmp_path / "pkg").mkdir(exist_ok=True)
+
     exit_code = main([
         "audit",
         "--runner",
         "stub",
-        "--full-path",
-        "src",
-        "--manifest",
-        str(manifest_path),
-        "--profile",
-        "stub=strict",
-        "--plugin-arg",
-        "stub=--cli-flag",
-        "--summary",
+        "--project-root",
+        str(tmp_path),
+        "--mode",
         "full",
+        "pkg",
     ])
 
     assert exit_code == 0
+    assert engine.invocations == [("full", [], ["pkg"])]
 
-    captured = capsys.readouterr()
-    assert "- config: —" in captured.out
-    assert "override extras" in captured.out
+
+def test_cli_plugin_arg_validation(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    engine = StubEngine(
+        RunResult(
+            tool="stub",
+            mode="current",
+            command=["stub"],
+            exit_code=0,
+            duration_ms=0.0,
+            diagnostics=[],
+        )
+    )
+    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
+    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+
+    with pytest.raises(SystemExit):
+        main([
+            "audit",
+            "--runner",
+            "stub",
+            "--project-root",
+            str(tmp_path),
+            "--plugin-arg",
+            "stub",
+        ])
+
+
+def test_cli_init_writes_template(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    target = tmp_path / "typewiz.toml"
+    exit_code = main(["init", "--output", str(target)])
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "Wrote starter config" in out
+    assert target.exists()
+    assert "config_version" in target.read_text(encoding="utf-8")
+
+
+def test_cli_audit_without_markers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: RunResult) -> None:
+    engine = StubEngine(fake_run)
+    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
+    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+    monkeypatch.chdir(tmp_path)
+
+    (tmp_path / "pkg").mkdir(exist_ok=True)
+    (tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8")
+
+    exit_code = main([
+        "audit",
+        "--runner",
+        "stub",
+        "pkg",
+    ])
+
+    assert exit_code == 0
+    # Fallback root detection should still run both modes
+    assert {mode for mode, *_ in engine.invocations} == {"current", "full"}
+

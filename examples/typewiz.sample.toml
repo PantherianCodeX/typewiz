@@ -1,0 +1,52 @@
+# typewiz configuration template
+# Copy this file to typewiz.toml (or .typewiz.toml) in your project root and tweak as needed.
+config_version = 0
+
+[audit]
+# full_paths controls the directories scanned during full audits. When omitted,
+# typewiz auto-detects common Python folders (src/, packages/, tests/, etc.).
+# full_paths = ["src", "tests"]
+
+# Engines that run by default. typewiz ships with pyright and mypy built-in.
+runners = ["pyright", "mypy"]
+
+# Optional outputs and failure thresholds:
+# manifest_path = "typewiz/manifest.json"
+# dashboard_json = "typewiz/dashboard.json"
+# dashboard_markdown = "typewiz/dashboard.md"
+# dashboard_html = "typewiz/dashboard.html"
+# fail_on = "warnings"  # choices: never, warnings, errors
+
+[audit.active_profiles]
+# Select default profiles per engine here (also configurable via the CLI).
+# pyright = "baseline"
+# mypy = "strict"
+
+[audit.engines.pyright]
+# plugin_args = ["--verifytypes"]
+# include = ["packages/api"]
+# exclude = ["packages/legacy"]
+# config_file = "configs/pyrightconfig.json"
+
+[audit.engines.pyright.profiles.strict]
+# inherit = "baseline"
+# plugin_args = ["--strict"]
+
+[audit.engines.mypy]
+# plugin_args = ["--strict"]
+# include = ["src"]
+# config_file = "configs/mypy.ini"
+
+# Directory-specific overrides live in `typewiz.dir.toml` (or `.typewizdir.toml`)
+# files placed inside the folder you want to customise. Example:
+#
+#   [active_profiles]
+#   pyright = "strict"
+#
+#   [engines.pyright]
+#   plugin_args = ["--warnings"]
+#   include = ["."]
+#   exclude = ["legacy"]
+#
+# Overrides merge with the root configuration, letting you tailor scanning rules
+# for specific packages without duplicating the global settings.

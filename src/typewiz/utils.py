@@ -72,13 +72,17 @@ def resolve_project_root(start: Path | None = None) -> Path:
     if start is not None:
         if not base.exists():
             raise FileNotFoundError(f"Provided project root {start} does not exist.")
+        logger.debug(
+            "No project markers found; using provided path %s as project root",
+            base,
+        )
         return base
 
-    markers = ", ".join(ROOT_MARKERS)
-    searched = ", ".join(str(path) for path in checked)
-    raise FileNotFoundError(
-        f"Unable to locate project root starting from {base}; looked for {markers} in {searched}"
+    logger.debug(
+        "No project markers found in %s; using current working directory as root",
+        ", ".join(str(path) for path in checked),
     )
+    return base
 
 
 def _contains_python(path: Path) -> bool:
@@ -111,6 +115,8 @@ def default_full_paths(root: Path) -> list[str]:
         full = root / item
         if _contains_python(full):
             paths.append(item)
+    if not paths:
+        paths.append(".")
     return paths
 
 

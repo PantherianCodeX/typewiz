@@ -23,7 +23,6 @@ def test_resolve_project_root_accepts_explicit_path_without_markers(tmp_path: Pa
     assert resolve_project_root(workspace) == workspace
 
 
-def test_resolve_project_root_raises_when_no_markers_found(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_resolve_project_root_defaults_to_cwd_when_no_markers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.chdir(tmp_path)
-    with pytest.raises(FileNotFoundError):
-        resolve_project_root()
+    assert resolve_project_root() == tmp_path.resolve()

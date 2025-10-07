@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import cast
 
 from .aggregate import summarise_run
-from .typed_manifest import AggregatedData, ManifestData, RunPayload
+from .typed_manifest import AggregatedData, ManifestData, RunPayload, EngineOptionsEntry
 from .types import RunResult
 
 logger = logging.getLogger("typewiz")
@@ -33,7 +33,7 @@ class ManifestBuilder:
     def add_run(self, run: RunResult, *, max_depth: int = 3) -> None:
         logger.debug("Adding run: tool=%s mode=%s", run.tool, run.mode)
         summary: AggregatedData = summarise_run(run, max_depth=max_depth)
-        options = {
+        options: EngineOptionsEntry = {
             "profile": run.profile,
             "configFile": str(run.config_file) if run.config_file else None,
             "pluginArgs": list(run.plugin_args),

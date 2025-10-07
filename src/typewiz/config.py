@@ -391,6 +391,7 @@ def load_config(explicit_path: Path | None = None) -> Config:
 
     root = Path.cwd().resolve()
     cfg = Config()
+    cfg.audit.runners = ["pyright", "mypy"]
     cfg.audit.path_overrides = _discover_path_overrides(root)
     _resolve_path_fields(root, cfg.audit)
     return cfg

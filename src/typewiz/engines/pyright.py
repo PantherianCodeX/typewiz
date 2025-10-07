@@ -14,20 +14,26 @@ class PyrightEngine(BaseEngine):
 
     def _build_command(self, context: EngineContext, paths: Sequence[str]) -> list[str]:
         args = self._args(context)
+        default_config = context.project_root / "pyrightconfig.json"
         config_path = context.engine_options.config_file
+        command: list[str] = ["pyright", "--outputjson"]
         if context.mode == "current":
-            project_arg = (
-                str(config_path)
-                if config_path
-                else str((context.project_root / "pyrightconfig.json"))
-            )
-            command = ["pyright", "--outputjson", "--project", project_arg, *args]
-        else:
-            command = ["pyright", "--outputjson"]
             if config_path:
                 command.extend(["--project", str(config_path)])
+            elif default_config.exists():
+                command.extend(["--project", str(default_config)])
+            else:
+                command.append(str(context.project_root))
             command.extend(args)
+            return command
+
+        if config_path:
+            command.extend(["--project", str(config_path)])
+        command.extend(args)
+        if paths:
             command.extend(paths)
+        else:
+            command.append(str(context.project_root))
         return command
 
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
@@ -59,7 +65,8 @@ class PyrightEngine(BaseEngine):
             targets.append(str(config))
         else:
             default = context.project_root / "pyrightconfig.json"
-            targets.append(str(default))
+            if default.exists():
+                targets.append(str(default))
         return targets
 
 

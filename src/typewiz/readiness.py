@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 # Category patterns and thresholds can be tuned here without touching renderers
 CATEGORY_PATTERNS: dict[str, tuple[str, ...]] = {
@@ -64,7 +64,7 @@ def compute_readiness(folder_entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     Input folder_entries should contain keys: path, errors, warnings, information,
     and optionally codeCounts, recommendations.
     """
-    readiness = {
+    readiness: Dict[str, Any] = {
         "strict": {"ready": [], "close": [], "blocked": []},
         "options": {
             category: {
@@ -100,7 +100,9 @@ def compute_readiness(folder_entries: List[Dict[str, Any]]) -> Dict[str, Any]:
             count = categories.get(category, 0)
             status = _status_for_category(category, count)
             category_status[category] = {"status": status, "count": count}
-            readiness["options"][category][status].append(
+            options_bucket = cast(Dict[str, Any], readiness["options"][category])
+            status_list = cast(List[Dict[str, Any]], options_bucket[status])
+            status_list.append(
                 {
                     "path": entry["path"],
                     "count": count,
@@ -142,6 +144,7 @@ def compute_readiness(folder_entries: List[Dict[str, Any]]) -> Dict[str, Any]:
             if blockers:
                 strict_entry["notes"] = blockers
 
-        readiness["strict"][strict_status].append(strict_entry)
+        strict_bucket = cast(List[Dict[str, Any]], readiness["strict"][strict_status])
+        strict_bucket.append(strict_entry)
 
     return readiness
