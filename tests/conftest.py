@@ -32,7 +32,7 @@ def snapshot_text(snapshots_dir: Path) -> Callable[[str], str]:
 
 @pytest.fixture
 def sample_summary() -> dict:
-    return {
+    summary = {
         "generatedAt": "2025-01-01T00:00:00Z",
         "projectRoot": "/repo",
         "runSummary": {
@@ -100,3 +100,21 @@ def sample_summary() -> dict:
             {"path": "packages/core/agents.py", "errors": 1, "warnings": 1},
         ],
     }
+    summary["tabs"] = {
+        "overview": {
+            "severityTotals": summary["severityTotals"],
+            "runSummary": summary["runSummary"],
+        },
+        "engines": {
+            "runSummary": summary["runSummary"],
+        },
+        "hotspots": {
+            "topRules": summary["topRules"],
+            "topFolders": summary["topFolders"],
+            "topFiles": summary["topFiles"],
+        },
+        "runs": {
+            "runSummary": summary["runSummary"],
+        },
+    }
+    return summary

@@ -3,14 +3,20 @@
 - Generated at: 2025-01-01T00:00:00Z
 - Project root: `/repo`
 
-## Run Summary
+## Overview
+
+- Errors: 4
+- Warnings: 2
+- Information: 1
+
+### Run summary
 
 | Run | Errors | Warnings | Information | Command |
 | --- | ---: | ---: | ---: | --- |
 | `pyright:current` | 3 | 2 | 1 | `pyright --outputjson` |
 | `mypy:full` | 1 | 0 | 0 | `python -m mypy` |
 
-### Engine Options
+### Engine details
 
 #### `pyright:current`
 - Profile: baseline
@@ -30,29 +36,41 @@
 - Folder overrides:
   - `packages/legacy` (exclude: `packages/legacy`)
 
-## Top Folder Hotspots
+### Hotspots
 
-| Folder | Errors | Warnings | Information | Runs |
-| --- | ---: | ---: | ---: | ---: |
-| `apps/platform/operations` | 2 | 1 | 0 | 2 |
-| `packages/agents` | 1 | 1 | 0 | 1 |
-
-## Top File Hotspots
-
-| File | Errors | Warnings |
-| --- | ---: | ---: |
-| `apps/platform/operations/admin.py` | 2 | 0 |
-| `packages/core/agents.py` | 1 | 1 |
-
-## Most Common Diagnostic Rules
+#### Diagnostic rules
 
 | Rule | Count |
 | --- | ---: |
 | `reportUnknownMemberType` | 2 |
 | `reportGeneralTypeIssues` | 1 |
 
-## Severity Totals
+#### Folder hotspots
 
-- Errors: 4
+| Folder | Errors | Warnings | Information | Runs |
+| --- | ---: | ---: | ---: | ---: |
+| `apps/platform/operations` | 2 | 1 | 0 | 2 |
+| `packages/agents` | 1 | 1 | 0 | 1 |
+
+#### File hotspots
+
+| File | Errors | Warnings |
+| --- | ---: | ---: |
+| `apps/platform/operations/admin.py` | 2 | 0 |
+| `packages/core/agents.py` | 1 | 1 |
+
+### Run logs
+
+#### `pyright:current`
+- Errors: 3
 - Warnings: 2
 - Information: 1
+- Total diagnostics: 6
+- Severity breakdown: {}
+
+#### `mypy:full`
+- Errors: 1
+- Warnings: 0
+- Information: 0
+- Total diagnostics: 1
+- Severity breakdown: {}

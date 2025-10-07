@@ -76,9 +76,29 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
         key=lambda item: (-item[1], -item[2], item[0]),
     )[:25]
 
+    top_rules_dict = dict(rule_totals.most_common(20))
+    top_folders_list = [
+        {
+            "path": path,
+            "errors": counts["errors"],
+            "warnings": counts["warnings"],
+            "information": counts["information"],
+            "participatingRuns": folder_counts[path],
+        }
+        for path, counts in top_folders
+    ]
+    top_files_list = [
+        {"path": path, "errors": errors, "warnings": warnings} for path, errors, warnings in top_files
+    ]
+
     return {
         "generatedAt": manifest.get("generatedAt"),
         "projectRoot": manifest.get("projectRoot"),
+        "runSummary": run_summary,
+        "severityTotals": dict(severity_totals),
+        "topRules": top_rules_dict,
+        "topFolders": top_folders_list,
+        "topFiles": top_files_list,
         "tabs": {
             "overview": {
                 "severityTotals": dict(severity_totals),
@@ -88,21 +108,9 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 "runSummary": run_summary,
             },
             "hotspots": {
-                "topRules": dict(rule_totals.most_common(20)),
-                "topFolders": [
-                    {
-                        "path": path,
-                        "errors": counts["errors"],
-                        "warnings": counts["warnings"],
-                        "information": counts["information"],
-                        "participatingRuns": folder_counts[path],
-                    }
-                    for path, counts in top_folders
-                ],
-                "topFiles": [
-                    {"path": path, "errors": errors, "warnings": warnings}
-                    for path, errors, warnings in top_files
-                ],
+                "topRules": top_rules_dict,
+                "topFolders": top_folders_list,
+                "topFiles": top_files_list,
             },
             "runs": {
                 "runSummary": run_summary,
@@ -112,25 +120,51 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def render_markdown(summary: dict[str, Any]) -> str:
-    lines = [
-        f"# typewiz Dashboard",
+    tabs = summary.get("tabs", {})
+    overview = tabs.get("overview", {})
+    run_summary = overview.get("runSummary", summary.get("runSummary", {}))
+    severity = overview.get("severityTotals", summary.get("severityTotals", {}))
+    hotspots = tabs.get("hotspots", {})
+
+    lines: list[str] = [
+        "# typewiz Dashboard",
         "",
         f"- Generated at: {summary.get('generatedAt')}",
         f"- Project root: `{summary.get('projectRoot')}`",
-        "",
-        "## Run Summary",
-        "",
-        "| Run | Errors | Warnings | Information | Command |",
-        "| --- | ---: | ---: | ---: | --- |",
     ]
-    for key, data in summary.get("runSummary", {}).items():
+
+    if severity:
+        lines.extend(
+            [
+                "",
+                "## Overview",
+                "",
+                f"- Errors: {severity.get('error', 0)}",
+                f"- Warnings: {severity.get('warning', 0)}",
+                f"- Information: {severity.get('information', 0)}",
+            ]
+        )
+
+    lines.extend(
+        [
+            "",
+            "### Run summary",
+            "",
+            "| Run | Errors | Warnings | Information | Command |",
+            "| --- | ---: | ---: | ---: | --- |",
+        ]
+    )
+    for key, data in run_summary.items():
         cmd = " ".join(str(part) for part in data.get("command", []))
         lines.append(
             f"| `{key}` | {data.get('errors', 0)} | {data.get('warnings', 0)} | {data.get('information', 0)} | `{cmd}` |"
         )
-    if summary.get("runSummary"):
-        lines.extend(["", "### Engine Options"])
-        for key, data in summary.get("runSummary", {}).items():
+    if not run_summary:
+        lines.append("| _No runs recorded_ | 0 | 0 | 0 | — |")
+
+    lines.extend(["", "### Engine details"])
+    if run_summary:
+        for key, data in run_summary.items():
             options = data.get("engineOptions", {})
             profile = options.get("profile") or "—"
             config_file = options.get("configFile") or "—"
@@ -168,58 +202,79 @@ def render_markdown(summary: dict[str, Any]) -> str:
                     if not details:
                         details.append("no explicit changes")
                     lines.append(f"  - `{path}` ({'; '.join(details)})")
+    else:
+        lines.append("- No engine data available")
 
-    lines.extend(
-        [
-            "",
-            "## Top Folder Hotspots",
-            "",
-            "| Folder | Errors | Warnings | Information | Runs |",
-            "| --- | ---: | ---: | ---: | ---: |",
-        ]
-    )
-    for folder in summary.get("topFolders", []):
-        lines.append(
-            f"| `{folder['path']}` | {folder['errors']} | {folder['warnings']} | {folder['information']} | {folder['participatingRuns']} |"
-        )
-
-    lines.extend(
-        [
-            "",
-            "## Top File Hotspots",
-            "",
-            "| File | Errors | Warnings |",
-            "| --- | ---: | ---: |",
-        ]
-    )
-    for file_entry in summary.get("topFiles", []):
-        lines.append(f"| `{file_entry['path']}` | {file_entry['errors']} | {file_entry['warnings']} |")
-
-    if summary.get("topRules"):
+    lines.extend(["", "### Hotspots"])
+    top_rules = hotspots.get("topRules", summary.get("topRules", {}))
+    if top_rules:
         lines.extend(
             [
                 "",
-                "## Most Common Diagnostic Rules",
+                "#### Diagnostic rules",
                 "",
                 "| Rule | Count |",
                 "| --- | ---: |",
             ]
         )
-        for rule, count in summary.get("topRules", {}).items():
+        for rule, count in top_rules.items():
             lines.append(f"| `{rule}` | {count} |")
+    else:
+        lines.append("- No diagnostic rules recorded")
 
-    if summary.get("severityTotals"):
-        totals = summary["severityTotals"]
-        lines.extend(
-            [
-                "",
-                "## Severity Totals",
-                "",
-                f"- Errors: {totals.get('error', 0)}",
-                f"- Warnings: {totals.get('warning', 0)}",
-                f"- Information: {totals.get('information', 0)}",
-            ]
-        )
+    top_folders = hotspots.get("topFolders", summary.get("topFolders", []))
+    lines.extend(
+        [
+            "",
+            "#### Folder hotspots",
+            "",
+            "| Folder | Errors | Warnings | Information | Runs |",
+            "| --- | ---: | ---: | ---: | ---: |",
+        ]
+    )
+    if top_folders:
+        for folder in top_folders:
+            lines.append(
+                f"| `{folder['path']}` | {folder['errors']} | {folder['warnings']} | {folder['information']} | {folder['participatingRuns']} |"
+            )
+    else:
+        lines.append("| _No folder hotspots_ | 0 | 0 | 0 | 0 |")
+
+    top_files = hotspots.get("topFiles", summary.get("topFiles", []))
+    lines.extend(
+        [
+            "",
+            "#### File hotspots",
+            "",
+            "| File | Errors | Warnings |",
+            "| --- | ---: | ---: |",
+        ]
+    )
+    if top_files:
+        for file_entry in top_files:
+            lines.append(f"| `{file_entry['path']}` | {file_entry['errors']} | {file_entry['warnings']} |")
+    else:
+        lines.append("| _No file hotspots_ | 0 | 0 |")
+
+    lines.extend(["", "### Run logs"])
+    runs_tab = tabs.get("runs", {})
+    run_details = runs_tab.get("runSummary", run_summary)
+    if run_details:
+        for key, data in run_details.items():
+            breakdown = data.get("severityBreakdown", {})
+            lines.extend(
+                [
+                    "",
+                    f"#### `{key}`",
+                    f"- Errors: {data.get('errors', 0)}",
+                    f"- Warnings: {data.get('warnings', 0)}",
+                    f"- Information: {data.get('information', 0)}",
+                    f"- Total diagnostics: {data.get('total', 0)}",
+                    f"- Severity breakdown: {breakdown if breakdown else '{}'}",
+                ]
+            )
+    else:
+        lines.append("- No runs recorded")
 
     lines.append("")
     return "\n".join(lines)

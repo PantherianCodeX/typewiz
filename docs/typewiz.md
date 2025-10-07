@@ -54,8 +54,8 @@ python -m typewiz dashboard --manifest typing_audit_manifest.json --format markd
 python -m typewiz dashboard --manifest typing_audit_manifest.json --format html --view engines --output typing_dashboard.html
 ```
 
-- `json` (default) – machine readable summary.
-- `markdown` – compact textual report.
+- `json` (default) – machine-readable summary with tabbed sections under `tabs.*`.
+- `markdown` – compact textual report (mirrors the tab content with override digests).
 - `html` – interactive dashboard with tabs for Overview, Engine Details, Hotspots, and Run Logs (`--view` chooses the initial tab).
 
 ### Engines & plugins
