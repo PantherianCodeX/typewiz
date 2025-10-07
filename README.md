@@ -3,7 +3,7 @@
 typewiz collects typing diagnostics from Pyright, mypy, and custom plugins, aggregates them into a JSON
 manifest, and renders dashboards to help teams plan stricter typing rollouts.
 
-> **Status:** pre-release `0.0.1`. The API surface and manifest schema may still change until the first public publication.
+> Status: `0.1.0` — first public release. The manifest schema and APIs are now stable within the 0.1.x line.
 
 ## Features
 
