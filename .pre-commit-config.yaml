@@ -35,8 +35,13 @@ repos:
         entry: pyright -p pyrightconfig.json
         language: system
         pass_filenames: false
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.2
+    hooks:
       - id: mypy
-        name: mypy
-        entry: .venv312/bin/mypy --config-file mypy.ini
-        language: system
+        args: ["--config-file", "mypy.ini"]
+        language_version: python3.12
         pass_filenames: false
+        additional_dependencies:
+          - pydantic>=2.7,<3
