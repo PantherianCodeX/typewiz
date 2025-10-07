@@ -3,7 +3,7 @@
 typewiz collects typing diagnostics from Pyright, mypy, and custom plugins, aggregates them into a JSON
 manifest, and renders dashboards to help teams plan stricter typing rollouts.
 
-> Status: `0.1.0` — first public release. The manifest schema and APIs are now stable within the 0.1.x line.
+> Status: `0.2.0` — manifest schema, caching, and CLI are stabilized within the 0.2.x line.
 
 ## Features
 
@@ -38,6 +38,9 @@ Generate a manifest and dashboards (typewiz auto-detects common Python folders w
 typewiz audit --max-depth 3 src tests --manifest typing_audit.json
 typewiz dashboard --manifest typing_audit.json --format markdown --output dashboard.md
 typewiz dashboard --manifest typing_audit.json --format html --output dashboard.html
+ 
+# fingerprinting options for large repos
+typewiz audit --respect-gitignore --max-files 50000 --manifest typing_audit.json
 ```
 
 Running `typewiz audit` with no additional arguments also works — typewiz will analyse the current project using its built-in Pyright and mypy defaults.
@@ -69,6 +72,76 @@ tox -e mypy,pyright
 ```
 
 In CI, a GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests and both type checkers on every push/PR.
+
+Validate a manifest against the bundled JSON Schema:
+
+```bash
+typewiz manifest validate typing_audit.json
+```
+
+### Why both Pyright and mypy?
+
+Pyright and mypy have complementary strengths. Pyright provides fast, IDE-friendly diagnostics and excels at
+detecting optional/unknown typing issues (great for readiness), while mypy’s ecosystem and plugins catch
+different classes of errors and enforce strictness progressively. Running both yields broader coverage and a
+clearer plan to move toward stricter typing across packages. A common pattern is:
+
+- pyright baseline (warnings) across the monorepo, with `--strict` for green packages
+- mypy for projects using mypy plugins (e.g., pydantic, SQLAlchemy), with a strict profile in those packages
+
+### Custom engines (plugins)
+
+Write a small class implementing the `BaseEngine` protocol and expose it via the `typewiz.engines` entry point.
+
+```python
+# examples/plugins/simple_engine.py
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from typewiz.types import Diagnostic
+
+@dataclass
+class SimpleEngine(BaseEngine):
+    name: str = "simple"
+    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+        return EngineResult(
+            engine=self.name,
+            mode=context.mode,
+            command=[self.name, context.mode],
+            exit_code=0,
+            duration_ms=0.1,
+            diagnostics=[Diagnostic(tool=self.name, severity="information", path=context.project_root/"example.py", line=1, column=1, code="S000", message="Simple", raw={})],
+        )
+```
+
+Declare the entry point in your `pyproject.toml`:
+
+```toml
+[project.entry-points."typewiz.engines"]
+simple = "your_package.simple:SimpleEngine"
+```
+
+Then run only your engine:
+
+```bash
+typewiz audit --runner simple
+```
+
+### Windows notes
+
+- Paths in manifests use forward slashes for determinism; Windows paths are normalized accordingly.
+- Subprocesses are invoked without shells, so argument quoting behaves consistently across OSes.
+- When using `--respect-gitignore`, ensure Git is available in `PATH` on Windows.
+
+### CI deltas
+
+Add deltas to the compact CI line by comparing against a previous manifest:
+
+```bash
+typewiz audit --manifest typing_audit.json --compare-to last_manifest.json
+```
+
+Totals are printed along with `delta: errors=±N warnings=±N info=±N`.
 
 ### Configuration
 

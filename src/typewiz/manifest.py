@@ -8,7 +8,14 @@ from pathlib import Path
 from typing import cast
 
 from .aggregate import summarise_run
-from .typed_manifest import AggregatedData, EngineOptionsEntry, ManifestData, RunPayload
+from .typed_manifest import (
+    AggregatedData,
+    EngineError,
+    EngineOptionsEntry,
+    ManifestData,
+    RunPayload,
+)
+from .utils import detect_tool_versions
 from .types import RunResult
 
 logger = logging.getLogger("typewiz")
@@ -18,6 +25,7 @@ logger = logging.getLogger("typewiz")
 class ManifestBuilder:
     project_root: Path
     data: ManifestData = field(init=False)
+    fingerprint_truncated: bool = False
 
     def __post_init__(self) -> None:
         self.data = cast(
@@ -25,6 +33,7 @@ class ManifestBuilder:
             {
                 "generatedAt": datetime.now(UTC).isoformat(),
                 "projectRoot": str(self.project_root),
+                "schemaVersion": "1",
                 "runs": [],
             },
         )
@@ -34,7 +43,7 @@ class ManifestBuilder:
         summary: AggregatedData = summarise_run(run, max_depth=max_depth)
         options: EngineOptionsEntry = {
             "profile": run.profile,
-            "configFile": str(run.config_file) if run.config_file else None,
+            "configFile": run.config_file.as_posix() if run.config_file else None,
             "pluginArgs": list(run.plugin_args),
             "include": list(run.include),
             "exclude": list(run.exclude),
@@ -54,6 +63,9 @@ class ManifestBuilder:
             "perFolder": summary["perFolder"],
             "engineOptions": options,
         }
+        # Reproducibility helpers
+        payload["engineArgsEffective"] = list(run.plugin_args)
+        payload["scannedPathsResolved"] = list(run.scanned_paths)
         if run.tool_summary:
             payload["toolSummary"] = {
                 "errors": int(run.tool_summary.get("errors", 0)),
@@ -61,9 +73,35 @@ class ManifestBuilder:
                 "information": int(run.tool_summary.get("information", 0)),
                 "total": int(run.tool_summary.get("total", 0)),
             }
-        self.data["runs"].append(payload)
+        if run.engine_error:
+            err = run.engine_error
+            engine_err: EngineError = {}
+            msg = err.get("message")
+            if isinstance(msg, str) and msg:
+                engine_err["message"] = msg
+            exitv = err.get("exitCode")
+            if isinstance(exitv, int):
+                engine_err["exitCode"] = exitv
+            stderrv = err.get("stderr")
+            if isinstance(stderrv, str) and stderrv:
+                engine_err["stderr"] = stderrv
+            if engine_err:
+                payload["engineError"] = engine_err
+        runs_list = self.data.setdefault("runs", [])
+        runs_list.append(payload)
 
     def write(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         logger.info("Writing manifest to %s", path)
+        # Fill in toolVersions based on tools present in runs
+        try:
+            tools = sorted({run.get("tool", "") for run in self.data.get("runs", []) if run})
+            versions = detect_tool_versions(tools)
+            if versions:
+                self.data["toolVersions"] = versions
+        except Exception:
+            # best-effort; keep manifest writing resilient
+            pass
+        if self.fingerprint_truncated:
+            self.data["fingerprintTruncated"] = True
         path.write_text(json.dumps(self.data, indent=2) + "\n", encoding="utf-8")

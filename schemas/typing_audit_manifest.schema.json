@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/typing_audit_manifest.schema.json",
+  "title": "Typewiz Typing Audit Manifest",
+  "type": "object",
+  "required": ["generatedAt", "projectRoot", "runs"],
+  "properties": {
+    "schemaVersion": {"type": "string"},
+    "generatedAt": {"type": "string"},
+    "projectRoot": {"type": "string"},
+    "fingerprintTruncated": {"type": "boolean"},
+    "toolVersions": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "tool",
+          "mode",
+          "command",
+          "exitCode",
+          "durationMs",
+          "summary",
+          "perFile",
+          "perFolder",
+          "engineOptions"
+        ],
+        "properties": {
+          "tool": {"type": "string"},
+          "mode": {"type": "string"},
+          "command": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "exitCode": {"type": "integer"},
+          "durationMs": {"type": "number"},
+          "toolSummary": {
+            "type": "object",
+            "properties": {
+              "errors": {"type": "integer"},
+              "warnings": {"type": "integer"},
+              "information": {"type": "integer"},
+              "total": {"type": "integer"}
+            },
+            "additionalProperties": false
+          },
+          "summary": {"type": "object"},
+          "perFile": {"type": "array"},
+          "perFolder": {"type": "array"},
+          "engineOptions": {"type": "object"}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

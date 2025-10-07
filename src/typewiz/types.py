@@ -62,6 +62,8 @@ class RunResult:
     category_mapping: dict[str, list[str]] = field(default_factory=_default_category_mapping)
     # Optional: raw tool-provided summary counts (normalised to errors/warnings/information/total)
     tool_summary: dict[str, int] | None = None
+    scanned_paths: list[str] = field(default_factory=_default_str_list)
+    engine_error: dict[str, object] | None = None
 
     def severity_counts(self) -> Counter[str]:
         counts: Counter[str] = Counter()

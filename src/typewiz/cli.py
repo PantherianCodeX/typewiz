@@ -6,7 +6,7 @@ import shlex
 from collections.abc import Sequence
 from pathlib import Path
 from textwrap import dedent
-from typing import cast
+from typing import Any, cast
 
 from .api import run_audit
 from .config import AuditConfig, load_config
@@ -302,6 +302,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Folder aggregation depth for summaries.",
     )
     audit.add_argument(
+        "--max-files",
+        type=int,
+        default=None,
+        help="Maximum files to fingerprint for cache invalidation (protects giant repos).",
+    )
+    audit.add_argument(
+        "--max-fingerprint-bytes",
+        type=int,
+        default=None,
+        help="Upper bound on total bytes considered for fingerprinting (size budget).",
+    )
+    audit.add_argument(
+        "--respect-gitignore",
+        action="store_true",
+        help="When fingerprinting, skip files ignored by .gitignore (requires git).",
+    )
+    audit.add_argument(
         "--plugin-arg",
         dest="plugin_arg",
         action="append",
@@ -332,9 +349,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     audit.add_argument(
         "--fail-on",
-        choices=["never", "warnings", "errors"],
+        choices=["none", "never", "warnings", "errors", "any"],
         default=None,
-        help="Return a non-zero exit code when diagnostics reach this severity.",
+        help="Non-zero exit when diagnostics reach this severity (aliases: none=never, any=any finding).",
     )
     audit.add_argument(
         "--dashboard-json",
@@ -353,6 +370,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=Path,
         default=None,
         help="Optional dashboard HTML output path.",
+    )
+    audit.add_argument(
+        "--compare-to",
+        type=Path,
+        default=None,
+        help="Optional path to a previous manifest to compare totals against (adds deltas to CI line).",
     )
     audit.add_argument(
         "--dashboard-view",
@@ -381,6 +404,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         choices=["overview", "engines", "hotspots", "runs"],
         default="overview",
         help="Default tab when generating HTML.",
+    )
+
+    manifest_cmd = subparsers.add_parser(
+        "manifest",
+        help="Work with manifest files (validate)",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    manifest_sub = manifest_cmd.add_subparsers(dest="action", required=True)
+    manifest_validate = manifest_sub.add_parser(
+        "validate",
+        help="Validate a manifest against the JSON schema",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    manifest_validate.add_argument("path", type=Path, help="Path to manifest file to validate")
+    manifest_validate.add_argument(
+        "--schema",
+        type=Path,
+        default=None,
+        help="Explicit path to the JSON schema (defaults to bundled schema)",
     )
 
     init = subparsers.add_parser(
@@ -436,12 +478,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest_path=args.manifest,
             full_paths=cli_full_paths or None,
             max_depth=args.max_depth,
+            max_files=args.max_files,
+            max_bytes=args.max_fingerprint_bytes,
             skip_current=(not run_current) if modes_specified else None,
             skip_full=(not run_full) if modes_specified else None,
             fail_on=args.fail_on,
             dashboard_json=args.dashboard_json,
             dashboard_markdown=args.dashboard_markdown,
             dashboard_html=args.dashboard_html,
+            respect_gitignore=args.respect_gitignore,
             runners=args.runners,
         )
         if args.plugin_arg:
@@ -476,12 +521,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         fail_on = (args.fail_on or config.audit.fail_on or "never").lower()
         error_count = sum(run.severity_counts().get("error", 0) for run in result.runs)
         warning_count = sum(run.severity_counts().get("warning", 0) for run in result.runs)
+        info_count = sum(run.severity_counts().get("information", 0) for run in result.runs)
+
+        # Optional deltas against a previous manifest
+        delta_str = ""
+        if args.compare_to and args.compare_to.exists():
+            try:
+                from .dashboard import load_manifest as _load_manifest
+
+                prev_manifest = _load_manifest(args.compare_to)
+                prev_summary = build_summary(prev_manifest)
+                prev_sev = prev_summary["tabs"]["overview"]["severityTotals"]
+                de = error_count - int(prev_sev.get("error", 0))
+                dw = warning_count - int(prev_sev.get("warning", 0))
+                di = info_count - int(prev_sev.get("information", 0))
+                def _fmt(x: int) -> str:
+                    return f"+{x}" if x > 0 else (f"{x}" if x < 0 else "0")
+                delta_str = f"; delta: errors={_fmt(de)} warnings={_fmt(dw)} info={_fmt(di)}"
+            except Exception:
+                delta_str = ""
 
         exit_code = 0
-        if fail_on == "errors" and error_count > 0:
+        if fail_on in {"never", "none"}:
+            exit_code = 0
+        elif fail_on == "errors" and error_count > 0:
             exit_code = 2
         elif fail_on == "warnings" and (error_count > 0 or warning_count > 0):
             exit_code = 2
+        elif fail_on == "any" and (error_count > 0 or warning_count > 0 or info_count > 0):
+            exit_code = 2
+
+        # Compact CI summary line
+        print(f"[typewiz] totals: errors={error_count} warnings={warning_count} info={info_count}; runs={len(result.runs)}" + delta_str)
 
         if args.dashboard_json:
             args.dashboard_json.parent.mkdir(parents=True, exist_ok=True)
@@ -518,6 +589,43 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(rendered)
 
         return 0
+
+    if args.command == "manifest":
+        action = args.action
+        if action == "validate":
+            manifest_path: Path = args.path
+            schema_path = args.schema or Path("schemas/typing_audit_manifest.schema.json")
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            try:
+                # Prefer jsonschema when available
+                import importlib
+                jsonschema: Any = importlib.import_module("jsonschema")
+                validator = jsonschema.Draft7Validator(
+                    json.loads(schema_path.read_text(encoding="utf-8"))
+                )
+                errors = sorted(validator.iter_errors(data), key=lambda e: e.path)
+                if errors:
+                    for err in errors:
+                        loc = "/".join(str(p) for p in err.path)
+                        print(f"[typewiz] schema error at /{loc}: {err.message}")
+                    return 2
+                print("[typewiz] manifest is valid")
+                return 0
+            except ModuleNotFoundError:
+                # Fallback: minimal structural check without dependency
+                required = ["generatedAt", "projectRoot", "runs"]
+                missing = [k for k in required if k not in data]
+                if missing:
+                    print(f"[typewiz] manifest missing required keys: {', '.join(missing)}")
+                    return 2
+                if not isinstance(data.get("runs"), list):
+                    print("[typewiz] manifest.runs must be an array")
+                    return 2
+                print(
+                    "[typewiz] manifest passes basic validation (install 'jsonschema' for full checks)"
+                )
+                return 0
+        raise SystemExit("Unknown manifest action")
 
     if args.command == "readiness":
         manifest = load_manifest(args.manifest)

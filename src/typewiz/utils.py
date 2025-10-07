@@ -54,6 +54,48 @@ def run_command(args: Iterable[str], cwd: Path | None = None) -> CommandOutput:
     )
 
 
+def _safe_version_from_output(output: str) -> str | None:
+    text = (output or "").strip()
+    if not text:
+        return None
+    # Grab the first token that looks like a version (digits and dots)
+    for token in text.replace("(", " ").replace(")", " ").split():
+        if any(ch.isdigit() for ch in token) and any(ch == "." for ch in token):
+            return token.strip()
+    # Fallback to the entire line
+    return text.splitlines()[0].strip() if text else None
+
+
+def detect_tool_versions(tools: list[str]) -> dict[str, str]:
+    """Return a mapping of tool -> version by invoking their version commands.
+
+    Supports built-ins: pyright, mypy. Ignores unknown tools.
+    Best-effort: failures are skipped.
+    """
+    versions: dict[str, str] = {}
+    seen: set[str] = set()
+    for tool in tools:
+        name = tool.strip().lower()
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        try:
+            if name == "pyright":
+                out = run_command(["pyright", "--version"]).stdout
+                ver = _safe_version_from_output(out)
+                if ver:
+                    versions[name] = ver
+            elif name == "mypy":
+                out = run_command([python_executable(), "-m", "mypy", "--version"]).stdout
+                ver = _safe_version_from_output(out)
+                if ver:
+                    versions[name] = ver
+        except Exception:
+            # Ignore errors — version detection is optional
+            continue
+    return versions
+
+
 def require_json(payload: str, fallback: str | None = None) -> dict[str, JSONValue]:
     data_str = payload.strip() or (fallback or "")
     if not data_str:

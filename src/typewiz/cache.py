@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable, Mapping, Sequence
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypedDict, cast
@@ -82,6 +83,10 @@ def _normalise_category_mapping(
             values.append(candidate)
         normalised[key_str] = values
     return normalised
+
+
+def fingerprint_path(path: Path) -> dict[str, object]:
+    return _fingerprint(path)
 
 
 class EngineCache:
@@ -216,6 +221,12 @@ class EngineCache:
         }
         self.path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         self._dirty = False
+
+    def peek_file_hashes(self, key: str) -> dict[str, dict[str, object]] | None:
+        entry = self._entries.get(key)
+        if not entry:
+            return None
+        return dict(entry.file_hashes)
 
     def key_for(self, engine: str, mode: str, paths: Sequence[str], flags: Sequence[str]) -> str:
         path_part = ",".join(sorted({str(item) for item in paths}))
@@ -355,31 +366,109 @@ class EngineCache:
         self._dirty = True
 
 
-def collect_file_hashes(project_root: Path, paths: Iterable[str]) -> dict[str, dict[str, object]]:
+def _git_repo_root(path: Path) -> Path | None:
+    cur = path.resolve()
+    for candidate in (cur, *cur.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
+
+
+def _git_list_files(repo_root: Path) -> set[str]:
+    """Return repo files respecting .gitignore using git, if available.
+
+    Falls back to empty set on failure.
+    """
+    try:
+        import subprocess
+
+        completed = subprocess.run(
+            ["git", "ls-files", "-co", "--exclude-standard"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            return set()
+        files = {line.strip() for line in completed.stdout.splitlines() if line.strip()}
+        return files
+    except Exception:
+        return set()
+
+
+def collect_file_hashes(
+    project_root: Path,
+    paths: Iterable[str],
+    *,
+    respect_gitignore: bool = False,
+    max_files: int | None = None,
+    baseline: dict[str, dict[str, object]] | None = None,
+    max_bytes: int | None = None,
+) -> tuple[dict[str, dict[str, object]], bool]:
     hashes: dict[str, dict[str, object]] = {}
     seen: set[str] = set()
     project_root = project_root.resolve()
+    allowed_git_files: set[str] | None = None
+    if respect_gitignore:
+        repo_root = _git_repo_root(project_root)
+        if repo_root:
+            allowed_git_files = _git_list_files(repo_root)
+    truncated = False
+    bytes_budget = max_bytes if isinstance(max_bytes, int) and max_bytes >= 0 else None
+    bytes_seen = 0
+    def _maybe_add(file_path: Path) -> bool:
+        nonlocal truncated, bytes_seen
+        key = _relative_key(project_root, file_path)
+        if key in seen:
+            return True
+        if allowed_git_files is not None and key not in allowed_git_files:
+            return True
+        try:
+            st = file_path.stat()
+        except FileNotFoundError:
+            st = None
+        if baseline is not None and st is not None and key in baseline:
+            prev = baseline.get(key) or {}
+            prev_mtime_obj = prev.get("mtime", -1)
+            prev_size_obj = prev.get("size", -1)
+            prev_mtime = int(prev_mtime_obj) if isinstance(prev_mtime_obj, (int, str)) else -1
+            prev_size = int(prev_size_obj) if isinstance(prev_size_obj, (int, str)) else -1
+            cur_mtime = int(getattr(st, "st_mtime_ns", 0))
+            cur_size = int(getattr(st, "st_size", 0))
+            if prev_mtime == cur_mtime and prev_size == cur_size:
+                hashes[key] = dict(prev)
+                seen.add(key)
+                return not (max_files is not None and len(seen) >= max_files)
+        # size budget check before hashing to avoid heavy IO
+        if bytes_budget is not None:
+            size = int(getattr(st, "st_size", 0)) if st is not None else 0
+            if bytes_seen + size > bytes_budget:
+                truncated = True
+                return False
+            bytes_seen += size
+        hashes[key] = _fingerprint(file_path)
+        seen.add(key)
+        if max_files is not None and len(seen) >= max_files:
+            truncated = True
+            return False
+        return True
+
     for path_str in sorted({path for path in paths if path}):
         raw_path = Path(path_str)
         absolute = raw_path if raw_path.is_absolute() else (project_root / raw_path)
         absolute = absolute.resolve()
         if absolute.is_dir():
-            candidates: set[Path] = set()
-            for pattern in ("*.py", "*.pyi"):
-                candidates.update(absolute.rglob(pattern))
-            for child in sorted(candidates):
-                key = _relative_key(project_root, child)
-                if key in seen:
-                    continue
-                hashes[key] = _fingerprint(child)
-                seen.add(key)
-        elif absolute.exists():
-            key = _relative_key(project_root, absolute)
-            if key in seen:
-                continue
-            hashes[key] = _fingerprint(absolute)
-            seen.add(key)
-    return dict(sorted(hashes.items()))
+            for root, dirs, files in os.walk(absolute, followlinks=False):
+                dirs[:] = [d for d in dirs if not (Path(root) / d).is_symlink()]
+                for fname in sorted(files):
+                    if not (fname.endswith(".py") or fname.endswith(".pyi")):
+                        continue
+                    if not _maybe_add(Path(root) / fname):
+                        return (dict(sorted(hashes.items())), truncated)
+        elif absolute.exists() and absolute.is_file():
+            if not _maybe_add(absolute):
+                return (dict(sorted(hashes.items())), truncated)
+    return (dict(sorted(hashes.items())), truncated)
 
 
 def _relative_key(project_root: Path, path: Path) -> str:

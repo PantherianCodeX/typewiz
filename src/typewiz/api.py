@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from .cache import EngineCache, collect_file_hashes
+from .cache import EngineCache, collect_file_hashes, fingerprint_path
 from .config import AuditConfig, Config, EngineProfile, EngineSettings, PathOverride, load_config
 from .dashboard import build_summary, render_markdown
 from .engines import EngineContext, EngineOptions, resolve_engines
@@ -17,7 +17,7 @@ from .manifest import ManifestBuilder
 from .summary_types import SummaryData
 from .typed_manifest import ManifestData
 from .types import RunResult
-from .utils import default_full_paths, resolve_project_root
+from .utils import default_full_paths, detect_tool_versions, resolve_project_root
 
 logger = logging.getLogger("typewiz")
 
@@ -458,7 +458,10 @@ def run_audit(
 
     full_paths_normalised = _normalise_paths(root, raw_full_paths)
     engines = resolve_engines(audit_config.runners)
+    # Resolve tool versions once to incorporate into cache keys
+    tool_versions = detect_tool_versions([e.name for e in engines])
     cache = EngineCache(root)
+    fingerprint_truncated_any = False
 
     runs: list[RunResult] = []
     for engine in engines:
@@ -485,10 +488,24 @@ def run_audit(
             if engine_options.profile:
                 cache_flags.append(f"profile={engine_options.profile}")
             if engine_options.config_file:
-                cache_flags.append(f"config={engine_options.config_file.as_posix()}")
+                cfg_path = engine_options.config_file
+                cache_flags.append(f"config={cfg_path.as_posix()}")
+                try:
+                    fp = fingerprint_path(cfg_path)
+                    if "hash" in fp:
+                        cache_flags.append(f"config_hash={fp['hash']}")
+                    if "mtime" in fp:
+                        cache_flags.append(f"config_mtime={fp['mtime']}")
+                except Exception:
+                    pass
             cache_flags.extend(f"include={path}" for path in engine_options.include)
             cache_flags.extend(f"exclude={path}" for path in engine_options.exclude)
+            # include tool version to avoid stale cache across upgrades
+            version = tool_versions.get(engine.name)
+            if version:
+                cache_flags.append(f"version={version}")
             cache_key = cache.key_for(engine.name, mode, mode_paths, cache_flags)
+            prev_hashes = cache.peek_file_hashes(cache_key)
             fingerprint_provider = cast(
                 Callable[[EngineContext, Sequence[str]], Sequence[str]],
                 engine.fingerprint_targets,
@@ -503,7 +520,16 @@ def run_audit(
                 full_paths_normalised,
                 extra=engine_fingerprints,
             )
-            file_hashes = collect_file_hashes(root, fingerprint_targets)
+            file_hashes, truncated = collect_file_hashes(
+                root,
+                fingerprint_targets,
+                respect_gitignore=bool(audit_config.respect_gitignore),
+                max_files=audit_config.max_files,
+                baseline=prev_hashes,
+                max_bytes=getattr(audit_config, "max_bytes", None),
+            )
+            if truncated:
+                fingerprint_truncated_any = True
 
             cached_run = cache.get(cache_key, file_hashes)
             if cached_run:
@@ -531,11 +557,37 @@ def run_audit(
                             if isinstance(cached_run.tool_summary, dict)
                             else None
                         ),
+                        scanned_paths=list(mode_paths),
                     )
                 )
                 continue
 
-            result = engine.run(context, mode_paths)
+            try:
+                result = engine.run(context, mode_paths)
+            except Exception as exc:
+                # Structured engine failure; record and continue
+                runs.append(
+                    RunResult(
+                        tool=engine.name,
+                        mode=mode,
+                        command=[engine.name, mode],
+                        exit_code=1,
+                        duration_ms=0.0,
+                        diagnostics=[],
+                        cached=False,
+                        profile=engine_options.profile,
+                        config_file=engine_options.config_file,
+                        plugin_args=list(engine_options.plugin_args),
+                        include=list(engine_options.include),
+                        exclude=list(engine_options.exclude),
+                        overrides=[dict(item) for item in engine_options.overrides],
+                        category_mapping={k: list(v) for k, v in engine_options.category_mapping.items()},
+                        tool_summary=None,
+                        scanned_paths=list(mode_paths),
+                        engine_error={"message": str(exc), "exitCode": 1},
+                    )
+                )
+                continue
             logger.info("Running %s:%s (%s)", engine.name, mode, " ".join(result.command))
 
             cache.update(
@@ -574,12 +626,14 @@ def run_audit(
                         k: list(v) for k, v in engine_options.category_mapping.items()
                     },
                     tool_summary=(result.tool_summary if hasattr(result, "tool_summary") else None),
+                    scanned_paths=list(mode_paths),
                 )
             )
 
     cache.save()
 
     builder = ManifestBuilder(root)
+    builder.fingerprint_truncated = fingerprint_truncated_any
     depth = audit_config.max_depth or 3
     for run in runs:
         builder.add_run(run, max_depth=depth)

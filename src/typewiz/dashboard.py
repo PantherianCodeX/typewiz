@@ -20,7 +20,7 @@ def _collect_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, ob
 
 
 def build_summary(manifest: ManifestData) -> SummaryData:
-    runs = manifest["runs"]
+    runs = manifest.get("runs", [])
     run_summary: dict[str, SummaryRunEntry] = {}
     folder_totals: dict[str, Counter[str]] = defaultdict(Counter)
     folder_counts: dict[str, int] = defaultdict(int)

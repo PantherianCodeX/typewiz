@@ -74,11 +74,25 @@ class RunPayloadRequired(TypedDict):
 
 class RunPayload(RunPayloadRequired, total=False):
     toolSummary: ToolSummary
+    engineArgsEffective: list[str]
+    scannedPathsResolved: list[str]
+    engineError: "EngineError"
 
 
-class ManifestData(TypedDict):
+class EngineError(TypedDict, total=False):
+    message: str
+    exitCode: int
+    stderr: str
+
+
+class ManifestData(TypedDict, total=False):
+    # Manifest metadata
     generatedAt: str
     projectRoot: str
+    schemaVersion: str
+    toolVersions: dict[str, str]
+    fingerprintTruncated: bool
+    # Collected runs
     runs: list[RunPayload]
 
 

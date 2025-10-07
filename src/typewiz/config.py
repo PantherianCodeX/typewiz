@@ -59,12 +59,15 @@ class AuditConfig:
     manifest_path: Path | None = None
     full_paths: list[str] | None = None
     max_depth: int | None = None
+    max_files: int | None = None
+    max_bytes: int | None = None
     skip_current: bool | None = None
     skip_full: bool | None = None
     fail_on: str | None = None
     dashboard_json: Path | None = None
     dashboard_markdown: Path | None = None
     dashboard_html: Path | None = None
+    respect_gitignore: bool | None = None
     runners: list[str] | None = None
     plugin_args: dict[str, list[str]] = field(default_factory=_default_dict_str_liststr)
     engine_settings: dict[str, EngineSettings] = field(
@@ -211,12 +214,15 @@ class AuditConfigModel(BaseModel):
     manifest_path: Path | None = None
     full_paths: list[str] | None = None
     max_depth: int | None = None
+    max_files: int | None = None
+    max_bytes: int | None = None
     skip_current: bool | None = None
     skip_full: bool | None = None
     fail_on: str | None = None
     dashboard_json: Path | None = None
     dashboard_markdown: Path | None = None
     dashboard_html: Path | None = None
+    respect_gitignore: bool | None = None
     runners: list[str] | None = None
     plugin_args: dict[str, list[str]] = Field(default_factory=dict)
     engine_settings: dict[str, EngineSettingsModel] = Field(default_factory=dict, alias="engines")
@@ -234,7 +240,7 @@ class AuditConfigModel(BaseModel):
             return None
         if isinstance(value, str):
             lowered = value.strip().lower()
-            if lowered in {"errors", "warnings", "never"}:
+            if lowered in {"errors", "warnings", "never", "none", "any"}:
                 return lowered
             raise ValueError("fail_on must be one of: errors, warnings, never")
         raise ValueError("fail_on must be a string")
