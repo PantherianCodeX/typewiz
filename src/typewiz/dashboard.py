@@ -15,7 +15,7 @@ def load_manifest(path: Path) -> ManifestData:
     return cast(ManifestData, json.loads(path.read_text(encoding="utf-8")))
 
 
-def _collect_readiness(folder_entries: list[dict[str, Any]]) -> dict[str, Any]:
+def _collect_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, Any]:
     return compute_readiness(folder_entries)
 
 
@@ -85,7 +85,7 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 )
             )
 
-    folder_entries_full: List[Dict[str, Any]] = []
+    folder_entries_full: List[ReadinessEntry] = []
     for path, counts in folder_totals.items():
         folder_entries_full.append(
             {
@@ -93,7 +93,6 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 "errors": counts["errors"],
                 "warnings": counts["warnings"],
                 "information": counts["information"],
-                "participatingRuns": folder_counts[path],
                 "codeCounts": dict(folder_code_totals.get(path, {})),
                 "categoryCounts": dict(folder_category_totals.get(path, {})),
                 "recommendations": sorted(folder_recommendations.get(path, [])),
@@ -111,7 +110,7 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
     readiness = _collect_readiness(cast(Sequence[ReadinessEntry], folder_entries_full))
 
     top_rules_dict = dict(rule_totals.most_common(20))
-    folder_entry_lookup: Dict[str, Dict[str, Any]] = {entry["path"]: entry for entry in folder_entries_full}
+    folder_entry_lookup: Dict[str, ReadinessEntry] = {entry["path"]: entry for entry in folder_entries_full}
     top_folders_list = []
     for path, counts in top_folders:
         entry = folder_entry_lookup.get(path, {})

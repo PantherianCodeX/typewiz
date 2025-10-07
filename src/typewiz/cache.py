@@ -110,29 +110,27 @@ class EngineCache:
             entries: dict[str, _EntryJson]
 
         payload = cast(_Payload, raw)
-        entries = cast(dict[str, _EntryJson], payload.get("entries", {}))
+        payload_entries = payload.get("entries")
+        entries: dict[str, _EntryJson] = payload_entries or {}
         for key, entry in entries.items():
-            diagnostics_any = cast(list[dict[str, object]], entry.get("diagnostics", []))
-            file_hashes_any = cast(dict[str, dict[str, object]], entry.get("file_hashes", {}))
-            command_any = cast(list[str], entry.get("command", []))
+            diagnostics_any = entry.get("diagnostics", []) or []
+            file_hashes_any = entry.get("file_hashes", {}) or {}
+            command_any = entry.get("command", []) or []
             exit_code = entry.get("exit_code", 0)
             duration_ms = entry.get("duration_ms", 0.0)
-            plugin_args_any = cast(list[str], entry.get("plugin_args", []))
-            include_any = cast(list[str], entry.get("include", []))
-            exclude_any = cast(list[str], entry.get("exclude", []))
+            plugin_args_any = entry.get("plugin_args", []) or []
+            include_any = entry.get("include", []) or []
+            exclude_any = entry.get("exclude", []) or []
             profile = entry.get("profile")
             config_file = entry.get("config_file")
-            overrides_any = cast(list[dict[str, object]], entry.get("overrides", []))
-            category_mapping_any = cast(dict[str, list[str]], entry.get("category_mapping", {}))
+            overrides_any = entry.get("overrides", []) or []
+            category_mapping_any = entry.get("category_mapping", {}) or {}
             # Defensive normalization and typing for JSON-loaded structures
             command_list: list[str] = [str(a) for a in command_any]
             plugin_args_list: list[str] = [str(a) for a in plugin_args_any]
             include_list: list[str] = [str(i) for i in include_any]
             exclude_list: list[str] = [str(i) for i in exclude_any]
-            overrides_list: list[dict[str, object]] = []
-            for i in overrides_any:
-                if isinstance(i, dict):
-                    overrides_list.append({str(k): v for k, v in i.items()})
+            overrides_list: list[dict[str, object]] = [{str(k): v for k, v in i.items()} for i in overrides_any]
             file_hashes_map: dict[str, dict[str, object]] = {k: dict(v) for k, v in file_hashes_any.items()}
             diagnostics_list: list[dict[str, object]] = [dict(d) for d in diagnostics_any]
             exit_code_int = int(exit_code)

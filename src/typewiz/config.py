@@ -79,8 +79,10 @@ def _ensure_list(value: object | None) -> list[str] | None:
     if isinstance(value, str):
         stripped = value.strip()
         return [stripped] if stripped else []
+    if not isinstance(value, Iterable):
+        return []
     result: list[str] = []
-    for item in cast(Iterable[object], value) if isinstance(value, Iterable) else []:
+    for item in cast(Iterable[object], value):
         if isinstance(item, str):
             stripped = item.strip()
             if stripped:
@@ -175,16 +177,16 @@ class PathOverrideModel(BaseModel):
 
     @model_validator(mode="after")
     def _normalise(self) -> "PathOverrideModel":
-        engines = {}
+        engines_map: Dict[str, EngineSettingsModel] = {}
         for key in sorted(self.engines):
-            engines[key.strip()] = self.engines[key]
-        object.__setattr__(self, "engines", engines)
-        profiles = {}
+            engines_map[key.strip()] = self.engines[key]
+        object.__setattr__(self, "engines", engines_map)
+        profiles_map: Dict[str, str] = {}
         for key, value in sorted(self.active_profiles.items()):
-            profiles[key.strip()] = value.strip()
-        object.__setattr__(self, "active_profiles", profiles)
-        for engine, profile in profiles.items():
-            settings = engines.get(engine)
+            profiles_map[key.strip()] = value.strip()
+        object.__setattr__(self, "active_profiles", profiles_map)
+        for engine, profile in profiles_map.items():
+            settings = engines_map.get(engine)
             if settings and profile:
                 # validation of profile presence happens when merged.
                 continue
@@ -230,7 +232,8 @@ class AuditConfigModel(BaseModel):
         result: Dict[str, List[str]] = {}
         if not isinstance(value, dict):
             return result
-        for key, raw in value.items():
+        value_dict: Dict[object, object] = cast(Dict[object, object], value)
+        for key, raw in value_dict.items():
             key_str = str(key).strip()
             if not key_str:
                 continue
@@ -245,11 +248,11 @@ class AuditConfigModel(BaseModel):
             values = _dedupe_preserve(self.plugin_args[key])
             normalised[key] = values
         object.__setattr__(self, "plugin_args", normalised)
-        engines = {}
+        engines: Dict[str, EngineSettingsModel] = {}
         for key in sorted(self.engine_settings):
             engines[key.strip()] = self.engine_settings[key]
         object.__setattr__(self, "engine_settings", engines)
-        profiles = {}
+        profiles: Dict[str, str] = {}
         for key, value in sorted(self.active_profiles.items()):
             profiles[key.strip()] = value.strip()
         object.__setattr__(self, "active_profiles", profiles)
@@ -384,9 +387,11 @@ def load_config(explicit_path: Path | None = None) -> Config:
     for candidate in search_order:
         if not candidate.exists():
             continue
-        raw_any = toml.loads(candidate.read_text(encoding="utf-8"))
-        if isinstance(raw_any, dict) and "tool" in raw_any and isinstance(raw_any["tool"], dict):
-            tool_section_any = cast(Dict[str, Any], raw_any["tool"]).get("typewiz")
+        raw_loaded = toml.loads(candidate.read_text(encoding="utf-8"))
+        raw_any: Dict[str, Any] = raw_loaded if isinstance(raw_loaded, dict) else {}
+        tool_obj = raw_any.get("tool")
+        if isinstance(tool_obj, dict):
+            tool_section_any = cast(Dict[str, Any], tool_obj).get("typewiz")
             if isinstance(tool_section_any, dict):
                 raw_any = tool_section_any
         try:

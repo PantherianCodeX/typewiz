@@ -104,7 +104,10 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> Dict[str, Any
         else:
             code_counts = entry.get("codeCounts", {})
             categories = _bucket_code_counts(code_counts)
-        category_status = {}
+        class CategoryMeta(TypedDict):
+            status: str
+            count: int
+        category_status: Dict[str, CategoryMeta] = {}
         for category in CATEGORY_PATTERNS:
             count = categories.get(category, 0)
             status = _status_for_category(category, count)
@@ -124,7 +127,7 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> Dict[str, Any
         if total_diagnostics == 0:
             strict_status = "ready"
         else:
-            blocking_categories = [
+            blocking_categories: List[str] = [
                 cat
                 for cat, meta in category_status.items()
                 if meta["status"] == "blocked" and cat != "general"
@@ -134,7 +137,7 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> Dict[str, Any
             else:
                 strict_status = "blocked"
 
-        strict_entry = {
+        strict_entry: Dict[str, Any] = {
             "path": entry["path"],
             "errors": entry.get("errors", 0),
             "warnings": entry.get("warnings", 0),
