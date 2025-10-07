@@ -14,21 +14,39 @@ from .types import RunResult
 from .utils import default_full_paths, resolve_project_root
 
 
-SUMMARY_EXTRA_CHOICES = {"profile", "config", "plugin-args", "paths"}
+SUMMARY_FIELD_CHOICES = {"profile", "config", "plugin-args", "paths"}
 
 
 def _format_list(values: Sequence[str]) -> str:
     return ", ".join(values) if values else "—"
 
 
+def _parse_summary_fields(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    fields: list[str] = []
+    for part in raw.split(","):
+        item = part.strip().lower()
+        if not item:
+            continue
+        if item == "all":
+            return sorted(SUMMARY_FIELD_CHOICES)
+        if item not in SUMMARY_FIELD_CHOICES:
+            raise SystemExit(
+                f"Unknown summary field '{item}'. "
+                f"Valid values: {', '.join(sorted(SUMMARY_FIELD_CHOICES | {'all'}))}"
+            )
+        if item not in fields:
+            fields.append(item)
+    return fields
+
+
 def _print_summary(
     runs: Sequence[RunResult],
-    extras: Sequence[str],
+    fields: Sequence[str],
     style: str,
 ) -> None:
-    extra_keys = set(extras)
-    if "all" in extra_keys:
-        extra_keys = set(SUMMARY_EXTRA_CHOICES)
+    field_set = set(fields)
 
     for run in runs:
         counts = run.severity_counts()
@@ -40,21 +58,21 @@ def _print_summary(
         cmd = " ".join(shlex.quote(arg) for arg in run.command)
 
         detail_items: list[tuple[str, str]] = []
-        if "profile" in extra_keys:
+        if "profile" in field_set:
             if run.profile:
                 detail_items.append(("profile", run.profile))
             elif style == "expanded":
                 detail_items.append(("profile", "—"))
-        if "config" in extra_keys:
+        if "config" in field_set:
             if run.config_file:
                 detail_items.append(("config", str(run.config_file)))
             elif style == "expanded":
                 detail_items.append(("config", "—"))
-        if "plugin-args" in extra_keys:
+        if "plugin-args" in field_set:
             plugin_args = _format_list(list(run.plugin_args))
             if plugin_args != "—" or style == "expanded":
                 detail_items.append(("plugin args", plugin_args))
-        if "paths" in extra_keys:
+        if "paths" in field_set:
             include_paths = _format_list(list(run.include))
             exclude_paths = _format_list(list(run.exclude))
             if include_paths != "—" or style == "expanded":
@@ -121,17 +139,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit.add_argument("--plugin-arg", action="append", default=[], help="Runner-specific argument (runner=ARG)")
     audit.add_argument("--profile", action="append", default=[], help="Select an engine profile (runner=PROFILE)")
     audit.add_argument(
-        "--summary-extra",
-        dest="summary_extras",
-        action="append",
-        choices=sorted(SUMMARY_EXTRA_CHOICES | {"all"}),
-        help="Add extra fields to CLI summary (repeatable)",
+        "-S",
+        "--summary",
+        choices=["compact", "expanded", "full"],
+        default="compact",
+        help="Compact (default), expanded (multi-line), or full (expanded + all fields)",
     )
     audit.add_argument(
-        "--summary-style",
-        choices=["compact", "expanded"],
-        default="compact",
-        help="Choose CLI summary layout (default: compact)",
+        "--summary-fields",
+        default=None,
+        help="Comma-separated extra summary fields "
+        "(profile, config, plugin-args, paths, all). Ignored when --summary=full.",
     )
     audit.add_argument(
         "--fail-on",
@@ -187,7 +205,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.profile:
             override.active_profiles.update(_parse_profile_args(args.profile))
 
-        summary_extras = args.summary_extras or []
+        summary_choice: str = args.summary
+        summary_style = "expanded" if summary_choice in {"expanded", "full"} else "compact"
+        summary_fields: list[str]
+        if summary_choice == "full":
+            summary_fields = sorted(SUMMARY_FIELD_CHOICES)
+        else:
+            summary_fields = _parse_summary_fields(args.summary_fields)
 
         manifest_target = args.manifest if args.manifest else None
         result = run_audit(
@@ -199,7 +223,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             build_summary_output=True,
         )
 
-        _print_summary(result.runs, summary_extras, args.summary_style)
+        _print_summary(result.runs, summary_fields, summary_style)
         summary = result.summary or build_summary(result.manifest)
 
         fail_on = (args.fail_on or config.audit.fail_on or "never").lower()

@@ -77,10 +77,10 @@ exclude = ["packages/legacy"]
 CLI summaries stay compact by default; opt-in to richer output as needed:
 
 ```bash
-python -m typewiz audit --summary-style expanded --summary-extra profile --summary-extra plugin-args
+python -m typewiz audit --summary expanded --summary-fields profile,plugin-args
 ```
 
-Supported extras include `profile`, `config`, `plugin-args`, `paths`, or `all`.
+`--summary full` expands output and automatically includes all fields (`profile`, `config`, `plugin-args`, `paths`).
 
 ### Incremental caching
 

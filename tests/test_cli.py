@@ -100,6 +100,8 @@ def test_cli_audit(
         "stub=strict",
         "--plugin-arg",
         "stub=--cli-flag",
+        "--summary",
+        "compact",
     ])
 
     captured = capsys.readouterr()
@@ -183,14 +185,10 @@ plugin_args = ["--strict"]
         "stub=strict",
         "--plugin-arg",
         "stub=--cli-flag",
-        "--summary-extra",
-        "profile",
-        "--summary-extra",
-        "plugin-args",
-        "--summary-extra",
-        "paths",
-        "--summary-style",
+        "--summary",
         "expanded",
+        "--summary-fields",
+        "profile,plugin-args,paths",
     ])
 
     assert exit_code == 0
@@ -200,3 +198,26 @@ plugin_args = ["--strict"]
     assert "- plugin args: --cli-flag, --strict" in captured.out
     assert "- include: extras" in captured.out
     assert "- exclude: —" in captured.out
+    assert "- config" not in captured.out
+
+    # Request full summary (includes every field automatically)
+    exit_code = main([
+        "audit",
+        "--runner",
+        "stub",
+        "--full-path",
+        "src",
+        "--manifest",
+        str(manifest_path),
+        "--profile",
+        "stub=strict",
+        "--plugin-arg",
+        "stub=--cli-flag",
+        "--summary",
+        "full",
+    ])
+
+    assert exit_code == 0
+
+    captured = capsys.readouterr()
+    assert "- config: —" in captured.out
