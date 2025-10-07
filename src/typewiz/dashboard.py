@@ -3,12 +3,12 @@ from __future__ import annotations
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, List, Sequence, cast
 
 from typing import cast
 
 from .typed_manifest import ManifestData
-from .readiness import compute_readiness, CATEGORY_LABELS
+from .readiness import compute_readiness, CATEGORY_LABELS, ReadinessEntry
 
 
 def load_manifest(path: Path) -> ManifestData:
@@ -85,7 +85,7 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 )
             )
 
-    folder_entries_full = []
+    folder_entries_full: List[Dict[str, Any]] = []
     for path, counts in folder_totals.items():
         folder_entries_full.append(
             {
@@ -108,10 +108,10 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
         file_entries,
         key=lambda item: (-item[1], -item[2], item[0]),
     )[:25]
-    readiness = _collect_readiness(folder_entries_full)
+    readiness = _collect_readiness(cast(Sequence[ReadinessEntry], folder_entries_full))
 
     top_rules_dict = dict(rule_totals.most_common(20))
-    folder_entry_lookup = {entry["path"]: entry for entry in folder_entries_full}
+    folder_entry_lookup: Dict[str, Dict[str, Any]] = {entry["path"]: entry for entry in folder_entries_full}
     top_folders_list = []
     for path, counts in top_folders:
         entry = folder_entry_lookup.get(path, {})

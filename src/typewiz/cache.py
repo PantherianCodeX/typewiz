@@ -4,7 +4,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, Mapping, Sequence, cast
+from typing import Dict, Iterable, Mapping, Sequence, cast, TypedDict, Any
 
 from .types import Diagnostic
 
@@ -78,23 +78,52 @@ class EngineCache:
         if not self.path.exists():
             return
         try:
-            payload = json.loads(self.path.read_text(encoding="utf-8"))
+            raw = json.loads(self.path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             return
-        entries = cast(dict[str, dict[str, object]], payload.get("entries", {}))
+
+        class _DiagJson(TypedDict, total=False):
+            tool: str
+            severity: str
+            path: str
+            line: int
+            column: int
+            code: str
+            message: str
+            raw: Dict[str, Any]
+
+        class _EntryJson(TypedDict, total=False):
+            command: list[str]
+            exit_code: int
+            duration_ms: float
+            diagnostics: list[_DiagJson]
+            file_hashes: dict[str, dict[str, object]]
+            profile: str | None
+            config_file: str | None
+            plugin_args: list[str]
+            include: list[str]
+            exclude: list[str]
+            overrides: list[dict[str, object]]
+            category_mapping: dict[str, list[str]]
+
+        class _Payload(TypedDict, total=False):
+            entries: dict[str, _EntryJson]
+
+        payload = cast(_Payload, raw)
+        entries = cast(dict[str, _EntryJson], payload.get("entries", {}))
         for key, entry in entries.items():
-            diagnostics_any = cast(list[object], entry.get("diagnostics", []))
-            file_hashes_any = cast(dict[str, object], entry.get("file_hashes", {}))
-            command_any = cast(list[object], entry.get("command", []))
-            exit_code = entry.get("exit_code")
-            duration_ms = entry.get("duration_ms")
-            plugin_args_any = cast(list[object], entry.get("plugin_args", []))
-            include_any = cast(list[object], entry.get("include", []))
-            exclude_any = cast(list[object], entry.get("exclude", []))
+            diagnostics_any = cast(list[dict[str, object]], entry.get("diagnostics", []))
+            file_hashes_any = cast(dict[str, dict[str, object]], entry.get("file_hashes", {}))
+            command_any = cast(list[str], entry.get("command", []))
+            exit_code = entry.get("exit_code", 0)
+            duration_ms = entry.get("duration_ms", 0.0)
+            plugin_args_any = cast(list[str], entry.get("plugin_args", []))
+            include_any = cast(list[str], entry.get("include", []))
+            exclude_any = cast(list[str], entry.get("exclude", []))
             profile = entry.get("profile")
             config_file = entry.get("config_file")
-            overrides_any = cast(list[object], entry.get("overrides", []))
-            category_mapping_any = cast(dict[str, object], entry.get("category_mapping", {}))
+            overrides_any = cast(list[dict[str, object]], entry.get("overrides", []))
+            category_mapping_any = cast(dict[str, list[str]], entry.get("category_mapping", {}))
             # Defensive normalization and typing for JSON-loaded structures
             command_list: list[str] = [str(a) for a in command_any]
             plugin_args_list: list[str] = [str(a) for a in plugin_args_any]
@@ -104,24 +133,10 @@ class EngineCache:
             for i in overrides_any:
                 if isinstance(i, dict):
                     overrides_list.append({str(k): v for k, v in i.items()})
-            file_hashes_map: dict[str, dict[str, object]] = {}
-            for k_any, v_any in file_hashes_any.items():
-                if not isinstance(k_any, str) or not isinstance(v_any, dict):
-                    continue
-                v_dict = cast(dict[object, object], v_any)
-                nested: dict[str, object] = {}
-                for kk, vv in v_dict.items():
-                    nested[str(kk)] = vv
-                file_hashes_map[k_any] = nested
-            diagnostics_list: list[dict[str, object]] = []
-            for d in diagnostics_any:
-                if isinstance(d, dict):
-                    norm: dict[str, object] = {}
-                    for k, v in d.items():
-                        norm[str(k)] = v
-                    diagnostics_list.append(norm)
-            exit_code_int = int(exit_code) if isinstance(exit_code, int) else 0
-            duration_val = float(duration_ms) if isinstance(duration_ms, (int, float)) else 0.0
+            file_hashes_map: dict[str, dict[str, object]] = {k: dict(v) for k, v in file_hashes_any.items()}
+            diagnostics_list: list[dict[str, object]] = [dict(d) for d in diagnostics_any]
+            exit_code_int = int(exit_code)
+            duration_val = float(duration_ms)
             self._entries[key] = CacheEntry(
                 command=command_list,
                 exit_code=exit_code_int,

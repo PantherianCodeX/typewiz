@@ -384,13 +384,13 @@ def load_config(explicit_path: Path | None = None) -> Config:
     for candidate in search_order:
         if not candidate.exists():
             continue
-        raw = toml.loads(candidate.read_text(encoding="utf-8"))
-        if isinstance(raw, dict) and "tool" in raw and isinstance(raw["tool"], dict):
-            tool_section = raw["tool"].get("typewiz")
-            if isinstance(tool_section, dict):
-                raw = tool_section
+        raw_any = toml.loads(candidate.read_text(encoding="utf-8"))
+        if isinstance(raw_any, dict) and "tool" in raw_any and isinstance(raw_any["tool"], dict):
+            tool_section_any = cast(Dict[str, Any], raw_any["tool"]).get("typewiz")
+            if isinstance(tool_section_any, dict):
+                raw_any = tool_section_any
         try:
-            cfg_model = ConfigModel.model_validate(raw)
+            cfg_model = ConfigModel.model_validate(raw_any)
         except ValidationError as exc:  # pragma: no cover - configuration errors
             raise ValueError(f"Invalid typewiz configuration in {candidate}: {exc}") from exc
         audit = _model_to_dataclass(cfg_model.audit)
