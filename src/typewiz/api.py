@@ -222,9 +222,9 @@ def _normalise_paths(project_root: Path, raw_paths: Sequence[str]) -> list[str]:
     return normalised
 
 
-def _extra_fingerprint_paths(project_root: Path) -> list[str]:
+def _global_fingerprint_paths(project_root: Path) -> list[str]:
     extras: list[str] = []
-    for filename in ("pyrightconfig.json", "mypy.ini", "typewiz.toml", ".typewiz.toml", "pyproject.toml"):
+    for filename in ("typewiz.toml", ".typewiz.toml", "pyproject.toml"):
         candidate = project_root / filename
         if candidate.exists():
             extras.append(filename)
@@ -238,7 +238,7 @@ def _fingerprint_targets(
     extra: Sequence[str] | None = None,
 ) -> list[str]:
     candidates = list(mode_paths) if mode_paths else list(default_paths)
-    candidates.extend(_extra_fingerprint_paths(project_root))
+    candidates.extend(_global_fingerprint_paths(project_root))
     if extra:
         candidates.extend(extra)
     if not candidates:
@@ -482,13 +482,20 @@ def run_audit(
             cache_flags.extend(f"include={path}" for path in engine_options.include)
             cache_flags.extend(f"exclude={path}" for path in engine_options.exclude)
             cache_key = cache.key_for(engine.name, mode, mode_paths, cache_flags)
-            extra_fingerprints: list[str] = []
-            if engine_options.config_file:
-                extra_fingerprints.extend(
-                    _normalise_paths(root, [str(engine_options.config_file)])
-                )
+            fingerprint_provider = getattr(
+                engine,
+                "fingerprint_targets",
+                lambda *args, **kwargs: [],
+            )
+            engine_fingerprints = _normalise_paths(
+                root,
+                fingerprint_provider(context, mode_paths),
+            )
             fingerprint_targets = _fingerprint_targets(
-                root, mode_paths, full_paths_normalised, extra=extra_fingerprints
+                root,
+                mode_paths,
+                full_paths_normalised,
+                extra=engine_fingerprints,
             )
             file_hashes = collect_file_hashes(root, fingerprint_targets)
 

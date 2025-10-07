@@ -67,5 +67,12 @@ class MypyEngine(BaseEngine):
             ],
         }
 
+    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+        targets: list[str] = []
+        config = self._config_file(context)
+        if config:
+            targets.append(str(config))
+        return targets
+
 
 __all__ = ["MypyEngine"]

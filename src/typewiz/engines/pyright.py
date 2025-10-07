@@ -52,5 +52,15 @@ class PyrightEngine(BaseEngine):
             ],
         }
 
+    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+        targets: list[str] = []
+        config = context.engine_options.config_file
+        if config:
+            targets.append(str(config))
+        else:
+            default = context.project_root / "pyrightconfig.json"
+            targets.append(str(default))
+        return targets
+
 
 __all__ = ["PyrightEngine"]

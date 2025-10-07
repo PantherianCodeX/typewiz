@@ -170,8 +170,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit.add_argument("--max-depth", type=int, default=None, help="Folder aggregation depth")
     audit.add_argument("--skip-current", dest="skip_current", action=argparse.BooleanOptionalAction, default=None)
     audit.add_argument("--skip-full", dest="skip_full", action=argparse.BooleanOptionalAction, default=None)
-    audit.add_argument("--pyright-arg", action="append", default=[], help="Extra argument for pyright (repeatable)")
-    audit.add_argument("--mypy-arg", action="append", default=[], help="Extra argument for mypy (repeatable)")
     audit.add_argument("--plugin-arg", action="append", default=[], help="Runner-specific argument (runner=ARG)")
     audit.add_argument("--profile", action="append", default=[], help="Select an engine profile (runner=PROFILE)")
     audit.add_argument(
@@ -248,10 +246,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             dashboard_html=args.dashboard_html,
             runners=args.runners,
         )
-        if args.pyright_arg:
-            override.plugin_args["pyright"] = list(args.pyright_arg)
-        if args.mypy_arg:
-            override.plugin_args["mypy"] = list(args.mypy_arg)
         if args.plugin_arg:
             plugin_arg_map = _parse_plugin_args(args.plugin_arg)
             for name, values in plugin_arg_map.items():

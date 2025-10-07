@@ -16,8 +16,6 @@ ROOT_MARKERS: tuple[str, ...] = (
     "typewiz.toml",
     ".typewiz.toml",
     "pyproject.toml",
-    "pyrightconfig.json",
-    "mypy.ini",
 )
 
 @dataclass(slots=True)

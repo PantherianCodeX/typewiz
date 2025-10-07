@@ -47,3 +47,7 @@ class BaseEngine(Protocol):
     def category_mapping(self) -> dict[str, list[str]]:
         """Optional mapping from categories to rule substrings for readiness analysis."""
         return {}
+
+    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+        """Additional files or globs whose contents should invalidate cached runs."""
+        return []
