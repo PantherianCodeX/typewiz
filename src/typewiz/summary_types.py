@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import TypedDict
 
-from .typed_manifest import EngineOptionsEntry
+from .typed_manifest import EngineOptionsEntry, ToolSummary
 
 
-class SummaryRunEntry(TypedDict):
+class SummaryRunEntry(TypedDict, total=False):
     command: list[str]
     errors: int
     warnings: int
@@ -15,6 +15,7 @@ class SummaryRunEntry(TypedDict):
     ruleCounts: dict[str, int]
     categoryCounts: dict[str, int]
     engineOptions: EngineOptionsEntry
+    toolSummary: ToolSummary
 
 
 class SummaryFolderEntry(TypedDict):

@@ -36,7 +36,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
         key = f"{run['tool']}:{run['mode']}"
         summary = run.get("summary", {})
         options = run.get("engineOptions", {})
-        run_summary[key] = {
+        run_entry: SummaryRunEntry = {
             "command": list(run.get("command", [])),
             "errors": summary.get("errors", 0),
             "warnings": summary.get("warnings", 0),
@@ -55,6 +55,10 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 "categoryMapping": dict(options.get("categoryMapping", {})),
             },
         }
+        tool_summary_obj = run.get("toolSummary")
+        if isinstance(tool_summary_obj, dict) and tool_summary_obj:
+            run_entry["toolSummary"] = tool_summary_obj  # raw tool-provided totals, if present
+        run_summary[key] = run_entry
         severity_totals.update(summary.get("severityBreakdown", {}))
         rule_totals.update(summary.get("ruleCounts", {}))
         category_totals.update(summary.get("categoryCounts", {}))
