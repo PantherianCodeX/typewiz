@@ -26,6 +26,7 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
     for run in runs:
         key = f"{run.get('tool')}:{run.get('mode')}"
         summary = run.get("summary", {})
+        options = run.get("engineOptions", {})
         run_summary[key] = {
             "command": run.get("command"),
             "errors": summary.get("errors", 0),
@@ -34,6 +35,13 @@ def build_summary(manifest: Mapping[str, Any]) -> dict[str, Any]:
             "total": summary.get("total", 0),
             "severityBreakdown": summary.get("severityBreakdown", {}),
             "ruleCounts": summary.get("ruleCounts", {}),
+            "engineOptions": {
+                "profile": options.get("profile"),
+                "configFile": options.get("configFile"),
+                "pluginArgs": list(options.get("pluginArgs", [])),
+                "include": list(options.get("include", [])),
+                "exclude": list(options.get("exclude", [])),
+            },
         }
         severity_totals.update(summary.get("severityBreakdown", {}))
         rule_totals.update(summary.get("ruleCounts", {}))
@@ -106,6 +114,26 @@ def render_markdown(summary: dict[str, Any]) -> str:
         lines.append(
             f"| `{key}` | {data.get('errors', 0)} | {data.get('warnings', 0)} | {data.get('information', 0)} | `{cmd}` |"
         )
+    if summary.get("runSummary"):
+        lines.extend(["", "### Engine Options"])
+        for key, data in summary.get("runSummary", {}).items():
+            options = data.get("engineOptions", {})
+            profile = options.get("profile") or "—"
+            config_file = options.get("configFile") or "—"
+            plugin_args = ", ".join(f"`{arg}`" for arg in options.get("pluginArgs", []) or []) or "—"
+            include = ", ".join(f"`{path}`" for path in options.get("include", []) or []) or "—"
+            exclude = ", ".join(f"`{path}`" for path in options.get("exclude", []) or []) or "—"
+            lines.extend(
+                [
+                    "",
+                    f"#### `{key}`",
+                    f"- Profile: {profile}",
+                    f"- Config file: {config_file}",
+                    f"- Plugin args: {plugin_args}",
+                    f"- Include paths: {include}",
+                    f"- Exclude paths: {exclude}",
+                ]
+            )
 
     lines.extend(
         [

@@ -59,6 +59,43 @@ def render_html(summary: dict[str, Any]) -> str:
         ]
     )
 
+    def _as_code_list(items: list[str]) -> str:
+        if not items:
+            return "—"
+        return " ".join(f"<code>{h(str(item))}</code>" for item in items)
+
+    if summary.get("runSummary"):
+        parts.extend(
+            [
+                "  <section>",
+                "    <h2>Engine Options</h2>",
+            ]
+        )
+        for key, data in summary.get("runSummary", {}).items():
+            options = data.get("engineOptions", {}) or {}
+            profile_value = options.get("profile")
+            config_value = options.get("configFile")
+            plugin_args = [str(arg) for arg in options.get("pluginArgs", []) or []]
+            include = [str(item) for item in options.get("include", []) or []]
+            exclude = [str(item) for item in options.get("exclude", []) or []]
+            profile_display = f"<code>{h(str(profile_value))}</code>" if profile_value else "—"
+            config_display = f"<code>{h(str(config_value))}</code>" if config_value else "—"
+            parts.extend(
+                [
+                    "    <details class=\"engine-options\" open>",
+                    f"      <summary><strong>{h(key)}</strong></summary>",
+                    "      <ul>",
+                    f"        <li>Profile: {profile_display}</li>",
+                    f"        <li>Config file: {config_display}</li>",
+                    f"        <li>Plugin args: {_as_code_list(plugin_args)}</li>",
+                    f"        <li>Include paths: {_as_code_list(include)}</li>",
+                    f"        <li>Exclude paths: {_as_code_list(exclude)}</li>",
+                    "      </ul>",
+                    "    </details>",
+                ]
+            )
+        parts.append("  </section>")
+
     if top_rules:
         parts.extend(
             [

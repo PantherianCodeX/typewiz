@@ -10,6 +10,22 @@
 | `pyright:current` | 3 | 2 | 1 | `pyright --outputjson` |
 | `mypy:full` | 1 | 0 | 0 | `python -m mypy` |
 
+### Engine Options
+
+#### `pyright:current`
+- Profile: baseline
+- Config file: pyrightconfig.json
+- Plugin args: `--lib`
+- Include paths: `apps`
+- Exclude paths: `apps/legacy`
+
+#### `mypy:full`
+- Profile: strict
+- Config file: mypy.ini
+- Plugin args: `--strict`
+- Include paths: `packages`
+- Exclude paths: —
+
 ## Top Folder Hotspots
 
 | Folder | Errors | Warnings | Information | Runs |

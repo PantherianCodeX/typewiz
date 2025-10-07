@@ -14,18 +14,66 @@ from .types import RunResult
 from .utils import default_full_paths, resolve_project_root
 
 
-def _print_summary(runs: Sequence[RunResult]) -> None:
+SUMMARY_EXTRA_CHOICES = {"profile", "config", "plugin-args", "paths"}
+
+
+def _format_list(values: Sequence[str]) -> str:
+    return ", ".join(values) if values else "—"
+
+
+def _print_summary(
+    runs: Sequence[RunResult],
+    extras: Sequence[str],
+    style: str,
+) -> None:
+    extra_keys = set(extras)
+    if "all" in extra_keys:
+        extra_keys = set(SUMMARY_EXTRA_CHOICES)
+
     for run in runs:
         counts = run.severity_counts()
-        summary = f"errors={counts.get('error', 0)} warnings={counts.get('warning', 0)} info={counts.get('information', 0)}"
+        summary = (
+            f"errors={counts.get('error', 0)} "
+            f"warnings={counts.get('warning', 0)} "
+            f"info={counts.get('information', 0)}"
+        )
         cmd = " ".join(shlex.quote(arg) for arg in run.command)
-        extras: list[str] = []
-        if run.profile:
-            extras.append(f"profile={run.profile}")
-        if run.config_file:
-            extras.append(f"config={run.config_file}")
-        extra_str = f" [{' '.join(extras)}]" if extras else ""
-        print(f"[typewiz] {run.tool}:{run.mode} exit={run.exit_code} {summary}{extra_str} ({cmd})")
+
+        detail_items: list[tuple[str, str]] = []
+        if "profile" in extra_keys:
+            if run.profile:
+                detail_items.append(("profile", run.profile))
+            elif style == "expanded":
+                detail_items.append(("profile", "—"))
+        if "config" in extra_keys:
+            if run.config_file:
+                detail_items.append(("config", str(run.config_file)))
+            elif style == "expanded":
+                detail_items.append(("config", "—"))
+        if "plugin-args" in extra_keys:
+            plugin_args = _format_list(list(run.plugin_args))
+            if plugin_args != "—" or style == "expanded":
+                detail_items.append(("plugin args", plugin_args))
+        if "paths" in extra_keys:
+            include_paths = _format_list(list(run.include))
+            exclude_paths = _format_list(list(run.exclude))
+            if include_paths != "—" or style == "expanded":
+                detail_items.append(("include", include_paths))
+            if exclude_paths != "—" or style == "expanded":
+                detail_items.append(("exclude", exclude_paths))
+
+        header = f"[typewiz] {run.tool}:{run.mode} exit={run.exit_code} {summary} ({cmd})"
+
+        if style == "expanded" and detail_items:
+            print(header)
+            for label, value in detail_items:
+                print(f"           - {label}: {value}")
+        else:
+            if detail_items:
+                inline = " ".join(f"{label}={value}" for label, value in detail_items)
+                print(f"{header} [{inline}]")
+            else:
+                print(header)
 
 
 def _parse_plugin_args(values: Sequence[str]) -> Dict[str, List[str]]:
@@ -72,6 +120,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit.add_argument("--mypy-arg", action="append", default=[], help="Extra argument for mypy (repeatable)")
     audit.add_argument("--plugin-arg", action="append", default=[], help="Runner-specific argument (runner=ARG)")
     audit.add_argument("--profile", action="append", default=[], help="Select an engine profile (runner=PROFILE)")
+    audit.add_argument(
+        "--summary-extra",
+        dest="summary_extras",
+        action="append",
+        choices=sorted(SUMMARY_EXTRA_CHOICES | {"all"}),
+        help="Add extra fields to CLI summary (repeatable)",
+    )
+    audit.add_argument(
+        "--summary-style",
+        choices=["compact", "expanded"],
+        default="compact",
+        help="Choose CLI summary layout (default: compact)",
+    )
     audit.add_argument(
         "--fail-on",
         choices=["never", "warnings", "errors"],
@@ -126,6 +187,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.profile:
             override.active_profiles.update(_parse_profile_args(args.profile))
 
+        summary_extras = args.summary_extras or []
+
         manifest_target = args.manifest if args.manifest else None
         result = run_audit(
             project_root=project_root,
@@ -136,7 +199,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             build_summary_output=True,
         )
 
-        _print_summary(result.runs)
+        _print_summary(result.runs, summary_extras, args.summary_style)
         summary = result.summary or build_summary(result.manifest)
 
         fail_on = (args.fail_on or config.audit.fail_on or "never").lower()

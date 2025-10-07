@@ -42,6 +42,13 @@ def sample_summary() -> dict:
                 "warnings": 2,
                 "information": 1,
                 "total": 6,
+                "engineOptions": {
+                    "profile": "baseline",
+                    "configFile": "pyrightconfig.json",
+                    "pluginArgs": ["--lib"],
+                    "include": ["apps"],
+                    "exclude": ["apps/legacy"],
+                },
             },
             "mypy:full": {
                 "command": ["python", "-m", "mypy"],
@@ -49,6 +56,13 @@ def sample_summary() -> dict:
                 "warnings": 0,
                 "information": 0,
                 "total": 1,
+                "engineOptions": {
+                    "profile": "strict",
+                    "configFile": "mypy.ini",
+                    "pluginArgs": ["--strict"],
+                    "include": ["packages"],
+                    "exclude": [],
+                },
             },
         },
         "severityTotals": {"error": 4, "warning": 2, "information": 1},
