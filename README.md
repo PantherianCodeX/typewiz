@@ -53,14 +53,18 @@ mypy --config-file mypy.ini
 pyright -p pyrightconfig.json
 ```
 
-Standardized via tox:
+Standardized via tox and nox:
 
 ```bash
 # run unit tests
-tox -e py310
+tox -e py312
 
 # run static typing checks
 tox -e mypy,pyright
+
+# or, with nox
+nox -s tests-3.12
+nox -s mypy pyright
 ```
 
 In CI, a GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests and both type checkers on every push/PR.
