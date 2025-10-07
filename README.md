@@ -41,6 +41,30 @@ Running `typewiz audit` with no additional arguments also works — typewiz will
 
 Pass extra flags to engines with `--plugin-arg runner=VALUE` (repeatable). When the value itself starts with a dash, keep the `runner=value` form to avoid ambiguity, e.g. `--plugin-arg pyright=--verifytypes`.
 
+### Typing & CI
+
+Type checking locally:
+
+```bash
+# mypy (Python typing)
+mypy --config-file mypy.ini
+
+# pyright (complementary checker)
+pyright -p pyrightconfig.json
+```
+
+Standardized via tox:
+
+```bash
+# run unit tests
+tox -e py310
+
+# run static typing checks
+tox -e mypy,pyright
+```
+
+In CI, a GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests and both type checkers on every push/PR.
+
 ### Configuration
 
 typewiz looks for `typewiz.toml` (or `.typewiz.toml`) and validates it with a schema version header. Run `typewiz init` to scaffold a commented starter configuration, or copy `examples/typewiz.sample.toml` as a starting point.
@@ -83,6 +107,14 @@ CLI summaries stay compact by default; opt-in to richer output as needed:
 
 ```bash
 typewiz audit --summary expanded --summary-fields profile,plugin-args
+```
+
+### Readiness tips
+
+The readiness tab groups diagnostics by categories (unknownChecks, optionalChecks, unusedSymbols, general). Reduce “unknown” items first, then optional checks. Use profiles to stage enforcement per package, and verify with:
+
+```bash
+typewiz dashboard --manifest typing_audit.json --format json | jq '.tabs.readiness'
 ```
 
 `--summary full` expands output and automatically includes every field (`profile`, `config`, `plugin-args`, `paths`, `overrides`).
