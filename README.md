@@ -174,7 +174,7 @@ python -m typewiz dashboard --manifest typing_audit_manifest.json --format html 
 - `markdown` – lightweight output for issues and PR comments.
 - `html` – interactive report with tabs for Overview, Engine Details, Hotspots, and Run Logs (choose the initial tab with `--view`).
 
-When `typewiz` writes HTML dashboards during `audit` (`--dashboard-html`), use `--dashboard-view` to set the default tab and keep the main screen focused on what matters.
+When `typewiz` writes dashboards during `audit`, you can control the default HTML tab with `--dashboard-view`, and the standalone `dashboard` command mirrors the same tabs across HTML/Markdown/JSON outputs.
 
 ## Roadmap
 
