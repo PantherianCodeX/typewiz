@@ -38,6 +38,7 @@ class CacheEntry:
     exclude: list[str] = field(default_factory=_default_list_str)
     overrides: list[dict[str, object]] = field(default_factory=_default_list_dict_obj)
     category_mapping: dict[str, list[str]] = field(default_factory=_default_dict_str_liststr)
+    tool_summary: dict[str, int] | None = None
 
 
 @dataclass(slots=True)
@@ -53,6 +54,7 @@ class CachedRun:
     exclude: list[str] = field(default_factory=_default_list_str)
     overrides: list[dict[str, object]] = field(default_factory=_default_list_dict_obj)
     category_mapping: dict[str, list[str]] = field(default_factory=_default_dict_str_liststr)
+    tool_summary: dict[str, int] | None = None
 
 
 def _normalise_category_mapping(
@@ -120,6 +122,7 @@ class EngineCache:
             exclude: list[str]
             overrides: list[dict[str, object]]
             category_mapping: dict[str, list[str]]
+            tool_summary: dict[str, int]
 
         class _Payload(TypedDict, total=False):
             entries: dict[str, _EntryJson]
@@ -140,6 +143,7 @@ class EngineCache:
             config_file = entry.get("config_file")
             overrides_any = entry.get("overrides", []) or []
             category_mapping_any = entry.get("category_mapping", {}) or {}
+            tool_summary_any = entry.get("tool_summary")
             # Defensive normalization and typing for JSON-loaded structures
             command_list: list[str] = [str(a) for a in command_any]
             plugin_args_list: list[str] = [str(a) for a in plugin_args_any]
@@ -173,6 +177,16 @@ class EngineCache:
                 category_mapping=_normalise_category_mapping(
                     cast(Mapping[str, Sequence[str]] | None, category_mapping_any)
                 ),
+                tool_summary=(
+                    {
+                        "errors": int(tool_summary_any.get("errors", 0)),
+                        "warnings": int(tool_summary_any.get("warnings", 0)),
+                        "information": int(tool_summary_any.get("information", 0)),
+                        "total": int(tool_summary_any.get("total", 0)),
+                    }
+                    if isinstance(tool_summary_any, dict)
+                    else None
+                ),
             )
 
     def save(self) -> None:
@@ -193,6 +207,7 @@ class EngineCache:
                     "exclude": entry.exclude,
                     "overrides": entry.overrides,
                     "category_mapping": entry.category_mapping,
+                    "tool_summary": entry.tool_summary,
                 }
                 for key, entry in sorted(self._entries.items())
             }
@@ -273,6 +288,9 @@ class EngineCache:
             exclude=list(entry.exclude),
             overrides=[dict(item) for item in entry.overrides],
             category_mapping={k: list(v) for k, v in entry.category_mapping.items()},
+            tool_summary=(
+                dict(entry.tool_summary) if isinstance(entry.tool_summary, dict) else None
+            ),
         )
 
     def update(
@@ -291,6 +309,7 @@ class EngineCache:
         exclude: Sequence[str],
         overrides: Sequence[dict[str, object]],
         category_mapping: Mapping[str, Sequence[str]] | None,
+        tool_summary: dict[str, int] | None,
     ) -> None:
         canonical_diags = sorted(
             diagnostics, key=lambda diag: (str(diag.path), diag.line, diag.column)
@@ -320,6 +339,16 @@ class EngineCache:
             exclude=[str(path) for path in exclude],
             overrides=[dict(item) for item in overrides],
             category_mapping=_normalise_category_mapping(category_mapping),
+            tool_summary=(
+                {
+                    "errors": int(tool_summary.get("errors", 0)),
+                    "warnings": int(tool_summary.get("warnings", 0)),
+                    "information": int(tool_summary.get("information", 0)),
+                    "total": int(tool_summary.get("total", 0)),
+                }
+                if isinstance(tool_summary, dict)
+                else None
+            ),
         )
         self._dirty = True
 

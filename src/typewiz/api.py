@@ -526,6 +526,11 @@ def run_audit(
                         category_mapping={
                             k: list(v) for k, v in cached_run.category_mapping.items()
                         },
+                        tool_summary=(
+                            dict(cached_run.tool_summary)
+                            if isinstance(cached_run.tool_summary, dict)
+                            else None
+                        ),
                     )
                 )
                 continue
@@ -547,6 +552,7 @@ def run_audit(
                 exclude=engine_options.exclude,
                 overrides=engine_options.overrides,
                 category_mapping=engine_options.category_mapping,
+                tool_summary=result.tool_summary,
             )
 
             runs.append(
@@ -567,6 +573,7 @@ def run_audit(
                     category_mapping={
                         k: list(v) for k, v in engine_options.category_mapping.items()
                     },
+                    tool_summary=(result.tool_summary if hasattr(result, "tool_summary") else None),
                 )
             )
 

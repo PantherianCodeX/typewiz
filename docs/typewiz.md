@@ -17,6 +17,7 @@ This produces `typing_audit_manifest.json` (relative to the working directory) c
 - All diagnostics from the current enforced configuration (`mode="current"`).
 - An expansive run across the project directories (`mode="full"`).
 - Aggregated per-file and per-folder summaries with recommendations for enabling stricter checks.
+- The original tool-provided summary counts (when present) under `toolSummary`, alongside the parsed totals used in `summary`. If the two diverge, typewiz logs a warning so the mismatch is visible in CI output.
 
 Options:
 
@@ -167,6 +168,11 @@ Runs are cached in `.typewiz_cache.json`. The cache key combines the engine name
 fingerprints (mtime, size, content hash) for all files under the configured `full_paths` and key config files
 (`pyrightconfig.json`, `mypy.ini`, `typewiz.toml`). When nothing relevant changes, typewiz reuses the cached
 diagnostics and exit code, dramatically reducing CI runtimes for steady-state checks.
+
+Because the cache is derived from source fingerprints rather than the full Python environment, installing new
+plugins or type stubs (for example, Django or DRF shims) may leave stale results behind. Clear `.typewiz_cache.json`
+after dependency or configuration changes that affect tool behaviour to force a fresh run. Cached entries now retain
+the upstream `toolSummary` block so manifests from reused runs still include the raw totals reported by each engine.
 
 ### Nightly pipeline
 

@@ -53,7 +53,14 @@ class EngineOptionsEntry(TypedDict, total=False):
     categoryMapping: dict[str, list[str]]
 
 
-class RunPayload(TypedDict):
+class ToolSummary(TypedDict, total=False):
+    errors: int
+    warnings: int
+    information: int
+    total: int
+
+
+class RunPayloadRequired(TypedDict):
     tool: str
     mode: str
     command: list[str]
@@ -63,6 +70,10 @@ class RunPayload(TypedDict):
     perFile: list[FileEntry]
     perFolder: list[FolderEntry]
     engineOptions: EngineOptionsEntry
+
+
+class RunPayload(RunPayloadRequired, total=False):
+    toolSummary: ToolSummary
 
 
 class ManifestData(TypedDict):

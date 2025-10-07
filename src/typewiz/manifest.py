@@ -54,6 +54,13 @@ class ManifestBuilder:
             "perFolder": summary["perFolder"],
             "engineOptions": options,
         }
+        if run.tool_summary:
+            payload["toolSummary"] = {
+                "errors": int(run.tool_summary.get("errors", 0)),
+                "warnings": int(run.tool_summary.get("warnings", 0)),
+                "information": int(run.tool_summary.get("information", 0)),
+                "total": int(run.tool_summary.get("total", 0)),
+            }
         self.data["runs"].append(payload)
 
     def write(self, path: Path) -> None:

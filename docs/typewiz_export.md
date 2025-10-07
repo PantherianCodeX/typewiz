@@ -38,7 +38,7 @@ name = "typewiz"
 version = "0.0.1"
 description = "Typing diagnostics aggregator for pyright and mypy"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = ["pyright>=1.1.392", "mypy>=1.8.0"]
 EOF
 ```

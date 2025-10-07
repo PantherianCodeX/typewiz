@@ -34,6 +34,21 @@ def run_pyright(
 
     diagnostics: list[Diagnostic] = []
     raw_diags = as_list(payload.get("generalDiagnostics", []))
+    # Capture tool-provided summary if present
+    tool_summary_raw = as_mapping(payload.get("summary") or {})
+    try:
+        ts_errors = as_int(tool_summary_raw.get("errorCount", 0), 0)
+        ts_warnings = as_int(tool_summary_raw.get("warningCount", 0), 0)
+        ts_info = as_int(tool_summary_raw.get("informationCount", 0), 0)
+        ts_total = ts_errors + ts_warnings + ts_info
+        tool_summary: dict[str, int] | None = {
+            "errors": ts_errors,
+            "warnings": ts_warnings,
+            "information": ts_info,
+            "total": ts_total,
+        }
+    except Exception:  # defensive
+        tool_summary = None
     for item in raw_diags:
         d = as_mapping(item)
         file_path = as_str(d.get("filePath") or d.get("file") or "")
@@ -58,6 +73,25 @@ def run_pyright(
             )
         )
     diagnostics.sort(key=lambda d: (str(d.path), d.line, d.column))
+    # If pyright's own summary (if present) disagrees with parsed diagnostics, log a warning
+    if tool_summary is not None:
+        parsed_errors = sum(1 for d in diagnostics if d.severity == "error")
+        parsed_warnings = sum(1 for d in diagnostics if d.severity == "warning")
+        parsed_total = len(diagnostics)
+        if (
+            parsed_errors != tool_summary.get("errors", parsed_errors)
+            or parsed_warnings != tool_summary.get("warnings", parsed_warnings)
+            or parsed_total != tool_summary.get("total", parsed_total)
+        ):
+            logger.warning(
+                "pyright summary mismatch: parsed=%s/%s/%s tool=%s/%s/%s",
+                parsed_errors,
+                parsed_warnings,
+                parsed_total,
+                tool_summary.get("errors"),
+                tool_summary.get("warnings"),
+                tool_summary.get("total"),
+            )
     engine_result = EngineResult(
         engine="pyright",
         mode=mode,
@@ -65,6 +99,7 @@ def run_pyright(
         exit_code=result.exit_code,
         duration_ms=result.duration_ms,
         diagnostics=diagnostics,
+        tool_summary=tool_summary,
     )
     logger.debug(
         "pyright run completed: exit=%s diagnostics=%s",

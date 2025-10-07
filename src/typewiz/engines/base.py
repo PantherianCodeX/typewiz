@@ -45,6 +45,8 @@ class EngineResult:
     duration_ms: float
     diagnostics: list[Diagnostic]
     cached: bool = False
+    # Optional: raw tool-provided summary counts (normalised to errors/warnings/information/total)
+    tool_summary: dict[str, int] | None = None
 
 
 class BaseEngine(Protocol):

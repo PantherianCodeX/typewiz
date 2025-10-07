@@ -14,8 +14,7 @@ logger = logging.getLogger("typewiz")
 
 # JSON typing helpers
 # A recursive JSON value used for parsing engine outputs safely.
-# Use PEP 695 type alias for a clean, recursive definition under Python 3.12+
-type JSONValue = (str | int | float | bool | None | dict[str, JSONValue] | list[JSONValue])
+type JSONValue = str | int | float | bool | None | dict[str, JSONValue] | list[JSONValue]
 
 ROOT_MARKERS: tuple[str, ...] = (
     "typewiz.toml",

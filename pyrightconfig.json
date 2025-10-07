@@ -4,6 +4,7 @@
   "ignore": ["tests"],
   "stubPath": "typings",
   "typeCheckingMode": "strict",
+  "pythonVersion": "3.12",
   "executionEnvironments": [
     {
       "root": "src"
