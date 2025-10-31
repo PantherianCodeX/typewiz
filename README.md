@@ -3,7 +3,7 @@
 typewiz collects typing diagnostics from Pyright, mypy, and custom plugins, aggregates them into a JSON
 manifest, and renders dashboards to help teams plan stricter typing rollouts.
 
-> Status: `0.2.0` — see CHANGELOG.md for full release notes. Manifest schema, caching, and CLI are stabilized within the 0.2.x line.
+> Status: `0.1.0` — see CHANGELOG.md for full release notes. Manifest schema, caching, and CLI are stabilized within the 0.1.x line.
 
 ## Features
 
@@ -38,7 +38,7 @@ Generate a manifest and dashboards (typewiz auto-detects common Python folders w
 typewiz audit --max-depth 3 src tests --manifest typing_audit.json
 typewiz dashboard --manifest typing_audit.json --format markdown --output dashboard.md
 typewiz dashboard --manifest typing_audit.json --format html --output dashboard.html
- 
+
 # fingerprinting options for large repos
 typewiz audit --respect-gitignore --max-files 50000 --manifest typing_audit.json
 ```

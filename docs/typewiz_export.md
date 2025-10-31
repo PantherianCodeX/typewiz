@@ -35,7 +35,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "typewiz"
-version = "0.0.1"
+version = "0.1.0"
 description = "Typing diagnostics aggregator for pyright and mypy"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -70,8 +70,8 @@ python -m build
 twine upload dist/*
 ```
 
-Keep the public version at `0.0.1` until the first tagged release proves the config format; bump to `0.1.x`
-when you're ready to promise compatibility. Or vendor the package by committing the directory into another repo’s
+Keep the public version in the `0.1.x` line while the API settles; bump to `0.2.x`
+when you're ready to promise stronger compatibility guarantees. Or vendor the package by committing the directory into another repo’s
 `libs/` folder.
 
 ### 7. Update downstream repos

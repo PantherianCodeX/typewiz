@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.0 — 2025-10-07
+## v0.1.0 — 2025-10-31
 
 Highlights
 - Cache-key hardening: include tool versions and resolved config file hash/mtime to ensure upgrades and config edits invalidate predictably.
