@@ -15,8 +15,8 @@ from .typed_manifest import (
     ManifestData,
     RunPayload,
 )
-from .utils import detect_tool_versions
 from .types import RunResult
+from .utils import detect_tool_versions
 
 logger = logging.getLogger("typewiz")
 

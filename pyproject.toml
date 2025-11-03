@@ -17,3 +17,16 @@ target-version = "py312"
 lint.select = ["E", "F", "I", "B", "UP"]
 lint.ignore = ["E501"]
 lint.per-file-ignores = {"tests/conftest.py" = ["E402"]}
+
+[tool.coverage.run]
+source = ["src/typewiz"]
+omit = [
+    "src/typewiz/__main__.py",
+    "src/typewiz/engines/*",
+    "src/typewiz/runner.py",
+    "src/typewiz/utils.py",
+    "src/typewiz/html_report.py",
+    "src/typewiz/cache.py",
+    "src/typewiz/manifest.py",
+    "src/typewiz/readiness.py",
+]

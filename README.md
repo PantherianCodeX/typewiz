@@ -197,6 +197,22 @@ typewiz dashboard --manifest typing_audit.json --format json | jq '.tabs.readine
 
 `--summary full` expands output and automatically includes every field (`profile`, `config`, `plugin-args`, `paths`, `overrides`).
 
+When you want a quick console view, run the audit with the readiness switch:
+
+```bash
+typewiz audit src --readiness --readiness-status blocked --readiness-status ready
+```
+
+This prints the top offenders for each requested bucket immediately after the audit completes. Use `--readiness-level file` for per-file output or bump `--readiness-limit` to see a larger slice.
+
+The standalone readiness command mirrors the new behaviour:
+
+```bash
+typewiz readiness --manifest typing_audit.json --status blocked --status ready
+```
+
+It now accepts multiple `--status` arguments, renders headers for every bucket, and reports `<none>` when a bucket is empty so the output stays informative in CI logs.
+
 ### Folder overrides
 
 Drop a `typewiz.dir.toml` (or `.typewizdir.toml`) inside any folder to tune engines for that subtree:

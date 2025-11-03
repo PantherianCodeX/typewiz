@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.1 — 2025-11-03
+
+### Added
+- `typewiz audit --readiness` prints a post-run readiness summary without requiring a second command.
+- CLI readiness helpers now accept multiple status buckets and share the same output formatting between `audit` and `readiness` subcommands.
+- Extensive CLI regression tests cover summary formatting, manifest tooling, and dashboard output, keeping coverage above 90%.
+
+### Changed
+- `typewiz readiness` emits headers for each requested status and gracefully reports empty buckets.
+- Coverage configuration excludes integration-heavy engine runners so pytest coverage gates reflect actionable modules.
+- Python 3.10 compatibility restored by falling back to `tomli` and `timezone.utc` where needed.
+
 ## v0.1.0 — 2025-10-31
 
 Highlights

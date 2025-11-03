@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import shlex
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from textwrap import dedent
 from typing import Any, cast
@@ -12,6 +12,7 @@ from .api import run_audit
 from .config import AuditConfig, load_config
 from .dashboard import build_summary, load_manifest, render_markdown
 from .html_report import render_html
+from .summary_types import ReadinessOptionsBucket, ReadinessTab, SummaryData, SummaryTabs
 from .types import RunResult
 from .utils import default_full_paths, resolve_project_root
 
@@ -182,6 +183,65 @@ def _print_summary(
                 print(f"{header} [{inline}]")
             else:
                 print(header)
+
+
+def _print_readiness_summary(
+    summary: SummaryData,
+    *,
+    level: str,
+    statuses: Sequence[str] | None,
+    limit: int,
+) -> None:
+    statuses_normalised: list[str] = []
+    for status in statuses or ["blocked"]:
+        if status not in {"ready", "close", "blocked"}:
+            continue
+        if status not in statuses_normalised:
+            statuses_normalised.append(status)
+    if not statuses_normalised:
+        statuses_normalised = ["blocked"]
+
+    tabs: SummaryTabs = summary["tabs"]
+    readiness_tab: ReadinessTab = tabs.get("readiness", {})
+    options_tab = readiness_tab.get("options", {}) or {}
+    strict_map = readiness_tab.get("strict", {}) or {}
+
+    default_bucket: ReadinessOptionsBucket = {
+        "ready": [],
+        "close": [],
+        "blocked": [],
+        "threshold": 0,
+    }
+
+    for status in statuses_normalised:
+        if level == "folder":
+            options_bucket = options_tab.get("unknownChecks", default_bucket)
+            raw_entries_obj = options_bucket.get(status, []) or []
+        else:
+            raw_entries_obj = strict_map.get(status, []) or []
+
+        raw_entries = cast(Iterable[dict[str, object]], raw_entries_obj)
+        entries: list[dict[str, object]] = [dict(entry) for entry in raw_entries]
+
+        print(f"[typewiz] readiness {level} status={status} (top {limit})")
+        if not entries:
+            print("  <none>")
+            continue
+        for entry in entries[: max(limit, 0)]:
+            raw_path = entry.get("path", "<unknown>")
+            path = raw_path if isinstance(raw_path, str) else "<unknown>"
+            raw_count = entry.get("count")
+            if raw_count is None:
+                raw_count = entry.get("diagnostics")
+            count_int = 0
+            if isinstance(raw_count, (int | float)):
+                count_int = int(raw_count)
+            elif isinstance(raw_count, str):
+                try:
+                    count_int = int(raw_count)
+                except ValueError:
+                    count_int = 0
+            print(f"  {path}: {count_int}")
 
 
 def _collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
@@ -383,6 +443,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="overview",
         help="Default tab when writing the HTML dashboard.",
     )
+    audit.add_argument(
+        "--readiness",
+        action="store_true",
+        help="After audit completes, print a readiness summary.",
+    )
+    audit.add_argument(
+        "--readiness-level",
+        choices=["folder", "file"],
+        default="folder",
+        help="Granularity for readiness summaries when --readiness is enabled.",
+    )
+    audit.add_argument(
+        "--readiness-status",
+        dest="readiness_status",
+        action="append",
+        choices=["ready", "close", "blocked"],
+        default=None,
+        help="Status buckets to display for readiness summaries (repeatable).",
+    )
+    audit.add_argument(
+        "--readiness-limit",
+        type=int,
+        default=10,
+        help="Maximum entries per status when printing readiness summaries.",
+    )
 
     dashboard = subparsers.add_parser(
         "dashboard",
@@ -452,7 +537,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--manifest", type=Path, required=True, help="Path to a typing audit manifest."
     )
     readiness.add_argument("--level", choices=["folder", "file"], default="folder")
-    readiness.add_argument("--status", choices=["ready", "close", "blocked"], default="close")
+    readiness.add_argument(
+        "--status",
+        dest="statuses",
+        action="append",
+        choices=["ready", "close", "blocked"],
+        default=None,
+        help="Status buckets to render (repeatable).",
+    )
     readiness.add_argument("--limit", type=int, default=10)
 
     args = parser.parse_args(list(argv) if argv is not None else None)
@@ -514,9 +606,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
         _print_summary(result.runs, summary_fields, summary_style)
-        from .summary_types import SummaryData
 
         summary: SummaryData = result.summary or build_summary(result.manifest)
+
+        if args.readiness:
+            _print_readiness_summary(
+                summary,
+                level=args.readiness_level,
+                statuses=args.readiness_status,
+                limit=args.readiness_limit,
+            )
 
         fail_on = (args.fail_on or config.audit.fail_on or "never").lower()
         error_count = sum(run.severity_counts().get("error", 0) for run in result.runs)
@@ -535,8 +634,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 de = error_count - int(prev_sev.get("error", 0))
                 dw = warning_count - int(prev_sev.get("warning", 0))
                 di = info_count - int(prev_sev.get("information", 0))
+
                 def _fmt(x: int) -> str:
                     return f"+{x}" if x > 0 else (f"{x}" if x < 0 else "0")
+
                 delta_str = f"; delta: errors={_fmt(de)} warnings={_fmt(dw)} info={_fmt(di)}"
             except Exception:
                 delta_str = ""
@@ -552,7 +653,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             exit_code = 2
 
         # Compact CI summary line
-        print(f"[typewiz] totals: errors={error_count} warnings={warning_count} info={info_count}; runs={len(result.runs)}" + delta_str)
+        print(
+            f"[typewiz] totals: errors={error_count} warnings={warning_count} info={info_count}; runs={len(result.runs)}"
+            + delta_str
+        )
 
         if args.dashboard_json:
             args.dashboard_json.parent.mkdir(parents=True, exist_ok=True)
@@ -599,6 +703,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             try:
                 # Prefer jsonschema when available
                 import importlib
+
                 jsonschema: Any = importlib.import_module("jsonschema")
                 validator = jsonschema.Draft7Validator(
                     json.loads(schema_path.read_text(encoding="utf-8"))
@@ -629,35 +734,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "readiness":
         manifest = load_manifest(args.manifest)
-        from .summary_types import ReadinessOptionsBucket, ReadinessTab, SummaryData, SummaryTabs
-
         summary_map: SummaryData = build_summary(manifest)
-        tabs: SummaryTabs = summary_map["tabs"]
-        readiness_tab: ReadinessTab = tabs.get("readiness", {})
-        options_tab = readiness_tab.get("options", {})
-        # strict buckets are nested under readiness.strict
-
-        if args.level == "folder":
-            default_bucket: ReadinessOptionsBucket = {
-                "ready": [],
-                "close": [],
-                "blocked": [],
-                "threshold": 0,
-            }
-            bucket: ReadinessOptionsBucket = options_tab.get("unknownChecks", default_bucket)
-            if args.status == "ready":
-                status_bucket = bucket.get("ready", [])
-            elif args.status == "close":
-                status_bucket = bucket.get("close", [])
-            else:
-                status_bucket = bucket.get("blocked", [])
-        else:
-            status_bucket = readiness_tab.get("strict", {}).get(args.status, [])
-        for entry in status_bucket[: args.limit]:
-            path = entry.get("path", "<unknown>")
-            count = entry.get("count") or entry.get("diagnostics") or 0
-            print(f"{path}: {count}")
-
+        _print_readiness_summary(
+            summary_map,
+            level=args.level,
+            statuses=args.statuses,
+            limit=args.limit,
+        )
         return 0
 
     raise SystemExit(f"Unknown command {args.command}")

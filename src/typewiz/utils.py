@@ -8,13 +8,15 @@ import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import TypeAlias, cast
 
 logger = logging.getLogger("typewiz")
 
 # JSON typing helpers
 # A recursive JSON value used for parsing engine outputs safely.
-type JSONValue = str | int | float | bool | None | dict[str, JSONValue] | list[JSONValue]
+JSONValue: TypeAlias = (  # noqa: UP040 - Python 3.10 compatibility
+    str | int | float | bool | None | dict[str, "JSONValue"] | list["JSONValue"]
+)
 
 ROOT_MARKERS: tuple[str, ...] = (
     "typewiz.toml",

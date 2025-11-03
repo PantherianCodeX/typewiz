@@ -1,12 +1,20 @@
 from __future__ import annotations
 
-import tomllib as toml
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
+
+try:  # pragma: no cover - exercised on Python < 3.11 by CI matrix
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - fallback path ensures compatibility
+    import tomli
+
+    tomllib = cast(Any, tomli)
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+
+toml = tomllib
 
 CONFIG_VERSION = 0
 
