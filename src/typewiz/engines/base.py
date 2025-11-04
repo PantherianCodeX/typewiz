@@ -7,6 +7,7 @@ from typing import Protocol
 
 from typewiz.config import AuditConfig
 from typewiz.model_types import CategoryMapping, Mode, OverrideEntry
+from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic
 
 
@@ -47,7 +48,7 @@ class EngineResult:
     diagnostics: list[Diagnostic]
     cached: bool = False
     # Optional: raw tool-provided summary counts (normalised to errors/warnings/information/total)
-    tool_summary: dict[str, int] | None = None
+    tool_summary: ToolSummary | None = None
 
 
 class BaseEngine(Protocol):

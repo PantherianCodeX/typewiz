@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import cast
 
 import pytest
 
 from typewiz import AuditConfig, Config, run_audit
 from typewiz.config import EngineProfile, EngineSettings
 from typewiz.engines.base import EngineContext, EngineResult
+from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic, RunResult
 
 
@@ -34,8 +36,8 @@ class StubEngine:
             duration_ms=self._result.duration_ms,
             diagnostics=list(self._result.diagnostics),
             tool_summary=(
-                dict(self._result.tool_summary)
-                if isinstance(self._result.tool_summary, dict)
+                cast(ToolSummary, dict(self._result.tool_summary))
+                if self._result.tool_summary is not None
                 else None
             ),
         )
@@ -69,7 +71,7 @@ def fake_run_result(tmp_path: Path) -> RunResult:
         exit_code=1,
         duration_ms=5.0,
         diagnostics=diagnostics,
-        tool_summary={"errors": 1, "warnings": 0, "information": 0, "total": 1},
+        tool_summary=ToolSummary(errors=1, warnings=0, information=0, total=1),
     )
 
 

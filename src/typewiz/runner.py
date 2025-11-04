@@ -8,6 +8,7 @@ from typing import cast
 
 from .engines.base import EngineResult
 from .model_types import Mode
+from .typed_manifest import ToolSummary
 from .types import Diagnostic
 from .utils import JSONValue, as_int, as_list, as_mapping, as_str, require_json, run_command
 
@@ -42,7 +43,7 @@ def run_pyright(
         ts_warnings = as_int(tool_summary_raw.get("warningCount", 0), 0)
         ts_info = as_int(tool_summary_raw.get("informationCount", 0), 0)
         ts_total = ts_errors + ts_warnings + ts_info
-        tool_summary: dict[str, int] | None = {
+        tool_summary: ToolSummary | None = {
             "errors": ts_errors,
             "warnings": ts_warnings,
             "information": ts_info,

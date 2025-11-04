@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, TypedDict, cast
 
 from .data_validation import coerce_int, coerce_object_list, coerce_str_list
 from .model_types import clone_override_entries
+from .typed_manifest import ToolSummary
 from .types import Diagnostic
 
 if TYPE_CHECKING:
@@ -51,7 +52,7 @@ class CacheEntry:
     exclude: list[str] = field(default_factory=_default_list_str)
     overrides: list[OverrideEntry] = field(default_factory=_default_list_dict_obj)
     category_mapping: CategoryMapping = field(default_factory=_default_dict_str_liststr)
-    tool_summary: dict[str, int] | None = None
+    tool_summary: ToolSummary | None = None
 
 
 @dataclass(slots=True)
@@ -67,7 +68,7 @@ class CachedRun:
     exclude: list[str] = field(default_factory=_default_list_str)
     overrides: list[OverrideEntry] = field(default_factory=_default_list_dict_obj)
     category_mapping: CategoryMapping = field(default_factory=_default_dict_str_liststr)
-    tool_summary: dict[str, int] | None = None
+    tool_summary: ToolSummary | None = None
 
 
 def _normalise_category_mapping(
@@ -370,7 +371,9 @@ class EngineCache:
             overrides=clone_override_entries(entry.overrides),
             category_mapping={k: list(v) for k, v in entry.category_mapping.items()},
             tool_summary=(
-                dict(entry.tool_summary) if isinstance(entry.tool_summary, dict) else None
+                cast(ToolSummary, dict(entry.tool_summary))
+                if entry.tool_summary is not None
+                else None
             ),
         )
 
@@ -390,7 +393,7 @@ class EngineCache:
         exclude: Sequence[str],
         overrides: Sequence[OverrideEntry],
         category_mapping: Mapping[str, Sequence[str]] | None,
-        tool_summary: dict[str, int] | None,
+        tool_summary: ToolSummary | None,
     ) -> None:
         canonical_diags = sorted(
             diagnostics, key=lambda diag: (str(diag.path), diag.line, diag.column)
@@ -429,13 +432,13 @@ class EngineCache:
             overrides=clone_override_entries(overrides),
             category_mapping=_normalise_category_mapping(category_mapping),
             tool_summary=(
-                {
-                    "errors": int(tool_summary.get("errors", 0)),
-                    "warnings": int(tool_summary.get("warnings", 0)),
-                    "information": int(tool_summary.get("information", 0)),
-                    "total": int(tool_summary.get("total", 0)),
-                }
-                if isinstance(tool_summary, dict)
+                ToolSummary(
+                    errors=int(tool_summary.get("errors", 0)),
+                    warnings=int(tool_summary.get("warnings", 0)),
+                    information=int(tool_summary.get("information", 0)),
+                    total=int(tool_summary.get("total", 0)),
+                )
+                if tool_summary is not None
                 else None
             ),
         )

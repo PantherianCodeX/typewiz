@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TypedDict, cast
+from typing import Literal, TypedDict
 
 # Category patterns and thresholds can be tuned here without touching renderers
 CATEGORY_PATTERNS: dict[str, tuple[str, ...]] = {
@@ -51,7 +51,11 @@ def _bucket_code_counts(code_counts: dict[str, int]) -> dict[str, int]:
     return buckets
 
 
-def _status_for_category(category: str, count: int) -> str:
+StatusName = Literal["ready", "close", "blocked"]
+STATUSES: tuple[StatusName, StatusName, StatusName] = ("ready", "close", "blocked")
+
+
+def _status_for_category(category: str, count: int) -> StatusName:
     if count == 0:
         return "ready"
     close_threshold = CATEGORY_CLOSE_THRESHOLD.get(category, 3)
@@ -68,23 +72,59 @@ class ReadinessEntry(TypedDict):
     recommendations: list[str]
 
 
-def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, object]:
+class ReadinessOptionEntry(TypedDict):
+    path: str
+    count: int
+    errors: int
+    warnings: int
+
+
+class ReadinessOptionBucket(TypedDict):
+    ready: list[ReadinessOptionEntry]
+    close: list[ReadinessOptionEntry]
+    blocked: list[ReadinessOptionEntry]
+    threshold: int
+
+
+class ReadinessStrictEntry(TypedDict, total=False):
+    path: str
+    errors: int
+    warnings: int
+    information: int
+    diagnostics: int
+    categories: dict[str, int]
+    categoryStatus: dict[str, StatusName]
+    recommendations: list[str]
+    notes: list[str]
+
+
+StrictBuckets = dict[StatusName, list[ReadinessStrictEntry]]
+OptionsBuckets = dict[str, ReadinessOptionBucket]
+
+
+class ReadinessPayload(TypedDict):
+    strict: StrictBuckets
+    options: OptionsBuckets
+
+
+def _empty_option_bucket(category: str) -> ReadinessOptionBucket:
+    return {
+        "ready": [],
+        "close": [],
+        "blocked": [],
+        "threshold": CATEGORY_CLOSE_THRESHOLD.get(category, 3),
+    }
+
+
+def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPayload:
     """Compute strict typing readiness for folders.
 
     Input folder_entries should contain keys: path, errors, warnings, information,
     and optionally codeCounts, recommendations.
     """
-    readiness: dict[str, object] = {
-        "strict": {"ready": [], "close": [], "blocked": []},
-        "options": {
-            category: {
-                "ready": [],
-                "close": [],
-                "blocked": [],
-                "threshold": CATEGORY_CLOSE_THRESHOLD.get(category, 3),
-            }
-            for category in CATEGORY_PATTERNS
-        },
+    readiness: ReadinessPayload = {
+        "strict": {status: [] for status in STATUSES},
+        "options": {category: _empty_option_bucket(category) for category in CATEGORY_PATTERNS},
     }
 
     for entry in folder_entries:
@@ -107,7 +147,7 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, obj
             categories = _bucket_code_counts(code_counts)
 
         class CategoryMeta(TypedDict):
-            status: str
+            status: StatusName
             count: int
 
         category_status: dict[str, CategoryMeta] = {}
@@ -115,9 +155,8 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, obj
             count = categories.get(category, 0)
             status = _status_for_category(category, count)
             category_status[category] = {"status": status, "count": count}
-            options_map = cast(dict[str, object], readiness["options"])
-            options_bucket = cast(dict[str, object], options_map[category])
-            status_list = cast(list[dict[str, object]], options_bucket[status])
+            bucket = readiness["options"][category]
+            status_list = bucket[status]
             status_list.append(
                 {
                     "path": entry["path"],
@@ -129,7 +168,7 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, obj
 
         total_diagnostics = entry.get("errors", 0) + entry.get("warnings", 0)
         if total_diagnostics == 0:
-            strict_status = "ready"
+            strict_status: StatusName = "ready"
         else:
             blocking_categories: list[str] = [
                 cat
@@ -141,7 +180,7 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, obj
             else:
                 strict_status = "blocked"
 
-        strict_entry: dict[str, object] = {
+        strict_entry: ReadinessStrictEntry = {
             "path": entry["path"],
             "errors": entry.get("errors", 0),
             "warnings": entry.get("warnings", 0),
@@ -160,8 +199,6 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, obj
             if blockers:
                 strict_entry["notes"] = blockers
 
-        strict_map = cast(dict[str, object], readiness["strict"])
-        strict_bucket = cast(list[dict[str, object]], strict_map[strict_status])
-        strict_bucket.append(strict_entry)
+        readiness["strict"][strict_status].append(strict_entry)
 
     return readiness

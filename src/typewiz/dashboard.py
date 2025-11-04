@@ -11,7 +11,7 @@ from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coe
 from .manifest_loader import load_manifest_data
 from .model_types import CategoryMapping, OverrideEntry, clone_override_entries
 from .override_utils import format_overrides_block
-from .readiness import CATEGORY_LABELS, ReadinessEntry, compute_readiness
+from .readiness import CATEGORY_LABELS, ReadinessEntry, ReadinessPayload, compute_readiness
 from .summary_types import (
     ReadinessTab,
     SummaryData,
@@ -31,7 +31,7 @@ def load_manifest(path: Path) -> ManifestData:
     return load_manifest_data(raw)
 
 
-def _collect_readiness(folder_entries: Sequence[ReadinessEntry]) -> dict[str, object]:
+def _collect_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPayload:
     return compute_readiness(folder_entries)
 
 

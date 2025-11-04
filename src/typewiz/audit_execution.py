@@ -12,6 +12,7 @@ from .cache import EngineCache, collect_file_hashes, fingerprint_path
 from .collection_utils import merge_preserve
 from .engines import EngineContext, EngineOptions
 from .model_types import OverrideEntry
+from .typed_manifest import ToolSummary
 from .types import RunResult
 
 if TYPE_CHECKING:
@@ -268,8 +269,8 @@ def execute_engine_mode(
                 overrides=[cast("OverrideEntry", dict(item)) for item in cached_run.overrides],
                 category_mapping={k: list(v) for k, v in cached_run.category_mapping.items()},
                 tool_summary=(
-                    dict(cached_run.tool_summary)
-                    if isinstance(cached_run.tool_summary, dict)
+                    cast(ToolSummary, dict(cached_run.tool_summary))
+                    if cached_run.tool_summary is not None
                     else None
                 ),
                 scanned_paths=list(mode_paths),
@@ -335,7 +336,7 @@ def execute_engine_mode(
         exclude=list(engine_options.exclude),
         overrides=[cast("OverrideEntry", dict(item)) for item in engine_options.overrides],
         category_mapping={k: list(v) for k, v in engine_options.category_mapping.items()},
-        tool_summary=(result.tool_summary if hasattr(result, "tool_summary") else None),
+        tool_summary=result.tool_summary,
         scanned_paths=list(mode_paths),
     )
     return run_result, truncated

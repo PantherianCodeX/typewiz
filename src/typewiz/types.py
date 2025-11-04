@@ -4,6 +4,8 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from .typed_manifest import ToolSummary
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
@@ -66,7 +68,7 @@ class RunResult:
     overrides: list[OverrideEntry] = field(default_factory=_default_overrides_list)
     category_mapping: CategoryMapping = field(default_factory=_default_category_mapping)
     # Optional: raw tool-provided summary counts (normalised to errors/warnings/information/total)
-    tool_summary: dict[str, int] | None = None
+    tool_summary: ToolSummary | None = None
     scanned_paths: list[str] = field(default_factory=_default_str_list)
     engine_error: dict[str, object] | None = None
 
