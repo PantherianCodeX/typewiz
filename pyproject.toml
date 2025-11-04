@@ -14,9 +14,15 @@ line_length = 100
 line-length = 100
 target-version = "py312"
 # Broadened rule set for better hygiene
-lint.select = ["E", "F", "B", "UP", "TID"]
+lint.select = ["E", "F", "B", "UP", "TID", "N", "SIM", "TRY", "RET", "S"]
 lint.ignore = ["E501"]
-lint.per-file-ignores = {"tests/conftest.py" = ["E402"], "src/typewiz/utils.py" = ["UP040"]}
+
+[tool.ruff.lint.per-file-ignores]
+"tests/conftest.py" = ["E402"]
+"src/typewiz/utils.py" = ["UP040"]
+"tests/**" = ["S101"]
+"src/typewiz/manifest_models.py" = ["N815"]
+
 
 [tool.coverage.run]
 source = ["src/typewiz"]

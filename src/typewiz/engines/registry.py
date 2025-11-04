@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import logging
 from collections.abc import Callable, Iterable
 from functools import lru_cache
 from importlib import metadata
@@ -9,6 +10,8 @@ from typing import cast
 from .base import BaseEngine
 from .mypy import MypyEngine
 from .pyright import PyrightEngine
+
+logger = logging.getLogger("typewiz.engine.registry")
 
 
 def _is_engine_like(value: object) -> bool:
@@ -36,15 +39,13 @@ def _instantiate_engine(obj: object, *, source: str) -> BaseEngine:
 
     candidate = obj
 
-    if inspect.isclass(candidate):
-        factory = cast(Callable[[], object], candidate)
-        candidate = factory()
-    elif callable(candidate) and not hasattr(candidate, "run"):
+    if inspect.isclass(candidate) or (callable(candidate) and not hasattr(candidate, "run")):
         factory = cast(Callable[[], object], candidate)
         candidate = factory()
 
     if not _is_engine_like(candidate):
-        raise TypeError(f"Entry point '{source}' did not provide a valid engine instance")
+        message = f"Entry point '{source}' did not provide a valid engine instance"
+        raise TypeError(message)
 
     return cast(BaseEngine, candidate)
 
@@ -60,7 +61,8 @@ def entrypoint_engines() -> dict[str, BaseEngine]:
         try:
             loaded = entry_point.load()
             engine = _instantiate_engine(loaded, source=entry_point.name)
-        except Exception:  # pragma: no cover - plugin misconfiguration
+        except Exception as exc:  # pragma: no cover - plugin misconfiguration
+            logger.debug("Failed to load engine entry point '%s': %s", entry_point.name, exc)
             continue
         name = getattr(engine, "name", None)
         if not isinstance(name, str) or not name:
@@ -82,6 +84,7 @@ def resolve_engines(names: Iterable[str] | None) -> list[BaseEngine]:
     resolved: list[BaseEngine] = []
     for name in names:
         if name not in mapping:
-            raise ValueError(f"Unknown engine '{name}'")
+            message = f"Unknown engine '{name}'"
+            raise ValueError(message)
         resolved.append(mapping[name])
     return resolved

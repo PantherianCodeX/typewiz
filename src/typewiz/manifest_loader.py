@@ -16,7 +16,7 @@ def _is_run_payload(obj: object) -> TypeGuard[RunPayload]:
         return False
     typed_obj = cast(Mapping[str, object], obj)
     required_keys = {"tool", "mode", "summary", "perFile", "perFolder", "engineOptions"}
-    if not required_keys.issubset({str(key) for key in typed_obj.keys()}):
+    if not required_keys.issubset({str(key) for key in typed_obj}):
         return False
     if not isinstance(typed_obj.get("tool"), str) or not isinstance(typed_obj.get("mode"), str):
         return False
@@ -28,9 +28,7 @@ def _is_run_payload(obj: object) -> TypeGuard[RunPayload]:
         typed_obj.get("perFolder"), list
     ):
         return False
-    if not isinstance(typed_obj.get("engineOptions"), Mapping):
-        return False
-    return True
+    return isinstance(typed_obj.get("engineOptions"), Mapping)
 
 
 def _coerce_manifest_mapping(raw: Mapping[str, object]) -> ManifestData:

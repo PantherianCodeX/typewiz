@@ -25,6 +25,15 @@ from typewiz.summary_types import (
 )
 
 
+class SnapshotMissingError(AssertionError):
+    """Raised when an expected snapshot fixture is missing."""
+
+    def __init__(self, name: str, path: Path) -> None:
+        self.name = name
+        self.path = path
+        super().__init__(f"Snapshot {name} missing at {path}")
+
+
 @pytest.fixture
 def snapshots_dir() -> Path:
     return Path(__file__).parent / "snapshots"
@@ -35,7 +44,7 @@ def snapshot_text(snapshots_dir: Path) -> Callable[[str], str]:
     def loader(name: str) -> str:
         path = snapshots_dir / name
         if not path.exists():
-            raise AssertionError(f"Snapshot {name} missing at {path}")
+            raise SnapshotMissingError(name, path)
         return path.read_text(encoding="utf-8")
 
     return loader

@@ -30,11 +30,9 @@ def _path_matches(candidate: str, pattern: str) -> bool:
         return False
     candidate_norm = candidate.rstrip("/")
     pattern_norm = pattern.rstrip("/")
-    if candidate_norm == pattern_norm:
-        return True
-    if pattern_norm and candidate_norm.startswith(f"{pattern_norm}/"):
-        return True
-    return False
+    return candidate_norm == pattern_norm or (
+        pattern_norm != "" and candidate_norm.startswith(f"{pattern_norm}/")
+    )
 
 
 def apply_engine_paths(
@@ -160,12 +158,22 @@ def resolve_engine_options(
         after_exclude = [item for item in exclude if item not in before_exclude]
         profile_changed = profile_name != before_profile and profile_name is not None
 
+        entry: OverrideEntry | None = None
         if profile_changed or after_args or after_include or after_exclude:
-            entry: OverrideEntry = {
+            entry = {
                 "path": relative_override_path(project_root, override.path),
             }
-            if profile_changed:
-                assert profile_name is not None
+        if profile_changed:
+            if entry is None:
+                entry = {
+                    "path": relative_override_path(project_root, override.path),
+                }
+            if profile_name is None:
+                logger.warning(
+                    "Active profile change detected for engine '%s' but profile is missing",
+                    engine_name,
+                )
+            else:
                 entry["profile"] = profile_name
             if after_args:
                 entry["pluginArgs"] = after_args
@@ -218,12 +226,13 @@ def execute_engine_mode(
         cache_flags.append(f"config={cfg_path.as_posix()}")
         try:
             fingerprint = fingerprint_path(cfg_path)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.debug("Unable to fingerprint config %s: %s", cfg_path, exc)
+        else:
             if "hash" in fingerprint:
                 cache_flags.append(f"config_hash={fingerprint['hash']}")
             if "mtime" in fingerprint:
                 cache_flags.append(f"config_mtime={fingerprint['mtime']}")
-        except Exception:
-            pass
     cache_flags.extend(f"include={path}" for path in engine_options.include)
     cache_flags.extend(f"exclude={path}" for path in engine_options.exclude)
     version = tool_versions.get(engine.name)

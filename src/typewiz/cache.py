@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
+import shutil
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,6 +24,8 @@ if TYPE_CHECKING:
         OverrideEntry,
     )
 
+
+logger = logging.getLogger("typewiz.cache")
 CACHE_DIRNAME = ".typewiz_cache"
 CACHE_FILENAME = "cache.json"
 
@@ -458,21 +462,28 @@ def _git_list_files(repo_root: Path) -> set[str]:
 
     Falls back to empty set on failure.
     """
+    git_cmd = shutil.which("git")
+    if git_cmd is None:
+        logger.debug("git executable not found; skipping gitignore-aware listing")
+        return set()
+
     try:
         import subprocess
 
-        completed = subprocess.run(
-            ["git", "ls-files", "-co", "--exclude-standard"],
+        completed = subprocess.run(  # noqa: S603
+            [git_cmd, "ls-files", "-co", "--exclude-standard"],
             cwd=str(repo_root),
             capture_output=True,
             text=True,
         )
-        if completed.returncode != 0:
-            return set()
-        files = {line.strip() for line in completed.stdout.splitlines() if line.strip()}
-        return files
-    except Exception:
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.debug("git ls-files failed: %s", exc)
         return set()
+
+    if completed.returncode != 0:
+        return set()
+
+    return {line.strip() for line in completed.stdout.splitlines() if line.strip()}
 
 
 def collect_file_hashes(
@@ -549,9 +560,8 @@ def collect_file_hashes(
                         continue
                     if not _maybe_add(Path(root) / fname):
                         return (dict(sorted(hashes.items())), truncated)
-        elif absolute.exists() and absolute.is_file():
-            if not _maybe_add(absolute):
-                return (dict(sorted(hashes.items())), truncated)
+        elif absolute.is_file() and not _maybe_add(absolute):
+            return (dict(sorted(hashes.items())), truncated)
     ordered_hashes: dict[str, FileHashPayload] = dict(sorted(hashes.items()))
     return (ordered_hashes, truncated)
 

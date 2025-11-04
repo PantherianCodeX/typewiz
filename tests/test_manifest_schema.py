@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
+from copy import deepcopy
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -9,7 +12,14 @@ from typewiz.api import run_audit
 from typewiz.cli import main
 from typewiz.config import AuditConfig
 from typewiz.engines.base import EngineContext, EngineResult
+from typewiz.manifest_loader import load_manifest_data
+from typewiz.manifest_models import (
+    ManifestValidationError,
+    manifest_json_schema,
+    validate_manifest_payload,
+)
 from typewiz.model_types import CategoryMapping
+from typewiz.typed_manifest import ManifestData
 
 
 class RecordingEngine:
@@ -40,6 +50,43 @@ def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: RecordingE
     monkeypatch.setattr("typewiz.api.resolve_engines", _resolve)
 
 
+def _sample_manifest() -> ManifestData:
+    return {
+        "generatedAt": "2025-01-01T00:00:00Z",
+        "projectRoot": "/example/project",
+        "schemaVersion": "1",
+        "runs": [
+            {
+                "tool": "pyright",
+                "mode": "current",
+                "command": ["pyright", "--project"],
+                "exitCode": 0,
+                "durationMs": 0.25,
+                "summary": {
+                    "errors": 0,
+                    "warnings": 0,
+                    "information": 0,
+                    "total": 0,
+                },
+                "perFile": [],
+                "perFolder": [],
+                "engineOptions": {
+                    "pluginArgs": [],
+                    "include": [],
+                    "exclude": [],
+                    "overrides": [],
+                },
+                "toolSummary": {
+                    "errors": 0,
+                    "warnings": 0,
+                    "information": 0,
+                    "total": 0,
+                },
+            }
+        ],
+    }
+
+
 def test_manifest_validates_against_schema(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     engine = RecordingEngine()
     _patch_engine_resolution(monkeypatch, engine)
@@ -54,3 +101,45 @@ def test_manifest_validates_against_schema(monkeypatch: pytest.MonkeyPatch, tmp_
     # Use the CLI validator to exercise both the jsonschema and fallback paths
     code = main(["manifest", "validate", str(manifest_path)])
     assert code == 0
+
+
+def test_validate_manifest_payload_round_trip() -> None:
+    manifest = _sample_manifest()
+    validated = validate_manifest_payload(deepcopy(manifest))
+    assert "runs" in validated
+    assert validated["runs"][0]["tool"] == "pyright"
+    loaded = load_manifest_data(deepcopy(manifest))
+    assert "runs" in loaded
+    assert loaded["runs"][0]["command"] == ["pyright", "--project"]
+
+
+def test_validate_manifest_payload_rejects_invalid_tool() -> None:
+    manifest = _sample_manifest()
+    m = cast("dict[str, Any]", manifest)
+    invalid_run = cast("dict[str, Any]", m["runs"][0])
+    invalid_run["tool"] = 123
+    with pytest.raises(ManifestValidationError):
+        validate_manifest_payload(manifest)
+    coerced = load_manifest_data(manifest)
+    assert "runs" in coerced
+    assert coerced["runs"] == []
+
+
+def test_manifest_schema_cli_round_trip(tmp_path: Path) -> None:
+    manifest = _sample_manifest()
+    schema_path = tmp_path / "manifest.schema.json"
+
+    exit_code = main(["manifest", "schema", "--output", str(schema_path)])
+    assert exit_code == 0
+
+    schema_text = schema_path.read_text(encoding="utf-8")
+    schema = json.loads(schema_text)
+    assert schema == manifest_json_schema()
+
+    jsonschema = pytest.importorskip("jsonschema")
+    validator = jsonschema.Draft7Validator(schema)
+    validator.validate(manifest)
+
+    validated = validate_manifest_payload(manifest)
+    assert "runs" in validated
+    assert validated["runs"][0]["durationMs"] == 0.25

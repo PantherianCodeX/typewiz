@@ -8,10 +8,18 @@ from pathlib import Path
 from typing import cast
 
 from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
+from .exceptions import TypewizTypeError
 from .manifest_loader import load_manifest_data
 from .model_types import CategoryMapping, OverrideEntry, clone_override_entries
 from .override_utils import format_overrides_block
-from .readiness import CATEGORY_LABELS, ReadinessEntry, ReadinessPayload, compute_readiness
+from .readiness import (
+    CATEGORY_LABELS,
+    STATUSES,
+    ReadinessEntry,
+    ReadinessPayload,
+    StatusName,
+    compute_readiness,
+)
 from .summary_types import (
     ReadinessTab,
     SummaryData,
@@ -24,6 +32,15 @@ from .typed_manifest import ManifestData, ToolSummary
 from .utils import JSONValue
 
 logger = logging.getLogger("typewiz.dashboard")
+
+
+class DashboardTypeError(TypewizTypeError):
+    """Raised when dashboard data has an unexpected shape."""
+
+    def __init__(self, context: str, expected: str) -> None:
+        self.context = context
+        self.expected = expected
+        super().__init__(f"{context} must be {expected}")
 
 
 def load_manifest(path: Path) -> ManifestData:
@@ -46,11 +63,11 @@ def _coerce_readiness_entries(value: object, context: str) -> list[dict[str, JSO
     if value is None:
         return []
     if not isinstance(value, Sequence) or isinstance(value, str | bytes | bytearray):
-        raise ValueError(f"{context} must be a sequence of mappings")
+        raise DashboardTypeError(context, "a sequence of mappings")
     entries: list[dict[str, JSONValue]] = []
     for index, entry in enumerate(cast(Sequence[object], value)):
         if not isinstance(entry, Mapping):
-            raise ValueError(f"{context}[{index}] must be a mapping")
+            raise DashboardTypeError(f"{context}[{index}]", "a mapping")
         entries.append(coerce_mapping(cast(Mapping[object, object], entry)))
     return entries
 
@@ -58,25 +75,25 @@ def _coerce_readiness_entries(value: object, context: str) -> list[dict[str, JSO
 def _validate_readiness_tab(raw: Mapping[str, object]) -> ReadinessTab:
     strict_raw = raw.get("strict")
     if not isinstance(strict_raw, Mapping):
-        raise ValueError("readiness.strict must be a mapping")
+        raise DashboardTypeError("readiness.strict", "a mapping")
     strict_map = coerce_mapping(cast(Mapping[object, object], strict_raw))
-    strict_section: dict[str, list[dict[str, JSONValue]]] = {}
-    for status in ("ready", "close", "blocked"):
+    strict_section: dict[StatusName, list[dict[str, JSONValue]]] = {}
+    for status in STATUSES:
         strict_section[status] = _coerce_readiness_entries(
             strict_map.get(status), f"readiness.strict.{status}"
         )
 
     options_raw = raw.get("options")
     if not isinstance(options_raw, Mapping):
-        raise ValueError("readiness.options must be a mapping")
+        raise DashboardTypeError("readiness.options", "a mapping")
     options_map = coerce_mapping(cast(Mapping[object, object], options_raw))
     options_section: dict[str, dict[str, object]] = {}
     for category, bucket_obj in options_map.items():
         if not isinstance(bucket_obj, Mapping):
-            raise ValueError(f"readiness.options[{category!r}] must be a mapping")
+            raise DashboardTypeError(f"readiness.options[{category!r}]", "a mapping")
         bucket_map = coerce_mapping(cast(Mapping[object, object], bucket_obj))
         validated_bucket: dict[str, object] = {}
-        for status in ("ready", "close", "blocked"):
+        for status in STATUSES:
             if status in bucket_map:
                 validated_bucket[status] = _coerce_readiness_entries(
                     bucket_map.get(status), f"readiness.options[{category!r}].{status}"
@@ -86,7 +103,7 @@ def _validate_readiness_tab(raw: Mapping[str, object]) -> ReadinessTab:
             if isinstance(threshold_value, int):
                 validated_bucket["threshold"] = threshold_value
             else:
-                raise ValueError(f"readiness.options[{category!r}].threshold must be an integer")
+                raise DashboardTypeError(f"readiness.options[{category!r}].threshold", "an integer")
         options_section[str(category)] = validated_bucket
 
     return cast(
@@ -265,10 +282,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 folder_category_totals[path][category] += coerce_int(count)
             rec_values = coerce_object_list(folder.get("recommendations"))
             for rec in rec_values:
-                if isinstance(rec, str):
-                    rec_text = rec.strip()
-                else:
-                    rec_text = str(rec).strip()
+                rec_text = rec.strip() if isinstance(rec, str) else str(rec).strip()
                 if rec_text:
                     folder_recommendations[path].add(rec_text)
         per_file_entries_raw = coerce_object_list(run.get("perFile"))
@@ -360,7 +374,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
         },
     }
 
-    summary_data = cast(
+    return cast(
         SummaryData,
         {
             "generatedAt": manifest.get("generatedAt"),
@@ -374,7 +388,6 @@ def build_summary(manifest: ManifestData) -> SummaryData:
             "tabs": tabs_payload,
         },
     )
-    return summary_data
 
 
 def render_markdown(summary: SummaryData) -> str:
@@ -587,7 +600,7 @@ def render_markdown(summary: SummaryData) -> str:
             threshold = buckets_dict.get("threshold")
             threshold_value = threshold if isinstance(threshold, int) else 0
             lines.append(f"- **{label}** (≤{threshold_value} to be close):")
-            for status in ("ready", "close", "blocked"):
+            for status in STATUSES:
                 entries = _materialise_dict_list(buckets_dict.get(status))
                 lines.append(f"  - {status.title()}: {_format_entry_list(entries)}")
 

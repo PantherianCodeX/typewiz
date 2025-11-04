@@ -56,9 +56,8 @@ def run_audit(
         list(full_paths) if full_paths else (audit_config.full_paths or default_full_paths(root))
     )
     if not raw_full_paths:
-        raise ValueError(
-            "No directories to scan; configure 'full_paths' or pass 'full_paths' argument"
-        )
+        msg = "No directories to scan; configure 'full_paths' or pass 'full_paths' argument"
+        raise ValueError(msg)
 
     full_paths_normalised = normalise_paths(root, raw_full_paths)
     engines = resolve_engines(audit_config.runners)

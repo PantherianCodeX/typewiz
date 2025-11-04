@@ -39,10 +39,11 @@ def parse_summary_fields(raw: str | None, *, valid_fields: set[str]) -> list[str
         if item == "all":
             return sorted(valid_fields)
         if item not in valid_fields:
-            raise SystemExit(
-                f"Unknown summary field '{item}'. "  # pyright: ignore[reportImplicitStringConcatenation]
+            message = (
+                f"Unknown summary field '{item}'. "
                 f"Valid values: {', '.join(sorted(valid_fields | {'all'}))}"
             )
+            raise SystemExit(message)
         if item not in fields:
             fields.append(item)
     return fields
@@ -79,13 +80,16 @@ def collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
         elif ":" in raw:
             runner, arg = raw.split(":", 1)
         else:
-            raise SystemExit(f"Invalid --plugin-arg value '{raw}'. Use RUNNER=ARG (or RUNNER:ARG).")
+            message = f"Invalid --plugin-arg value '{raw}'. Use RUNNER=ARG (or RUNNER:ARG)."
+            raise SystemExit(message)
         runner = runner.strip()
         if not runner:
-            raise SystemExit("Runner name in --plugin-arg cannot be empty")
+            message = "Runner name in --plugin-arg cannot be empty"
+            raise SystemExit(message)
         arg_clean = arg.strip()
         if not arg_clean:
-            raise SystemExit(f"Argument for runner '{runner}' cannot be empty")
+            message = f"Argument for runner '{runner}' cannot be empty"
+            raise SystemExit(message)
         result.setdefault(runner, []).append(arg_clean)
     return result
 
@@ -96,12 +100,14 @@ def collect_profile_args(entries: Sequence[str]) -> dict[str, str]:
     result: dict[str, str] = {}
     for raw in entries:
         if "=" not in raw:
-            raise SystemExit("--profile expects RUNNER=PROFILE syntax")
+            message = "--profile expects RUNNER=PROFILE syntax"
+            raise SystemExit(message)
         runner, profile = raw.split("=", 1)
         runner = runner.strip()
         profile = profile.strip()
         if not runner or not profile:
-            raise SystemExit("--profile expects RUNNER=PROFILE syntax")
+            message = "--profile expects RUNNER=PROFILE syntax"
+            raise SystemExit(message)
         result[runner] = profile
     return result
 
@@ -115,7 +121,8 @@ def normalise_modes(values: Sequence[str] | None) -> list[str]:
     for raw in values:
         item = raw.strip().lower()
         if item not in {"current", "full"}:
-            raise SystemExit(f"Unknown mode '{item}'. Valid modes: current, full")
+            message = f"Unknown mode '{item}'. Valid modes: current, full"
+            raise SystemExit(message)
         if item not in modes:
             modes.append(item)
     return modes

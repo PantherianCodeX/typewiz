@@ -186,16 +186,20 @@ def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
     path = coerce_str(entry.get("path"), "<unknown>")
     diagnostics = coerce_int(entry.get("diagnostics"))
     if diagnostics < 0:
-        raise ValueError("diagnostics must be non-negative")
+        message = "diagnostics must be non-negative"
+        raise ValueError(message)
     errors = coerce_int(entry.get("errors"))
     if errors < 0:
-        raise ValueError("errors must be non-negative")
+        message = "errors must be non-negative"
+        raise ValueError(message)
     warnings = coerce_int(entry.get("warnings"))
     if warnings < 0:
-        raise ValueError("warnings must be non-negative")
+        message = "warnings must be non-negative"
+        raise ValueError(message)
     information = coerce_int(entry.get("information"))
     if information < 0:
-        raise ValueError("information must be non-negative")
+        message = "information must be non-negative"
+        raise ValueError(message)
     notes_items = coerce_optional_str_list(entry.get("notes"))
     recommendations_items = coerce_optional_str_list(entry.get("recommendations"))
     categories_map = coerce_mapping(entry.get("categories"))

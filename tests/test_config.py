@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol, cast
 
 import pytest
 
@@ -18,17 +17,8 @@ from typewiz.config import (
     load_config,
 )
 
-
-class _EnsureListFn(Protocol):
-    def __call__(self, value: object) -> list[str] | None: ...
-
-
-class _ResolvePathFieldsFn(Protocol):
-    def __call__(self, root: Path, audit: AuditConfig) -> None: ...
-
-
-ensure_list = cast(_EnsureListFn, config_module._ensure_list)
-resolve_path_fields = cast(_ResolvePathFieldsFn, config_module._resolve_path_fields)
+ensure_list = config_module._ensure_list
+resolve_path_fields = config_module._resolve_path_fields
 
 
 def test_load_config_from_toml(tmp_path: Path) -> None:

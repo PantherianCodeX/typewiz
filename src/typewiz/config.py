@@ -4,13 +4,90 @@ import tomllib as toml
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import Final, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from .collection_utils import dedupe_preserve
+from .exceptions import TypewizValidationError
 
-CONFIG_VERSION = 0
+CONFIG_VERSION: Final[int] = 0
+FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = ("errors", "warnings", "never", "none", "any")
+
+
+class ConfigValidationError(TypewizValidationError):
+    """Raised when configuration data contains invalid values."""
+
+
+class ConfigFieldTypeError(ConfigValidationError):
+    """Raised when a configuration field has an invalid type."""
+
+    def __init__(self, field: str) -> None:
+        self.field = field
+        super().__init__(f"{field} must be a string")
+
+
+class ConfigFieldChoiceError(ConfigValidationError):
+    """Raised when a configuration field is provided with an unsupported value."""
+
+    def __init__(self, field: str, allowed: tuple[str, ...]) -> None:
+        self.field = field
+        self.allowed = allowed
+        allowed_text = ", ".join(sorted(allowed))
+        super().__init__(f"{field} must be one of: {allowed_text}")
+
+
+class UndefinedDefaultProfileError(ConfigValidationError):
+    """Raised when a default profile references an undefined profile name."""
+
+    def __init__(self, profile: str) -> None:
+        self.profile = profile
+        super().__init__(f"default_profile '{profile}' is not defined in profiles")
+
+
+class UnknownEngineProfileError(ConfigValidationError):
+    """Raised when a path override references an unknown engine profile."""
+
+    def __init__(self, engine: str, profile: str) -> None:
+        self.engine = engine
+        self.profile = profile
+        super().__init__(f"Unknown profile '{profile}' for engine '{engine}'")
+
+
+class UnsupportedConfigVersionError(ConfigValidationError):
+    """Raised when a configuration file declares an unsupported schema version."""
+
+    def __init__(self, provided: int, expected: int) -> None:
+        self.provided = provided
+        self.expected = expected
+        super().__init__(f"Unsupported config_version {provided}; expected {expected}")
+
+
+class ConfigReadError(ConfigValidationError):
+    """Raised when a configuration file cannot be read from disk."""
+
+    def __init__(self, path: Path, error: Exception) -> None:
+        self.path = path
+        self.error = error
+        super().__init__(f"Unable to read {path}: {error}")
+
+
+class DirectoryOverrideValidationError(ConfigValidationError):
+    """Raised when a directory override manifest fails validation."""
+
+    def __init__(self, path: Path, error: Exception) -> None:
+        self.path = path
+        self.error = error
+        super().__init__(f"Invalid typewiz directory override in {path}: {error}")
+
+
+class InvalidConfigFileError(ConfigValidationError):
+    """Raised when the root configuration file fails validation."""
+
+    def __init__(self, path: Path, error: Exception) -> None:
+        self.path = path
+        self.error = error
+        super().__init__(f"Invalid typewiz configuration in {path}: {error}")
 
 
 def _default_list_str() -> list[str]:
@@ -130,7 +207,7 @@ class EngineProfileModel(BaseModel):
         if isinstance(value, str):
             stripped = value.strip()
             return stripped or None
-        raise ValueError("inherit must be a string")
+        raise ConfigFieldTypeError("inherit")
 
     @model_validator(mode="after")
     def _normalise(self) -> EngineProfileModel:
@@ -161,7 +238,7 @@ class EngineSettingsModel(BaseModel):
         if isinstance(value, str):
             stripped = value.strip()
             return stripped or None
-        raise ValueError("default_profile must be a string")
+        raise ConfigFieldTypeError("default_profile")
 
     @model_validator(mode="after")
     def _normalise(self) -> EngineSettingsModel:
@@ -174,7 +251,7 @@ class EngineSettingsModel(BaseModel):
             normalised_profiles[key.strip()] = profile
         object.__setattr__(self, "profiles", normalised_profiles)
         if self.default_profile and self.default_profile not in self.profiles:
-            raise ValueError(f"default_profile '{self.default_profile}' is not defined in profiles")
+            raise UndefinedDefaultProfileError(self.default_profile)
         return self
 
 
@@ -232,10 +309,10 @@ class AuditConfigModel(BaseModel):
             return None
         if isinstance(value, str):
             lowered = value.strip().lower()
-            if lowered in {"errors", "warnings", "never", "none", "any"}:
+            if lowered in FAIL_ON_ALLOWED_VALUES:
                 return lowered
-            raise ValueError("fail_on must be one of: errors, warnings, never")
-        raise ValueError("fail_on must be a string")
+            raise ConfigFieldChoiceError("fail_on", FAIL_ON_ALLOWED_VALUES)
+        raise ConfigFieldTypeError("fail_on")
 
     @field_validator("plugin_args", mode="before")
     @classmethod
@@ -270,7 +347,7 @@ class AuditConfigModel(BaseModel):
         for engine, profile in profiles.items():
             settings = self.engine_settings.get(engine)
             if settings and profile not in settings.profiles:
-                raise ValueError(f"Unknown profile '{profile}' for engine '{engine}'")
+                raise UnknownEngineProfileError(engine, profile)
         return self
 
 
@@ -281,9 +358,7 @@ class ConfigModel(BaseModel):
     @model_validator(mode="after")
     def _check_version(self) -> ConfigModel:
         if self.config_version != CONFIG_VERSION:
-            raise ValueError(
-                f"Unsupported config_version {self.config_version}; expected {CONFIG_VERSION}"
-            )
+            raise UnsupportedConfigVersionError(self.config_version, CONFIG_VERSION)
         return self
 
 
@@ -375,13 +450,11 @@ def _discover_path_overrides(root: Path) -> list[PathOverride]:
             try:
                 raw = toml.loads(config_path.read_text(encoding="utf-8"))
             except Exception as exc:  # pragma: no cover - IO errors
-                raise ValueError(f"Unable to read {config_path}: {exc}") from exc
+                raise ConfigReadError(config_path, exc) from exc
             try:
                 model = PathOverrideModel.model_validate(raw)
             except ValidationError as exc:
-                raise ValueError(
-                    f"Invalid typewiz directory override in {config_path}: {exc}"
-                ) from exc
+                raise DirectoryOverrideValidationError(config_path, exc) from exc
             override = _path_override_from_model(directory, model)
             overrides.append(override)
             visited.add(directory)
@@ -409,7 +482,7 @@ def load_config(explicit_path: Path | None = None) -> Config:
         try:
             cfg_model = ConfigModel.model_validate(raw_map)
         except ValidationError as exc:  # pragma: no cover - configuration errors
-            raise ValueError(f"Invalid typewiz configuration in {candidate}: {exc}") from exc
+            raise InvalidConfigFileError(candidate, exc) from exc
         audit = _model_to_dataclass(cfg_model.audit)
         root = candidate.parent.resolve()
         audit.path_overrides = _discover_path_overrides(root)
@@ -424,4 +497,4 @@ def load_config(explicit_path: Path | None = None) -> Config:
     return cfg
 
 
-FOLDER_CONFIG_FILENAMES: tuple[str, ...] = ("typewiz.dir.toml", ".typewizdir.toml")
+FOLDER_CONFIG_FILENAMES: Final[tuple[str, ...]] = ("typewiz.dir.toml", ".typewizdir.toml")

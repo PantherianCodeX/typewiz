@@ -100,9 +100,8 @@ class ManifestBuilder:
             versions = detect_tool_versions(tools)
             if versions:
                 self.data["toolVersions"] = versions
-        except Exception:
-            # best-effort; keep manifest writing resilient
-            pass
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.debug("Failed to detect tool versions: %s", exc)
         if self.fingerprint_truncated:
             self.data["fingerprintTruncated"] = True
         path.write_text(json.dumps(self.data, indent=2) + "\n", encoding="utf-8")

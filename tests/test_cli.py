@@ -5,7 +5,7 @@ import sys
 import types
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Protocol, cast
+from typing import cast
 
 import pytest
 
@@ -38,46 +38,11 @@ from typewiz.summary_types import (
 )
 from typewiz.types import Diagnostic, RunResult
 
-
-class _PrintSummaryFn(Protocol):
-    def __call__(self, runs: Sequence[RunResult], fields: Sequence[str], style: str) -> None: ...
-
-
-class _PrintReadinessFn(Protocol):
-    def __call__(
-        self,
-        summary: SummaryData,
-        *,
-        level: str,
-        statuses: Sequence[str] | None,
-        limit: int,
-    ) -> None: ...
-
-
-class _QueryReadinessFn(Protocol):
-    def __call__(
-        self,
-        summary: SummaryData,
-        *,
-        level: str,
-        statuses: Sequence[str] | None,
-        limit: int,
-    ) -> dict[str, list[dict[str, object]]]: ...
-
-
-class _WriteConfigTemplateFn(Protocol):
-    def __call__(self, path: Path, *, force: bool) -> int: ...
-
-
-class _NormaliseModesFn(Protocol):
-    def __call__(self, modes: Sequence[str] | None) -> tuple[bool, bool, bool]: ...
-
-
-_print_summary = cast(_PrintSummaryFn, cli_module._print_summary)
-_print_readiness_summary = cast(_PrintReadinessFn, cli_module._print_readiness_summary)
-_query_readiness = cast(_QueryReadinessFn, cli_module._query_readiness)
-_write_config_template = cast(_WriteConfigTemplateFn, cli_module._write_config_template)
-_normalise_modes_cli = cast(_NormaliseModesFn, cli_module._normalise_modes)
+_print_summary = cli_module._print_summary
+_print_readiness_summary = cli_module._print_readiness_summary
+_query_readiness = cli_module._query_readiness
+_write_config_template = cli_module._write_config_template
+_normalise_modes_cli = cli_module._normalise_modes
 
 
 def _write_manifest(tmp_path: Path) -> Path:

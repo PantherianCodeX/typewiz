@@ -41,7 +41,8 @@ def coerce_int(value: object, default: int = 0) -> int:
 def require_non_negative_int(value: object, *, context: str) -> int:
     result = coerce_int(value)
     if result < 0:
-        raise ValueError(f"{context} must be non-negative (got {result})")
+        message = f"{context} must be non-negative (got {result})"
+        raise ValueError(message)
     return result
 
 

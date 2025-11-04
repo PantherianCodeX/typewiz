@@ -178,7 +178,8 @@ def _collect_readiness_view(
     try:
         return collect_readiness_view(summary, level=level, statuses=statuses, limit=limit)
     except ReadinessValidationError as exc:
-        raise SystemExit(f"Invalid readiness data encountered: {exc}") from exc
+        message = f"Invalid readiness data encountered: {exc}"
+        raise SystemExit(message) from exc
 
 
 def _print_readiness_summary(
@@ -293,7 +294,8 @@ def _query_readiness(
     try:
         return _collect_readiness_view(summary, level=level, statuses=statuses, limit=limit)
     except ReadinessValidationError as exc:
-        raise SystemExit(f"Invalid readiness data encountered: {exc}") from exc
+        message = f"Invalid readiness data encountered: {exc}"
+        raise SystemExit(message) from exc
 
 
 def _query_runs(
@@ -372,12 +374,14 @@ def _collect_profile_args(pairs: Sequence[Sequence[str]]) -> dict[str, str]:
     flattened: list[str] = []
     for pair in pairs:
         if len(pair) != 2:
-            raise SystemExit("--profile entries must specify both runner and profile")
+            message = "--profile entries must specify both runner and profile"
+            raise SystemExit(message)
         runner_raw, profile_raw = pair[0], pair[1]
         runner = runner_raw.strip()
         profile = profile_raw.strip()
         if not runner or not profile:
-            raise SystemExit("--profile entries must specify both runner and profile")
+            message = "--profile entries must specify both runner and profile"
+            raise SystemExit(message)
         flattened.append(f"{runner}={profile}")
     return helpers_collect_profile_args(flattened)
 
@@ -389,7 +393,8 @@ def _normalise_modes(modes: Sequence[str] | None) -> tuple[bool, bool, bool]:
     run_current = "current" in normalised
     run_full = "full" in normalised
     if not run_current and not run_full:
-        raise SystemExit("No modes selected. Choose at least one of: current, full.")
+        message = "No modes selected. Choose at least one of: current, full."
+        raise SystemExit(message)
     return (True, run_current, run_full)
 
 
@@ -862,7 +867,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif section == "rules":
             data = _query_rules(query_summary, limit=args.limit)
         else:  # pragma: no cover - argparse restricts this path
-            raise SystemExit(f"Unknown query section: {section}")
+            message = f"Unknown query section: {section}"
+            raise SystemExit(message)
         _render_data(data, args.format)
         return 0
 
@@ -875,9 +881,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             cli_full_paths or config.audit.full_paths or default_full_paths(project_root)
         )
         if not selected_full_paths:
-            raise SystemExit(
-                "No paths found for full runs. Provide paths or configure 'full_paths'."
-            )
+            message = "No paths found for full runs. Provide paths or configure 'full_paths'."
+            raise SystemExit(message)
 
         modes_specified, run_current, run_full = _normalise_modes(args.modes)
         override = AuditConfig(
@@ -960,13 +965,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 delta_str = ""
 
         exit_code = 0
-        if fail_on in {"never", "none"}:
-            exit_code = 0
-        elif fail_on == "errors" and error_count > 0:
-            exit_code = 2
-        elif fail_on == "warnings" and (error_count > 0 or warning_count > 0):
-            exit_code = 2
-        elif fail_on == "any" and (error_count > 0 or warning_count > 0 or info_count > 0):
+        if fail_on not in {"never", "none"} and (
+            (fail_on == "errors" and error_count > 0)
+            or (fail_on == "warnings" and (error_count > 0 or warning_count > 0))
+            or (fail_on == "any" and (error_count > 0 or warning_count > 0 or info_count > 0))
+        ):
             exit_code = 2
 
         # Compact CI summary line
@@ -1060,7 +1063,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             else:
                 print(schema_text)
             return 0
-        raise SystemExit("Unknown manifest action")
+        message = "Unknown manifest action"
+        raise SystemExit(message)
 
     if args.command == "readiness":
         manifest = load_manifest(args.manifest)
@@ -1073,4 +1077,5 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
-    raise SystemExit(f"Unknown command {args.command}")
+    message = f"Unknown command {args.command}"
+    raise SystemExit(message)

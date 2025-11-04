@@ -11000,28 +11000,28 @@
               "column": 0,
               "severity": "error",
               "code": null,
-              "message": "/home/user/.local/lib/python3.10/site-packages/mypy/typeshed/stdlib/builtins.pyi: note: \"JobTelemetrySerializer\" defined here"
+              "message": "/home/user/.local/lib/python3.12/site-packages/mypy/typeshed/stdlib/builtins.pyi: note: \"JobTelemetrySerializer\" defined here"
             },
             {
               "line": 0,
               "column": 0,
               "severity": "error",
               "code": null,
-              "message": "/home/user/.local/lib/python3.10/site-packages/mypy/typeshed/stdlib/builtins.pyi: note: \"JobCreateSerializer\" defined here"
+              "message": "/home/user/.local/lib/python3.12/site-packages/mypy/typeshed/stdlib/builtins.pyi: note: \"JobCreateSerializer\" defined here"
             },
             {
               "line": 0,
               "column": 0,
               "severity": "error",
               "code": null,
-              "message": "/home/user/.local/lib/python3.10/site-packages/mypy/typeshed/stdlib/builtins.pyi: note: \"JobSerializer\" defined here"
+              "message": "/home/user/.local/lib/python3.12/site-packages/mypy/typeshed/stdlib/builtins.pyi: note: \"JobSerializer\" defined here"
             },
             {
               "line": 0,
               "column": 0,
               "severity": "error",
               "code": null,
-              "message": "/home/user/.local/lib/python3.10/site-packages/mypy/typeshed/stdlib/builtins.pyi: note: \"JobTelemetrySerializer\" defined here"
+              "message": "/home/user/.local/lib/python3.12/site-packages/mypy/typeshed/stdlib/builtins.pyi: note: \"JobTelemetrySerializer\" defined here"
             }
           ]
         },

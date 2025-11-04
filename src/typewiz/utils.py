@@ -40,7 +40,7 @@ def run_command(args: Iterable[str], cwd: Path | None = None) -> CommandOutput:
     argv = list(args)
     start = time.perf_counter()
     logger.debug("Executing command: %s", " ".join(argv))
-    completed = subprocess.run(
+    completed = subprocess.run(  # noqa: S603 - command arguments controlled by caller
         argv,
         cwd=str(cwd) if cwd else None,
         capture_output=True,
@@ -94,8 +94,9 @@ def detect_tool_versions(tools: list[str]) -> dict[str, str]:
                 ver = _safe_version_from_output(out)
                 if ver:
                     versions[name] = ver
-        except Exception:
+        except Exception as exc:
             # Ignore errors — version detection is optional
+            logger.debug("Failed to detect version for %s: %s", name, exc)
             continue
     return versions
 
@@ -103,7 +104,8 @@ def detect_tool_versions(tools: list[str]) -> dict[str, str]:
 def require_json(payload: str, fallback: str | None = None) -> JSONMapping:
     data_str = payload.strip() or (fallback or "")
     if not data_str:
-        raise ValueError("Expected JSON output but received empty string")
+        message = "Expected JSON output but received empty string"
+        raise ValueError(message)
     return cast(JSONMapping, json.loads(data_str))
 
 
@@ -146,7 +148,8 @@ def resolve_project_root(start: Path | None = None) -> Path:
 
     if start is not None:
         if not base.exists():
-            raise FileNotFoundError(f"Provided project root {start} does not exist.")
+            message = f"Provided project root {start} does not exist."
+            raise FileNotFoundError(message)
         logger.debug(
             "No project markers found; using provided path %s as project root",
             base,
@@ -170,9 +173,8 @@ def _contains_python(path: Path) -> bool:
     for child in path.iterdir():
         if child.is_file() and child.suffix in {".py", ".pyi"}:
             return True
-        if child.is_dir():
-            if _contains_python(child):
-                return True
+        if child.is_dir() and _contains_python(child):
+            return True
     return False
 
 
