@@ -7,7 +7,7 @@ import logging
 import pathlib
 import shlex
 from textwrap import dedent
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from .api import run_audit
 from .cli_helpers import collect_plugin_args as helpers_collect_plugin_args
@@ -20,6 +20,11 @@ from .config import AuditConfig, load_config
 from .dashboard import build_summary, load_manifest, render_markdown
 from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
 from .html_report import render_html
+from .manifest_models import (
+    ManifestValidationError,
+    manifest_json_schema,
+    validate_manifest_payload,
+)
 from .model_types import clone_override_entries
 from .override_utils import format_override_inline, override_detail_lines
 from .readiness_views import ReadinessValidationError, collect_readiness_view
@@ -611,7 +616,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--schema",
         type=pathlib.Path,
         default=None,
-        help="Explicit path to the JSON schema (defaults to bundled schema)",
+        help="Optionally validate against an additional JSON schema",
+    )
+
+    manifest_schema = manifest_sub.add_parser(
+        "schema",
+        help="Emit the manifest JSON schema",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    manifest_schema.add_argument(
+        "--output",
+        type=pathlib.Path,
+        default=None,
+        help="Write the schema to a path instead of stdout",
+    )
+    manifest_schema.add_argument(
+        "--indent",
+        type=int,
+        default=2,
+        help="Indentation level for JSON output",
     )
 
     query = subparsers.add_parser(
@@ -994,37 +1017,49 @@ def main(argv: Sequence[str] | None = None) -> int:
         action = args.action
         if action == "validate":
             manifest_path: pathlib.Path = args.path
-            schema_path = args.schema or pathlib.Path("schemas/typing_audit_manifest.schema.json")
-            data_dict: dict[str, object] = json.loads(manifest_path.read_text(encoding="utf-8"))
+            payload = json.loads(manifest_path.read_text(encoding="utf-8"))
             try:
-                # Prefer jsonschema when available
-                jsonschema_module: ModuleType = importlib.import_module("jsonschema")
-                validator = jsonschema_module.Draft7Validator(
-                    json.loads(schema_path.read_text(encoding="utf-8"))
-                )
-                errors = sorted(validator.iter_errors(data_dict), key=lambda e: e.path)
-                if errors:
-                    for err in errors:
-                        loc = "/".join(str(p) for p in err.path)
-                        print(f"[typewiz] schema error at /{loc}: {err.message}")
-                    return 2
-                print("[typewiz] manifest is valid")
-                return 0
-            except ModuleNotFoundError:
-                # Fallback: minimal structural check without dependency
-                required = ["generatedAt", "projectRoot", "runs"]
-                missing = [key for key in required if key not in data_dict]
-                if missing:
-                    print(f"[typewiz] manifest missing required keys: {', '.join(missing)}")
-                    return 2
-                runs_value = data_dict.get("runs")
-                if not isinstance(runs_value, list):
-                    print("[typewiz] manifest.runs must be an array")
-                    return 2
-                print(
-                    "[typewiz] manifest passes basic validation (install 'jsonschema' for full checks)"
-                )
-                return 0
+                validate_manifest_payload(payload)
+            except ManifestValidationError as exc:
+                for err in exc.validation_error.errors():
+                    location = ".".join(str(part) for part in err.get("loc", ())) or "<root>"
+                    message = err.get("msg", "invalid value")
+                    print(f"[typewiz] validation error at {location}: {message}")
+                return 2
+
+            schema_payload: dict[str, Any] | None
+            if args.schema:
+                schema_payload = json.loads(args.schema.read_text(encoding="utf-8"))
+            else:
+                schema_payload = manifest_json_schema()
+
+            if schema_payload is not None:
+                try:
+                    jsonschema_module: ModuleType = importlib.import_module("jsonschema")
+                except ModuleNotFoundError:
+                    if args.schema:
+                        print(
+                            "[typewiz] jsonschema module not available; skipping schema validation"
+                        )
+                else:
+                    validator = jsonschema_module.Draft7Validator(schema_payload)
+                    errors = sorted(validator.iter_errors(payload), key=lambda e: e.path)
+                    if errors:
+                        for err in errors:
+                            loc = "/".join(str(p) for p in err.path)
+                            print(f"[typewiz] schema error at /{loc}: {err.message}")
+                        return 2
+            print("[typewiz] manifest is valid")
+            return 0
+        if action == "schema":
+            schema: dict[str, Any] = manifest_json_schema()
+            schema_text = json.dumps(schema, indent=args.indent)
+            if args.output:
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(schema_text + "\n", encoding="utf-8")
+            else:
+                print(schema_text)
+            return 0
         raise SystemExit("Unknown manifest action")
 
     if args.command == "readiness":

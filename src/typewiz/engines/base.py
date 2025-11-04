@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,6 +10,8 @@ from typewiz.config import AuditConfig
 from typewiz.model_types import CategoryMapping, Mode, OverrideEntry
 from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic
+
+logger = logging.getLogger("typewiz.engine")
 
 
 def _default_overrides() -> list[OverrideEntry]:
@@ -49,6 +52,18 @@ class EngineResult:
     cached: bool = False
     # Optional: raw tool-provided summary counts (normalised to errors/warnings/information/total)
     tool_summary: ToolSummary | None = None
+
+    def __post_init__(self) -> None:
+        if not self.command:
+            logger.warning("Engine '%s' returned an empty command", self.engine)
+        if self.duration_ms < 0:
+            logger.warning(
+                "Engine '%s' reported negative duration %.2f ms", self.engine, self.duration_ms
+            )
+        if self.exit_code < 0:
+            logger.warning(
+                "Engine '%s' returned negative exit code %s", self.engine, self.exit_code
+            )
 
 
 class BaseEngine(Protocol):

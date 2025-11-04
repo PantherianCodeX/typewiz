@@ -831,16 +831,12 @@ def test_cli_manifest_validate_runs_type(
     manifest_path.write_text(
         json.dumps({"generatedAt": "now", "projectRoot": ".", "runs": {}}), encoding="utf-8"
     )
-    import importlib
-
-    def _missing_module(name: str) -> object:
-        raise ModuleNotFoundError(name)
-
-    monkeypatch.setattr(importlib, "import_module", _missing_module)
 
     exit_code = main(["manifest", "validate", str(manifest_path)])
     assert exit_code == 2
-    assert "manifest.runs must be an array" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "validation error at runs" in output
+    assert "Input should be a valid list" in output
 
 
 def test_cli_manifest_unknown_action(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1224,45 +1220,22 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     assert "pyright:full exit=0" in compact_out
 
 
-def test_cli_manifest_validate_fallback(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
+def test_cli_manifest_validate_accepts_minimal_payload(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     manifest_path = tmp_path / "manifest.json"
-    manifest_path.write_text(
-        json.dumps({"generatedAt": "now", "projectRoot": ".", "runs": []}), encoding="utf-8"
-    )
-
-    import importlib
-
-    def _raise_missing(_: str) -> None:
-        raise ModuleNotFoundError("jsonschema not available")
-
-    monkeypatch.setattr(importlib, "import_module", _raise_missing)
+    manifest_path.write_text(json.dumps({"runs": []}), encoding="utf-8")
 
     exit_code = main(["manifest", "validate", str(manifest_path)])
     assert exit_code == 0
     output = capsys.readouterr().out
-    assert "manifest passes basic validation" in output
+    assert "manifest is valid" in output
 
 
-def test_cli_manifest_validate_missing_keys(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    import importlib
-
-    manifest_path = tmp_path / "invalid.json"
-    manifest_path.write_text(json.dumps({"generatedAt": "now"}), encoding="utf-8")
-
-    def _missing_module(name: str) -> object:
-        raise ModuleNotFoundError(name)
-
-    monkeypatch.setattr(importlib, "import_module", _missing_module)
-
-    exit_code = main(["manifest", "validate", str(manifest_path)])
-    assert exit_code == 2
-    output = capsys.readouterr().out
-    assert "manifest missing required keys" in output
+def test_cli_manifest_schema_command(tmp_path: Path) -> None:
+    schema_path = tmp_path / "schema.json"
+    exit_code = main(["manifest", "schema", "--output", str(schema_path), "--indent", "4"])
+    assert exit_code == 0
+    assert schema_path.exists()
+    schema_data = json.loads(schema_path.read_text(encoding="utf-8"))
+    assert schema_data.get("title") == "ManifestModel"

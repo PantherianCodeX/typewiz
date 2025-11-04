@@ -4,14 +4,11 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import Any, TypeGuard, cast
 
-from pydantic import TypeAdapter, ValidationError
-
 from .data_validation import coerce_mapping
+from .manifest_models import ManifestValidationError, validate_manifest_payload
 from .typed_manifest import ManifestData, RunPayload
 
 logger = logging.getLogger("typewiz.manifest_loader")
-
-_manifest_adapter: TypeAdapter[ManifestData] = TypeAdapter(ManifestData)
 
 
 def _is_run_payload(obj: object) -> TypeGuard[RunPayload]:
@@ -78,9 +75,11 @@ def load_manifest_data(raw: Any) -> ManifestData:
     """Parse manifest-like payloads using strict validation with a tolerant fallback."""
 
     try:
-        return _manifest_adapter.validate_python(raw)
-    except ValidationError as exc:
-        logger.debug("Manifest validation failed; falling back to coercion: %s", exc)
+        return validate_manifest_payload(raw)
+    except ManifestValidationError as exc:
+        logger.debug(
+            "Manifest validation failed; falling back to coercion: %s", exc.validation_error
+        )
         if not isinstance(raw, Mapping):
             raise
         return _coerce_manifest_mapping(cast(Mapping[str, object], raw))

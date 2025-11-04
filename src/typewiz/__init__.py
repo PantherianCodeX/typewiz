@@ -12,6 +12,8 @@ from .config import AuditConfig, Config, load_config  # noqa: F401
 from .dashboard import build_summary, load_manifest, render_markdown  # noqa: F401
 from .html_report import render_html  # noqa: F401
 from .summary_types import SummaryData  # noqa: F401
+from .typed_manifest import ToolSummary  # noqa: F401
+from .types import Diagnostic, RunResult  # noqa: F401
 
 __all__ = [
     "__version__",
@@ -25,6 +27,9 @@ __all__ = [
     "run_audit",
     "AuditResult",
     "SummaryData",
+    "Diagnostic",
+    "RunResult",
+    "ToolSummary",
 ]
 
 __version__ = "0.2.0"

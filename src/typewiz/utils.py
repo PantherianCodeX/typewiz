@@ -100,19 +100,19 @@ def detect_tool_versions(tools: list[str]) -> dict[str, str]:
     return versions
 
 
-def require_json(payload: str, fallback: str | None = None) -> dict[str, JSONValue]:
+def require_json(payload: str, fallback: str | None = None) -> JSONMapping:
     data_str = payload.strip() or (fallback or "")
     if not data_str:
         raise ValueError("Expected JSON output but received empty string")
-    return cast(dict[str, JSONValue], json.loads(data_str))
+    return cast(JSONMapping, json.loads(data_str))
 
 
-def as_mapping(value: object) -> dict[str, JSONValue]:
-    return cast(dict[str, JSONValue], value) if isinstance(value, dict) else {}
+def as_mapping(value: object) -> JSONMapping:
+    return cast(JSONMapping, value) if isinstance(value, dict) else {}
 
 
-def as_list(value: object) -> list[JSONValue]:
-    return cast(list[JSONValue], value) if isinstance(value, list) else []
+def as_list(value: object) -> JSONList:
+    return cast(JSONList, value) if isinstance(value, list) else []
 
 
 def as_str(value: object, default: str = "") -> str:

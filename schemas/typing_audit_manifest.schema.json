@@ -1,60 +1,652 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://example.com/schemas/typing_audit_manifest.schema.json",
-  "title": "Typewiz Typing Audit Manifest",
-  "type": "object",
-  "required": ["generatedAt", "projectRoot", "runs"],
-  "properties": {
-    "schemaVersion": {"type": "string"},
-    "generatedAt": {"type": "string"},
-    "projectRoot": {"type": "string"},
-    "fingerprintTruncated": {"type": "boolean"},
-    "toolVersions": {
-      "type": "object",
-      "additionalProperties": {"type": "string"}
-    },
-    "runs": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "tool",
-          "mode",
-          "command",
-          "exitCode",
-          "durationMs",
-          "summary",
-          "perFile",
-          "perFolder",
-          "engineOptions"
-        ],
-        "properties": {
-          "tool": {"type": "string"},
-          "mode": {"type": "string"},
-          "command": {
-            "type": "array",
-            "items": {"type": "string"}
-          },
-          "exitCode": {"type": "integer"},
-          "durationMs": {"type": "number"},
-          "toolSummary": {
-            "type": "object",
-            "properties": {
-              "errors": {"type": "integer"},
-              "warnings": {"type": "integer"},
-              "information": {"type": "integer"},
-              "total": {"type": "integer"}
+  "$defs": {
+    "EngineErrorModel": {
+      "properties": {
+        "exitCode": {
+          "anyOf": [
+            {
+              "type": "integer"
             },
-            "additionalProperties": false
-          },
-          "summary": {"type": "object"},
-          "perFile": {"type": "array"},
-          "perFolder": {"type": "array"},
-          "engineOptions": {"type": "object"}
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exitcode"
         },
-        "additionalProperties": true
-      }
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Message"
+        },
+        "stderr": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stderr"
+        }
+      },
+      "title": "EngineErrorModel",
+      "type": "object"
+    },
+    "EngineOptionsModel": {
+      "properties": {
+        "categoryMapping": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Categorymapping"
+        },
+        "configFile": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Configfile"
+        },
+        "exclude": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Exclude",
+          "type": "array"
+        },
+        "include": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Include",
+          "type": "array"
+        },
+        "overrides": {
+          "items": {
+            "$ref": "#/$defs/OverrideEntryModel"
+          },
+          "title": "Overrides",
+          "type": "array"
+        },
+        "pluginArgs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Pluginargs",
+          "type": "array"
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile"
+        }
+      },
+      "title": "EngineOptionsModel",
+      "type": "object"
+    },
+    "FileDiagnosticModel": {
+      "properties": {
+        "code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code"
+        },
+        "column": {
+          "title": "Column",
+          "type": "integer"
+        },
+        "line": {
+          "title": "Line",
+          "type": "integer"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "line",
+        "column",
+        "severity",
+        "message"
+      ],
+      "title": "FileDiagnosticModel",
+      "type": "object"
+    },
+    "FileEntryModel": {
+      "properties": {
+        "diagnostics": {
+          "items": {
+            "$ref": "#/$defs/FileDiagnosticModel"
+          },
+          "title": "Diagnostics",
+          "type": "array"
+        },
+        "errors": {
+          "title": "Errors",
+          "type": "integer"
+        },
+        "information": {
+          "title": "Information",
+          "type": "integer"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "warnings": {
+          "title": "Warnings",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "errors",
+        "warnings",
+        "information",
+        "diagnostics"
+      ],
+      "title": "FileEntryModel",
+      "type": "object"
+    },
+    "FolderEntryModel": {
+      "properties": {
+        "categoryCounts": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Categorycounts"
+        },
+        "codeCounts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Codecounts",
+          "type": "object"
+        },
+        "depth": {
+          "title": "Depth",
+          "type": "integer"
+        },
+        "errors": {
+          "title": "Errors",
+          "type": "integer"
+        },
+        "information": {
+          "title": "Information",
+          "type": "integer"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "recommendations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Recommendations",
+          "type": "array"
+        },
+        "warnings": {
+          "title": "Warnings",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "depth",
+        "errors",
+        "warnings",
+        "information",
+        "codeCounts",
+        "recommendations"
+      ],
+      "title": "FolderEntryModel",
+      "type": "object"
+    },
+    "OverrideEntryModel": {
+      "properties": {
+        "exclude": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Exclude",
+          "type": "array"
+        },
+        "include": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Include",
+          "type": "array"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "pluginArgs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Pluginargs",
+          "type": "array"
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Profile"
+        }
+      },
+      "title": "OverrideEntryModel",
+      "type": "object"
+    },
+    "RunPayloadModel": {
+      "properties": {
+        "command": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Command",
+          "type": "array"
+        },
+        "durationMs": {
+          "title": "Durationms",
+          "type": "number"
+        },
+        "engineArgsEffective": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engineargseffective"
+        },
+        "engineError": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EngineErrorModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "engineOptions": {
+          "$ref": "#/$defs/EngineOptionsModel"
+        },
+        "exitCode": {
+          "title": "Exitcode",
+          "type": "integer"
+        },
+        "mode": {
+          "title": "Mode",
+          "type": "string"
+        },
+        "perFile": {
+          "items": {
+            "$ref": "#/$defs/FileEntryModel"
+          },
+          "title": "Perfile",
+          "type": "array"
+        },
+        "perFolder": {
+          "items": {
+            "$ref": "#/$defs/FolderEntryModel"
+          },
+          "title": "Perfolder",
+          "type": "array"
+        },
+        "scannedPathsResolved": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scannedpathsresolved"
+        },
+        "summary": {
+          "$ref": "#/$defs/RunSummaryModel"
+        },
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "toolSummary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolSummaryModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "tool",
+        "mode",
+        "command",
+        "exitCode",
+        "durationMs",
+        "summary",
+        "perFile",
+        "perFolder",
+        "engineOptions"
+      ],
+      "title": "RunPayloadModel",
+      "type": "object"
+    },
+    "RunSummaryModel": {
+      "properties": {
+        "categoryCounts": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Categorycounts"
+        },
+        "errors": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Errors"
+        },
+        "information": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Information"
+        },
+        "ruleCounts": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rulecounts"
+        },
+        "severityBreakdown": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Severitybreakdown"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total"
+        },
+        "warnings": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Warnings"
+        }
+      },
+      "title": "RunSummaryModel",
+      "type": "object"
+    },
+    "ToolSummaryModel": {
+      "properties": {
+        "errors": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Errors"
+        },
+        "information": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Information"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total"
+        },
+        "warnings": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Warnings"
+        }
+      },
+      "title": "ToolSummaryModel",
+      "type": "object"
     }
   },
-  "additionalProperties": true
+  "properties": {
+    "fingerprintTruncated": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fingerprinttruncated"
+    },
+    "generatedAt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Generatedat"
+    },
+    "projectRoot": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Projectroot"
+    },
+    "runs": {
+      "items": {
+        "$ref": "#/$defs/RunPayloadModel"
+      },
+      "title": "Runs",
+      "type": "array"
+    },
+    "schemaVersion": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Schemaversion"
+    },
+    "toolVersions": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Toolversions"
+    }
+  },
+  "title": "ManifestModel",
+  "type": "object"
 }
