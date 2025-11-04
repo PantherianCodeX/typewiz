@@ -1,0 +1,150 @@
+from __future__ import annotations
+
+from collections.abc import Sequence
+from pathlib import Path
+from typing import override
+
+from typewiz.audit_config_utils import merge_engine_settings_map
+from typewiz.audit_execution import apply_engine_paths, resolve_engine_options
+from typewiz.audit_paths import (
+    fingerprint_targets,
+    normalise_override_entries,
+    normalise_paths,
+    relative_override_path,
+)
+from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
+from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+
+
+def test_merge_engine_settings_map_merges_profiles(tmp_path: Path) -> None:
+    base_settings = {
+        "stub": EngineSettings(
+            plugin_args=["--base"],
+            include=["src"],
+            exclude=["legacy"],
+            profiles={"strict": EngineProfile(plugin_args=["--strict"])},
+        )
+    }
+    override_settings = {
+        "stub": EngineSettings(
+            plugin_args=["--override"],
+            include=["extras"],
+            exclude=[],
+            default_profile="strict",
+            profiles={
+                "strict": EngineProfile(plugin_args=["--stricter"], exclude=["legacy"]),
+                "lenient": EngineProfile(plugin_args=["--lenient"]),
+            },
+        ),
+        "aux": EngineSettings(plugin_args=["--aux"]),
+    }
+
+    merged = merge_engine_settings_map(base_settings, override_settings)
+    assert merged["stub"].plugin_args == ["--base", "--override"]
+    assert merged["stub"].include == ["src", "extras"]
+    assert merged["stub"].default_profile == "strict"
+    assert merged["stub"].profiles["strict"].plugin_args == ["--strict", "--stricter"]
+    assert "lenient" in merged["stub"].profiles
+    assert merged["aux"].plugin_args == ["--aux"]
+
+
+def test_normalise_paths_handles_duplicates(tmp_path: Path) -> None:
+    project_root = tmp_path
+    (tmp_path / "src").mkdir()
+    paths = ["src", "src/", str(tmp_path / "outside")]
+    normalised = normalise_paths(project_root, paths)
+    assert normalised[0].endswith("src")
+    assert "outside" in normalised
+    assert len(normalised) == 2
+
+
+def test_fingerprint_targets_dedupe(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
+    targets = fingerprint_targets(
+        tmp_path, mode_paths=["src"], default_paths=["pkg"], extra=["src"]
+    )
+    assert targets[0] == "src"
+    assert "pyproject.toml" in targets
+    assert len(targets) == len(set(targets))
+
+
+def test_normalise_override_entries_defaults(tmp_path: Path) -> None:
+    override_path = tmp_path / "pkg"
+    override_path.mkdir(parents=True)
+    entries = normalise_override_entries(tmp_path, override_path, [])
+    assert entries == ["pkg"]
+
+
+def test_relative_override_path_outside_root(tmp_path: Path) -> None:
+    outside = (tmp_path / "..").resolve()
+    result = relative_override_path(tmp_path, outside)
+    assert result == outside.as_posix()
+
+
+def test_apply_engine_paths_respects_exclude() -> None:
+    result = apply_engine_paths(["src"], ["pkg", "tests"], ["src/tests"])
+    assert "src" in result
+    assert "pkg" in result and "tests" in result
+    assert all(not path.startswith("src/tests") for path in result)
+
+
+class MinimalEngine(BaseEngine):
+    name = "stub"
+
+    @override
+    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:  # pragma: no cover
+        raise NotImplementedError
+
+    @override
+    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> list[str]:
+        return []
+
+    @override
+    def category_mapping(self) -> dict[str, list[str]]:
+        return {"unknownChecks": ["reportGeneralTypeIssues"]}
+
+
+def test_resolve_engine_options_with_overrides(tmp_path: Path) -> None:
+    engine_config = EngineSettings(
+        plugin_args=["--engine"],
+        include=["pkg"],
+        exclude=["legacy"],
+        default_profile="strict",
+        profiles={
+            "strict": EngineProfile(plugin_args=["--strict"], include=["pkg/strict"], exclude=[]),
+            "lenient": EngineProfile(plugin_args=["--lenient"]),
+        },
+    )
+    override_settings = EngineSettings(
+        plugin_args=["--override"],
+        include=["pkg/override"],
+        profiles={
+            "strict": EngineProfile(
+                plugin_args=["--override-strict"], include=["pkg/override/strict"]
+            )
+        },
+        default_profile="strict",
+    )
+    override = PathOverride(
+        path=tmp_path / "pkg",
+        engine_settings={"stub": override_settings},
+        active_profiles={"stub": "lenient"},
+    )
+    (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "pkg/override/strict").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "pkg/strict").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "src").mkdir(exist_ok=True)
+    audit_config = AuditConfig(
+        plugin_args={"stub": ["--base"]},
+        engine_settings={"stub": engine_config},
+        path_overrides=[override],
+        active_profiles={"stub": "lenient"},
+        full_paths=["src"],
+    )
+
+    engine_options = resolve_engine_options(tmp_path, audit_config, MinimalEngine())
+    assert engine_options.plugin_args[:2] == ["--base", "--engine"]
+    assert any(arg == "--override" for arg in engine_options.plugin_args)
+    assert engine_options.profile == "strict"
+    assert engine_options.category_mapping["unknownChecks"] == ["reportGeneralTypeIssues"]
+    assert engine_options.overrides

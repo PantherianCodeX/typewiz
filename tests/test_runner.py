@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,7 @@ from typewiz.runner import run_pyright
 from typewiz.utils import CommandOutput
 
 
-def _command_output(payload: dict, *, exit_code: int = 1) -> CommandOutput:
+def _command_output(payload: Mapping[str, object], *, exit_code: int = 1) -> CommandOutput:
     return CommandOutput(
         args=["pyright", "--outputjson"],
         stdout=json.dumps(payload),
@@ -18,6 +19,18 @@ def _command_output(payload: dict, *, exit_code: int = 1) -> CommandOutput:
         exit_code=exit_code,
         duration_ms=12.5,
     )
+
+
+def _patch_run_command(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: Mapping[str, object],
+    *,
+    exit_code: int = 1,
+) -> None:
+    def _run_command(args: Sequence[str], cwd: Path | None = None) -> CommandOutput:
+        return _command_output(payload, exit_code=exit_code)
+
+    monkeypatch.setattr("typewiz.runner.run_command", _run_command)
 
 
 def test_run_pyright_records_tool_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -36,10 +49,7 @@ def test_run_pyright_records_tool_summary(tmp_path: Path, monkeypatch: pytest.Mo
     }
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8")
-    monkeypatch.setattr(
-        "typewiz.runner.run_command",
-        lambda command, cwd: _command_output(payload),
-    )
+    _patch_run_command(monkeypatch, payload)
 
     result = run_pyright(tmp_path, mode="full", command=["pyright", "--outputjson"])
 
@@ -70,10 +80,7 @@ def test_run_pyright_logs_mismatch(
     }
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8")
-    monkeypatch.setattr(
-        "typewiz.runner.run_command",
-        lambda command, cwd: _command_output(payload),
-    )
+    _patch_run_command(monkeypatch, payload)
 
     with caplog.at_level(logging.WARNING):
         result = run_pyright(tmp_path, mode="current", command=["pyright", "--outputjson"])

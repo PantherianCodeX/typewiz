@@ -11,6 +11,19 @@ if str(SRC) not in sys.path:
 
 import pytest
 
+from typewiz.model_types import OverrideEntry
+from typewiz.summary_types import (
+    ReadinessOptionEntry,
+    ReadinessOptionsBucket,
+    ReadinessStrictEntry,
+    ReadinessTab,
+    SummaryData,
+    SummaryFileEntry,
+    SummaryFolderEntry,
+    SummaryRunEntry,
+    SummaryTabs,
+)
+
 
 @pytest.fixture
 def snapshots_dir() -> Path:
@@ -29,178 +42,206 @@ def snapshot_text(snapshots_dir: Path) -> Callable[[str], str]:
 
 
 @pytest.fixture
-def sample_summary() -> dict:
-    summary = {
+def sample_summary() -> SummaryData:
+    pyright_override: OverrideEntry = {"path": "apps/platform", "pluginArgs": ["--warnings"]}
+    mypy_override: OverrideEntry = {"path": "packages/legacy", "exclude": ["packages/legacy"]}
+
+    pyright_run: SummaryRunEntry = {
+        "command": ["pyright", "--outputjson"],
+        "errors": 0,
+        "warnings": 0,
+        "information": 0,
+        "total": 0,
+        "engineOptions": {
+            "profile": "baseline",
+            "configFile": "pyrightconfig.json",
+            "pluginArgs": ["--lib"],
+            "include": ["apps"],
+            "exclude": ["apps/legacy"],
+            "overrides": [pyright_override],
+        },
+    }
+    mypy_run: SummaryRunEntry = {
+        "command": ["python", "-m", "mypy"],
+        "errors": 1,
+        "warnings": 1,
+        "information": 0,
+        "total": 2,
+        "engineOptions": {
+            "profile": "strict",
+            "configFile": "mypy.ini",
+            "pluginArgs": ["--strict"],
+            "include": ["packages"],
+            "exclude": [],
+            "overrides": [mypy_override],
+        },
+    }
+    run_summary: dict[str, SummaryRunEntry] = {
+        "pyright:current": pyright_run,
+        "mypy:full": mypy_run,
+    }
+
+    severity_totals: dict[str, int] = {"error": 1, "warning": 1, "information": 0}
+    top_rules: dict[str, int] = {
+        "reportUnknownMemberType": 1,
+        "reportGeneralTypeIssues": 1,
+    }
+    ready_code_counts: dict[str, int] = {}
+    agent_code_counts: dict[str, int] = {"reportUnknownParameterType": 1}
+    top_folders: list[SummaryFolderEntry] = [
+        {
+            "path": "apps/platform/operations",
+            "errors": 0,
+            "warnings": 0,
+            "information": 0,
+            "participatingRuns": 1,
+            "codeCounts": ready_code_counts,
+            "recommendations": ["strict-ready"],
+        },
+        {
+            "path": "packages/agents",
+            "errors": 1,
+            "warnings": 1,
+            "information": 0,
+            "participatingRuns": 1,
+            "codeCounts": agent_code_counts,
+            "recommendations": ["resolve 1 unknown-type issues"],
+        },
+    ]
+    top_files: list[SummaryFileEntry] = [
+        {"path": "apps/platform/operations/admin.py", "errors": 0, "warnings": 0},
+        {"path": "packages/core/agents.py", "errors": 1, "warnings": 1},
+    ]
+
+    readiness_ready_categories: dict[str, int] = {
+        "unknownChecks": 0,
+        "optionalChecks": 0,
+        "unusedSymbols": 0,
+        "general": 0,
+    }
+    readiness_ready_status: dict[str, str] = {
+        "unknownChecks": "ready",
+        "optionalChecks": "ready",
+        "unusedSymbols": "ready",
+        "general": "ready",
+    }
+    readiness_ready: list[ReadinessStrictEntry] = [
+        {
+            "path": "apps/platform/operations",
+            "errors": 0,
+            "warnings": 0,
+            "information": 0,
+            "diagnostics": 0,
+            "categories": readiness_ready_categories,
+            "categoryStatus": readiness_ready_status,
+            "recommendations": ["strict-ready"],
+        }
+    ]
+    readiness_close_categories: dict[str, int] = {
+        "unknownChecks": 1,
+        "optionalChecks": 0,
+        "unusedSymbols": 0,
+        "general": 0,
+    }
+    readiness_close_status: dict[str, str] = {
+        "unknownChecks": "close",
+        "optionalChecks": "ready",
+        "unusedSymbols": "ready",
+        "general": "ready",
+    }
+    readiness_close: list[ReadinessStrictEntry] = [
+        {
+            "path": "packages/agents",
+            "errors": 1,
+            "warnings": 1,
+            "information": 0,
+            "diagnostics": 2,
+            "categories": readiness_close_categories,
+            "categoryStatus": readiness_close_status,
+            "recommendations": ["resolve 1 unknown-type issues"],
+            "notes": ["unknownChecks: 1"],
+        }
+    ]
+
+    def _bucket(
+        ready: list[ReadinessOptionEntry],
+        close: list[ReadinessOptionEntry],
+        *,
+        threshold: int,
+    ) -> ReadinessOptionsBucket:
+        blocked: list[ReadinessOptionEntry] = []
+        bucket: ReadinessOptionsBucket = {
+            "ready": ready,
+            "close": close,
+            "blocked": blocked,
+            "threshold": threshold,
+        }
+        return bucket
+
+    readiness_tab: ReadinessTab = {
+        "strict": {
+            "ready": readiness_ready,
+            "close": readiness_close,
+            "blocked": [],
+        },
+        "options": {
+            "unknownChecks": _bucket(
+                ready=[
+                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                ],
+                close=[{"path": "packages/agents", "count": 1, "errors": 1, "warnings": 1}],
+                threshold=2,
+            ),
+            "optionalChecks": _bucket(
+                ready=[
+                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                ],
+                close=[],
+                threshold=2,
+            ),
+            "unusedSymbols": _bucket(
+                ready=[
+                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                ],
+                close=[],
+                threshold=4,
+            ),
+            "general": _bucket(
+                ready=[
+                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                ],
+                close=[],
+                threshold=5,
+            ),
+        },
+    }
+
+    category_totals: dict[str, int] = {}
+    tabs: SummaryTabs = {
+        "overview": {
+            "severityTotals": severity_totals,
+            "categoryTotals": category_totals,
+            "runSummary": run_summary,
+        },
+        "engines": {"runSummary": run_summary},
+        "hotspots": {
+            "topRules": top_rules,
+            "topFolders": top_folders,
+            "topFiles": top_files,
+        },
+        "readiness": readiness_tab,
+        "runs": {"runSummary": run_summary},
+    }
+
+    summary: SummaryData = {
         "generatedAt": "2025-01-01T00:00:00Z",
         "projectRoot": "/repo",
-        "runSummary": {
-            "pyright:current": {
-                "command": ["pyright", "--outputjson"],
-                "errors": 0,
-                "warnings": 0,
-                "information": 0,
-                "total": 0,
-                "engineOptions": {
-                    "profile": "baseline",
-                    "configFile": "pyrightconfig.json",
-                    "pluginArgs": ["--lib"],
-                    "include": ["apps"],
-                    "exclude": ["apps/legacy"],
-                    "overrides": [
-                        {
-                            "path": "apps/platform",
-                            "pluginArgs": ["--warnings"],
-                        }
-                    ],
-                },
-            },
-            "mypy:full": {
-                "command": ["python", "-m", "mypy"],
-                "errors": 1,
-                "warnings": 1,
-                "information": 0,
-                "total": 2,
-                "engineOptions": {
-                    "profile": "strict",
-                    "configFile": "mypy.ini",
-                    "pluginArgs": ["--strict"],
-                    "include": ["packages"],
-                    "exclude": [],
-                    "overrides": [
-                        {
-                            "path": "packages/legacy",
-                            "exclude": ["packages/legacy"],
-                        }
-                    ],
-                },
-            },
-        },
-        "severityTotals": {"error": 1, "warning": 1, "information": 0},
-        "topRules": {"reportUnknownMemberType": 1, "reportGeneralTypeIssues": 1},
-        "topFolders": [
-            {
-                "path": "apps/platform/operations",
-                "errors": 0,
-                "warnings": 0,
-                "information": 0,
-                "participatingRuns": 1,
-                "codeCounts": {},
-                "recommendations": ["strict-ready"],
-            },
-            {
-                "path": "packages/agents",
-                "errors": 1,
-                "warnings": 1,
-                "information": 0,
-                "participatingRuns": 1,
-                "codeCounts": {"reportUnknownParameterType": 1},
-                "recommendations": ["resolve 1 unknown-type issues"],
-            },
-        ],
-        "topFiles": [
-            {"path": "apps/platform/operations/admin.py", "errors": 0, "warnings": 0},
-            {"path": "packages/core/agents.py", "errors": 1, "warnings": 1},
-        ],
-    }
-    summary["tabs"] = {
-        "overview": {
-            "severityTotals": summary["severityTotals"],
-            "runSummary": summary["runSummary"],
-        },
-        "engines": {
-            "runSummary": summary["runSummary"],
-        },
-        "hotspots": {
-            "topRules": summary["topRules"],
-            "topFolders": summary["topFolders"],
-            "topFiles": summary["topFiles"],
-        },
-        "readiness": {
-            "strict": {
-                "ready": [
-                    {
-                        "path": "apps/platform/operations",
-                        "errors": 0,
-                        "warnings": 0,
-                        "information": 0,
-                        "diagnostics": 0,
-                        "categories": {
-                            "unknownChecks": 0,
-                            "optionalChecks": 0,
-                            "unusedSymbols": 0,
-                            "general": 0,
-                        },
-                        "categoryStatus": {
-                            "unknownChecks": "ready",
-                            "optionalChecks": "ready",
-                            "unusedSymbols": "ready",
-                            "general": "ready",
-                        },
-                        "recommendations": ["strict-ready"],
-                    }
-                ],
-                "close": [
-                    {
-                        "path": "packages/agents",
-                        "errors": 1,
-                        "warnings": 1,
-                        "information": 0,
-                        "diagnostics": 2,
-                        "categories": {
-                            "unknownChecks": 1,
-                            "optionalChecks": 0,
-                            "unusedSymbols": 0,
-                            "general": 0,
-                        },
-                        "categoryStatus": {
-                            "unknownChecks": "close",
-                            "optionalChecks": "ready",
-                            "unusedSymbols": "ready",
-                            "general": "ready",
-                        },
-                        "recommendations": ["resolve 1 unknown-type issues"],
-                        "notes": ["unknownChecks: 1"],
-                    }
-                ],
-                "blocked": [],
-            },
-            "options": {
-                "unknownChecks": {
-                    "ready": [
-                        {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
-                    ],
-                    "close": [{"path": "packages/agents", "count": 1, "errors": 1, "warnings": 1}],
-                    "blocked": [],
-                    "threshold": 2,
-                },
-                "optionalChecks": {
-                    "ready": [
-                        {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
-                    ],
-                    "close": [],
-                    "blocked": [],
-                    "threshold": 2,
-                },
-                "unusedSymbols": {
-                    "ready": [
-                        {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
-                    ],
-                    "close": [],
-                    "blocked": [],
-                    "threshold": 4,
-                },
-                "general": {
-                    "ready": [
-                        {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
-                    ],
-                    "close": [],
-                    "blocked": [],
-                    "threshold": 5,
-                },
-            },
-        },
-        "runs": {
-            "runSummary": summary["runSummary"],
-        },
+        "runSummary": run_summary,
+        "severityTotals": severity_totals,
+        "categoryTotals": category_totals,
+        "topRules": top_rules,
+        "topFolders": top_folders,
+        "topFiles": top_files,
+        "tabs": tabs,
     }
     return summary

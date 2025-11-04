@@ -1,11 +1,39 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/vscode-pyright/schemas/pyrightconfig.schema.json",
-  "include": ["src"],
-  "ignore": ["tests"],
-  "stubPath": "typings",
-  "typeCheckingMode": "strict",
+  "include": [
+    "src",
+    "tests"
+  ],
+  "venvPath": ".",
+  "venv": ".venv312",
   "pythonVersion": "3.12",
+  "typeCheckingMode": "strict",
+  "reportUnknownMemberType": "error",
+  "reportUnknownArgumentType": "error",
+  "reportUnknownVariableType": "error",
+  "reportUnknownParameterType": "error",
+  "reportUnknownLambdaType": "error",
+  "reportTypeCommentUsage": "error",
+  "reportMissingTypeStubs": "error",
+  "reportUnnecessaryTypeIgnoreComment": "error",
+  "reportUnreachable": "error",
+  "reportImplicitStringConcatenation": "error",
+  "strictListInference": true,
+  "strictDictionaryInference": true,
+  "strictSetInference": true,
+  "reportImportCycles": "error",
+  "reportImplicitOverride": "error",
+  "reportUninitializedInstanceVariable": "error",
+  "reportPrivateImportUsage": "error",
+  "reportUnusedImport": "error",
+  "reportUnusedVariable": "error",
+  "reportUnusedFunction": "error",
+  "reportUnusedClass": "error",
   "executionEnvironments": [
+    {
+      "root": "tests",
+      "reportPrivateUsage": "none",
+      "reportPrivateImportUsage": "none"
+    },
     {
       "root": "src"
     }

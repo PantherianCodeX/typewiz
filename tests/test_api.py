@@ -76,10 +76,11 @@ def fake_run_result(tmp_path: Path) -> RunResult:
 def test_run_audit_programmatic(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run_result: RunResult
 ) -> None:
-    monkeypatch.setattr(
-        "typewiz.engines.resolve_engines", lambda names: [StubEngine(fake_run_result)]
-    )
-    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [StubEngine(fake_run_result)])
+    def _resolve_stub(_: Sequence[str]) -> list[StubEngine]:
+        return [StubEngine(fake_run_result)]
+
+    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_stub)
+    monkeypatch.setattr("typewiz.api.resolve_engines", _resolve_stub)
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8")
@@ -92,27 +93,39 @@ def test_run_audit_programmatic(
     )
 
     assert result.summary is not None
-    assert result.summary["topFolders"]
+    summary = result.summary
+    assert summary["topFolders"]
     assert result.error_count == 1
     assert (tmp_path / "summary.json").exists()
     full_run = next(run for run in result.runs if run.mode == "full")
     assert full_run.category_mapping == {"unknownChecks": ["reportGeneralTypeIssues"]}
     assert full_run.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
-    manifest_full_run = next(run for run in result.manifest["runs"] if run["mode"] == "full")
-    assert manifest_full_run["engineOptions"]["categoryMapping"] == {
-        "unknownChecks": ["reportGeneralTypeIssues"]
-    }
+    manifest = result.manifest
+    assert "runs" in manifest
+    manifest_runs = manifest["runs"]
+    manifest_full_run = next(run for run in manifest_runs if run["mode"] == "full")
+    engine_options = manifest_full_run["engineOptions"]
+    assert "categoryMapping" in engine_options
+    assert engine_options["categoryMapping"] == {"unknownChecks": ["reportGeneralTypeIssues"]}
+    assert "toolSummary" in manifest_full_run
     assert manifest_full_run["toolSummary"] == {
         "errors": 1,
         "warnings": 0,
         "information": 0,
         "total": 1,
     }
-    assert manifest_full_run["summary"]["categoryCounts"].get("unknownChecks") == 1
-    readiness = result.summary["tabs"]["readiness"]
-    unknown_close_entries = readiness["options"]["unknownChecks"]["close"]
-    assert unknown_close_entries
-    assert sum(entry["count"] for entry in unknown_close_entries) >= 1
+    summary_payload = manifest_full_run["summary"]
+    assert "categoryCounts" in summary_payload
+    assert summary_payload["categoryCounts"].get("unknownChecks") == 1
+    readiness = summary["tabs"]["readiness"]
+    assert "options" in readiness
+    readiness_options = readiness["options"]
+    assert "unknownChecks" in readiness_options
+    unknown_checks = readiness_options["unknownChecks"]
+    assert "close" in unknown_checks
+    unknown_close_entries = unknown_checks["close"]
+    counts = [entry["count"] for entry in unknown_close_entries if "count" in entry]
+    assert counts and sum(counts) >= 1
 
 
 def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -149,12 +162,13 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
             return []
 
     engine = RecordingEngine()
-    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
-    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
-    # ensure compatibility with new API method
-    if not hasattr(engine, "category_mapping"):
-        engine.category_mapping = lambda: {}
 
+    def _resolve_recording(_: Sequence[str]) -> list[RecordingEngine]:
+        return [engine]
+
+    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_recording)
+    monkeypatch.setattr("typewiz.api.resolve_engines", _resolve_recording)
+    # ensure compatibility with new API method
     (tmp_path / "src").mkdir(parents=True, exist_ok=True)
     (tmp_path / "extra").mkdir(parents=True, exist_ok=True)
     (tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
@@ -185,9 +199,13 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     assert {run.profile for run in result.runs} == {"strict"}
     assert all(run.plugin_args == ["--base", "--engine", "--strict"] for run in result.runs)
     assert all(run.include == ["extra"] for run in result.runs)
-    run_payload = result.manifest["runs"][0]
-    assert run_payload["engineOptions"]["profile"] == "strict"
-    assert run_payload["engineOptions"]["include"] == ["extra"]
+    manifest = result.manifest
+    assert "runs" in manifest
+    manifest_runs = manifest["runs"]
+    run_payload = manifest_runs[0]
+    engine_options = run_payload["engineOptions"]
+    assert "profile" in engine_options and engine_options["profile"] == "strict"
+    assert "include" in engine_options and engine_options["include"] == ["extra"]
 
 
 def test_run_audit_respects_folder_overrides(
@@ -219,8 +237,12 @@ def test_run_audit_respects_folder_overrides(
             return []
 
     engine = RecordingEngine()
-    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
-    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+
+    def _resolve_folder(_: Sequence[str]) -> list[RecordingEngine]:
+        return [engine]
+
+    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_folder)
+    monkeypatch.setattr("typewiz.api.resolve_engines", _resolve_folder)
 
     root_config = tmp_path / "typewiz.toml"
     root_config.write_text(
@@ -261,13 +283,17 @@ exclude = ["legacy"]
     assert any("packages/billing" in path for path in full_context.engine_options.include)
     assert any("packages/billing/legacy" in path for path in full_context.engine_options.exclude)
 
-    run_payload = next(run for run in result.manifest["runs"] if run["mode"] == "full")
-    assert run_payload["engineOptions"]["profile"] == "strict"
-    assert "--billing" in run_payload["engineOptions"]["pluginArgs"]
-    overrides = run_payload["engineOptions"].get("overrides", [])
+    manifest = result.manifest
+    assert "runs" in manifest
+    manifest_runs = manifest["runs"]
+    run_payload = next(run for run in manifest_runs if run["mode"] == "full")
+    engine_options = run_payload["engineOptions"]
+    assert "profile" in engine_options and engine_options["profile"] == "strict"
+    assert "pluginArgs" in engine_options and "--billing" in engine_options["pluginArgs"]
+    overrides = engine_options.get("overrides", [])
     assert overrides
     first_override = overrides[0]
-    assert first_override["path"].endswith("packages/billing")
+    assert "path" in first_override and first_override["path"].endswith("packages/billing")
     assert first_override.get("profile") == "strict"
     assert "--billing" in first_override.get("pluginArgs", [])
 
@@ -319,8 +345,12 @@ def test_run_audit_cache_preserves_tool_summary(
             return []
 
     engine = RecordingEngine()
-    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
-    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+
+    def _resolve_cache(_: Sequence[str]) -> list[RecordingEngine]:
+        return [engine]
+
+    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_cache)
+    monkeypatch.setattr("typewiz.api.resolve_engines", _resolve_cache)
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8")
@@ -335,8 +365,13 @@ def test_run_audit_cache_preserves_tool_summary(
     cache_path = tmp_path / ".typewiz_cache" / "cache.json"
     assert cache_path.exists()
     assert not (tmp_path / ".typewiz_cache.json").exists()
-    first_manifest_full = next(run for run in first.manifest["runs"] if run["mode"] == "full")
-    assert first_manifest_full["toolSummary"]["total"] == 1
+    first_manifest = first.manifest
+    assert "runs" in first_manifest
+    first_runs = first_manifest["runs"]
+    first_manifest_full = next(run for run in first_runs if run["mode"] == "full")
+    assert "toolSummary" in first_manifest_full
+    tool_summary = first_manifest_full["toolSummary"]
+    assert "total" in tool_summary and tool_summary["total"] == 1
 
     second = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
     # cache hit should avoid new invocations
@@ -344,5 +379,10 @@ def test_run_audit_cache_preserves_tool_summary(
     cached_full = next(run for run in second.runs if run.mode == "full")
     assert cached_full.cached is True
     assert cached_full.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
-    cached_manifest_full = next(run for run in second.manifest["runs"] if run["mode"] == "full")
-    assert cached_manifest_full["toolSummary"]["errors"] == 1
+    second_manifest = second.manifest
+    assert "runs" in second_manifest
+    second_runs = second_manifest["runs"]
+    cached_manifest_full = next(run for run in second_runs if run["mode"] == "full")
+    assert "toolSummary" in cached_manifest_full
+    cached_tool_summary = cached_manifest_full["toolSummary"]
+    assert "errors" in cached_tool_summary and cached_tool_summary["errors"] == 1

@@ -2,13 +2,24 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable, Mapping, Sequence
 import os
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
+from .data_validation import coerce_int, coerce_object_list, coerce_str_list
+from .model_types import clone_override_entries
 from .types import Diagnostic
+
+if TYPE_CHECKING:
+    from .model_types import (
+        CategoryMapping,
+        DiagnosticPayload,
+        FileHashPayload,
+        Mode,
+        OverrideEntry,
+    )
 
 CACHE_DIRNAME = ".typewiz_cache"
 CACHE_FILENAME = "cache.json"
@@ -18,11 +29,11 @@ def _default_list_str() -> list[str]:
     return []
 
 
-def _default_list_dict_obj() -> list[dict[str, object]]:
+def _default_list_dict_obj() -> list[OverrideEntry]:
     return []
 
 
-def _default_dict_str_liststr() -> dict[str, list[str]]:
+def _default_dict_str_liststr() -> CategoryMapping:
     return {}
 
 
@@ -31,15 +42,15 @@ class CacheEntry:
     command: list[str]
     exit_code: int
     duration_ms: float
-    diagnostics: list[dict[str, object]]
-    file_hashes: dict[str, dict[str, object]]
+    diagnostics: list[DiagnosticPayload]
+    file_hashes: dict[str, FileHashPayload]
     profile: str | None = None
     config_file: str | None = None
     plugin_args: list[str] = field(default_factory=_default_list_str)
     include: list[str] = field(default_factory=_default_list_str)
     exclude: list[str] = field(default_factory=_default_list_str)
-    overrides: list[dict[str, object]] = field(default_factory=_default_list_dict_obj)
-    category_mapping: dict[str, list[str]] = field(default_factory=_default_dict_str_liststr)
+    overrides: list[OverrideEntry] = field(default_factory=_default_list_dict_obj)
+    category_mapping: CategoryMapping = field(default_factory=_default_dict_str_liststr)
     tool_summary: dict[str, int] | None = None
 
 
@@ -54,17 +65,17 @@ class CachedRun:
     plugin_args: list[str] = field(default_factory=_default_list_str)
     include: list[str] = field(default_factory=_default_list_str)
     exclude: list[str] = field(default_factory=_default_list_str)
-    overrides: list[dict[str, object]] = field(default_factory=_default_list_dict_obj)
-    category_mapping: dict[str, list[str]] = field(default_factory=_default_dict_str_liststr)
+    overrides: list[OverrideEntry] = field(default_factory=_default_list_dict_obj)
+    category_mapping: CategoryMapping = field(default_factory=_default_dict_str_liststr)
     tool_summary: dict[str, int] | None = None
 
 
 def _normalise_category_mapping(
-    mapping: Mapping[str, Sequence[str]] | None
-) -> dict[str, list[str]]:
+    mapping: Mapping[str, Sequence[str]] | None,
+) -> CategoryMapping:
     if not mapping:
         return {}
-    normalised: dict[str, list[str]] = {}
+    normalised: CategoryMapping = {}
     for key in sorted(mapping):
         raw_values = mapping[key]
         key_str = key.strip()
@@ -85,7 +96,73 @@ def _normalise_category_mapping(
     return normalised
 
 
-def fingerprint_path(path: Path) -> dict[str, object]:
+def _normalise_override_entry(raw: Mapping[str, object]) -> OverrideEntry:
+    entry: OverrideEntry = {}
+    path = raw.get("path")
+    if isinstance(path, str) and path.strip():
+        entry["path"] = path.strip()
+    profile = raw.get("profile")
+    if isinstance(profile, str) and profile.strip():
+        entry["profile"] = profile.strip()
+    plugin_args = coerce_str_list(raw.get("pluginArgs", []))
+    if plugin_args:
+        entry["pluginArgs"] = plugin_args
+    include_paths = coerce_str_list(raw.get("include", []))
+    if include_paths:
+        entry["include"] = include_paths
+    exclude_paths = coerce_str_list(raw.get("exclude", []))
+    if exclude_paths:
+        entry["exclude"] = exclude_paths
+    return entry
+
+
+def _normalise_diagnostic_payload(raw: Mapping[str, object]) -> DiagnosticPayload:
+    payload: DiagnosticPayload = {}
+    tool = raw.get("tool")
+    if isinstance(tool, str) and tool:
+        payload["tool"] = tool
+    severity = raw.get("severity")
+    if isinstance(severity, str) and severity:
+        payload["severity"] = severity
+    path_str = raw.get("path")
+    if isinstance(path_str, str) and path_str:
+        payload["path"] = path_str
+    if "line" in raw:
+        payload["line"] = coerce_int(raw.get("line"))
+    if "column" in raw:
+        payload["column"] = coerce_int(raw.get("column"))
+    code = raw.get("code")
+    if isinstance(code, str) and code:
+        payload["code"] = code
+    message = raw.get("message")
+    if isinstance(message, str) and message:
+        payload["message"] = message
+    raw_payload = raw.get("raw")
+    if isinstance(raw_payload, Mapping):
+        raw_mapping = cast("Mapping[str, object]", raw_payload)
+        payload["raw"] = {str(key): value for key, value in raw_mapping.items()}
+    return payload
+
+
+def _normalise_file_hash_payload(raw: Mapping[str, object]) -> FileHashPayload:
+    payload: FileHashPayload = {}
+    hash_val = raw.get("hash")
+    if isinstance(hash_val, str) and hash_val:
+        payload["hash"] = hash_val
+    if "mtime" in raw:
+        payload["mtime"] = coerce_int(raw.get("mtime"))
+    if "size" in raw:
+        payload["size"] = coerce_int(raw.get("size"))
+    missing = raw.get("missing")
+    if isinstance(missing, bool):
+        payload["missing"] = missing
+    unreadable = raw.get("unreadable")
+    if isinstance(unreadable, bool):
+        payload["unreadable"] = unreadable
+    return payload
+
+
+def fingerprint_path(path: Path) -> FileHashPayload:
     return _fingerprint(path)
 
 
@@ -105,35 +182,25 @@ class EngineCache:
         except json.JSONDecodeError:
             return
 
-        class _DiagJson(TypedDict, total=False):
-            tool: str
-            severity: str
-            path: str
-            line: int
-            column: int
-            code: str
-            message: str
-            raw: dict[str, object]
-
         class _EntryJson(TypedDict, total=False):
             command: list[str]
             exit_code: int
             duration_ms: float
-            diagnostics: list[_DiagJson]
-            file_hashes: dict[str, dict[str, object]]
+            diagnostics: list[Mapping[str, object]]
+            file_hashes: Mapping[str, Mapping[str, object]]
             profile: str | None
             config_file: str | None
             plugin_args: list[str]
             include: list[str]
             exclude: list[str]
-            overrides: list[dict[str, object]]
-            category_mapping: dict[str, list[str]]
+            overrides: list[Mapping[str, object]]
+            category_mapping: Mapping[str, Sequence[str]]
             tool_summary: dict[str, int]
 
         class _Payload(TypedDict, total=False):
             entries: dict[str, _EntryJson]
 
-        payload = cast(_Payload, raw)
+        payload = cast("_Payload", raw)
         payload_entries = payload.get("entries")
         entries: dict[str, _EntryJson] = payload_entries or {}
         for key, entry in entries.items():
@@ -151,17 +218,28 @@ class EngineCache:
             category_mapping_any = entry.get("category_mapping", {}) or {}
             tool_summary_any = entry.get("tool_summary")
             # Defensive normalization and typing for JSON-loaded structures
+            category_mapping_input: Mapping[str, Sequence[str]] = category_mapping_any
+
             command_list: list[str] = [str(a) for a in command_any]
             plugin_args_list: list[str] = [str(a) for a in plugin_args_any]
             include_list: list[str] = [str(i) for i in include_any]
             exclude_list: list[str] = [str(i) for i in exclude_any]
-            overrides_list: list[dict[str, object]] = [
-                {str(k): v for k, v in i.items()} for i in overrides_any
-            ]
-            file_hashes_map: dict[str, dict[str, object]] = {
-                k: dict(v) for k, v in file_hashes_any.items()
-            }
-            diagnostics_list: list[dict[str, object]] = [dict(d) for d in diagnostics_any]
+            overrides_list: list[OverrideEntry] = []
+            for override_raw in coerce_object_list(overrides_any):
+                if isinstance(override_raw, Mapping):
+                    overrides_list.append(
+                        _normalise_override_entry(cast("Mapping[str, object]", override_raw))
+                    )
+            file_hashes_map: dict[str, FileHashPayload] = {}
+            file_hashes_mapping: Mapping[str, Mapping[str, object]] = file_hashes_any
+            for hash_key, hash_payload in file_hashes_mapping.items():
+                file_hashes_map[hash_key] = _normalise_file_hash_payload(hash_payload)
+            diagnostics_list: list[DiagnosticPayload] = []
+            for diag_raw in coerce_object_list(diagnostics_any):
+                if isinstance(diag_raw, Mapping):
+                    diagnostics_list.append(
+                        _normalise_diagnostic_payload(cast("Mapping[str, object]", diag_raw))
+                    )
             exit_code_int = int(exit_code)
             duration_val = float(duration_ms)
             self._entries[key] = CacheEntry(
@@ -180,9 +258,7 @@ class EngineCache:
                 include=include_list,
                 exclude=exclude_list,
                 overrides=overrides_list,
-                category_mapping=_normalise_category_mapping(
-                    cast(Mapping[str, Sequence[str]] | None, category_mapping_any)
-                ),
+                category_mapping=_normalise_category_mapping(category_mapping_input),
                 tool_summary=(
                     {
                         "errors": int(tool_summary_any.get("errors", 0)),
@@ -212,7 +288,7 @@ class EngineCache:
                     "plugin_args": entry.plugin_args,
                     "include": entry.include,
                     "exclude": entry.exclude,
-                    "overrides": entry.overrides,
+                    "overrides": clone_override_entries(entry.overrides),
                     "category_mapping": entry.category_mapping,
                     "tool_summary": entry.tool_summary,
                 }
@@ -222,18 +298,21 @@ class EngineCache:
         self.path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         self._dirty = False
 
-    def peek_file_hashes(self, key: str) -> dict[str, dict[str, object]] | None:
+    def peek_file_hashes(self, key: str) -> dict[str, FileHashPayload] | None:
         entry = self._entries.get(key)
         if not entry:
             return None
-        return dict(entry.file_hashes)
+        return {
+            hash_key: cast("FileHashPayload", dict(payload))
+            for hash_key, payload in entry.file_hashes.items()
+        }
 
-    def key_for(self, engine: str, mode: str, paths: Sequence[str], flags: Sequence[str]) -> str:
+    def key_for(self, engine: str, mode: Mode, paths: Sequence[str], flags: Sequence[str]) -> str:
         path_part = ",".join(sorted({str(item) for item in paths}))
         flag_part = ",".join(str(flag) for flag in flags)
         return f"{engine}:{mode}:{path_part}:{flag_part}"
 
-    def get(self, key: str, file_hashes: dict[str, dict[str, object]]) -> CachedRun | None:
+    def get(self, key: str, file_hashes: dict[str, FileHashPayload]) -> CachedRun | None:
         entry = self._entries.get(key)
         if not entry:
             return None
@@ -247,34 +326,23 @@ class EngineCache:
                 continue
             # Normalize numeric fields defensively
             line_val = raw.get("line", 0)
-            col_val = raw.get("column", 0)
-            if isinstance(line_val, int):
-                line_num = line_val
-            elif isinstance(line_val, str | bytes | bytearray):
-                try:
-                    line_num = int(line_val)
-                except ValueError:
-                    line_num = 0
-            else:
+            try:
+                line_num = int(line_val)
+            except (TypeError, ValueError):
                 line_num = 0
-            if isinstance(col_val, int):
-                col_num = col_val
-            elif isinstance(col_val, str | bytes | bytearray):
-                try:
-                    col_num = int(col_val)
-                except ValueError:
-                    col_num = 0
-            else:
+            col_val = raw.get("column", 0)
+            try:
+                col_num = int(col_val)
+            except (TypeError, ValueError):
                 col_num = 0
 
             code_val = raw.get("code")
             code_str = str(code_val) if isinstance(code_val, str) else None
-            raw_val = raw.get("raw", {})
-            raw_dict: dict[str, object] = (
-                cast(dict[str, object], raw_val)
-                if isinstance(raw_val, dict)
-                else cast(dict[str, object], {})
-            )
+            raw_val = raw.get("raw")
+            if isinstance(raw_val, Mapping):
+                raw_dict = {str(k): v for k, v in raw_val.items()}
+            else:
+                raw_dict = {}
 
             diagnostics.append(
                 Diagnostic(
@@ -299,7 +367,7 @@ class EngineCache:
             plugin_args=list(entry.plugin_args),
             include=list(entry.include),
             exclude=list(entry.exclude),
-            overrides=[dict(item) for item in entry.overrides],
+            overrides=clone_override_entries(entry.overrides),
             category_mapping={k: list(v) for k, v in entry.category_mapping.items()},
             tool_summary=(
                 dict(entry.tool_summary) if isinstance(entry.tool_summary, dict) else None
@@ -309,7 +377,7 @@ class EngineCache:
     def update(
         self,
         key: str,
-        file_hashes: dict[str, dict[str, object]],
+        file_hashes: dict[str, FileHashPayload],
         command: Sequence[str],
         exit_code: int,
         duration_ms: float,
@@ -320,37 +388,45 @@ class EngineCache:
         plugin_args: Sequence[str],
         include: Sequence[str],
         exclude: Sequence[str],
-        overrides: Sequence[dict[str, object]],
+        overrides: Sequence[OverrideEntry],
         category_mapping: Mapping[str, Sequence[str]] | None,
         tool_summary: dict[str, int] | None,
     ) -> None:
         canonical_diags = sorted(
             diagnostics, key=lambda diag: (str(diag.path), diag.line, diag.column)
         )
+        file_hash_payloads: dict[str, FileHashPayload] = {
+            hash_key: cast("FileHashPayload", dict(hash_payload))
+            for hash_key, hash_payload in file_hashes.items()
+        }
+
         self._entries[key] = CacheEntry(
             command=[str(arg) for arg in command],
             exit_code=exit_code,
             duration_ms=duration_ms,
             diagnostics=[
-                {
-                    "tool": diag.tool,
-                    "severity": diag.severity,
-                    "path": str(diag.path),
-                    "line": diag.line,
-                    "column": diag.column,
-                    "code": diag.code,
-                    "message": diag.message,
-                    "raw": diag.raw,
-                }
+                cast(
+                    "DiagnosticPayload",
+                    {
+                        "tool": diag.tool,
+                        "severity": diag.severity,
+                        "path": str(diag.path),
+                        "line": diag.line,
+                        "column": diag.column,
+                        "code": diag.code,
+                        "message": diag.message,
+                        "raw": diag.raw,
+                    },
+                )
                 for diag in canonical_diags
             ],
-            file_hashes=file_hashes,
+            file_hashes=file_hash_payloads,
             profile=profile,
             config_file=config_file.as_posix() if config_file else None,
             plugin_args=[str(arg) for arg in plugin_args],
             include=[str(path) for path in include],
             exclude=[str(path) for path in exclude],
-            overrides=[dict(item) for item in overrides],
+            overrides=clone_override_entries(overrides),
             category_mapping=_normalise_category_mapping(category_mapping),
             tool_summary=(
                 {
@@ -402,10 +478,10 @@ def collect_file_hashes(
     *,
     respect_gitignore: bool = False,
     max_files: int | None = None,
-    baseline: dict[str, dict[str, object]] | None = None,
+    baseline: dict[str, FileHashPayload] | None = None,
     max_bytes: int | None = None,
-) -> tuple[dict[str, dict[str, object]], bool]:
-    hashes: dict[str, dict[str, object]] = {}
+) -> tuple[dict[str, FileHashPayload], bool]:
+    hashes: dict[str, FileHashPayload] = {}
     seen: set[str] = set()
     project_root = project_root.resolve()
     allowed_git_files: set[str] | None = None
@@ -416,6 +492,7 @@ def collect_file_hashes(
     truncated = False
     bytes_budget = max_bytes if isinstance(max_bytes, int) and max_bytes >= 0 else None
     bytes_seen = 0
+
     def _maybe_add(file_path: Path) -> bool:
         nonlocal truncated, bytes_seen
         key = _relative_key(project_root, file_path)
@@ -429,14 +506,18 @@ def collect_file_hashes(
             st = None
         if baseline is not None and st is not None and key in baseline:
             prev = baseline.get(key) or {}
-            prev_mtime_obj = prev.get("mtime", -1)
-            prev_size_obj = prev.get("size", -1)
-            prev_mtime = int(prev_mtime_obj) if isinstance(prev_mtime_obj, (int, str)) else -1
-            prev_size = int(prev_size_obj) if isinstance(prev_size_obj, (int, str)) else -1
+            try:
+                prev_mtime = int(prev.get("mtime", -1))
+            except (TypeError, ValueError):
+                prev_mtime = -1
+            try:
+                prev_size = int(prev.get("size", -1))
+            except (TypeError, ValueError):
+                prev_size = -1
             cur_mtime = int(getattr(st, "st_mtime_ns", 0))
             cur_size = int(getattr(st, "st_size", 0))
             if prev_mtime == cur_mtime and prev_size == cur_size:
-                hashes[key] = dict(prev)
+                hashes[key] = cast("FileHashPayload", dict(prev))
                 seen.add(key)
                 return not (max_files is not None and len(seen) >= max_files)
         # size budget check before hashing to avoid heavy IO
@@ -468,7 +549,8 @@ def collect_file_hashes(
         elif absolute.exists() and absolute.is_file():
             if not _maybe_add(absolute):
                 return (dict(sorted(hashes.items())), truncated)
-    return (dict(sorted(hashes.items())), truncated)
+    ordered_hashes: dict[str, FileHashPayload] = dict(sorted(hashes.items()))
+    return (ordered_hashes, truncated)
 
 
 def _relative_key(project_root: Path, path: Path) -> str:
@@ -478,7 +560,7 @@ def _relative_key(project_root: Path, path: Path) -> str:
         return path.resolve().as_posix()
 
 
-def _fingerprint(path: Path) -> dict[str, object]:
+def _fingerprint(path: Path) -> FileHashPayload:
     try:
         stat = path.stat()
         hasher = hashlib.blake2b(digest_size=16)
@@ -487,7 +569,11 @@ def _fingerprint(path: Path) -> dict[str, object]:
                 if not chunk:
                     break
                 hasher.update(chunk)
-        return {"hash": hasher.hexdigest(), "mtime": int(stat.st_mtime_ns), "size": stat.st_size}
+        return {
+            "hash": hasher.hexdigest(),
+            "mtime": int(stat.st_mtime_ns),
+            "size": int(stat.st_size),
+        }
     except FileNotFoundError:
         return {"missing": True}
     except OSError:

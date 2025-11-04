@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from .readiness import CATEGORY_PATTERNS
-from .typed_manifest import AggregatedData, FileDiagnostic, FileEntry, FolderEntry
-from .types import RunResult
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
+    from .typed_manifest import AggregatedData, FileDiagnostic, FileEntry, FolderEntry
+    from .types import RunResult
 
 
 def _default_file_diagnostics() -> list[FileDiagnostic]:
@@ -68,7 +71,7 @@ class FolderSummary:
             for rule, count in top_rules:
                 recommendations.append(f"{rule}:{count}")
         return cast(
-            FolderEntry,
+            "FolderEntry",
             {
                 "path": self.path,
                 "depth": self.depth,
@@ -188,7 +191,7 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
 
     per_file: list[FileEntry] = [
         cast(
-            FileEntry,
+            "FileEntry",
             {
                 "path": item.path,
                 "errors": item.errors,
@@ -200,18 +203,21 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
         for item in file_list
     ]
 
-    return AggregatedData(
-        summary={
-            "errors": sum(1 for diag in run.diagnostics if diag.severity == "error"),
-            "warnings": sum(1 for diag in run.diagnostics if diag.severity == "warning"),
-            "information": sum(
-                1 for diag in run.diagnostics if diag.severity not in {"error", "warning"}
-            ),
-            "total": len(run.diagnostics),
-            "severityBreakdown": {key: severity_totals[key] for key in sorted(severity_totals)},
-            "ruleCounts": {key: rule_totals[key] for key in sorted(rule_totals)},
-            "categoryCounts": {key: category_totals[key] for key in sorted(category_totals)},
+    return cast(
+        "AggregatedData",
+        {
+            "summary": {
+                "errors": sum(1 for diag in run.diagnostics if diag.severity == "error"),
+                "warnings": sum(1 for diag in run.diagnostics if diag.severity == "warning"),
+                "information": sum(
+                    1 for diag in run.diagnostics if diag.severity not in {"error", "warning"}
+                ),
+                "total": len(run.diagnostics),
+                "severityBreakdown": {key: severity_totals[key] for key in sorted(severity_totals)},
+                "ruleCounts": {key: rule_totals[key] for key in sorted(rule_totals)},
+                "categoryCounts": {key: category_totals[key] for key in sorted(category_totals)},
+            },
+            "perFile": per_file,
+            "perFolder": folder_entries,
         },
-        perFile=per_file,
-        perFolder=folder_entries,
     )

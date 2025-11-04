@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import cast
 
 from .engines.base import EngineResult
+from .model_types import Mode
 from .types import Diagnostic
 from .utils import JSONValue, as_int, as_list, as_mapping, as_str, require_json, run_command
 
@@ -24,7 +25,7 @@ def _make_diag_path(project_root: Path, file_path: str) -> Path:
 def run_pyright(
     project_root: Path,
     *,
-    mode: str,
+    mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
     logger.info("Running pyright (%s)", " ".join(command))
@@ -117,7 +118,7 @@ _MYPY_LINE = re.compile(
 def run_mypy(
     project_root: Path,
     *,
-    mode: str,
+    mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
     logger.info("Running mypy (%s)", " ".join(command))

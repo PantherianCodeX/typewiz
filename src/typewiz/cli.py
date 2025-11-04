@@ -1,22 +1,40 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
+import logging
+import pathlib
 import shlex
-from collections.abc import Iterable, Sequence
-from pathlib import Path
 from textwrap import dedent
-from typing import Any, cast
+from typing import TYPE_CHECKING, Literal
 
 from .api import run_audit
+from .cli_helpers import collect_plugin_args as helpers_collect_plugin_args
+from .cli_helpers import collect_profile_args as helpers_collect_profile_args
+from .cli_helpers import format_list
+from .cli_helpers import normalise_modes as helpers_normalise_modes
+from .cli_helpers import parse_summary_fields as helpers_parse_summary_fields
+from .cli_helpers import render_data_structure
 from .config import AuditConfig, load_config
 from .dashboard import build_summary, load_manifest, render_markdown
+from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
 from .html_report import render_html
-from .summary_types import ReadinessOptionsBucket, ReadinessTab, SummaryData, SummaryTabs
-from .types import RunResult
+from .model_types import clone_override_entries
+from .override_utils import format_override_inline, override_detail_lines
+from .readiness_views import ReadinessValidationError, collect_readiness_view
 from .utils import default_full_paths, resolve_project_root
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from types import ModuleType
+
+    from .summary_types import SummaryData
+    from .types import RunResult
+
 SUMMARY_FIELD_CHOICES = {"profile", "config", "plugin-args", "paths", "overrides"}
+logger = logging.getLogger("typewiz.cli")
+
 
 CONFIG_TEMPLATE = dedent(
     """\
@@ -76,27 +94,11 @@ CONFIG_TEMPLATE = dedent(
 
 
 def _format_list(values: Sequence[str]) -> str:
-    return ", ".join(values) if values else "—"
+    return format_list(values)
 
 
 def _parse_summary_fields(raw: str | None) -> list[str]:
-    if not raw:
-        return []
-    fields: list[str] = []
-    for part in raw.split(","):
-        item = part.strip().lower()
-        if not item:
-            continue
-        if item == "all":
-            return sorted(SUMMARY_FIELD_CHOICES)
-        if item not in SUMMARY_FIELD_CHOICES:
-            raise SystemExit(
-                f"Unknown summary field '{item}'. "
-                f"Valid values: {', '.join(sorted(SUMMARY_FIELD_CHOICES | {'all'}))}"
-            )
-        if item not in fields:
-            fields.append(item)
-    return fields
+    return helpers_parse_summary_fields(raw, valid_fields=SUMMARY_FIELD_CHOICES)
 
 
 def _print_summary(
@@ -137,38 +139,14 @@ def _print_summary(
                 detail_items.append(("include", include_paths))
             if exclude_paths != "—" or style == "expanded":
                 detail_items.append(("exclude", exclude_paths))
-        overrides_data = [dict(item) for item in run.overrides]
+        overrides_data = clone_override_entries(run.overrides)
         if "overrides" in field_set and overrides_data:
             if style == "expanded":
                 for entry in overrides_data:
-                    label = f"override {entry.get('path', '—')}"
-                    parts: list[str] = []
-                    if entry.get("profile"):
-                        parts.append(f"profile={entry['profile']}")
-                    plugin_args_list = cast(list[str], entry.get("pluginArgs", []))
-                    include_list = cast(list[str], entry.get("include", []))
-                    exclude_list = cast(list[str], entry.get("exclude", []))
-                    if plugin_args_list:
-                        parts.append("plugin args=" + ", ".join(plugin_args_list))
-                    if include_list:
-                        parts.append("include=" + ", ".join(include_list))
-                    if exclude_list:
-                        parts.append("exclude=" + ", ".join(exclude_list))
-                    detail = "; ".join(parts) if parts else "no explicit changes"
-                    detail_items.append((label, detail))
+                    path, details = override_detail_lines(entry)
+                    detail_items.append((f"override {path}", "; ".join(details)))
             else:
-                short: list[str] = []
-                for entry in overrides_data:
-                    parts_short: list[str] = []
-                    if entry.get("profile"):
-                        parts_short.append(f"profile={entry['profile']}")
-                    plugin_args_list = cast(list[str], entry.get("pluginArgs", []))
-                    if plugin_args_list:
-                        parts_short.append("args=" + "/".join(plugin_args_list))
-                    short.append(
-                        f"{entry.get('path', '—')}"
-                        + (f"({', '.join(parts_short)})" if parts_short else "")
-                    )
+                short = [format_override_inline(entry) for entry in overrides_data]
                 detail_items.append(("overrides", "; ".join(short)))
 
         header = f"[typewiz] {run.tool}:{run.mode} exit={run.exit_code} {summary} ({cmd})"
@@ -185,6 +163,19 @@ def _print_summary(
                 print(header)
 
 
+def _collect_readiness_view(
+    summary: SummaryData,
+    *,
+    level: Literal["folder", "file"],
+    statuses: Sequence[str] | None,
+    limit: int,
+) -> dict[str, list[dict[str, object]]]:
+    try:
+        return collect_readiness_view(summary, level=level, statuses=statuses, limit=limit)
+    except ReadinessValidationError as exc:
+        raise SystemExit(f"Invalid readiness data encountered: {exc}") from exc
+
+
 def _print_readiness_summary(
     summary: SummaryData,
     *,
@@ -192,103 +183,212 @@ def _print_readiness_summary(
     statuses: Sequence[str] | None,
     limit: int,
 ) -> None:
-    statuses_normalised: list[str] = []
-    for status in statuses or ["blocked"]:
-        if status not in {"ready", "close", "blocked"}:
-            continue
-        if status not in statuses_normalised:
-            statuses_normalised.append(status)
-    if not statuses_normalised:
-        statuses_normalised = ["blocked"]
-
-    tabs: SummaryTabs = summary["tabs"]
-    readiness_tab: ReadinessTab = tabs.get("readiness", {})
-    options_tab = readiness_tab.get("options", {}) or {}
-    strict_map = readiness_tab.get("strict", {}) or {}
-
-    default_bucket: ReadinessOptionsBucket = {
-        "ready": [],
-        "close": [],
-        "blocked": [],
-        "threshold": 0,
-    }
-
-    for status in statuses_normalised:
-        if level == "folder":
-            options_bucket = options_tab.get("unknownChecks", default_bucket)
-            raw_entries_obj = options_bucket.get(status, []) or []
-        else:
-            raw_entries_obj = strict_map.get(status, []) or []
-
-        raw_entries = cast(Iterable[dict[str, object]], raw_entries_obj)
-        entries: list[dict[str, object]] = [dict(entry) for entry in raw_entries]
-
+    view = _collect_readiness_view(
+        summary,
+        level="folder" if level == "folder" else "file",
+        statuses=statuses,
+        limit=limit,
+    )
+    for status, entries in view.items():
         print(f"[typewiz] readiness {level} status={status} (top {limit})")
         if not entries:
             print("  <none>")
             continue
-        for entry in entries[: max(limit, 0)]:
-            raw_path = entry.get("path", "<unknown>")
-            path = raw_path if isinstance(raw_path, str) else "<unknown>"
-            raw_count = entry.get("count")
-            if raw_count is None:
-                raw_count = entry.get("diagnostics")
-            count_int = 0
-            if isinstance(raw_count, (int | float)):
-                count_int = int(raw_count)
-            elif isinstance(raw_count, str):
-                try:
-                    count_int = int(raw_count)
-                except ValueError:
-                    count_int = 0
+        for entry in entries:
+            path = str(entry.get("path", "<unknown>"))
+            count = entry.get("count") if level == "folder" else entry.get("diagnostics")
+            count_int = coerce_int(count)
             print(f"  {path}: {count_int}")
 
 
-def _collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
-    result: dict[str, list[str]] = {}
-    for raw in entries:
-        if "=" in raw:
-            runner, arg = raw.split("=", 1)
-        elif ":" in raw:
-            runner, arg = raw.split(":", 1)
-        else:
-            raise SystemExit(f"Invalid --plugin-arg value '{raw}'. Use RUNNER=ARG (or RUNNER:ARG).")
-        runner = runner.strip()
-        if not runner:
-            raise SystemExit("Runner name in --plugin-arg cannot be empty")
-        arg = arg.strip()
-        if not arg:
-            raise SystemExit(f"Argument for runner '{runner}' cannot be empty")
-        result.setdefault(runner, []).append(arg)
+def _render_data(data: object, fmt: Literal["json", "table"]) -> None:
+    for line in render_data_structure(data, fmt):
+        print(line)
+
+
+def _query_overview(
+    summary: SummaryData,
+    *,
+    include_categories: bool,
+    include_runs: bool,
+) -> dict[str, object]:
+    overview = summary["tabs"]["overview"]
+    payload: dict[str, object] = {
+        "generated_at": summary.get("generatedAt"),
+        "project_root": summary.get("projectRoot"),
+        "severity_totals": dict(overview.get("severityTotals", {})),
+    }
+    if include_categories:
+        payload["category_totals"] = dict(overview.get("categoryTotals", {}))
+    if include_runs:
+        runs: list[dict[str, object]] = []
+        for name, entry in overview.get("runSummary", {}).items():
+            errors = int(entry.get("errors", 0) or 0)
+            warnings = int(entry.get("warnings", 0) or 0)
+            information = int(entry.get("information", 0) or 0)
+            runs.append(
+                {
+                    "run": name,
+                    "errors": errors,
+                    "warnings": warnings,
+                    "information": information,
+                    "total": int(entry.get("total", errors + warnings + information) or 0),
+                }
+            )
+        payload["runs"] = runs
+    return payload
+
+
+def _query_hotspots(
+    summary: SummaryData,
+    *,
+    kind: Literal["files", "folders"],
+    limit: int,
+) -> list[dict[str, object]]:
+    hotspots = summary["tabs"]["hotspots"]
+    result: list[dict[str, object]] = []
+    if kind == "files":
+        file_entries = hotspots.get("topFiles", [])
+        for file_entry in file_entries:
+            record: dict[str, object] = {
+                "path": file_entry.get("path", "<unknown>"),
+                "errors": coerce_int(file_entry.get("errors")),
+                "warnings": coerce_int(file_entry.get("warnings")),
+            }
+            result.append(record)
+    else:
+        folder_entries = hotspots.get("topFolders", [])
+        for folder_entry in folder_entries:
+            folder_record: dict[str, object] = {
+                "path": folder_entry.get("path", "<unknown>"),
+                "errors": coerce_int(folder_entry.get("errors")),
+                "warnings": coerce_int(folder_entry.get("warnings")),
+                "information": coerce_int(folder_entry.get("information")),
+                "participating_runs": coerce_int(folder_entry.get("participatingRuns")),
+            }
+            code_counts_map = coerce_mapping(folder_entry.get("codeCounts"))
+            if code_counts_map:
+                folder_record["code_counts"] = code_counts_map
+            recommendations_list = coerce_object_list(folder_entry.get("recommendations"))
+            if recommendations_list:
+                folder_record["recommendations"] = [str(item) for item in recommendations_list]
+            result.append(folder_record)
+    if limit > 0:
+        return result[:limit]
     return result
+
+
+def _query_readiness(
+    summary: SummaryData,
+    *,
+    level: Literal["folder", "file"],
+    statuses: Sequence[str] | None,
+    limit: int,
+) -> dict[str, list[dict[str, object]]]:
+    try:
+        return _collect_readiness_view(summary, level=level, statuses=statuses, limit=limit)
+    except ReadinessValidationError as exc:
+        raise SystemExit(f"Invalid readiness data encountered: {exc}") from exc
+
+
+def _query_runs(
+    summary: SummaryData,
+    *,
+    tools: Sequence[str] | None,
+    modes: Sequence[str] | None,
+    limit: int,
+) -> list[dict[str, object]]:
+    runs = summary["tabs"]["runs"]["runSummary"]
+    tool_filter = {tool for tool in tools or [] if tool}
+    mode_filter = {mode for mode in modes or [] if mode}
+    records: list[dict[str, object]] = []
+    for name, entry in sorted(runs.items()):
+        parts = name.split(":", 1)
+        tool = parts[0]
+        mode = parts[1] if len(parts) == 2 else ""
+        if tool_filter and tool not in tool_filter:
+            continue
+        if mode_filter and mode not in mode_filter:
+            continue
+        records.append(
+            {
+                "run": name,
+                "tool": tool,
+                "mode": mode,
+                "errors": coerce_int(entry.get("errors")),
+                "warnings": coerce_int(entry.get("warnings")),
+                "information": coerce_int(entry.get("information")),
+                "command": " ".join(entry.get("command", [])),
+            }
+        )
+        if limit > 0 and len(records) >= limit:
+            break
+    return records
+
+
+def _query_engines(
+    summary: SummaryData,
+    *,
+    limit: int,
+) -> list[dict[str, object]]:
+    runs = summary["tabs"]["engines"]["runSummary"]
+    records: list[dict[str, object]] = []
+    for name, entry in sorted(runs.items()):
+        options = entry.get("engineOptions", {})
+        records.append(
+            {
+                "run": name,
+                "profile": options.get("profile"),
+                "config_file": options.get("configFile"),
+                "plugin_args": coerce_str_list(options.get("pluginArgs", [])),
+                "include": coerce_str_list(options.get("include", [])),
+                "exclude": coerce_str_list(options.get("exclude", [])),
+                "overrides": coerce_object_list(options.get("overrides", [])),
+            }
+        )
+        if limit > 0 and len(records) >= limit:
+            break
+    return records
+
+
+def _query_rules(summary: SummaryData, *, limit: int) -> list[dict[str, object]]:
+    rules = summary["tabs"]["hotspots"].get("topRules", {})
+    entries = list(rules.items())
+    if limit > 0:
+        entries = entries[:limit]
+    return [{"rule": rule, "count": int(count)} for rule, count in entries]
+
+
+def _collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
+    return helpers_collect_plugin_args(entries)
 
 
 def _collect_profile_args(pairs: Sequence[Sequence[str]]) -> dict[str, str]:
-    result: dict[str, str] = {}
-    for entry in pairs:
-        if len(entry) != 2:
-            raise SystemExit("Each --profile option requires a runner and a profile name")
-        runner, profile = entry
-        runner = runner.strip()
-        profile = profile.strip()
+    flattened: list[str] = []
+    for pair in pairs:
+        if len(pair) != 2:
+            raise SystemExit("--profile entries must specify both runner and profile")
+        runner_raw, profile_raw = pair[0], pair[1]
+        runner = runner_raw.strip()
+        profile = profile_raw.strip()
         if not runner or not profile:
             raise SystemExit("--profile entries must specify both runner and profile")
-        result[runner] = profile
-    return result
+        flattened.append(f"{runner}={profile}")
+    return helpers_collect_profile_args(flattened)
 
 
 def _normalise_modes(modes: Sequence[str] | None) -> tuple[bool, bool, bool]:
-    if not modes:
+    normalised = helpers_normalise_modes(modes)
+    if not normalised:
         return (False, True, True)
-    requested = {mode.lower() for mode in modes}
-    run_current = "current" in requested
-    run_full = "full" in requested
+    run_current = "current" in normalised
+    run_full = "full" in normalised
     if not run_current and not run_full:
         raise SystemExit("No modes selected. Choose at least one of: current, full.")
     return (True, run_current, run_full)
 
 
-def _write_config_template(path: Path, *, force: bool) -> int:
+def _write_config_template(path: pathlib.Path, *, force: bool) -> int:
     if path.exists() and not force:
         print(f"[typewiz] Refusing to overwrite existing file: {path}")
         print("Use --force if you want to replace it.")
@@ -322,19 +422,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit.add_argument(
         "-C",
         "--config",
-        type=Path,
+        type=pathlib.Path,
         default=None,
         help="Path to a typewiz configuration file.",
     )
     audit.add_argument(
         "--project-root",
-        type=Path,
+        type=pathlib.Path,
         default=None,
         help="Project root directory (defaults to the current working directory).",
     )
     audit.add_argument(
         "--manifest",
-        type=Path,
+        type=pathlib.Path,
         default=None,
         help="Override the manifest output path.",
     )
@@ -415,25 +515,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     audit.add_argument(
         "--dashboard-json",
-        type=Path,
+        type=pathlib.Path,
         default=None,
         help="Optional dashboard JSON output path.",
     )
     audit.add_argument(
         "--dashboard-markdown",
-        type=Path,
+        type=pathlib.Path,
         default=None,
         help="Optional dashboard Markdown output path.",
     )
     audit.add_argument(
         "--dashboard-html",
-        type=Path,
+        type=pathlib.Path,
         default=None,
         help="Optional dashboard HTML output path.",
     )
     audit.add_argument(
         "--compare-to",
-        type=Path,
+        type=pathlib.Path,
         default=None,
         help="Optional path to a previous manifest to compare totals against (adds deltas to CI line).",
     )
@@ -475,7 +575,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     dashboard.add_argument(
-        "--manifest", type=Path, required=True, help="Path to a typing audit manifest."
+        "--manifest", type=pathlib.Path, required=True, help="Path to a typing audit manifest."
     )
     dashboard.add_argument(
         "--format",
@@ -483,7 +583,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="json",
         help="Output format.",
     )
-    dashboard.add_argument("--output", type=Path, default=None, help="Optional output file.")
+    dashboard.add_argument(
+        "--output", type=pathlib.Path, default=None, help="Optional output file."
+    )
     dashboard.add_argument(
         "--view",
         choices=["overview", "engines", "hotspots", "runs"],
@@ -502,12 +604,160 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Validate a manifest against the JSON schema",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    manifest_validate.add_argument("path", type=Path, help="Path to manifest file to validate")
+    manifest_validate.add_argument(
+        "path", type=pathlib.Path, help="Path to manifest file to validate"
+    )
     manifest_validate.add_argument(
         "--schema",
-        type=Path,
+        type=pathlib.Path,
         default=None,
         help="Explicit path to the JSON schema (defaults to bundled schema)",
+    )
+
+    query = subparsers.add_parser(
+        "query",
+        help="Inspect sections of a manifest summary without external tools",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    query_sub = query.add_subparsers(dest="query_section", required=True)
+
+    query_overview = query_sub.add_parser(
+        "overview",
+        help="Show severity totals, with optional category and run breakdowns",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    query_overview.add_argument(
+        "--manifest", type=pathlib.Path, required=True, help="Path to a typing audit manifest."
+    )
+    query_overview.add_argument(
+        "--format",
+        choices=["json", "table"],
+        default="json",
+        help="Output format",
+    )
+    query_overview.add_argument(
+        "--include-categories",
+        action="store_true",
+        help="Include category totals in the response",
+    )
+    query_overview.add_argument(
+        "--include-runs",
+        action="store_true",
+        help="Include per-run severity totals",
+    )
+
+    query_hotspots = query_sub.add_parser(
+        "hotspots",
+        help="List top offending files or folders",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    query_hotspots.add_argument(
+        "--manifest", type=pathlib.Path, required=True, help="Path to a typing audit manifest."
+    )
+    query_hotspots.add_argument(
+        "--kind",
+        choices=["files", "folders"],
+        default="files",
+        help="Select hotspot view",
+    )
+    query_hotspots.add_argument("--limit", type=int, default=10, help="Maximum rows to return")
+    query_hotspots.add_argument(
+        "--format",
+        choices=["json", "table"],
+        default="json",
+        help="Output format",
+    )
+
+    query_readiness = query_sub.add_parser(
+        "readiness",
+        help="Summarise readiness buckets (structured output)",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    query_readiness.add_argument(
+        "--manifest", type=pathlib.Path, required=True, help="Path to a typing audit manifest."
+    )
+    query_readiness.add_argument(
+        "--level",
+        choices=["folder", "file"],
+        default="folder",
+        help="Granularity for readiness data",
+    )
+    query_readiness.add_argument(
+        "--status",
+        dest="statuses",
+        action="append",
+        choices=["ready", "close", "blocked"],
+        default=None,
+        help="Filter specific readiness buckets (repeatable)",
+    )
+    query_readiness.add_argument("--limit", type=int, default=5, help="Maximum rows per status")
+    query_readiness.add_argument(
+        "--format",
+        choices=["json", "table"],
+        default="json",
+        help="Output format",
+    )
+
+    query_runs = query_sub.add_parser(
+        "runs",
+        help="Inspect individual typing runs",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    query_runs.add_argument(
+        "--manifest", type=pathlib.Path, required=True, help="Path to a typing audit manifest."
+    )
+    query_runs.add_argument(
+        "--tool",
+        dest="tools",
+        action="append",
+        default=None,
+        help="Filter by tool name (repeatable, e.g., pyright)",
+    )
+    query_runs.add_argument(
+        "--mode",
+        dest="modes",
+        action="append",
+        default=None,
+        help="Filter by mode (repeatable, e.g., current or full)",
+    )
+    query_runs.add_argument("--limit", type=int, default=10, help="Maximum runs to return")
+    query_runs.add_argument(
+        "--format",
+        choices=["json", "table"],
+        default="json",
+        help="Output format",
+    )
+
+    query_engines = query_sub.add_parser(
+        "engines",
+        help="Display engine configuration used for runs",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    query_engines.add_argument(
+        "--manifest", type=pathlib.Path, required=True, help="Path to a typing audit manifest."
+    )
+    query_engines.add_argument("--limit", type=int, default=10, help="Maximum rows to return")
+    query_engines.add_argument(
+        "--format",
+        choices=["json", "table"],
+        default="json",
+        help="Output format",
+    )
+
+    query_rules = query_sub.add_parser(
+        "rules",
+        help="Show the most common rule diagnostics",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    query_rules.add_argument(
+        "--manifest", type=pathlib.Path, required=True, help="Path to a typing audit manifest."
+    )
+    query_rules.add_argument("--limit", type=int, default=10, help="Maximum rules to return")
+    query_rules.add_argument(
+        "--format",
+        choices=["json", "table"],
+        default="json",
+        help="Output format",
     )
 
     init = subparsers.add_parser(
@@ -518,8 +768,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     init.add_argument(
         "-o",
         "--output",
-        type=Path,
-        default=Path("typewiz.toml"),
+        type=pathlib.Path,
+        default=pathlib.Path("typewiz.toml"),
         help="Destination for the generated configuration file.",
     )
     init.add_argument(
@@ -534,7 +784,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     readiness.add_argument(
-        "--manifest", type=Path, required=True, help="Path to a typing audit manifest."
+        "--manifest", type=pathlib.Path, required=True, help="Path to a typing audit manifest."
     )
     readiness.add_argument("--level", choices=["folder", "file"], default="folder")
     readiness.add_argument(
@@ -551,6 +801,47 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "init":
         return _write_config_template(args.output, force=args.force)
+
+    if args.command == "query":
+        manifest = load_manifest(args.manifest)
+        query_summary = build_summary(manifest)
+        section = args.query_section
+        data: object
+        if section == "overview":
+            data = _query_overview(
+                query_summary,
+                include_categories=args.include_categories,
+                include_runs=args.include_runs,
+            )
+        elif section == "hotspots":
+            data = _query_hotspots(
+                query_summary,
+                kind=args.kind,
+                limit=args.limit,
+            )
+        elif section == "readiness":
+            level_choice: Literal["folder", "file"] = "folder" if args.level == "folder" else "file"
+            data = _query_readiness(
+                query_summary,
+                level=level_choice,
+                statuses=args.statuses,
+                limit=args.limit,
+            )
+        elif section == "runs":
+            data = _query_runs(
+                query_summary,
+                tools=args.tools,
+                modes=args.modes,
+                limit=args.limit,
+            )
+        elif section == "engines":
+            data = _query_engines(query_summary, limit=args.limit)
+        elif section == "rules":
+            data = _query_rules(query_summary, limit=args.limit)
+        else:  # pragma: no cover - argparse restricts this path
+            raise SystemExit(f"Unknown query section: {section}")
+        _render_data(data, args.format)
+        return 0
 
     if args.command == "audit":
         config = load_config(args.config)
@@ -586,7 +877,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             for name, values in plugin_arg_map.items():
                 override.plugin_args.setdefault(name, []).extend(values)
         if args.profiles:
-            override.active_profiles.update(_collect_profile_args(args.profiles))
+            profile_entries: list[tuple[str, str]] = [
+                (str(pair[0]), str(pair[1])) for pair in args.profiles
+            ]
+            override.active_profiles.update(_collect_profile_args(profile_entries))
 
         summary_choice: str = args.summary
         summary_style = "expanded" if summary_choice in {"expanded", "full"} else "compact"
@@ -607,11 +901,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         _print_summary(result.runs, summary_fields, summary_style)
 
-        summary: SummaryData = result.summary or build_summary(result.manifest)
+        audit_summary: SummaryData = result.summary or build_summary(result.manifest)
 
         if args.readiness:
             _print_readiness_summary(
-                summary,
+                audit_summary,
                 level=args.readiness_level,
                 statuses=args.readiness_status,
                 limit=args.readiness_limit,
@@ -660,14 +954,16 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         if args.dashboard_json:
             args.dashboard_json.parent.mkdir(parents=True, exist_ok=True)
-            args.dashboard_json.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+            args.dashboard_json.write_text(
+                json.dumps(audit_summary, indent=2) + "\n", encoding="utf-8"
+            )
         if args.dashboard_markdown:
             args.dashboard_markdown.parent.mkdir(parents=True, exist_ok=True)
-            args.dashboard_markdown.write_text(render_markdown(summary), encoding="utf-8")
+            args.dashboard_markdown.write_text(render_markdown(audit_summary), encoding="utf-8")
         if args.dashboard_html:
             args.dashboard_html.parent.mkdir(parents=True, exist_ok=True)
             args.dashboard_html.write_text(
-                render_html(summary, default_view=args.dashboard_view),
+                render_html(audit_summary, default_view=args.dashboard_view),
                 encoding="utf-8",
             )
 
@@ -697,18 +993,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "manifest":
         action = args.action
         if action == "validate":
-            manifest_path: Path = args.path
-            schema_path = args.schema or Path("schemas/typing_audit_manifest.schema.json")
-            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest_path: pathlib.Path = args.path
+            schema_path = args.schema or pathlib.Path("schemas/typing_audit_manifest.schema.json")
+            data_dict: dict[str, object] = json.loads(manifest_path.read_text(encoding="utf-8"))
             try:
                 # Prefer jsonschema when available
-                import importlib
-
-                jsonschema: Any = importlib.import_module("jsonschema")
-                validator = jsonschema.Draft7Validator(
+                jsonschema_module: ModuleType = importlib.import_module("jsonschema")
+                validator = jsonschema_module.Draft7Validator(
                     json.loads(schema_path.read_text(encoding="utf-8"))
                 )
-                errors = sorted(validator.iter_errors(data), key=lambda e: e.path)
+                errors = sorted(validator.iter_errors(data_dict), key=lambda e: e.path)
                 if errors:
                     for err in errors:
                         loc = "/".join(str(p) for p in err.path)
@@ -719,11 +1013,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             except ModuleNotFoundError:
                 # Fallback: minimal structural check without dependency
                 required = ["generatedAt", "projectRoot", "runs"]
-                missing = [k for k in required if k not in data]
+                missing = [key for key in required if key not in data_dict]
                 if missing:
                     print(f"[typewiz] manifest missing required keys: {', '.join(missing)}")
                     return 2
-                if not isinstance(data.get("runs"), list):
+                runs_value = data_dict.get("runs")
+                if not isinstance(runs_value, list):
                     print("[typewiz] manifest.runs must be an array")
                     return 2
                 print(

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import cast
 
 from .aggregate import summarise_run
+from .model_types import clone_override_entries
 from .typed_manifest import (
     AggregatedData,
     EngineError,
@@ -47,7 +48,7 @@ class ManifestBuilder:
             "pluginArgs": list(run.plugin_args),
             "include": list(run.include),
             "exclude": list(run.exclude),
-            "overrides": [dict(item) for item in run.overrides],
+            "overrides": clone_override_entries(run.overrides),
             "categoryMapping": {
                 key: list(values) for key, values in sorted(run.category_mapping.items())
             },

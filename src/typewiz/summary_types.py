@@ -57,18 +57,28 @@ class ReadinessStrictEntry(TypedDict, total=False):
     recommendations: list[str]
     errors: int
     warnings: int
+    information: int
+    categories: dict[str, int]
+    categoryStatus: dict[str, str]
 
 
 class ReadinessOptionsBucket(TypedDict, total=False):
-    ready: list[ReadinessStrictEntry]
-    close: list[ReadinessStrictEntry]
-    blocked: list[ReadinessStrictEntry]
+    ready: list[ReadinessOptionEntry]
+    close: list[ReadinessOptionEntry]
+    blocked: list[ReadinessOptionEntry]
     threshold: int
 
 
 class ReadinessTab(TypedDict, total=False):
     strict: dict[str, list[ReadinessStrictEntry]]
     options: dict[str, ReadinessOptionsBucket]
+
+
+class ReadinessOptionEntry(TypedDict, total=False):
+    path: str
+    count: int
+    errors: int
+    warnings: int
 
 
 class RunsTab(TypedDict):

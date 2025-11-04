@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import override
 
-from ..runner import run_mypy
-from ..utils import python_executable
-from .base import BaseEngine, EngineContext, EngineResult
+from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from typewiz.runner import run_mypy
+from typewiz.utils import python_executable
 
 
 class MypyEngine(BaseEngine):
@@ -40,10 +41,12 @@ class MypyEngine(BaseEngine):
             ]
         return command
 
+    @override
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
         command = self._build_command(context, paths)
         return run_mypy(context.project_root, mode=context.mode, command=command)
 
+    @override
     def category_mapping(self) -> dict[str, list[str]]:
         return {
             "unknownChecks": [
@@ -67,6 +70,7 @@ class MypyEngine(BaseEngine):
             ],
         }
 
+    @override
     def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
         targets: list[str] = []
         config = self._config_file(context)

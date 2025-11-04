@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
 from typewiz.types import Diagnostic
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 @dataclass
@@ -41,4 +43,3 @@ class SimpleEngine(BaseEngine):
     def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
         # No extra fingerprints required for this example
         return []
-

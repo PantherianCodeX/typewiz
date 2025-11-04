@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Mapping
 from dataclasses import dataclass, field
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from pathlib import Path
+
+    from .model_types import CategoryMapping, Mode, OverrideEntry
 
 
 def _default_raw_mapping() -> Mapping[str, object]:
@@ -36,18 +41,18 @@ def _default_str_list() -> list[str]:
     return []
 
 
-def _default_overrides_list() -> list[dict[str, object]]:
+def _default_overrides_list() -> list[OverrideEntry]:
     return []
 
 
-def _default_category_mapping() -> dict[str, list[str]]:
+def _default_category_mapping() -> CategoryMapping:
     return {}
 
 
 @dataclass(slots=True)
 class RunResult:
     tool: str
-    mode: str
+    mode: Mode
     command: list[str]
     exit_code: int
     duration_ms: float
@@ -58,8 +63,8 @@ class RunResult:
     plugin_args: list[str] = field(default_factory=_default_str_list)
     include: list[str] = field(default_factory=_default_str_list)
     exclude: list[str] = field(default_factory=_default_str_list)
-    overrides: list[dict[str, object]] = field(default_factory=_default_overrides_list)
-    category_mapping: dict[str, list[str]] = field(default_factory=_default_category_mapping)
+    overrides: list[OverrideEntry] = field(default_factory=_default_overrides_list)
+    category_mapping: CategoryMapping = field(default_factory=_default_category_mapping)
     # Optional: raw tool-provided summary counts (normalised to errors/warnings/information/total)
     tool_summary: dict[str, int] | None = None
     scanned_paths: list[str] = field(default_factory=_default_str_list)

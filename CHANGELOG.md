@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.2.0 — 2025-11-05
+
+### Added
+- `typewiz query` surfaces overview, hotspot, readiness, run, engine, and rule insights without needing external filters; supports `json` and `table` output.
+- Table rendering utilities provide consistent CLI formatting for list/dict payloads.
+
+### Changed
+- Tooling baseline is Python 3.12+: native `tomllib` and PEP 695 type aliases replace historical `tomli` shims.
+- Requirements bumped (`pyright>=1.1.407`) to align with the Python floor.
+
 ## v0.1.1 — 2025-11-03
 
 ### Added
@@ -10,7 +20,7 @@
 ### Changed
 - `typewiz readiness` emits headers for each requested status and gracefully reports empty buckets.
 - Coverage configuration excludes integration-heavy engine runners so pytest coverage gates reflect actionable modules.
-- Python 3.10 compatibility restored by falling back to `tomli` and `timezone.utc` where needed.
+- 3.12-only: codebase targets Python 3.12+ with `tomllib`, PEP 695 type aliases, and timezone-aware timestamps.
 
 ## v0.1.0 — 2025-10-31
 

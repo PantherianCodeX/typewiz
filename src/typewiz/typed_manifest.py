@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TypedDict
 
+from .model_types import CategoryMapping, Mode, OverrideEntry
+
 
 class FileDiagnostic(TypedDict):
     line: int
@@ -49,8 +51,8 @@ class EngineOptionsEntry(TypedDict, total=False):
     pluginArgs: list[str]
     include: list[str]
     exclude: list[str]
-    overrides: list[dict[str, object]]
-    categoryMapping: dict[str, list[str]]
+    overrides: list[OverrideEntry]
+    categoryMapping: CategoryMapping
 
 
 class ToolSummary(TypedDict, total=False):
@@ -62,7 +64,7 @@ class ToolSummary(TypedDict, total=False):
 
 class RunPayloadRequired(TypedDict):
     tool: str
-    mode: str
+    mode: Mode
     command: list[str]
     exitCode: int
     durationMs: float
@@ -76,7 +78,7 @@ class RunPayload(RunPayloadRequired, total=False):
     toolSummary: ToolSummary
     engineArgsEffective: list[str]
     scannedPathsResolved: list[str]
-    engineError: "EngineError"
+    engineError: EngineError
 
 
 class EngineError(TypedDict, total=False):

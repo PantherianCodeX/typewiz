@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import override
 
-from ..runner import run_pyright
-from .base import BaseEngine, EngineContext, EngineResult
+from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from typewiz.runner import run_pyright
 
 
 class PyrightEngine(BaseEngine):
@@ -36,10 +37,12 @@ class PyrightEngine(BaseEngine):
             command.append(str(context.project_root))
         return command
 
+    @override
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
         command = self._build_command(context, paths)
         return run_pyright(context.project_root, mode=context.mode, command=command)
 
+    @override
     def category_mapping(self) -> dict[str, list[str]]:
         return {
             "unknownChecks": [
@@ -58,6 +61,7 @@ class PyrightEngine(BaseEngine):
             ],
         }
 
+    @override
     def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
         targets: list[str] = []
         config = context.engine_options.config_file

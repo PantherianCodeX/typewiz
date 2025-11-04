@@ -3,6 +3,8 @@ from __future__ import annotations
 from html import escape
 from typing import cast
 
+from .model_types import OverrideEntry
+from .override_utils import get_override_components
 from .readiness import CATEGORY_LABELS
 from .summary_types import HotspotsTab, OverviewTab, ReadinessTab, SummaryData, SummaryTabs
 
@@ -77,7 +79,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
         for key, data in run_summary.items():
             cmd = " ".join(h(part) for part in data.get("command", []))
             parts.append(
-                "          <tr>"
+                "          <tr>"  # pyright: ignore[reportImplicitStringConcatenation]
                 f"<td>{h(key)}</td>"
                 f"<td>{data.get('errors', 0)}</td>"
                 f"<td>{data.get('warnings', 0)}</td>"
@@ -113,7 +115,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
             plugin_args = options.get("pluginArgs", []) or []
             include = options.get("include", []) or []
             exclude = options.get("exclude", []) or []
-            overrides = options.get("overrides", []) or []
+            overrides: list[OverrideEntry] = options.get("overrides", []) or []
             profile_display = f"<code>{h(str(profile_value))}</code>" if profile_value else "—"
             config_display = f"<code>{h(str(config_value))}</code>" if config_value else "—"
             parts.extend(
@@ -131,38 +133,31 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
             if overrides:
                 parts.append("        <li>Folder overrides:<ul>")
                 for entry in overrides:
-                    path = h(str(entry.get("path", "—")))
+                    path, profile, plugin_args, include_paths, exclude_paths = (
+                        get_override_components(entry)
+                    )
                     detail_bits: list[str] = []
-                    if entry.get("profile"):
-                        detail_bits.append(f"profile=<code>{h(str(entry['profile']))}</code>")
-
-                    def _to_str_list(obj: object) -> list[str]:
-                        if isinstance(obj, list):
-                            from typing import cast as _cast
-
-                            return [str(x) for x in _cast(list[object], obj)]
-                        return []
-
-                    args_list = _to_str_list(entry.get("pluginArgs"))
-                    if args_list:
+                    if profile:
+                        detail_bits.append(f"profile=<code>{h(profile)}</code>")
+                    if plugin_args:
                         detail_bits.append(
-                            "plugin args=" + " ".join(f"<code>{h(arg)}</code>" for arg in args_list)
+                            "plugin args="
+                            + " ".join(f"<code>{h(arg)}</code>" for arg in plugin_args)
                         )
-                    inc_list = _to_str_list(entry.get("include"))
-                    if inc_list:
+                    if include_paths:
                         detail_bits.append(
-                            "include=" + " ".join(f"<code>{h(item)}</code>" for item in inc_list)
+                            "include="
+                            + " ".join(f"<code>{h(item)}</code>" for item in include_paths)
                         )
-                    exc_list = _to_str_list(entry.get("exclude"))
-                    if exc_list:
+                    if exclude_paths:
                         detail_bits.append(
-                            "exclude=" + " ".join(f"<code>{h(item)}</code>" for item in exc_list)
+                            "exclude="
+                            + " ".join(f"<code>{h(item)}</code>" for item in exclude_paths)
                         )
                     if not detail_bits:
                         detail_bits.append("no explicit changes")
-                    parts.append(
-                        f"          <li><code>{path}</code>: {'; '.join(detail_bits)}</li>"
-                    )
+                    details_html = "; ".join(detail_bits)
+                    parts.append(f"          <li><code>{h(path)}</code>: {details_html}</li>")
                 parts.append("        </ul></li>")
             parts.extend(
                 [
@@ -297,7 +292,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
         for category, buckets in readiness_options.items():
             label = CATEGORY_LABELS.get(category, category)
             parts.append(
-                "        <tr>"
+                "        <tr>"  # pyright: ignore[reportImplicitStringConcatenation]
                 f"<td>{h(label)}</td>"
                 f"<td>{len(buckets.get('ready', []))}</td>"
                 f"<td>{len(buckets.get('close', []))}</td>"

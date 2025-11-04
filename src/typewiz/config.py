@@ -1,20 +1,14 @@
 from __future__ import annotations
 
+import tomllib as toml
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, cast
-
-try:  # pragma: no cover - exercised on Python < 3.11 by CI matrix
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - fallback path ensures compatibility
-    import tomli
-
-    tomllib = cast(Any, tomli)
+from typing import cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-toml = tomllib
+from .collection_utils import dedupe_preserve
 
 CONFIG_VERSION = 0
 
@@ -116,16 +110,6 @@ def _ensure_list(value: object | None) -> list[str] | None:
     return result
 
 
-def _dedupe_preserve(values: Iterable[str]) -> list[str]:
-    seen: set[str] = set()
-    result: list[str] = []
-    for value in values:
-        if value not in seen:
-            seen.add(value)
-            result.append(value)
-    return result
-
-
 class EngineProfileModel(BaseModel):
     inherit: str | None = None
     plugin_args: list[str] = Field(default_factory=list)
@@ -150,9 +134,9 @@ class EngineProfileModel(BaseModel):
 
     @model_validator(mode="after")
     def _normalise(self) -> EngineProfileModel:
-        object.__setattr__(self, "plugin_args", _dedupe_preserve(self.plugin_args))
-        object.__setattr__(self, "include", _dedupe_preserve(self.include))
-        object.__setattr__(self, "exclude", _dedupe_preserve(self.exclude))
+        object.__setattr__(self, "plugin_args", dedupe_preserve(self.plugin_args))
+        object.__setattr__(self, "include", dedupe_preserve(self.include))
+        object.__setattr__(self, "exclude", dedupe_preserve(self.exclude))
         return self
 
 
@@ -181,9 +165,9 @@ class EngineSettingsModel(BaseModel):
 
     @model_validator(mode="after")
     def _normalise(self) -> EngineSettingsModel:
-        object.__setattr__(self, "plugin_args", _dedupe_preserve(self.plugin_args))
-        object.__setattr__(self, "include", _dedupe_preserve(self.include))
-        object.__setattr__(self, "exclude", _dedupe_preserve(self.exclude))
+        object.__setattr__(self, "plugin_args", dedupe_preserve(self.plugin_args))
+        object.__setattr__(self, "include", dedupe_preserve(self.include))
+        object.__setattr__(self, "exclude", dedupe_preserve(self.exclude))
         normalised_profiles: dict[str, EngineProfileModel] = {}
         for key in sorted(self.profiles):
             profile = self.profiles[key]
@@ -272,7 +256,7 @@ class AuditConfigModel(BaseModel):
         # ensure deterministic order for plugin args
         normalised: dict[str, list[str]] = {}
         for key in sorted(self.plugin_args):
-            values = _dedupe_preserve(self.plugin_args[key])
+            values = dedupe_preserve(self.plugin_args[key])
             normalised[key] = values
         object.__setattr__(self, "plugin_args", normalised)
         engines: dict[str, EngineSettingsModel] = {}

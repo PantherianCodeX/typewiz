@@ -3,7 +3,7 @@
 typewiz collects typing diagnostics from Pyright, mypy, and custom plugins, aggregates them into a JSON
 manifest, and renders dashboards to help teams plan stricter typing rollouts.
 
-> Status: `0.1.0` — see CHANGELOG.md for full release notes. Manifest schema, caching, and CLI are stabilized within the 0.1.x line.
+> Status: `0.2.0` — see CHANGELOG.md for full release notes. Manifest schema, caching, and CLI are stabilized within the 0.x line.
 
 ## Features
 
@@ -46,6 +46,32 @@ typewiz audit --respect-gitignore --max-files 50000 --manifest typing_audit.json
 Running `typewiz audit` with no additional arguments also works — typewiz will analyse the current project using its built-in Pyright and mypy defaults.
 
 Pass extra flags to engines with `--plugin-arg runner=VALUE` (repeatable). When the value itself starts with a dash, keep the `runner=value` form to avoid ambiguity, e.g. `--plugin-arg pyright=--verifytypes`.
+
+### Querying manifest summaries
+
+The `typewiz query` command exposes the most common manifest lookups directly—no more piping through `jq` or custom scripts.
+
+```bash
+# Severity overview with per-run totals as a quick CI check (table or json)
+typewiz query overview --manifest typing_audit.json --include-runs --format table
+
+# Top error-producing files, limited to five entries
+typewiz query hotspots --manifest typing_audit.json --kind files --limit 5
+
+# Folder-level readiness buckets surfaced as JSON for dashboards
+typewiz query readiness --manifest typing_audit.json --level folder --status blocked --status close
+
+# Filter runs by tool/mode to see error pressure for specific engines
+typewiz query runs --manifest typing_audit.json --tool pyright --mode current --format table
+
+# Inspect engine profiles (plugin args, includes/excludes) captured in the manifest
+typewiz query engines --manifest typing_audit.json --format table
+
+# Quick snapshot of the most frequent diagnostic rules
+typewiz query rules --manifest typing_audit.json --limit 10
+```
+
+Each subcommand accepts `--format json` (default) or `--format table` for a human-friendly view.
 
 ### Typing & CI
 

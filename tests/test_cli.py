@@ -5,25 +5,211 @@ import sys
 import types
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Protocol, cast
 
 import pytest
 
+import typewiz.cli as cli_module
 from typewiz.api import AuditResult
-from typewiz.cli import (
-    SUMMARY_FIELD_CHOICES,
-    _collect_plugin_args,
-    _collect_profile_args,
-    _normalise_modes,
-    _parse_summary_fields,
-    _print_readiness_summary,
-    _print_summary,
-    _write_config_template,
-    main,
+from typewiz.cli import SUMMARY_FIELD_CHOICES, main
+from typewiz.cli_helpers import (
+    collect_plugin_args,
+    collect_profile_args,
+    normalise_modes,
+    parse_summary_fields,
 )
 from typewiz.config import Config
 from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.summary_types import SummaryData
+from typewiz.model_types import OverrideEntry
+from typewiz.summary_types import (
+    EnginesTab,
+    HotspotsTab,
+    OverviewTab,
+    ReadinessOptionEntry,
+    ReadinessOptionsBucket,
+    ReadinessStrictEntry,
+    ReadinessTab,
+    RunsTab,
+    SummaryData,
+    SummaryFileEntry,
+    SummaryFolderEntry,
+    SummaryRunEntry,
+    SummaryTabs,
+)
 from typewiz.types import Diagnostic, RunResult
+
+
+class _PrintSummaryFn(Protocol):
+    def __call__(self, runs: Sequence[RunResult], fields: Sequence[str], style: str) -> None: ...
+
+
+class _PrintReadinessFn(Protocol):
+    def __call__(
+        self,
+        summary: SummaryData,
+        *,
+        level: str,
+        statuses: Sequence[str] | None,
+        limit: int,
+    ) -> None: ...
+
+
+class _QueryReadinessFn(Protocol):
+    def __call__(
+        self,
+        summary: SummaryData,
+        *,
+        level: str,
+        statuses: Sequence[str] | None,
+        limit: int,
+    ) -> dict[str, list[dict[str, object]]]: ...
+
+
+class _WriteConfigTemplateFn(Protocol):
+    def __call__(self, path: Path, *, force: bool) -> int: ...
+
+
+class _NormaliseModesFn(Protocol):
+    def __call__(self, modes: Sequence[str] | None) -> tuple[bool, bool, bool]: ...
+
+
+_print_summary = cast(_PrintSummaryFn, cli_module._print_summary)
+_print_readiness_summary = cast(_PrintReadinessFn, cli_module._print_readiness_summary)
+_query_readiness = cast(_QueryReadinessFn, cli_module._query_readiness)
+_write_config_template = cast(_WriteConfigTemplateFn, cli_module._write_config_template)
+_normalise_modes_cli = cast(_NormaliseModesFn, cli_module._normalise_modes)
+
+
+def _write_manifest(tmp_path: Path) -> Path:
+    manifest: dict[str, object] = {
+        "generatedAt": "2025-11-05T00:00:00Z",
+        "projectRoot": str(tmp_path),
+        "runs": [
+            {
+                "tool": "pyright",
+                "mode": "current",
+                "command": ["pyright", "--project"],
+                "exitCode": 1,
+                "durationMs": 12,
+                "summary": {
+                    "errors": 4,
+                    "warnings": 2,
+                    "information": 0,
+                    "total": 6,
+                    "severityBreakdown": {"error": 4, "warning": 2},
+                    "ruleCounts": {"reportGeneralTypeIssues": 4},
+                    "categoryCounts": {"unknownChecks": 4},
+                },
+                "engineOptions": {
+                    "profile": "strict",
+                    "configFile": "pyrightconfig.json",
+                    "pluginArgs": ["--strict"],
+                    "include": ["src"],
+                    "exclude": ["tests"],
+                    "overrides": [{"path": "src", "profile": "strict"}],
+                    "categoryMapping": {"unknownChecks": ["reportGeneralTypeIssues"]},
+                },
+                "perFolder": [
+                    {
+                        "path": "src",
+                        "errors": 3,
+                        "warnings": 2,
+                        "information": 0,
+                        "codeCounts": {"reportGeneralTypeIssues": 4},
+                        "categoryCounts": {"unknownChecks": 4},
+                        "recommendations": ["add type annotations"],
+                    }
+                ],
+                "perFile": [
+                    {"path": "src/app.py", "errors": 3, "warnings": 0},
+                    {"path": "src/utils.py", "errors": 0, "warnings": 2},
+                ],
+            },
+            {
+                "tool": "mypy",
+                "mode": "full",
+                "command": ["mypy", "--strict"],
+                "exitCode": 0,
+                "durationMs": 15,
+                "summary": {
+                    "errors": 0,
+                    "warnings": 1,
+                    "information": 1,
+                    "total": 2,
+                    "severityBreakdown": {"warning": 1, "information": 1},
+                    "ruleCounts": {"attr-defined": 1},
+                    "categoryCounts": {"general": 1},
+                },
+                "engineOptions": {
+                    "profile": "baseline",
+                    "configFile": "mypy.ini",
+                    "pluginArgs": [],
+                    "include": ["src"],
+                    "exclude": [],
+                    "overrides": [],
+                    "categoryMapping": {},
+                },
+                "perFolder": [
+                    {
+                        "path": "src",
+                        "errors": 0,
+                        "warnings": 1,
+                        "information": 1,
+                        "codeCounts": {"attr-defined": 1},
+                        "categoryCounts": {"general": 1},
+                        "recommendations": [],
+                    }
+                ],
+                "perFile": [
+                    {"path": "src/app.py", "errors": 0, "warnings": 1},
+                ],
+            },
+        ],
+    }
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    return manifest_path
+
+
+def _empty_summary() -> SummaryData:
+    run_summary: dict[str, SummaryRunEntry] = {}
+    overview: OverviewTab = {
+        "severityTotals": {},
+        "categoryTotals": {},
+        "runSummary": run_summary,
+    }
+    engines: EnginesTab = {"runSummary": run_summary}
+    top_folders: list[SummaryFolderEntry] = []
+    top_files: list[SummaryFileEntry] = []
+    hotspots: HotspotsTab = {
+        "topRules": {},
+        "topFolders": top_folders,
+        "topFiles": top_files,
+    }
+    readiness: ReadinessTab = {"strict": {}, "options": {}}
+    runs: RunsTab = {"runSummary": run_summary}
+    tabs: SummaryTabs = {
+        "overview": overview,
+        "engines": engines,
+        "hotspots": hotspots,
+        "readiness": readiness,
+        "runs": runs,
+    }
+    severity_totals: dict[str, int] = {}
+    category_totals: dict[str, int] = {}
+    top_rules: dict[str, int] = {}
+    summary: SummaryData = {
+        "generatedAt": "now",
+        "projectRoot": ".",
+        "runSummary": run_summary,
+        "severityTotals": severity_totals,
+        "categoryTotals": category_totals,
+        "topRules": top_rules,
+        "topFolders": top_folders,
+        "topFiles": top_files,
+        "tabs": tabs,
+    }
+    return summary
 
 
 class StubEngine:
@@ -64,6 +250,14 @@ class StubEngine:
         return []
 
 
+def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: StubEngine) -> None:
+    def _resolve(_: Sequence[str]) -> list[StubEngine]:
+        return [engine]
+
+    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve)
+    monkeypatch.setattr("typewiz.api.resolve_engines", _resolve)
+
+
 @pytest.fixture
 def fake_run(tmp_path: Path) -> RunResult:
     (tmp_path / "pkg").mkdir(exist_ok=True)
@@ -94,8 +288,7 @@ def test_cli_audit(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     engine = StubEngine(fake_run, expected_profile="strict")
-    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
-    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+    _patch_engine_resolution(monkeypatch, engine)
 
     (tmp_path / "pkg").mkdir(exist_ok=True)
     (tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8")
@@ -136,15 +329,19 @@ def test_cli_audit(
     assert any(mode == "full" for mode, _, _ in engine.invocations)
     assert all("--cli-flag" in args for _, args, _ in engine.invocations)
 
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    run_entry = manifest["runs"][0]
-    assert run_entry["engineOptions"]["profile"] == "strict"
-    assert run_entry["engineOptions"]["pluginArgs"] == ["--cli-flag"]
+    manifest_json = cast(dict[str, object], json.loads(manifest_path.read_text(encoding="utf-8")))
+    runs_value = manifest_json.get("runs")
+    assert isinstance(runs_value, list)
+    assert runs_value
+    first_run = cast(dict[str, object], runs_value[0])
+    engine_options_obj = cast(dict[str, object], first_run.get("engineOptions", {}))
+    assert engine_options_obj.get("profile") == "strict"
+    assert engine_options_obj.get("pluginArgs") == ["--cli-flag"]
     assert "profile=" not in captured.out
 
 
 def test_cli_dashboard_output(tmp_path: Path) -> None:
-    manifest = {
+    manifest: dict[str, object] = {
         "generatedAt": "2025-01-01T00:00:00Z",
         "projectRoot": str(tmp_path),
         "runs": [],
@@ -171,8 +368,7 @@ def test_cli_audit_readiness_summary(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     engine = StubEngine(fake_run)
-    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
-    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+    _patch_engine_resolution(monkeypatch, engine)
 
     (tmp_path / "pkg").mkdir(exist_ok=True)
     (tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8")
@@ -233,8 +429,7 @@ def test_cli_summary_extras(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     engine = StubEngine(fake_run, expected_profile="strict")
-    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
-    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+    _patch_engine_resolution(monkeypatch, engine)
 
     (tmp_path / "pkg").mkdir(exist_ok=True)
     (tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8")
@@ -311,8 +506,7 @@ def test_cli_mode_only_full(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: RunResult
 ) -> None:
     engine = StubEngine(fake_run)
-    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
-    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+    _patch_engine_resolution(monkeypatch, engine)
 
     (tmp_path / "pkg").mkdir(exist_ok=True)
 
@@ -344,8 +538,7 @@ def test_cli_plugin_arg_validation(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
             diagnostics=[],
         )
     )
-    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
-    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+    _patch_engine_resolution(monkeypatch, engine)
 
     with pytest.raises(SystemExit):
         main(
@@ -375,8 +568,7 @@ def test_cli_audit_without_markers(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run: RunResult
 ) -> None:
     engine = StubEngine(fake_run)
-    monkeypatch.setattr("typewiz.engines.resolve_engines", lambda names: [engine])
-    monkeypatch.setattr("typewiz.api.resolve_engines", lambda names: [engine])
+    _patch_engine_resolution(monkeypatch, engine)
     monkeypatch.chdir(tmp_path)
 
     (tmp_path / "pkg").mkdir(exist_ok=True)
@@ -398,8 +590,15 @@ def test_cli_audit_without_markers(
 
 def test_cli_audit_requires_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = Config()
-    monkeypatch.setattr("typewiz.cli.load_config", lambda path: cfg)
-    monkeypatch.setattr("typewiz.cli.default_full_paths", lambda root: [])
+
+    def _load_config(_: Path | None = None) -> Config:
+        return cfg
+
+    def _default_paths(_: Path) -> list[str]:
+        return []
+
+    monkeypatch.setattr("typewiz.cli.load_config", _load_config)
+    monkeypatch.setattr("typewiz.cli.default_full_paths", _default_paths)
 
     with pytest.raises(SystemExit):
         main(["audit"])
@@ -413,27 +612,17 @@ def test_cli_audit_full_outputs(
     cfg = Config()
     cfg.audit.runners = ["pyright"]
 
-    summary: SummaryData = {
-        "tabs": {
-            "overview": {
-                "severityTotals": {
-                    "error": 0,
-                    "warning": 0,
-                    "information": 1,
-                }
-            }
-        }
+    summary = _empty_summary()
+    summary["tabs"]["overview"]["severityTotals"] = {
+        "error": 0,
+        "warning": 0,
+        "information": 1,
     }
-    prev_summary: SummaryData = {
-        "tabs": {
-            "overview": {
-                "severityTotals": {
-                    "error": 0,
-                    "warning": 0,
-                    "information": 0,
-                }
-            }
-        }
+    prev_summary = _empty_summary()
+    prev_summary["tabs"]["overview"]["severityTotals"] = {
+        "error": 0,
+        "warning": 0,
+        "information": 0,
     }
 
     diag = Diagnostic(
@@ -445,6 +634,7 @@ def test_cli_audit_full_outputs(
         code="information",
         message="info",
     )
+    override_entry_full: OverrideEntry = {"path": "pkg", "profile": "strict"}
     run = RunResult(
         tool="pyright",
         mode="current",
@@ -457,7 +647,7 @@ def test_cli_audit_full_outputs(
         plugin_args=["--strict"],
         include=["pkg"],
         exclude=[],
-        overrides=[{"path": "pkg", "profile": "strict"}],
+        overrides=[override_entry_full],
         scanned_paths=["pkg"],
     )
     audit_result = AuditResult(
@@ -468,23 +658,45 @@ def test_cli_audit_full_outputs(
         warning_count=0,
     )
 
-    monkeypatch.setattr("typewiz.cli.load_config", lambda path: cfg)
-    monkeypatch.setattr("typewiz.cli.resolve_project_root", lambda path: tmp_path)
-    monkeypatch.setattr("typewiz.cli.default_full_paths", lambda root: ["pkg"])
-    monkeypatch.setattr("typewiz.cli.run_audit", lambda **_: audit_result)
-    monkeypatch.setattr("typewiz.cli.render_markdown", lambda data: "markdown")
-    monkeypatch.setattr("typewiz.cli.render_html", lambda data, default_view: "<html>")
+    def _load_config(_: Path | None = None) -> Config:
+        return cfg
+
+    def _resolve_root(_: Path | None = None) -> Path:
+        return tmp_path
+
+    def _default_paths(_: Path) -> list[str]:
+        return ["pkg"]
+
+    def _run_audit_stub(**_: object) -> AuditResult:
+        return audit_result
+
+    def _render_markdown(_: object) -> str:
+        return "markdown"
+
+    def _render_html(_: object, default_view: str) -> str:
+        assert default_view in {"engines", "overview", "hotspots", "readiness", "runs"}
+        return "<html>"
+
+    monkeypatch.setattr("typewiz.cli.load_config", _load_config)
+    monkeypatch.setattr("typewiz.cli.resolve_project_root", _resolve_root)
+    monkeypatch.setattr("typewiz.cli.default_full_paths", _default_paths)
+    monkeypatch.setattr("typewiz.cli.run_audit", _run_audit_stub)
+    monkeypatch.setattr("typewiz.cli.render_markdown", _render_markdown)
+    monkeypatch.setattr("typewiz.cli.render_html", _render_html)
 
     def _fake_build_summary(data: object) -> SummaryData:
-        if isinstance(data, dict) and data.get("__prev__"):
-            return prev_summary
+        if isinstance(data, dict):
+            dict_data = cast(dict[str, object], data)
+            if dict_data.get("__prev__"):
+                return prev_summary
         return summary
 
     monkeypatch.setattr("typewiz.cli.build_summary", _fake_build_summary)
-    monkeypatch.setattr(
-        "typewiz.dashboard.load_manifest",
-        lambda path: {"__prev__": True},
-    )
+
+    def _load_manifest(_: Path) -> dict[str, bool]:
+        return {"__prev__": True}
+
+    monkeypatch.setattr("typewiz.dashboard.load_manifest", _load_manifest)
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     compare_path = tmp_path / "prev_manifest.json"
@@ -533,10 +745,21 @@ def test_cli_dashboard_outputs(
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text(json.dumps({"runs": []}), encoding="utf-8")
 
-    summary: SummaryData = {"tabs": {}}
-    monkeypatch.setattr("typewiz.cli.build_summary", lambda data: summary)
-    monkeypatch.setattr("typewiz.cli.render_markdown", lambda data: "markdown")
-    monkeypatch.setattr("typewiz.cli.render_html", lambda data, default_view: "<html>")
+    summary = _empty_summary()
+
+    def _build_summary(_: object) -> SummaryData:
+        return summary
+
+    def _render_markdown(_: object) -> str:
+        return "markdown"
+
+    def _render_html(_: object, default_view: str) -> str:
+        assert default_view in {"overview", "engines", "hotspots", "readiness", "runs"}
+        return "<html>"
+
+    monkeypatch.setattr("typewiz.cli.build_summary", _build_summary)
+    monkeypatch.setattr("typewiz.cli.render_markdown", _render_markdown)
+    monkeypatch.setattr("typewiz.cli.render_html", _render_html)
 
     exit_code_json = main(["dashboard", "--manifest", str(manifest_path)])
     assert exit_code_json == 0
@@ -610,11 +833,10 @@ def test_cli_manifest_validate_runs_type(
     )
     import importlib
 
-    monkeypatch.setattr(
-        importlib,
-        "import_module",
-        lambda name: (_ for _ in ()).throw(ModuleNotFoundError(name)),
-    )
+    def _missing_module(name: str) -> object:
+        raise ModuleNotFoundError(name)
+
+    monkeypatch.setattr(importlib, "import_module", _missing_module)
 
     exit_code = main(["manifest", "validate", str(manifest_path)])
     assert exit_code == 2
@@ -627,48 +849,224 @@ def test_cli_manifest_unknown_action(monkeypatch: pytest.MonkeyPatch) -> None:
         main(manifest_cmd)
 
 
+def test_cli_query_overview_table(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    exit_code = main(
+        [
+            "query",
+            "overview",
+            "--manifest",
+            str(manifest_path),
+            "--include-runs",
+            "--format",
+            "table",
+        ]
+    )
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "severity_totals" in output
+    assert "pyright:current" in output
+
+
+def test_cli_query_hotspots_json(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    exit_code = main(
+        [
+            "query",
+            "hotspots",
+            "--manifest",
+            str(manifest_path),
+            "--kind",
+            "folders",
+            "--limit",
+            "1",
+        ]
+    )
+    assert exit_code == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data[0]["path"] == "src"
+    assert data[0]["errors"] >= 1
+    exit_code_files = main(
+        [
+            "query",
+            "hotspots",
+            "--manifest",
+            str(manifest_path),
+            "--kind",
+            "files",
+            "--limit",
+            "2",
+            "--format",
+            "table",
+        ]
+    )
+    assert exit_code_files == 0
+    table_output = capsys.readouterr().out
+    assert "src/app.py" in table_output
+
+
+def test_cli_query_readiness_file_table(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    exit_code = main(
+        [
+            "query",
+            "readiness",
+            "--manifest",
+            str(manifest_path),
+            "--level",
+            "file",
+            "--status",
+            "blocked",
+            "--format",
+            "table",
+        ]
+    )
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "blocked" in output
+    assert "src" in output
+
+
+def test_cli_query_readiness_folder_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    exit_code = main(
+        [
+            "query",
+            "readiness",
+            "--manifest",
+            str(manifest_path),
+        ]
+    )
+    assert exit_code == 0
+    data = json.loads(capsys.readouterr().out)
+    assert "blocked" in data
+    assert data["blocked"]
+
+
+def test_cli_query_runs_filters(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    exit_code = main(
+        [
+            "query",
+            "runs",
+            "--manifest",
+            str(manifest_path),
+            "--tool",
+            "pyright",
+            "--mode",
+            "current",
+            "--format",
+            "json",
+        ]
+    )
+    assert exit_code == 0
+    runs = json.loads(capsys.readouterr().out)
+    assert len(runs) == 1
+    assert runs[0]["tool"] == "pyright"
+
+
+def test_cli_query_runs_empty(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    exit_code = main(
+        [
+            "query",
+            "runs",
+            "--manifest",
+            str(manifest_path),
+            "--tool",
+            "nonexistent",
+            "--format",
+            "table",
+        ]
+    )
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "<empty>" in output
+
+
+def test_cli_query_engines_table(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    exit_code = main(
+        [
+            "query",
+            "engines",
+            "--manifest",
+            str(manifest_path),
+            "--format",
+            "table",
+        ]
+    )
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "pyright:current" in output
+    assert "--strict" in output
+
+
+def test_cli_query_rules_limit(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    exit_code = main(
+        [
+            "query",
+            "rules",
+            "--manifest",
+            str(manifest_path),
+            "--limit",
+            "1",
+        ]
+    )
+    assert exit_code == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data[0]["rule"]
+    assert data[0]["count"] >= 1
+
+
 def test_parse_summary_fields_variants() -> None:
-    fields = _parse_summary_fields(" profile , , plugin-args ")
+    fields = parse_summary_fields(" profile , , plugin-args ", valid_fields=SUMMARY_FIELD_CHOICES)
     assert fields == ["profile", "plugin-args"]
 
-    all_fields = _parse_summary_fields("all")
+    all_fields = parse_summary_fields("all", valid_fields=SUMMARY_FIELD_CHOICES)
     assert all_fields == sorted(SUMMARY_FIELD_CHOICES)
 
     with pytest.raises(SystemExit):
-        _parse_summary_fields("profile,unknown")
+        parse_summary_fields("profile,unknown", valid_fields=SUMMARY_FIELD_CHOICES)
 
 
 def test_collect_plugin_args_variants() -> None:
-    result = _collect_plugin_args(["pyright=--strict", "pyright:--warnings", "mypy = --strict "])
+    result = collect_plugin_args(["pyright=--strict", "pyright:--warnings", "mypy = --strict "])
     assert result == {"pyright": ["--strict", "--warnings"], "mypy": ["--strict"]}
 
     with pytest.raises(SystemExit):
-        _collect_plugin_args(["pyright"])
+        collect_plugin_args(["pyright"])
     with pytest.raises(SystemExit):
-        _collect_plugin_args(["=--oops"])
+        collect_plugin_args(["=--oops"])
     with pytest.raises(SystemExit):
-        _collect_plugin_args(["pyright="])
+        collect_plugin_args(["pyright="])
 
 
 def test_collect_profile_args_variants() -> None:
-    profiles = _collect_profile_args([("pyright", "strict"), ["mypy", "baseline"]])
+    profiles = collect_profile_args(["pyright=strict", "mypy=baseline"])
     assert profiles == {"pyright": "strict", "mypy": "baseline"}
 
     with pytest.raises(SystemExit):
-        _collect_profile_args([("pyright",)])
+        collect_profile_args(["pyright"])
     with pytest.raises(SystemExit):
-        _collect_profile_args([("pyright", "")])
+        collect_profile_args(["pyright="])
 
 
 def test_normalise_modes_variants() -> None:
-    default_selection = _normalise_modes(None)
+    default_selection = _normalise_modes_cli(None)
     assert default_selection == (False, True, True)
 
-    current_only = _normalise_modes(["current"])
+    current_only = _normalise_modes_cli(["current"])
     assert current_only == (True, True, False)
 
     with pytest.raises(SystemExit):
-        _normalise_modes(["unknown"])
+        _normalise_modes_cli(["unknown"])
+
+    assert normalise_modes(None) == []
+    assert normalise_modes(["current", "full"]) == ["current", "full"]
 
 
 def test_write_config_template(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -687,24 +1085,32 @@ def test_write_config_template(tmp_path: Path, capsys: pytest.CaptureFixture[str
 
 
 def test_print_readiness_summary_variants(capsys: pytest.CaptureFixture[str]) -> None:
-    summary: SummaryData = {
-        "tabs": {
-            "readiness": {
-                "options": {
-                    "unknownChecks": {
-                        "ready": [{"path": "pkg", "count": "not-a-number"}],
-                        "close": [],
-                        "blocked": [{"path": "pkg", "count": 2}],
-                        "threshold": 0,
-                    }
-                },
-                "strict": {
-                    "ready": [{"path": "pkg/module.py", "diagnostics": 0}],
-                    "blocked": [{"path": "pkg/other.py", "diagnostics": "3"}],
-                },
-            }
-        }
-    }
+    summary = _empty_summary()
+    readiness_tab = summary["tabs"]["readiness"]
+    readiness_tab["options"] = cast(
+        dict[str, ReadinessOptionsBucket],
+        {
+            "unknownChecks": {
+                "ready": cast(
+                    list[ReadinessOptionEntry],
+                    [{"path": "pkg", "count": "not-a-number"}],
+                ),
+                "close": [],
+                "blocked": cast(
+                    list[ReadinessOptionEntry],
+                    [{"path": "pkg", "count": 2}],
+                ),
+                "threshold": 0,
+            },
+        },
+    )
+    readiness_tab["strict"] = cast(
+        dict[str, list[ReadinessStrictEntry]],
+        {
+            "ready": [{"path": "pkg/module.py", "diagnostics": 0}],
+            "blocked": [{"path": "pkg/other.py", "diagnostics": "3"}],
+        },
+    )
 
     _print_readiness_summary(
         summary,
@@ -737,6 +1143,24 @@ def test_print_readiness_summary_variants(capsys: pytest.CaptureFixture[str]) ->
     assert "[typewiz] readiness folder status=blocked" in fallback_output
 
 
+def test_query_readiness_invalid_data_raises() -> None:
+    summary = _empty_summary()
+    readiness_tab = summary["tabs"]["readiness"]
+    readiness_tab["strict"] = {
+        "blocked": [
+            {
+                "path": "pkg/module",
+                "diagnostics": -1,
+                "errors": 0,
+                "warnings": 0,
+                "information": 0,
+            }
+        ]
+    }
+    with pytest.raises(SystemExit):
+        _query_readiness(summary, level="file", statuses=["blocked"], limit=5)
+
+
 def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     diag = Diagnostic(
         tool="pyright",
@@ -748,7 +1172,7 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
         message="boom",
     )
 
-    override_entry = {
+    override_entry: OverrideEntry = {
         "path": "pkg",
         "profile": "strict",
         "pluginArgs": ["--warnings"],
@@ -832,11 +1256,11 @@ def test_cli_manifest_validate_missing_keys(
 
     manifest_path = tmp_path / "invalid.json"
     manifest_path.write_text(json.dumps({"generatedAt": "now"}), encoding="utf-8")
-    monkeypatch.setattr(
-        importlib,
-        "import_module",
-        lambda name: (_ for _ in ()).throw(ModuleNotFoundError(name)),
-    )
+
+    def _missing_module(name: str) -> object:
+        raise ModuleNotFoundError(name)
+
+    monkeypatch.setattr(importlib, "import_module", _missing_module)
 
     exit_code = main(["manifest", "validate", str(manifest_path)])
     assert exit_code == 2

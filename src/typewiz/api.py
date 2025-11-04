@@ -2,437 +2,40 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING
 
-from .cache import EngineCache, collect_file_hashes, fingerprint_path
-from .config import AuditConfig, Config, EngineProfile, EngineSettings, PathOverride, load_config
+from .audit_config_utils import merge_audit_configs
+from .audit_execution import execute_engine_mode, resolve_engine_options
+from .audit_paths import normalise_paths
+from .cache import EngineCache
+from .config import AuditConfig, Config, load_config
 from .dashboard import build_summary, render_markdown
-from .engines import EngineContext, EngineOptions, resolve_engines
-from .engines.base import BaseEngine
+from .engines import EngineContext, resolve_engines
 from .html_report import render_html
 from .manifest import ManifestBuilder
-from .summary_types import SummaryData
-from .typed_manifest import ManifestData
-from .types import RunResult
 from .utils import default_full_paths, detect_tool_versions, resolve_project_root
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+    from .summary_types import SummaryData
+    from .typed_manifest import ManifestData
+    from .types import RunResult
 
 logger = logging.getLogger("typewiz")
 
 
 @dataclass(slots=True)
 class AuditResult:
+    """Structured result payload returned by :func:`run_audit`."""
+
     manifest: ManifestData
     runs: list[RunResult]
     summary: SummaryData | None = None
     error_count: int = 0
     warning_count: int = 0
-
-
-def _clone_profile(profile: EngineProfile) -> EngineProfile:
-    return EngineProfile(
-        inherit=profile.inherit,
-        plugin_args=list(profile.plugin_args),
-        config_file=profile.config_file,
-        include=list(profile.include),
-        exclude=list(profile.exclude),
-    )
-
-
-def _clone_engine_settings_map(settings: dict[str, EngineSettings]) -> dict[str, EngineSettings]:
-    cloned: dict[str, EngineSettings] = {}
-    for name, value in settings.items():
-        cloned[name] = EngineSettings(
-            plugin_args=list(value.plugin_args),
-            config_file=value.config_file,
-            include=list(value.include),
-            exclude=list(value.exclude),
-            default_profile=value.default_profile,
-            profiles={key: _clone_profile(profile) for key, profile in value.profiles.items()},
-        )
-    return cloned
-
-
-def _merge_list(base: list[str], addition: Sequence[str]) -> list[str]:
-    result = list(base)
-    seen = set(result)
-    for value in addition:
-        if value not in seen:
-            seen.add(value)
-            result.append(value)
-    return result
-
-
-def _normalise_category_mapping(
-    mapping: Mapping[str, Sequence[str]] | None,
-) -> dict[str, list[str]]:
-    if not mapping:
-        return {}
-    normalised: dict[str, list[str]] = {}
-    for key, raw_values in mapping.items():
-        key_str = key.strip()
-        if not key_str:
-            continue
-        seen: set[str] = set()
-        values: list[str] = []
-        for raw in raw_values:
-            candidate = raw.strip()
-            if not candidate:
-                continue
-            lowered = candidate.lower()
-            if lowered in seen:
-                continue
-            seen.add(lowered)
-            values.append(candidate)
-        normalised[key_str] = values
-    return normalised
-
-
-def _merge_engine_settings_map(
-    base: dict[str, EngineSettings], override: dict[str, EngineSettings]
-) -> dict[str, EngineSettings]:
-    result = _clone_engine_settings_map(base)
-    for name, override_settings in override.items():
-        if name not in result:
-            result[name] = _clone_engine_settings_map({name: override_settings})[name]
-            continue
-        target = result[name]
-        target.plugin_args = _merge_list(target.plugin_args, override_settings.plugin_args)
-        target.include = _merge_list(target.include, override_settings.include)
-        target.exclude = _merge_list(target.exclude, override_settings.exclude)
-        if override_settings.config_file is not None:
-            target.config_file = override_settings.config_file
-        if override_settings.default_profile is not None:
-            target.default_profile = override_settings.default_profile
-        for profile_name, override_profile in override_settings.profiles.items():
-            if profile_name not in target.profiles:
-                target.profiles[profile_name] = _clone_profile(override_profile)
-                continue
-            profile_target = target.profiles[profile_name]
-            if override_profile.inherit is not None:
-                profile_target.inherit = override_profile.inherit
-            if override_profile.config_file is not None:
-                profile_target.config_file = override_profile.config_file
-            profile_target.plugin_args = _merge_list(
-                profile_target.plugin_args, override_profile.plugin_args
-            )
-            profile_target.include = _merge_list(profile_target.include, override_profile.include)
-            profile_target.exclude = _merge_list(profile_target.exclude, override_profile.exclude)
-    return result
-
-
-def _clone_path_overrides(overrides: Sequence[PathOverride]) -> list[PathOverride]:
-    cloned: list[PathOverride] = []
-    for override in overrides:
-        cloned.append(
-            PathOverride(
-                path=override.path,
-                engine_settings=_clone_engine_settings_map(override.engine_settings),
-                active_profiles=dict(override.active_profiles),
-            )
-        )
-    return cloned
-
-
-def _clone_config(source: AuditConfig) -> AuditConfig:
-    return AuditConfig(
-        manifest_path=source.manifest_path,
-        full_paths=list(source.full_paths) if source.full_paths is not None else None,
-        max_depth=source.max_depth,
-        skip_current=source.skip_current,
-        skip_full=source.skip_full,
-        fail_on=source.fail_on,
-        dashboard_json=source.dashboard_json,
-        dashboard_markdown=source.dashboard_markdown,
-        dashboard_html=source.dashboard_html,
-        runners=list(source.runners) if source.runners is not None else None,
-        plugin_args={k: list(v) for k, v in source.plugin_args.items()},
-        engine_settings=_clone_engine_settings_map(source.engine_settings),
-        active_profiles=dict(source.active_profiles),
-        path_overrides=_clone_path_overrides(source.path_overrides),
-    )
-
-
-def _merge_configs(base: AuditConfig, override: AuditConfig | None) -> AuditConfig:
-    base_copy = _clone_config(base)
-    if override is None:
-        return base_copy
-
-    merged = AuditConfig(
-        manifest_path=override.manifest_path or base_copy.manifest_path,
-        full_paths=override.full_paths or base_copy.full_paths,
-        max_depth=override.max_depth or base_copy.max_depth,
-        skip_current=(
-            override.skip_current if override.skip_current is not None else base_copy.skip_current
-        ),
-        skip_full=override.skip_full if override.skip_full is not None else base_copy.skip_full,
-        fail_on=override.fail_on or base_copy.fail_on,
-        dashboard_json=override.dashboard_json or base_copy.dashboard_json,
-        dashboard_markdown=override.dashboard_markdown or base_copy.dashboard_markdown,
-        dashboard_html=override.dashboard_html or base_copy.dashboard_html,
-        runners=override.runners or base_copy.runners,
-    )
-    merged.plugin_args = {k: list(v) for k, v in base_copy.plugin_args.items()}
-    for name, values in override.plugin_args.items():
-        merged.plugin_args.setdefault(name, []).extend(values)
-    for name, values in merged.plugin_args.items():
-        deduped: list[str] = []
-        seen: set[str] = set()
-        for value in values:
-            if value not in seen:
-                seen.add(value)
-                deduped.append(value)
-        merged.plugin_args[name] = deduped
-    merged.plugin_args = dict(sorted(merged.plugin_args.items()))
-    merged.engine_settings = _merge_engine_settings_map(
-        base_copy.engine_settings, override.engine_settings
-    )
-    merged.active_profiles = dict(base_copy.active_profiles)
-    merged.active_profiles.update({k: v for k, v in override.active_profiles.items() if v})
-    merged.path_overrides = _clone_path_overrides(base_copy.path_overrides)
-    if override.path_overrides:
-        merged.path_overrides.extend(_clone_path_overrides(override.path_overrides))
-    return merged
-
-
-def _normalise_paths(project_root: Path, raw_paths: Sequence[str]) -> list[str]:
-    normalised: list[str] = []
-    seen: set[str] = set()
-    root = project_root.resolve()
-    for raw in raw_paths:
-        if not raw:
-            continue
-        candidate = Path(raw)
-        absolute = candidate if candidate.is_absolute() else (root / candidate)
-        absolute = absolute.resolve()
-        try:
-            relative = absolute.relative_to(root)
-            key = relative.as_posix()
-        except ValueError:
-            key = absolute.as_posix()
-        if key not in seen:
-            seen.add(key)
-            normalised.append(key)
-    return normalised
-
-
-def _global_fingerprint_paths(project_root: Path) -> list[str]:
-    extras: list[str] = []
-    for filename in ("typewiz.toml", ".typewiz.toml", "pyproject.toml"):
-        candidate = project_root / filename
-        if candidate.exists():
-            extras.append(filename)
-    return _normalise_paths(project_root, extras)
-
-
-def _fingerprint_targets(
-    project_root: Path,
-    mode_paths: Sequence[str],
-    default_paths: Sequence[str],
-    extra: Sequence[str] | None = None,
-) -> list[str]:
-    candidates = list(mode_paths) if mode_paths else list(default_paths)
-    candidates.extend(_global_fingerprint_paths(project_root))
-    if extra:
-        candidates.extend(extra)
-    if not candidates:
-        candidates = ["."]
-    seen: set[str] = set()
-    ordered: list[str] = []
-    for entry in candidates:
-        if entry not in seen:
-            seen.add(entry)
-            ordered.append(entry)
-    return ordered
-
-
-def _normalise_override_entries(
-    project_root: Path, override_path: Path, entries: Sequence[str]
-) -> list[str]:
-    if not entries:
-        entries = ["."]
-    normalised: list[str] = []
-    seen: set[str] = set()
-    for entry in entries:
-        candidate = Path(entry)
-        if not candidate.is_absolute():
-            candidate = (override_path / candidate).resolve()
-        try:
-            relative = candidate.resolve().relative_to(project_root.resolve()).as_posix()
-        except ValueError:
-            relative = candidate.resolve().as_posix()
-        if relative not in seen:
-            seen.add(relative)
-            normalised.append(relative)
-    return normalised
-
-
-def _relative_override_path(project_root: Path, override_path: Path) -> str:
-    try:
-        return override_path.resolve().relative_to(project_root.resolve()).as_posix()
-    except ValueError:
-        return override_path.resolve().as_posix()
-
-
-def _resolve_engine_options(
-    project_root: Path, audit_config: AuditConfig, engine: BaseEngine
-) -> EngineOptions:
-    engine_name = engine.name
-    settings = audit_config.engine_settings.get(engine_name)
-    profile_name = audit_config.active_profiles.get(engine_name)
-    if not profile_name and settings:
-        profile_name = settings.default_profile
-    profile = settings.profiles.get(profile_name) if settings and profile_name else None
-
-    plugin_args = list(audit_config.plugin_args.get(engine_name, []))
-    if settings:
-        plugin_args = _merge_list(plugin_args, settings.plugin_args)
-    if profile:
-        plugin_args = _merge_list(plugin_args, profile.plugin_args)
-
-    include_raw: list[str] = []
-    exclude_raw: list[str] = []
-    if settings:
-        include_raw = _merge_list(include_raw, settings.include)
-        exclude_raw = _merge_list(exclude_raw, settings.exclude)
-    if profile:
-        include_raw = _merge_list(include_raw, profile.include)
-        exclude_raw = _merge_list(exclude_raw, profile.exclude)
-
-    include = _normalise_paths(project_root, include_raw)
-    exclude = _normalise_paths(project_root, exclude_raw)
-
-    config_file = None
-    if profile and profile.config_file:
-        config_file = profile.config_file
-    elif settings and settings.config_file:
-        config_file = settings.config_file
-
-    def _override_sort_key(item: PathOverride) -> tuple[int, str]:
-        try:
-            rel = item.path.resolve().relative_to(project_root.resolve())
-            depth = len(rel.parts)
-        except ValueError:
-            depth = len(item.path.resolve().parts)
-        return (depth, item.path.as_posix())
-
-    overrides = sorted(audit_config.path_overrides, key=_override_sort_key)
-    applied_details: list[dict[str, object]] = []
-
-    for override in overrides:
-        before_profile = profile_name
-        before_args = list(plugin_args)
-        before_include = list(include)
-        before_exclude = list(exclude)
-
-        override_profile = override.active_profiles.get(engine_name)
-        if override_profile:
-            profile_name = override_profile
-        path_settings = override.engine_settings.get(engine_name)
-        include_override: list[str] = []
-        exclude_override: list[str] = []
-        if path_settings:
-            plugin_args = _merge_list(plugin_args, path_settings.plugin_args)
-            include_override = _normalise_override_entries(
-                project_root, override.path, path_settings.include
-            )
-            exclude_override = _normalise_override_entries(
-                project_root, override.path, path_settings.exclude
-            )
-            include = _merge_list(include, include_override)
-            exclude = _merge_list(exclude, exclude_override)
-            if path_settings.config_file:
-                config_file = path_settings.config_file
-            if path_settings.default_profile:
-                profile_name = path_settings.default_profile
-        profile_override = None
-        if path_settings and profile_name and path_settings.profiles:
-            profile_override = path_settings.profiles.get(profile_name)
-        if profile_override:
-            plugin_args = _merge_list(plugin_args, profile_override.plugin_args)
-            include_profile_override = _normalise_override_entries(
-                project_root, override.path, profile_override.include
-            )
-            exclude_profile_override = _normalise_override_entries(
-                project_root, override.path, profile_override.exclude
-            )
-            include = _merge_list(include, include_profile_override)
-            exclude = _merge_list(exclude, exclude_profile_override)
-            include_override = _merge_list(include_override, include_profile_override)
-            exclude_override = _merge_list(exclude_override, exclude_profile_override)
-            if profile_override.config_file:
-                config_file = profile_override.config_file
-
-        after_args = [arg for arg in plugin_args if arg not in before_args]
-        after_include = [item for item in include if item not in before_include]
-        after_exclude = [item for item in exclude if item not in before_exclude]
-        profile_changed = profile_name != before_profile and profile_name is not None
-
-        if profile_changed or after_args or after_include or after_exclude:
-            entry: dict[str, object] = {
-                "path": _relative_override_path(project_root, override.path),
-            }
-            if profile_changed:
-                entry["profile"] = profile_name
-            if after_args:
-                entry["pluginArgs"] = after_args
-            if after_include:
-                entry["include"] = after_include
-            if after_exclude:
-                entry["exclude"] = after_exclude
-            applied_details.append(entry)
-
-    # Query engine-provided category mapping for readiness analysis.
-    cat_map_input = cast(Mapping[str, Sequence[str]] | None, engine.category_mapping())
-
-    return EngineOptions(
-        plugin_args=plugin_args,
-        config_file=config_file,
-        include=include,
-        exclude=exclude,
-        profile=profile_name,
-        overrides=applied_details,
-        category_mapping=_normalise_category_mapping(cat_map_input),
-    )
-
-
-def _path_matches(candidate: str, pattern: str) -> bool:
-    if not pattern:
-        return False
-    candidate_norm = candidate.rstrip("/")
-    pattern_norm = pattern.rstrip("/")
-    if candidate_norm == pattern_norm:
-        return True
-    if pattern_norm and candidate_norm.startswith(f"{pattern_norm}/"):
-        return True
-    return False
-
-
-def _apply_engine_paths(
-    default_paths: Sequence[str], include: Sequence[str], exclude: Sequence[str]
-) -> list[str]:
-    ordered: list[str] = []
-    seen: set[str] = set()
-
-    def _add(path: str) -> None:
-        if path and path not in seen:
-            seen.add(path)
-            ordered.append(path)
-
-    for path in default_paths:
-        _add(path)
-    for path in include:
-        _add(path)
-
-    if not exclude:
-        return ordered
-
-    filtered = [
-        path for path in ordered if not any(_path_matches(path, pattern) for pattern in exclude)
-    ]
-    return filtered or ordered
 
 
 def run_audit(
@@ -444,8 +47,9 @@ def run_audit(
     write_manifest_to: Path | None = None,
     build_summary_output: bool = False,
 ) -> AuditResult:
+    """Run configured engines, persist artefacts, and collate diagnostics."""
     cfg = config or load_config(None)
-    audit_config = _merge_configs(cfg.audit, override)
+    audit_config = merge_audit_configs(cfg.audit, override)
 
     root = resolve_project_root(project_root)
     raw_full_paths = (
@@ -456,7 +60,7 @@ def run_audit(
             "No directories to scan; configure 'full_paths' or pass 'full_paths' argument"
         )
 
-    full_paths_normalised = _normalise_paths(root, raw_full_paths)
+    full_paths_normalised = normalise_paths(root, raw_full_paths)
     engines = resolve_engines(audit_config.runners)
     # Resolve tool versions once to incorporate into cache keys
     tool_versions = detect_tool_versions([e.name for e in engines])
@@ -465,7 +69,7 @@ def run_audit(
 
     runs: list[RunResult] = []
     for engine in engines:
-        engine_options = _resolve_engine_options(root, audit_config, engine)
+        engine_options = resolve_engine_options(root, audit_config, engine)
         for mode in ("current", "full"):
             if mode == "current" and audit_config.skip_current:
                 continue
@@ -478,157 +82,19 @@ def run_audit(
                 mode=mode,
                 engine_options=engine_options,
             )
-            base_paths = full_paths_normalised if mode == "full" else []
-            mode_paths = (
-                _apply_engine_paths(base_paths, engine_options.include, engine_options.exclude)
-                if mode == "full"
-                else []
+            run_result, truncated = execute_engine_mode(
+                engine=engine,
+                mode=mode,
+                context=context,
+                audit_config=audit_config,
+                cache=cache,
+                tool_versions=tool_versions,
+                root=root,
+                full_paths_normalised=full_paths_normalised,
             )
-            cache_flags = list(engine_options.plugin_args)
-            if engine_options.profile:
-                cache_flags.append(f"profile={engine_options.profile}")
-            if engine_options.config_file:
-                cfg_path = engine_options.config_file
-                cache_flags.append(f"config={cfg_path.as_posix()}")
-                try:
-                    fp = fingerprint_path(cfg_path)
-                    if "hash" in fp:
-                        cache_flags.append(f"config_hash={fp['hash']}")
-                    if "mtime" in fp:
-                        cache_flags.append(f"config_mtime={fp['mtime']}")
-                except Exception:
-                    pass
-            cache_flags.extend(f"include={path}" for path in engine_options.include)
-            cache_flags.extend(f"exclude={path}" for path in engine_options.exclude)
-            # include tool version to avoid stale cache across upgrades
-            version = tool_versions.get(engine.name)
-            if version:
-                cache_flags.append(f"version={version}")
-            cache_key = cache.key_for(engine.name, mode, mode_paths, cache_flags)
-            prev_hashes = cache.peek_file_hashes(cache_key)
-            fingerprint_provider = cast(
-                Callable[[EngineContext, Sequence[str]], Sequence[str]],
-                engine.fingerprint_targets,
-            )
-            engine_fingerprints = _normalise_paths(
-                root,
-                fingerprint_provider(context, mode_paths),
-            )
-            fingerprint_targets = _fingerprint_targets(
-                root,
-                mode_paths,
-                full_paths_normalised,
-                extra=engine_fingerprints,
-            )
-            file_hashes, truncated = collect_file_hashes(
-                root,
-                fingerprint_targets,
-                respect_gitignore=bool(audit_config.respect_gitignore),
-                max_files=audit_config.max_files,
-                baseline=prev_hashes,
-                max_bytes=getattr(audit_config, "max_bytes", None),
-            )
+            runs.append(run_result)
             if truncated:
                 fingerprint_truncated_any = True
-
-            cached_run = cache.get(cache_key, file_hashes)
-            if cached_run:
-                logger.info("Using cached diagnostics for %s:%s", engine.name, mode)
-                runs.append(
-                    RunResult(
-                        tool=engine.name,
-                        mode=mode,
-                        command=list(cached_run.command),
-                        exit_code=cached_run.exit_code,
-                        duration_ms=cached_run.duration_ms,
-                        diagnostics=list(cached_run.diagnostics),
-                        cached=True,
-                        profile=cached_run.profile,
-                        config_file=cached_run.config_file,
-                        plugin_args=list(cached_run.plugin_args),
-                        include=list(cached_run.include),
-                        exclude=list(cached_run.exclude),
-                        overrides=[dict(item) for item in cached_run.overrides],
-                        category_mapping={
-                            k: list(v) for k, v in cached_run.category_mapping.items()
-                        },
-                        tool_summary=(
-                            dict(cached_run.tool_summary)
-                            if isinstance(cached_run.tool_summary, dict)
-                            else None
-                        ),
-                        scanned_paths=list(mode_paths),
-                    )
-                )
-                continue
-
-            try:
-                result = engine.run(context, mode_paths)
-            except Exception as exc:
-                # Structured engine failure; record and continue
-                runs.append(
-                    RunResult(
-                        tool=engine.name,
-                        mode=mode,
-                        command=[engine.name, mode],
-                        exit_code=1,
-                        duration_ms=0.0,
-                        diagnostics=[],
-                        cached=False,
-                        profile=engine_options.profile,
-                        config_file=engine_options.config_file,
-                        plugin_args=list(engine_options.plugin_args),
-                        include=list(engine_options.include),
-                        exclude=list(engine_options.exclude),
-                        overrides=[dict(item) for item in engine_options.overrides],
-                        category_mapping={k: list(v) for k, v in engine_options.category_mapping.items()},
-                        tool_summary=None,
-                        scanned_paths=list(mode_paths),
-                        engine_error={"message": str(exc), "exitCode": 1},
-                    )
-                )
-                continue
-            logger.info("Running %s:%s (%s)", engine.name, mode, " ".join(result.command))
-
-            cache.update(
-                cache_key,
-                file_hashes,
-                result.command,
-                result.exit_code,
-                result.duration_ms,
-                result.diagnostics,
-                profile=engine_options.profile,
-                config_file=engine_options.config_file,
-                plugin_args=engine_options.plugin_args,
-                include=engine_options.include,
-                exclude=engine_options.exclude,
-                overrides=engine_options.overrides,
-                category_mapping=engine_options.category_mapping,
-                tool_summary=result.tool_summary,
-            )
-
-            runs.append(
-                RunResult(
-                    tool=result.engine,
-                    mode=result.mode,
-                    command=list(result.command),
-                    exit_code=result.exit_code,
-                    duration_ms=result.duration_ms,
-                    diagnostics=list(result.diagnostics),
-                    cached=False,
-                    profile=engine_options.profile,
-                    config_file=engine_options.config_file,
-                    plugin_args=list(engine_options.plugin_args),
-                    include=list(engine_options.include),
-                    exclude=list(engine_options.exclude),
-                    overrides=[dict(item) for item in engine_options.overrides],
-                    category_mapping={
-                        k: list(v) for k, v in engine_options.category_mapping.items()
-                    },
-                    tool_summary=(result.tool_summary if hasattr(result, "tool_summary") else None),
-                    scanned_paths=list(mode_paths),
-                )
-            )
 
     cache.save()
 
