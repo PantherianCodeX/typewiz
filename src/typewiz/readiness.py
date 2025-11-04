@@ -35,7 +35,7 @@ CATEGORY_LABELS = {
 
 
 def _bucket_code_counts(code_counts: dict[str, int]) -> dict[str, int]:
-    buckets = {category: 0 for category in CATEGORY_PATTERNS}
+    buckets = dict.fromkeys(CATEGORY_PATTERNS, 0)
     for rule, count in code_counts.items():
         lowered = rule.lower()
         matched_category = None
@@ -130,7 +130,7 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPayl
     for entry in folder_entries:
         raw_category_counts = entry.get("categoryCounts") or {}
         if raw_category_counts:
-            categories = {category: 0 for category in CATEGORY_PATTERNS}
+            categories = dict.fromkeys(CATEGORY_PATTERNS, 0)
             general_extra = 0
             for category, count in raw_category_counts.items():
                 try:

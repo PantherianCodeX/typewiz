@@ -14,7 +14,7 @@ logger = logging.getLogger("typewiz")
 
 # JSON typing helpers
 # A recursive JSON value used for parsing engine outputs safely.
-JSONValue: TypeAlias = str | int | float | bool | None | dict[str, "JSONValue"] | list["JSONValue"]  # noqa: UP040
+JSONValue: TypeAlias = str | int | float | bool | None | dict[str, "JSONValue"] | list["JSONValue"]
 JSONMapping: TypeAlias = dict[str, JSONValue]
 JSONList: TypeAlias = list[JSONValue]
 
@@ -38,7 +38,7 @@ def run_command(args: Iterable[str], cwd: Path | None = None) -> CommandOutput:
     argv = list(args)
     start = time.perf_counter()
     logger.debug("Executing command: %s", " ".join(argv))
-    completed = subprocess.run(  # noqa: S603 - command arguments controlled by caller
+    completed = subprocess.run(  # noqa: S603 - command arguments provided by caller
         argv,
         cwd=str(cwd) if cwd else None,
         capture_output=True,
