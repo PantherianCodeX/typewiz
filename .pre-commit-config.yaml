@@ -10,32 +10,26 @@ repos:
       - id: check-yaml
       - id: check-toml
 
-  # Formatting handled by Ruff's formatter
-
-  # Import sorting is enforced by Ruff (rule set I)
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.1
-    hooks:
-      - id: ruff
-        args: ["--fix"]
-      - id: ruff-format
-
+  # Use Makefile targets as the single source of truth
   - repo: local
     hooks:
-      - id: pyright
-        name: pyright
-        entry: pyright -p pyrightconfig.json
+      - id: ruff-format
+        name: ruff-format (make)
+        entry: make format
         language: system
         pass_filenames: false
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.2
-    hooks:
-      - id: mypy
-        args: ["--config-file", "mypy.ini"]
-        language_version: python3.12
+      - id: ruff-lint
+        name: ruff check (make)
+        entry: make lint.ruff
+        language: system
         pass_filenames: false
-        additional_dependencies:
-          - pydantic>=2.7,<3
-          - pytest>=8
+      - id: pyright
+        name: pyright (make)
+        entry: make type.pyright
+        language: system
+        pass_filenames: false
+      - id: mypy
+        name: mypy (make)
+        entry: make type.mypy
+        language: system
+        pass_filenames: false

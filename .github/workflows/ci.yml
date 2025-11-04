@@ -33,25 +33,11 @@ jobs:
           python -m pip install -U pip
           pip install -r requirements-dev.txt
 
-      - name: Lint (ruff)
-        run: .venv/bin/ruff check
-
-      - name: Type check (mypy)
-        run: .venv/bin/mypy
-
-      - name: Type check (pyright)
-        run: .venv/bin/pyright -p pyrightconfig.json
-
-      - name: Tests (pytest)
-        run: .venv/bin/pytest -q
+      - name: CI checks (lint + type + tests)
+        run: .venv/bin/make ci.check
 
       - name: Typewiz CI dashboard (optional)
-        run: |
-          .venv/bin/mkdir -p reports/typing
-          .venv/bin/typewiz audit --max-depth 3 --mode full --manifest reports/typing/typing_audit.json --readiness --readiness-status blocked --readiness-status ready || true
-          .venv/bin/typewiz dashboard --manifest reports/typing/typing_audit.json --format json --output reports/typing/dashboard.json || true
-          .venv/bin/typewiz dashboard --manifest reports/typing/typing_audit.json --format markdown --output reports/typing/dashboard.md || true
-          .venv/bin/typewiz dashboard --manifest reports/typing/typing_audit.json --format html --output reports/typing/dashboard.html || true
+        run: .venv/bin/make typing.ci || true
 
       - name: Upload typing artifacts
         if: always()

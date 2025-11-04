@@ -421,3 +421,27 @@ except TypewizValidationError as exc:
     # Handle or log validation details
     print("Config invalid:", exc)
 ```
+## Make Targets
+
+Use the Makefile to run common workflows with consistent settings:
+
+- Lint & format
+  - `make lint` – Ruff lint + format check
+  - `make format` – Apply Ruff formatter
+  - `make fix` – Apply formatter and auto-fix lints
+
+- Typing
+  - `make type` – Run mypy + pyright
+  - `make typing.run` – Baseline (pyright + mypy) and strict pass
+  - `make typing.ci` – Generate Typewiz manifest and dashboards (JSON/MD/HTML)
+
+- Tests
+  - `make pytest.all` or `make tests.all` – Run pytest
+  - `make pytest.verbose` or `make tests.verbose`
+  - `make pytest.failfast` or `make tests.failfast`
+  - `make pytest.cov` or `make tests.cov`
+
+- CI aggregate
+  - `make ci.check` – Lint, type checks, and tests
+
+Run `make help` for grouped help and `make <group>.help` for a subset (e.g., `tests.help`).
