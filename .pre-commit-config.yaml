@@ -18,18 +18,8 @@ repos:
         entry: make format
         language: system
         pass_filenames: false
-      - id: ruff-lint
-        name: ruff check (make)
-        entry: make lint.ruff
-        language: system
-        pass_filenames: false
-      - id: pyright
-        name: pyright (make)
-        entry: make type.pyright
-        language: system
-        pass_filenames: false
-      - id: mypy
-        name: mypy (make)
-        entry: make type.mypy
+      - id: precommit-check
+        name: lint + typing (make)
+        entry: make precommit.check
         language: system
         pass_filenames: false

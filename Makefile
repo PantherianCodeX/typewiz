@@ -28,6 +28,7 @@ TYPEWIZ_LIMIT ?= 20
   type type.mypy type.pyright typing.run typing.baseline typing.strict typing.ci \
   pytest.all pytest.verbose pytest.failfast pytest.cov pytest.clean \
   tests.all tests.verbose tests.failfast tests.cov tests.clean \
+  precommit.check \
   typewiz.audit typewiz.dashboard typewiz.readiness typewiz.clean \
   clean.all clean.mypy clean.pyright clean.pycache clean.coverage
 
@@ -61,7 +62,7 @@ lint.ruff: ## Run ruff lint
 	$(RUFF) check
 
 lint.format: ## Run ruff format check (no changes)
-	$(RUFF) format --check || true
+	$(RUFF) format --check
 
 format: ## Apply ruff formatter
 	$(RUFF) format
@@ -69,6 +70,19 @@ format: ## Apply ruff formatter
 fix: ## Apply ruff formatter and autofix lints
 	$(RUFF) format
 	$(RUFF) check --fix
+
+##@ Pre-commit
+precommit.check: ## Run lint (ruff) and typing checks in parallel (used by pre-commit)
+	@set -euo pipefail; \
+	 $(MAKE) lint.ruff & \
+	 lint_pid=$$!; \
+	 $(MAKE) type.mypy & \
+	 mypy_pid=$$!; \
+	 $(MAKE) type.pyright & \
+	 pyright_pid=$$!; \
+	 wait $$lint_pid; \
+	 wait $$mypy_pid; \
+	 wait $$pyright_pid
 
 ##@ Typing
 type: type.mypy type.pyright ## Run mypy + pyright
