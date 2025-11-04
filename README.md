@@ -365,3 +365,59 @@ When `typewiz` writes dashboards during `audit`, you can control the default HTM
    - Ship VS Code/IDE tasks that hydrate profiles and dashboards
    - Grow first-party engines (Pyre, Pytype) once profile API is stable
    - Prepare for PyPI release with migration guide covering new config surface
+### Manifest validation and schema
+
+Typewiz includes a Pydantic-backed manifest validator and a CLI to emit the JSON Schema:
+
+- Validate an existing manifest file:
+
+  `typewiz manifest validate path/to/manifest.json`
+
+  If the optional `jsonschema` package is available, the CLI also validates against the
+  generated schema and reports any schema errors.
+
+- Emit the manifest JSON Schema:
+
+  `typewiz manifest schema --output schemas/typing-manifest.schema.json`
+
+Programmatic validation is available via `typewiz.manifest_models.validate_manifest_payload`.
+Validation errors raise `TypewizValidationError` with access to the underlying Pydantic
+`ValidationError` for detailed diagnostics.
+
+### Exception Reference
+
+Typewiz exposes a small, precise exception hierarchy to enable robust error handling.
+
+- `typewiz.TypewizError` (base): Base class for all Typewiz-specific exceptions.
+- `typewiz.TypewizValidationError`: Raised for validation failures (e.g., manifest or config parsing).
+- `typewiz.TypewizTypeError`: Raised when runtime inputs have invalid types.
+
+Config-specific exceptions (raised from `typewiz.config`):
+- `ConfigValidationError`: Base for config validation issues.
+- `ConfigFieldTypeError`: Field has the wrong type (e.g., `fail_on` not a string).
+- `ConfigFieldChoiceError`: Field value not among allowed choices (e.g., `fail_on`).
+- `UndefinedDefaultProfileError`: Default profile not found among declared profiles.
+- `UnknownEngineProfileError`: Active profile references an unknown engine profile.
+- `UnsupportedConfigVersionError`: Config declares an unsupported schema version.
+- `ConfigReadError`: Underlying I/O failure reading a config file.
+- `DirectoryOverrideValidationError`: Invalid directory override file.
+- `InvalidConfigFileError`: Invalid top-level config file.
+
+Dashboard:
+- `DashboardTypeError`: Unexpected types in readiness/dashboard inputs.
+
+Manifest:
+- `ManifestValidationError`: Wraps a Pydantic `ValidationError` for manifest payloads.
+
+Example usage:
+
+```
+from typewiz import TypewizValidationError
+from typewiz.config import load_config
+
+try:
+    cfg = load_config()
+except TypewizValidationError as exc:
+    # Handle or log validation details
+    print("Config invalid:", exc)
+```

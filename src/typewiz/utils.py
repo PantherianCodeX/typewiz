@@ -14,9 +14,7 @@ logger = logging.getLogger("typewiz")
 
 # JSON typing helpers
 # A recursive JSON value used for parsing engine outputs safely.
-JSONValue: TypeAlias = (
-    str | int | float | bool | None | dict[str, "JSONValue"] | list["JSONValue"]
-)  # noqa: UP040
+JSONValue: TypeAlias = str | int | float | bool | None | dict[str, "JSONValue"] | list["JSONValue"]  # noqa: UP040
 JSONMapping: TypeAlias = dict[str, JSONValue]
 JSONList: TypeAlias = list[JSONValue]
 

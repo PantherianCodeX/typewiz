@@ -2,27 +2,61 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install tox
-        run: |
-          python -m pip install --upgrade pip
-          pip install tox
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-      - name: Run tox (tests + typing)
-        run: tox -e py312,mypy,pyright
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          python -m pip install -U pip
+          pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: .venv/bin/ruff check
+
+      - name: Type check (mypy)
+        run: .venv/bin/mypy
+
+      - name: Type check (pyright)
+        run: .venv/bin/pyright -p pyrightconfig.json
+
+      - name: Tests (pytest)
+        run: .venv/bin/pytest -q
+
+      - name: Typewiz CI dashboard (optional)
+        run: |
+          .venv/bin/mkdir -p reports/typing
+          .venv/bin/typewiz audit --max-depth 3 --mode full --manifest reports/typing/typing_audit.json --readiness --readiness-status blocked --readiness-status ready || true
+          .venv/bin/typewiz dashboard --manifest reports/typing/typing_audit.json --format json --output reports/typing/dashboard.json || true
+          .venv/bin/typewiz dashboard --manifest reports/typing/typing_audit.json --format markdown --output reports/typing/dashboard.md || true
+          .venv/bin/typewiz dashboard --manifest reports/typing/typing_audit.json --format html --output reports/typing/dashboard.html || true
+
+      - name: Upload typing artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typing-reports
+          path: reports/typing
+          if-no-files-found: ignore

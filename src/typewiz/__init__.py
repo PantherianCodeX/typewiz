@@ -10,6 +10,11 @@ from __future__ import annotations
 from .api import AuditResult, run_audit  # noqa: F401
 from .config import AuditConfig, Config, load_config  # noqa: F401
 from .dashboard import build_summary, load_manifest, render_markdown  # noqa: F401
+from .exceptions import (  # noqa: F401
+    TypewizError,
+    TypewizTypeError,
+    TypewizValidationError,
+)
 from .html_report import render_html  # noqa: F401
 from .summary_types import SummaryData  # noqa: F401
 from .typed_manifest import ToolSummary  # noqa: F401
@@ -30,6 +35,9 @@ __all__ = [
     "Diagnostic",
     "RunResult",
     "ToolSummary",
+    "TypewizError",
+    "TypewizValidationError",
+    "TypewizTypeError",
 ]
 
 __version__ = "0.2.0"

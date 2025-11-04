@@ -12,10 +12,9 @@ from typing import TYPE_CHECKING, Any, Literal
 from .api import run_audit
 from .cli_helpers import collect_plugin_args as helpers_collect_plugin_args
 from .cli_helpers import collect_profile_args as helpers_collect_profile_args
-from .cli_helpers import format_list
+from .cli_helpers import format_list, render_data_structure
 from .cli_helpers import normalise_modes as helpers_normalise_modes
 from .cli_helpers import parse_summary_fields as helpers_parse_summary_fields
-from .cli_helpers import render_data_structure
 from .config import AuditConfig, load_config
 from .dashboard import build_summary, load_manifest, render_markdown
 from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list

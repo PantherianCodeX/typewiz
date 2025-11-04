@@ -125,6 +125,28 @@ def test_validate_manifest_payload_rejects_invalid_tool() -> None:
     assert coerced["runs"] == []
 
 
+def test_validate_manifest_payload_accepts_missing_optionals() -> None:
+    # Drop optional fields and ensure validation still passes
+    manifest = _sample_manifest()
+    md = cast("dict[str, Any]", manifest)
+    run = cast("dict[str, Any]", md["runs"][0])
+    run.pop("toolSummary")
+    run.pop("engineArgsEffective", None)
+    run.pop("scannedPathsResolved", None)
+    validated = validate_manifest_payload(manifest)
+    vd = cast("dict[str, Any]", validated)
+    assert "toolSummary" not in vd["runs"][0]
+
+
+def test_validate_manifest_payload_rejects_malformed_perfile() -> None:
+    manifest = _sample_manifest()
+    md = cast("dict[str, Any]", manifest)
+    run = cast("dict[str, Any]", md["runs"][0])
+    run["perFile"] = [{}]
+    with pytest.raises(ManifestValidationError):
+        validate_manifest_payload(manifest)
+
+
 def test_manifest_schema_cli_round_trip(tmp_path: Path) -> None:
     manifest = _sample_manifest()
     schema_path = tmp_path / "manifest.schema.json"

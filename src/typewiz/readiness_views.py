@@ -66,7 +66,8 @@ class FileReadinessRecord:
         if self.categories:
             payload["categories"] = dict(self.categories)
         if self.category_status:
-            payload["category_status"] = dict(self.category_status)
+            # Normalise to camelCase used across summary structures
+            payload["categoryStatus"] = dict(self.category_status)
         return payload
 
 

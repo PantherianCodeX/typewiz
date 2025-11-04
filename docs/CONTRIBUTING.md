@@ -26,7 +26,7 @@ This project uses strict typing and automated hooks to keep quality high.
 
 ## What the hooks do
 
-- Formatting: Black, isort
+- Formatting and imports: Ruff (formatter + I rules)
 - Linting: Ruff (with autofix)
 - Typing: pyright (strict) and mypy (strict)
 - Tests: pytest
