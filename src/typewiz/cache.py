@@ -6,9 +6,10 @@ import logging
 import os
 import shutil
 from collections.abc import Iterable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, Final, TypedDict, cast
 
 from .data_validation import coerce_int, coerce_object_list, coerce_str_list
 from .model_types import clone_override_entries
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
 logger: logging.Logger = logging.getLogger("typewiz.cache")
 CACHE_DIRNAME = ".typewiz_cache"
 CACHE_FILENAME = "cache.json"
+_HASH_WORKER_ENV: Final[str] = "TYPEWIZ_HASH_WORKERS"
 
 
 def _default_list_str() -> list[str]:
@@ -74,6 +76,41 @@ class CachedRun:
     overrides: list[OverrideEntry] = field(default_factory=_default_list_dict_obj)
     category_mapping: CategoryMapping = field(default_factory=_default_dict_str_liststr)
     tool_summary: ToolSummary | None = None
+
+
+def _resolve_hash_workers() -> int:
+    raw = os.getenv(_HASH_WORKER_ENV)
+    if raw is None:
+        return 0
+    value = raw.strip().lower()
+    if not value:
+        return 0
+    if value == "auto":
+        return max(1, os.cpu_count() or 1)
+    try:
+        parsed = int(value)
+    except ValueError:
+        logger.debug("Ignoring invalid %s=%s value", _HASH_WORKER_ENV, raw)
+        return 0
+    return max(0, parsed)
+
+
+def _compute_hashes(
+    pending: Sequence[tuple[PathKey, Path]],
+    workers: int,
+) -> dict[PathKey, FileHashPayload]:
+    if not pending:
+        return {}
+    if workers <= 1:
+        return {key: _fingerprint(path) for key, path in pending}
+    hashes: dict[PathKey, FileHashPayload] = {}
+    max_workers = workers
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = {executor.submit(_fingerprint, path): key for key, path in pending}
+        for future in as_completed(future_map):
+            key = future_map[future]
+            hashes[key] = future.result()
+    return hashes
 
 
 def _normalise_category_mapping(
@@ -502,22 +539,36 @@ def collect_file_hashes(
     hashes: dict[PathKey, FileHashPayload] = {}
     seen: set[PathKey] = set()
     project_root = project_root.resolve()
-    allowed_git_files: set[str] | None = None
+    allowed_project_files: set[str] | None = None
     if respect_gitignore:
         repo_root = _git_repo_root(project_root)
         if repo_root:
-            allowed_git_files = _git_list_files(repo_root)
+            git_files = _git_list_files(repo_root)
+            if git_files:
+                allowed_project_files = set()
+                for rel_path in git_files:
+                    abs_path = (repo_root / rel_path).resolve()
+                    try:
+                        rel_to_project = abs_path.relative_to(project_root)
+                    except ValueError:
+                        continue
+                    allowed_project_files.add(rel_to_project.as_posix())
     truncated = False
     bytes_budget = max_bytes if isinstance(max_bytes, int) and max_bytes >= 0 else None
     bytes_seen = 0
+    pending: list[tuple[PathKey, Path]] = []
+    stop = False
+    hash_workers = _resolve_hash_workers()
 
-    def _maybe_add(file_path: Path) -> bool:
-        nonlocal truncated, bytes_seen
+    def _maybe_add(file_path: Path) -> None:
+        nonlocal truncated, bytes_seen, stop
+        if stop:
+            return
         key = _relative_key(project_root, file_path)
         if key in seen:
-            return True
-        if allowed_git_files is not None and str(key) not in allowed_git_files:
-            return True
+            return
+        if allowed_project_files is not None and str(key) not in allowed_project_files:
+            return
         try:
             st = file_path.stat()
         except FileNotFoundError:
@@ -537,20 +588,22 @@ def collect_file_hashes(
             if prev_mtime == cur_mtime and prev_size == cur_size:
                 hashes[key] = cast("FileHashPayload", dict(prev))
                 seen.add(key)
-                return not (max_files is not None and len(seen) >= max_files)
-        # size budget check before hashing to avoid heavy IO
+                if max_files is not None and len(seen) >= max_files:
+                    truncated = True
+                    stop = True
+                return
         if bytes_budget is not None:
             size = int(getattr(st, "st_size", 0)) if st is not None else 0
             if bytes_seen + size > bytes_budget:
                 truncated = True
-                return False
+                stop = True
+                return
             bytes_seen += size
-        hashes[key] = _fingerprint(file_path)
         seen.add(key)
+        pending.append((key, file_path))
         if max_files is not None and len(seen) >= max_files:
             truncated = True
-            return False
-        return True
+            stop = True
 
     for path_str in sorted({path for path in paths if path}):
         raw_path = Path(path_str)
@@ -558,14 +611,24 @@ def collect_file_hashes(
         absolute = absolute.resolve()
         if absolute.is_dir():
             for root, dirs, files in os.walk(absolute, followlinks=False):
-                dirs[:] = [d for d in dirs if not (Path(root) / d).is_symlink()]
+                dirs[:] = sorted(d for d in dirs if not (Path(root) / d).is_symlink())
                 for fname in sorted(files):
                     if not (fname.endswith(".py") or fname.endswith(".pyi")):
                         continue
-                    if not _maybe_add(Path(root) / fname):
-                        return (dict(sorted(hashes.items())), truncated)
-        elif absolute.is_file() and not _maybe_add(absolute):
-            return (dict(sorted(hashes.items())), truncated)
+                    _maybe_add(Path(root) / fname)
+                    if stop:
+                        break
+                if stop:
+                    break
+            if stop:
+                break
+        elif absolute.is_file():
+            _maybe_add(absolute)
+            if stop:
+                break
+
+    new_hashes = _compute_hashes(pending, hash_workers)
+    hashes.update(new_hashes)
     ordered_hashes: dict[PathKey, FileHashPayload] = dict(
         sorted(hashes.items(), key=lambda item: str(item[0]))
     )

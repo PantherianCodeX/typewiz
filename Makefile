@@ -28,6 +28,7 @@ TYPEWIZ_LIMIT ?= 20
   type type.mypy type.pyright type.verify typing.run typing.baseline typing.strict typing.ci \
   pytest.all pytest.verbose pytest.failfast pytest.cov pytest.clean \
   tests.all tests.verbose tests.failfast tests.cov tests.clean \
+  bench \
   precommit.check \
   typewiz.audit typewiz.dashboard typewiz.readiness typewiz.clean \
   clean.all clean.mypy clean.pyright clean.pycache clean.coverage
@@ -197,6 +198,10 @@ tests.verbose: ## Alias for pytest.verbose
 
 tests.failfast: ## Alias for pytest.failfast
 	@$(MAKE) pytest.failfast
+
+##@ Benchmarks
+bench: ## Run performance benchmarks (requires pytest-benchmark plugin)
+	$(PYTEST) tests/perf/test_benchmarks.py --benchmark-only
 
 tests.cov: ## Alias for pytest.cov
 	@$(MAKE) pytest.cov

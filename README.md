@@ -270,6 +270,9 @@ type stubs can keep stale results alive. Delete `.typewiz_cache/` after dependen
 alter tool behaviour to force a fresh run. Cached runs still include the upstream `toolSummary` block so manifests
 capture the raw totals reported by each engine, even when served from the cache.
 
+Set `TYPEWIZ_HASH_WORKERS=auto` (or a positive integer) to parallelise fingerprint hashing across threads when large
+projects need faster cache refreshes. Leave it unset to keep the default sequential strategy.
+
 Every manifest entry also records the resolved engine options (`engineOptions` block) so you can trace which profile, config file, include/exclude directives, and plugin arguments produced a run.
 
 ### Logging
@@ -452,6 +455,8 @@ Use the Makefile to run common workflows with consistent settings:
   - `make pytest.verbose` or `make tests.verbose`
   - `make pytest.failfast` or `make tests.failfast`
   - `make pytest.cov` or `make tests.cov`
+- Benchmarks
+  - `make bench` – Run readiness/aggregate benchmarks (skips if `pytest-benchmark` is unavailable)
 
 - CI aggregate
   - `make ci.check` – Lint, type checks, and tests
