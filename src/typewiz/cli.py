@@ -20,6 +20,7 @@ from .config import AuditConfig, load_config
 from .dashboard import build_summary, load_manifest, render_markdown
 from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
 from .html_report import render_html
+from .logging_utils import LOG_FORMATS, configure_logging
 from .manifest_models import (
     ManifestValidationError,
     manifest_json_schema,
@@ -40,6 +41,9 @@ if TYPE_CHECKING:
 
 SUMMARY_FIELD_CHOICES = {"profile", "config", "plugin-args", "paths", "overrides"}
 logger: logging.Logger = logging.getLogger("typewiz.cli")
+
+
+"""CLI helpers and command definitions for Typewiz."""
 
 
 CONFIG_TEMPLATE = dedent(
@@ -415,6 +419,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         prog="typewiz",
         description="Collect typing diagnostics and readiness insights for Python projects.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--log-format",
+        choices=LOG_FORMATS,
+        default="text",
+        help="Select logging output format (human-readable text or structured JSON).",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -845,6 +855,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     readiness.add_argument("--limit", type=int, default=10)
 
     args = parser.parse_args(list(argv) if argv is not None else None)
+    from contextlib import suppress
+
+    with suppress(Exception):  # best-effort logger init
+        configure_logging(args.log_format)
 
     if args.command == "init":
         return _write_config_template(args.output, force=args.force)

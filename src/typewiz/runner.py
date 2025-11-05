@@ -29,7 +29,11 @@ def run_pyright(
     mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
-    logger.info("Running pyright (%s)", " ".join(command))
+    logger.info(
+        "Running pyright (%s)",
+        " ".join(command),
+        extra={"component": "engine", "tool": "pyright"},
+    )
     result = run_command(command, cwd=project_root)
     payload_str = result.stdout or result.stderr
     payload: dict[str, JSONValue] = require_json(payload_str)
@@ -85,7 +89,7 @@ def run_pyright(
             or parsed_warnings != tool_summary.get("warnings", parsed_warnings)
             or parsed_total != tool_summary.get("total", parsed_total)
         ):
-            logger.warning(
+            logging.warning(
                 "pyright summary mismatch: parsed=%s/%s/%s tool=%s/%s/%s",
                 parsed_errors,
                 parsed_warnings,
@@ -107,6 +111,11 @@ def run_pyright(
         "pyright run completed: exit=%s diagnostics=%s",
         engine_result.exit_code,
         len(engine_result.diagnostics),
+        extra={
+            "component": "engine",
+            "tool": "pyright",
+            "duration_ms": engine_result.duration_ms,
+        },
     )
     return engine_result
 
@@ -122,7 +131,11 @@ def run_mypy(
     mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
-    logger.info("Running mypy (%s)", " ".join(command))
+    logger.info(
+        "Running mypy (%s)",
+        " ".join(command),
+        extra={"component": "engine", "tool": "mypy"},
+    )
     result = run_command(command, cwd=project_root)
     diagnostics: list[Diagnostic] = []
     remaining_stderr = result.stderr.strip()
@@ -186,5 +199,10 @@ def run_mypy(
         "mypy run completed: exit=%s diagnostics=%s",
         engine_result.exit_code,
         len(engine_result.diagnostics),
+        extra={
+            "component": "engine",
+            "tool": "mypy",
+            "duration_ms": engine_result.duration_ms,
+        },
     )
     return engine_result

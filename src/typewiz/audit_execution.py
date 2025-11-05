@@ -446,6 +446,12 @@ def execute_engine_mode(
 
     cached_run = cache.get(cache_key, file_hashes)
     if cached_run:
+        logger.info(
+            "Cache hit for %s:%s",
+            engine.name,
+            mode,
+            extra={"component": "audit", "tool": engine.name, "mode": mode, "cached": True},
+        )
         return _build_cached_run_result(
             engine_name=engine.name,
             mode=mode,
@@ -477,7 +483,20 @@ def execute_engine_mode(
         )
         return run_result, truncated
 
-    logger.info("Running %s:%s (%s)", engine.name, mode, " ".join(result.command))
+    logger.info(
+        "Running %s:%s (%s)",
+        engine.name,
+        mode,
+        " ".join(result.command),
+        extra={
+            "component": "audit",
+            "tool": engine.name,
+            "mode": mode,
+            "cached": False,
+            "duration_ms": result.duration_ms,
+            "exit_code": result.exit_code,
+        },
+    )
 
     cache.update(
         cache_key,
