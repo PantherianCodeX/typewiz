@@ -12,6 +12,8 @@ This project uses strict typing and automated hooks to keep quality high.
    pip install -r requirements-dev.txt
    ```
 
+   Windows developers should also install GNU Make once via `choco install make -y` so the Make targets used locally and in CI are available.
+
 2. Install pre-commit hooks:
 
    ```bash
@@ -29,7 +31,8 @@ This project uses strict typing and automated hooks to keep quality high.
 - Formatting and imports: Ruff (formatter + I rules)
 - Linting: Ruff (with autofix)
 - Typing: pyright (strict) and mypy (strict)
-- Tests: pytest
+- Tests: `make pytest.cov` (pytest under the hood, 90% coverage gate)
+- Error code sync: `make check.error-codes`
 
 If any hook fails, fix the issues and commit again.
 
@@ -49,7 +52,11 @@ Settings applied by `.vscode/settings.json`:
 ## Common commands
 
 ```bash
-pytest -q                  # run tests
-pyright -p pyrightconfig.json  # strict type checks
-mypy --config-file mypy.ini     # strict type checks
+make ci.check            # run lint, type checks, tests (coverage gate)
+make all.lint            # lint + format check (Ruff)
+make type                # mypy + pyright (strict)
+make pytest.cov          # pytest with coverage ≥90%
+make check.error-codes   # ensure error code registry matches docs
 ```
+
+All CI jobs invoke these targets, so running them locally ensures parity.

@@ -448,6 +448,7 @@ Use the Makefile to run common workflows with consistent settings:
   - `make lint` – Ruff lint + format check
   - `make format` – Apply Ruff formatter
   - `make fix` – Apply formatter and auto-fix lints
+  - `make check.error-codes` – Verify error code registry matches documentation
 
 - Typing
   - `make type` – Run mypy + pyright
