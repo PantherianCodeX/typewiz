@@ -1,6 +1,6 @@
 -r requirements.txt
-pytest==8.4.2
-pytest-benchmark==5.2.1
-pytest-cov==7.0.0
-ruff==0.14.3
-jsonschema==4.25.1
+pytest>=8.4.2,<9.0.0
+pytest-benchmark>=5.2.1,<6.0.0
+pytest-cov>=7.0.0,<8.0.0
+ruff>=0.14.3,<0.15.0
+jsonschema>=4.25.1,<5.0.0
