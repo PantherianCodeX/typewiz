@@ -18,7 +18,7 @@ from typewiz.manifest_models import (
     manifest_json_schema,
     validate_manifest_payload,
 )
-from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
+from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION, upgrade_manifest
 from typewiz.model_types import CategoryMapping
 from typewiz.typed_manifest import ManifestData
 
@@ -171,6 +171,23 @@ def test_validate_manifest_payload_accepts_numeric_schema_version() -> None:
     manifest_dict["schemaVersion"] = 1
     validated = validate_manifest_payload(manifest)
     assert validated.get("schemaVersion") == CURRENT_MANIFEST_VERSION
+
+
+def test_validate_manifest_payload_rejects_future_schema_version() -> None:
+    manifest = _sample_manifest()
+    manifest_dict = cast("dict[str, Any]", manifest)
+    manifest_dict["schemaVersion"] = "999"
+    with pytest.raises(ManifestValidationError) as exc_info:
+        validate_manifest_payload(manifest)
+    errors = exc_info.value.validation_error.errors()
+    assert errors[0]["type"].endswith("manifest.version.unsupported")
+
+
+def test_upgrade_manifest_normalises_runs_sequence() -> None:
+    legacy: dict[str, Any] = {"schemaVersion": "0", "runs": ({"tool": "pyright"},)}
+    upgraded = upgrade_manifest(legacy)
+    assert isinstance(upgraded["runs"], list)
+    assert upgraded["runs"][0]["tool"] == "pyright"
 
 
 def test_manifest_schema_cli_round_trip(tmp_path: Path) -> None:
