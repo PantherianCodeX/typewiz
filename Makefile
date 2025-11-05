@@ -28,6 +28,7 @@ TYPEWIZ_LIMIT ?= 20
   type type.mypy type.pyright type.verify typing.run typing.baseline typing.strict typing.ci \
   pytest.all pytest.verbose pytest.failfast pytest.cov pytest.clean \
   tests.all tests.verbose tests.failfast tests.cov tests.clean \
+  sec.lint sec.bandit \
   bench \
   precommit.check \
   typewiz.audit typewiz.dashboard typewiz.readiness typewiz.clean \
@@ -208,3 +209,13 @@ tests.cov: ## Alias for pytest.cov
 
 tests.clean: ## Alias for pytest.clean
 	@$(MAKE) pytest.clean
+##@ Security
+sec.lint: ## Advisory security lint (ruff S-rules)
+	$(RUFF) check --select S
+
+sec.bandit: ## Run Bandit if available (advisory)
+	@if command -v bandit >/dev/null 2>&1; then \
+	  bandit -q -r src -x src/typewiz/logging_utils.py; \
+	else \
+	  echo "[advisory] bandit not installed; skipping"; \
+	fi

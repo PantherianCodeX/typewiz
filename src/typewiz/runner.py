@@ -10,7 +10,15 @@ from .engines.base import EngineResult
 from .model_types import Mode
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
-from .utils import JSONValue, as_int, as_list, as_mapping, as_str, require_json, run_command
+from .utils import (
+    JSONValue,
+    as_int,
+    as_list,
+    as_mapping,
+    as_str,
+    require_json,
+    run_command,
+)
 
 logger: logging.Logger = logging.getLogger("typewiz")
 

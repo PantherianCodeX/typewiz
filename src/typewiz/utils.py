@@ -34,8 +34,23 @@ class CommandOutput:
     duration_ms: float
 
 
-def run_command(args: Iterable[str], cwd: Path | None = None) -> CommandOutput:
+def run_command(
+    args: Iterable[str], cwd: Path | None = None, *, allowed: set[str] | None = None
+) -> CommandOutput:
+    """Run a subprocess safely and return its captured output.
+
+    Security guardrails:
+    - Requires an iterable of string arguments; never uses ``shell=True``.
+    - Optionally enforces an allowlist for the executable (first arg) via ``allowed``.
+    """
     argv = list(args)
+    if not argv:
+        raise ValueError
+    if not all(a for a in argv):
+        raise TypeError
+    executable = argv[0]
+    if allowed is not None and executable not in allowed:
+        raise ValueError
     start = time.perf_counter()
     logger.debug("Executing command: %s", " ".join(argv))
     completed = subprocess.run(  # noqa: S603 - command arguments provided by caller
@@ -83,12 +98,13 @@ def detect_tool_versions(tools: list[str]) -> dict[str, str]:
         seen.add(name)
         try:
             if name == "pyright":
-                out = run_command(["pyright", "--version"]).stdout
+                out = run_command(["pyright", "--version"], allowed={"pyright"}).stdout
                 ver = _safe_version_from_output(out)
                 if ver:
                     versions[name] = ver
             elif name == "mypy":
-                out = run_command([python_executable(), "-m", "mypy", "--version"]).stdout
+                py = python_executable()
+                out = run_command([py, "-m", "mypy", "--version"], allowed={py}).stdout
                 ver = _safe_version_from_output(out)
                 if ver:
                     versions[name] = ver
