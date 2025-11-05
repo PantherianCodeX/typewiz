@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeAlias, cast
 
-logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz")
 
 # JSON typing helpers
 # A recursive JSON value used for parsing engine outputs safely.

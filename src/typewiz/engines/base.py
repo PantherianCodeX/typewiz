@@ -11,7 +11,7 @@ from typewiz.model_types import CategoryMapping, Mode, OverrideEntry
 from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic
 
-logger = logging.getLogger("typewiz.engine")
+logger: logging.Logger = logging.getLogger("typewiz.engine")
 
 
 def _default_overrides() -> list[OverrideEntry]:

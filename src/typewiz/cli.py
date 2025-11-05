@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from .types import RunResult
 
 SUMMARY_FIELD_CHOICES = {"profile", "config", "plugin-args", "paths", "overrides"}
-logger = logging.getLogger("typewiz.cli")
+logger: logging.Logger = logging.getLogger("typewiz.cli")
 
 
 CONFIG_TEMPLATE = dedent(

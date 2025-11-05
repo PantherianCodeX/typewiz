@@ -19,7 +19,7 @@ from .typed_manifest import (
 from .types import RunResult
 from .utils import detect_tool_versions
 
-logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz")
 
 
 @dataclass(slots=True)

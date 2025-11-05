@@ -12,7 +12,7 @@ from .typed_manifest import ToolSummary
 from .types import Diagnostic
 from .utils import JSONValue, as_int, as_list, as_mapping, as_str, require_json, run_command
 
-logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz")
 
 
 def _make_diag_path(project_root: Path, file_path: str) -> Path:

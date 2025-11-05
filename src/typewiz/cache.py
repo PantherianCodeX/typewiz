@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, TypedDict, cast
 
 from .data_validation import coerce_int, coerce_object_list, coerce_str_list
 from .model_types import clone_override_entries
+from .type_aliases import CacheKey, PathKey
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
 
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
     )
 
 
-logger = logging.getLogger("typewiz.cache")
+logger: logging.Logger = logging.getLogger("typewiz.cache")
 CACHE_DIRNAME = ".typewiz_cache"
 CACHE_FILENAME = "cache.json"
 
@@ -48,7 +49,7 @@ class CacheEntry:
     exit_code: int
     duration_ms: float
     diagnostics: list[DiagnosticPayload]
-    file_hashes: dict[str, FileHashPayload]
+    file_hashes: dict[PathKey, FileHashPayload]
     profile: str | None = None
     config_file: str | None = None
     plugin_args: list[str] = field(default_factory=_default_list_str)
@@ -174,8 +175,8 @@ def fingerprint_path(path: Path) -> FileHashPayload:
 class EngineCache:
     def __init__(self, project_root: Path) -> None:
         self.project_root = project_root
-        self.path = project_root / CACHE_DIRNAME / CACHE_FILENAME
-        self._entries: dict[str, CacheEntry] = {}
+        self.path: Path = project_root / CACHE_DIRNAME / CACHE_FILENAME
+        self._entries: dict[CacheKey, CacheEntry] = {}
         self._dirty = False
         self._load()
 
@@ -208,7 +209,8 @@ class EngineCache:
         payload = cast("_Payload", raw)
         payload_entries = payload.get("entries")
         entries: dict[str, _EntryJson] = payload_entries or {}
-        for key, entry in entries.items():
+        for key_str, entry in entries.items():
+            cache_key = CacheKey(key_str)
             diagnostics_any = entry.get("diagnostics", []) or []
             file_hashes_any = entry.get("file_hashes", {}) or {}
             command_any = entry.get("command", []) or []
@@ -234,10 +236,10 @@ class EngineCache:
                 for override_raw in coerce_object_list(overrides_any)
                 if isinstance(override_raw, Mapping)
             ]
-            file_hashes_map: dict[str, FileHashPayload] = {}
+            file_hashes_map: dict[PathKey, FileHashPayload] = {}
             file_hashes_mapping: Mapping[str, Mapping[str, object]] = file_hashes_any
             for hash_key, hash_payload in file_hashes_mapping.items():
-                file_hashes_map[hash_key] = _normalise_file_hash_payload(hash_payload)
+                file_hashes_map[PathKey(hash_key)] = _normalise_file_hash_payload(hash_payload)
             diagnostics_list: list[DiagnosticPayload] = [
                 _normalise_diagnostic_payload(cast("Mapping[str, object]", diag_raw))
                 for diag_raw in coerce_object_list(diagnostics_any)
@@ -245,7 +247,7 @@ class EngineCache:
             ]
             exit_code_int = int(exit_code)
             duration_val = float(duration_ms)
-            self._entries[key] = CacheEntry(
+            self._entries[cache_key] = CacheEntry(
                 command=command_list,
                 exit_code=exit_code_int,
                 duration_ms=duration_val,
@@ -280,12 +282,14 @@ class EngineCache:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "entries": {
-                key: {
+                str(key): {
                     "command": entry.command,
                     "exit_code": entry.exit_code,
                     "duration_ms": entry.duration_ms,
                     "diagnostics": entry.diagnostics,
-                    "file_hashes": entry.file_hashes,
+                    "file_hashes": {
+                        str(path_key): payload for path_key, payload in entry.file_hashes.items()
+                    },
                     "profile": entry.profile,
                     "config_file": entry.config_file,
                     "plugin_args": entry.plugin_args,
@@ -301,21 +305,23 @@ class EngineCache:
         self.path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         self._dirty = False
 
-    def peek_file_hashes(self, key: str) -> dict[str, FileHashPayload] | None:
+    def peek_file_hashes(self, key: CacheKey) -> dict[PathKey, FileHashPayload] | None:
         entry = self._entries.get(key)
         if not entry:
             return None
         return {
-            hash_key: cast("FileHashPayload", dict(payload))
-            for hash_key, payload in entry.file_hashes.items()
+            path_key: cast("FileHashPayload", dict(payload))
+            for path_key, payload in entry.file_hashes.items()
         }
 
-    def key_for(self, engine: str, mode: Mode, paths: Sequence[str], flags: Sequence[str]) -> str:
+    def key_for(
+        self, engine: str, mode: Mode, paths: Sequence[str], flags: Sequence[str]
+    ) -> CacheKey:
         path_part = ",".join(sorted({str(item) for item in paths}))
         flag_part = ",".join(str(flag) for flag in flags)
-        return f"{engine}:{mode}:{path_part}:{flag_part}"
+        return CacheKey(f"{engine}:{mode}:{path_part}:{flag_part}")
 
-    def get(self, key: str, file_hashes: dict[str, FileHashPayload]) -> CachedRun | None:
+    def get(self, key: CacheKey, file_hashes: dict[PathKey, FileHashPayload]) -> CachedRun | None:
         entry = self._entries.get(key)
         if not entry:
             return None
@@ -381,8 +387,8 @@ class EngineCache:
 
     def update(
         self,
-        key: str,
-        file_hashes: dict[str, FileHashPayload],
+        key: CacheKey,
+        file_hashes: dict[PathKey, FileHashPayload],
         command: Sequence[str],
         exit_code: int,
         duration_ms: float,
@@ -400,7 +406,7 @@ class EngineCache:
         canonical_diags = sorted(
             diagnostics, key=lambda diag: (str(diag.path), diag.line, diag.column)
         )
-        file_hash_payloads: dict[str, FileHashPayload] = {
+        file_hash_payloads: dict[PathKey, FileHashPayload] = {
             hash_key: cast("FileHashPayload", dict(hash_payload))
             for hash_key, hash_payload in file_hashes.items()
         }
@@ -490,11 +496,11 @@ def collect_file_hashes(
     *,
     respect_gitignore: bool = False,
     max_files: int | None = None,
-    baseline: dict[str, FileHashPayload] | None = None,
+    baseline: dict[PathKey, FileHashPayload] | None = None,
     max_bytes: int | None = None,
-) -> tuple[dict[str, FileHashPayload], bool]:
-    hashes: dict[str, FileHashPayload] = {}
-    seen: set[str] = set()
+) -> tuple[dict[PathKey, FileHashPayload], bool]:
+    hashes: dict[PathKey, FileHashPayload] = {}
+    seen: set[PathKey] = set()
     project_root = project_root.resolve()
     allowed_git_files: set[str] | None = None
     if respect_gitignore:
@@ -510,7 +516,7 @@ def collect_file_hashes(
         key = _relative_key(project_root, file_path)
         if key in seen:
             return True
-        if allowed_git_files is not None and key not in allowed_git_files:
+        if allowed_git_files is not None and str(key) not in allowed_git_files:
             return True
         try:
             st = file_path.stat()
@@ -560,15 +566,17 @@ def collect_file_hashes(
                         return (dict(sorted(hashes.items())), truncated)
         elif absolute.is_file() and not _maybe_add(absolute):
             return (dict(sorted(hashes.items())), truncated)
-    ordered_hashes: dict[str, FileHashPayload] = dict(sorted(hashes.items()))
+    ordered_hashes: dict[PathKey, FileHashPayload] = dict(
+        sorted(hashes.items(), key=lambda item: str(item[0]))
+    )
     return (ordered_hashes, truncated)
 
 
-def _relative_key(project_root: Path, path: Path) -> str:
+def _relative_key(project_root: Path, path: Path) -> PathKey:
     try:
-        return path.resolve().relative_to(project_root).as_posix()
+        return PathKey(path.resolve().relative_to(project_root).as_posix())
     except ValueError:
-        return path.resolve().as_posix()
+        return PathKey(path.resolve().as_posix())
 
 
 def _fingerprint(path: Path) -> FileHashPayload:

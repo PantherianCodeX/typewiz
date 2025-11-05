@@ -11,7 +11,7 @@ from .base import BaseEngine
 from .mypy import MypyEngine
 from .pyright import PyrightEngine
 
-logger = logging.getLogger("typewiz.engine.registry")
+logger: logging.Logger = logging.getLogger("typewiz.engine.registry")
 
 
 def _is_engine_like(value: object) -> bool:

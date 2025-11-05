@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from .typed_manifest import ManifestData
     from .types import RunResult
 
-logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz")
 
 
 @dataclass(slots=True)

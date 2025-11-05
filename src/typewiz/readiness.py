@@ -35,9 +35,6 @@ CATEGORY_LABELS = {
     "general": "General diagnostics",
 }
 
-CategoryCountMap = dict[CategoryName, int]
-CategoryStatusMap = dict[CategoryName, "StatusName"]
-
 
 def _category_counts_from_entry(entry: ReadinessEntry) -> CategoryCountMap:
     raw_counts = entry.get("categoryCounts")
@@ -205,6 +202,10 @@ OptionsBuckets = dict[str, ReadinessOptionBucket]
 class ReadinessPayload(TypedDict):
     strict: StrictBuckets
     options: OptionsBuckets
+
+
+CategoryCountMap = dict[CategoryName, int]
+CategoryStatusMap = dict[CategoryName, StatusName]
 
 
 def _empty_option_bucket(category: str) -> ReadinessOptionBucket:

@@ -17,6 +17,7 @@ from .config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from .engines import EngineContext, EngineOptions
 from .engines.base import BaseEngine, EngineResult
 from .model_types import FileHashPayload, OverrideEntry
+from .type_aliases import CacheKey, PathKey
 from .typed_manifest import ToolSummary
 from .types import RunResult
 
@@ -269,7 +270,7 @@ def _prepare_cache_inputs(
     root: Path,
     full_paths_normalised: Sequence[str],
     mode_paths: Sequence[str],
-) -> tuple[str, dict[str, FileHashPayload], bool]:
+) -> tuple[CacheKey, dict[PathKey, FileHashPayload], bool]:
     cache_flags = _build_cache_flags(engine.name, engine_options, tool_versions)
     cache_key = cache.key_for(engine.name, mode, list(mode_paths), cache_flags)
     prev_hashes = cache.peek_file_hashes(cache_key)
@@ -348,7 +349,7 @@ def _build_run_result(
     )
 
 
-logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz")
 
 
 def _path_matches(candidate: str, pattern: str) -> bool:

@@ -4,7 +4,7 @@ import tomllib as toml
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Final, cast
+from typing import ClassVar, Final, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
@@ -256,7 +256,7 @@ class EngineSettingsModel(BaseModel):
 
 
 class PathOverrideModel(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(populate_by_name=True)
     engines: dict[str, EngineSettingsModel] = Field(default_factory=dict)
     active_profiles: dict[str, str] = Field(default_factory=dict)
 
@@ -279,7 +279,7 @@ class PathOverrideModel(BaseModel):
 
 
 class AuditConfigModel(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config: ClassVar[ConfigDict] = ConfigDict(populate_by_name=True)
     manifest_path: Path | None = None
     full_paths: list[str] | None = None
     max_depth: int | None = None

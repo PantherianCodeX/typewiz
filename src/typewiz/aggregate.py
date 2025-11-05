@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from .readiness import CATEGORY_PATTERNS
+from .type_aliases import CategoryName, RuleName
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -143,8 +144,8 @@ def _update_file_summary(
     code: str | None,
     diagnostic: FileDiagnostic,
     severity_totals: Counter[str],
-    rule_totals: Counter[str],
-    category_totals: Counter[str],
+    rule_totals: Counter[RuleName],
+    category_totals: Counter[CategoryName],
     category_mapping: Mapping[str, Iterable[str]],
 ) -> str:
     if severity == "error":
@@ -156,9 +157,9 @@ def _update_file_summary(
     summary.diagnostics.append(diagnostic)
     severity_totals[severity] += 1
     if code:
-        rule_totals[code] += 1
+        rule_totals[RuleName(code)] += 1
     category = _categorise_code(code, category_mapping)
-    category_totals[category] += 1
+    category_totals[CategoryName(category)] += 1
     return category
 
 
@@ -229,8 +230,8 @@ def _build_summary_counts(
     run: RunResult,
     *,
     severity_totals: Counter[str],
-    rule_totals: Counter[str],
-    category_totals: Counter[str],
+    rule_totals: Counter[RuleName],
+    category_totals: Counter[CategoryName],
 ) -> dict[str, object]:
     return {
         "errors": sum(1 for diag in run.diagnostics if diag.severity == "error"),
@@ -240,8 +241,10 @@ def _build_summary_counts(
         ),
         "total": len(run.diagnostics),
         "severityBreakdown": {key: severity_totals[key] for key in sorted(severity_totals)},
-        "ruleCounts": {key: rule_totals[key] for key in sorted(rule_totals)},
-        "categoryCounts": {key: category_totals[key] for key in sorted(category_totals)},
+        "ruleCounts": {str(key): rule_totals[key] for key in sorted(rule_totals, key=str)},
+        "categoryCounts": {
+            str(key): category_totals[key] for key in sorted(category_totals, key=str)
+        },
     }
 
 
@@ -252,8 +255,8 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
     }
 
     severity_totals: Counter[str] = Counter()
-    rule_totals: Counter[str] = Counter()
-    category_totals: Counter[str] = Counter()
+    rule_totals: Counter[RuleName] = Counter()
+    category_totals: Counter[CategoryName] = Counter()
     category_mapping = _canonical_category_mapping(run.category_mapping)
 
     for diag in run.diagnostics:

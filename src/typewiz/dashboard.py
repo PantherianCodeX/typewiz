@@ -31,7 +31,7 @@ from .summary_types import (
 from .typed_manifest import ManifestData, ToolSummary
 from .utils import JSONValue
 
-logger = logging.getLogger("typewiz.dashboard")
+logger: logging.Logger = logging.getLogger("typewiz.dashboard")
 
 
 class DashboardTypeError(TypewizTypeError):

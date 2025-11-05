@@ -8,7 +8,7 @@ from .data_validation import coerce_mapping
 from .manifest_models import ManifestValidationError, validate_manifest_payload
 from .typed_manifest import ManifestData, RunPayload
 
-logger = logging.getLogger("typewiz.manifest_loader")
+logger: logging.Logger = logging.getLogger("typewiz.manifest_loader")
 
 
 def _is_run_payload(obj: object) -> TypeGuard[RunPayload]:

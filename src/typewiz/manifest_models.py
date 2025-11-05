@@ -6,15 +6,17 @@ compatible with the existing ``typed_manifest`` TypedDict definitions.
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .typed_manifest import ManifestData
 
+IGNORE_EXTRA_CONFIG: ConfigDict = ConfigDict(extra="ignore")
+
 
 class OverrideEntryModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
 
     path: str | None = None
     profile: str | None = None
@@ -28,7 +30,7 @@ def _empty_override_list() -> list[OverrideEntryModel]:
 
 
 class ToolSummaryModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
 
     errors: int | None = None
     warnings: int | None = None
@@ -37,7 +39,7 @@ class ToolSummaryModel(BaseModel):
 
 
 class FileDiagnosticModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
 
     line: int
     column: int
@@ -47,7 +49,7 @@ class FileDiagnosticModel(BaseModel):
 
 
 class FileEntryModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
 
     path: str
     errors: int
@@ -57,7 +59,7 @@ class FileEntryModel(BaseModel):
 
 
 class FolderEntryModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
 
     path: str
     depth: int
@@ -70,7 +72,7 @@ class FolderEntryModel(BaseModel):
 
 
 class RunSummaryModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
 
     errors: int | None = None
     warnings: int | None = None
@@ -82,7 +84,7 @@ class RunSummaryModel(BaseModel):
 
 
 class EngineOptionsModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
 
     profile: str | None = None
     configFile: str | None = None
@@ -94,7 +96,7 @@ class EngineOptionsModel(BaseModel):
 
 
 class EngineErrorModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
 
     message: str | None = None
     exitCode: int | None = None
@@ -102,7 +104,7 @@ class EngineErrorModel(BaseModel):
 
 
 class RunPayloadModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
 
     tool: str
     mode: str
@@ -124,7 +126,7 @@ def _empty_run_payload_list() -> list[RunPayloadModel]:
 
 
 class ManifestModel(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
 
     generatedAt: str | None = None
     projectRoot: str | None = None

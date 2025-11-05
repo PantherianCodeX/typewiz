@@ -25,7 +25,7 @@ TYPEWIZ_LIMIT ?= 20
   ci.precommit.install ci.check \
   all.test all.lint all.type all.format all.fix \
   lint lint.ruff lint.format format fix \
-  type type.mypy type.pyright typing.run typing.baseline typing.strict typing.ci \
+  type type.mypy type.pyright type.verify typing.run typing.baseline typing.strict typing.ci \
   pytest.all pytest.verbose pytest.failfast pytest.cov pytest.clean \
   tests.all tests.verbose tests.failfast tests.cov tests.clean \
   precommit.check \
@@ -92,6 +92,9 @@ type.mypy: ## Run mypy (strict)
 
 type.pyright: ## Run pyright using repo config
 	$(PYRIGHT) -p pyrightconfig.json
+
+type.verify: ## Verify public typing completeness via pyright
+	PYTHONPATH=src $(PYRIGHT) --verifytypes typewiz --ignoreexternal
 
 typing.run: typing.baseline typing.strict ## Run baseline then strict checks
 
