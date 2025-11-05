@@ -27,6 +27,13 @@ class UnsupportedManifestVersionError(ManifestVersionError):
         super().__init__(f"Unsupported manifest schema version: {version}")
 
 
+class InvalidManifestRunsError(ManifestVersionError):
+    """Raised when the manifest ``runs`` block is not a list."""
+
+    def __init__(self) -> None:
+        super().__init__("runs must be a list of run payloads")
+
+
 def _normalize_version(value: object) -> str | None:
     if value is None:
         return None
@@ -38,9 +45,11 @@ def _normalize_version(value: object) -> str | None:
 
 
 def _ensure_runs(value: object) -> list[object]:
+    if value is None:
+        return []
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         return list(cast(Sequence[object], value))
-    return []
+    raise InvalidManifestRunsError()
 
 
 def upgrade_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
@@ -65,6 +74,7 @@ def upgrade_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
 
 __all__ = [
     "CURRENT_MANIFEST_VERSION",
+    "InvalidManifestRunsError",
     "InvalidManifestVersionTypeError",
     "ManifestVersionError",
     "UnsupportedManifestVersionError",

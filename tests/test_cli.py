@@ -801,7 +801,7 @@ def test_cli_manifest_validate_runs_type(
     assert exit_code == 2
     output = capsys.readouterr().out
     assert "validation error at runs" in output
-    assert "Input should be a valid list" in output
+    assert "runs must be a list" in output
 
 
 def test_cli_manifest_unknown_action(monkeypatch: pytest.MonkeyPatch) -> None:

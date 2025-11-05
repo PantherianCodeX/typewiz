@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Final, cast
 
 from .readiness import CATEGORY_PATTERNS
 from .type_aliases import CategoryName, RuleName
@@ -108,21 +108,52 @@ def _canonical_category_mapping(mapping: Mapping[str, Iterable[str]]) -> dict[st
     return canonical
 
 
-def _categorise_code(code: str | None, mapping: Mapping[str, Iterable[str]]) -> str:
-    code_lower = (code or "").lower()
-    if not code_lower:
-        return "general"
+_GENERAL_CATEGORY: Final[str] = "general"
+_FALLBACK_CATEGORY_LOOKUPS: Final[tuple[tuple[str, tuple[str, ...]], ...]] = tuple(
+    (
+        category,
+        tuple(pattern.lower() for pattern in patterns if pattern),
+    )
+    for category, patterns in CATEGORY_PATTERNS.items()
+    if category != _GENERAL_CATEGORY
+)
+
+
+def _build_category_lookup(
+    mapping: Mapping[str, Iterable[str]],
+) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    lookups: list[tuple[str, tuple[str, ...]]] = []
     for category, patterns in mapping.items():
-        for pattern in patterns:
-            if pattern and pattern in code_lower:
+        cleaned = tuple(pattern for pattern in patterns if pattern)
+        if cleaned:
+            lookups.append((category, cleaned))
+    return tuple(lookups)
+
+
+class _Categoriser:
+    __slots__ = ("_cache", "_custom_lookup")
+
+    def __init__(self, mapping: Mapping[str, Iterable[str]]) -> None:
+        self._custom_lookup = _build_category_lookup(mapping)
+        self._cache: dict[str, str] = {}
+
+    def categorise(self, code: str | None) -> str:
+        if not code:
+            return _GENERAL_CATEGORY
+        cached = self._cache.get(code)
+        if cached is not None:
+            return cached
+        lowered = code.lower()
+        for category, patterns in self._custom_lookup:
+            if any(pattern in lowered for pattern in patterns):
+                self._cache[code] = category
                 return category
-    for category, patterns in CATEGORY_PATTERNS.items():
-        if category == "general":
-            continue
-        for pattern in patterns:
-            if pattern and pattern in code_lower:
+        for category, patterns in _FALLBACK_CATEGORY_LOOKUPS:
+            if any(pattern in lowered for pattern in patterns):
+                self._cache[code] = category
                 return category
-    return "general"
+        self._cache[code] = _GENERAL_CATEGORY
+        return _GENERAL_CATEGORY
 
 
 def _normalise_rel_path(path: Path) -> str:
@@ -137,6 +168,21 @@ def _ensure_file_summary(files: dict[str, FileSummary], rel_path: str) -> FileSu
     return summary
 
 
+_PATH_PART_CACHE: dict[str, tuple[str, ...]] = {}
+_MAX_PATH_CACHE_SIZE: Final[int] = 4096
+
+
+def _split_rel_path(rel_path: str) -> tuple[str, ...]:
+    cached = _PATH_PART_CACHE.get(rel_path)
+    if cached is not None:
+        return cached
+    parts = tuple(part for part in Path(rel_path).parts if part not in {".", ""})
+    if len(_PATH_PART_CACHE) >= _MAX_PATH_CACHE_SIZE:
+        _PATH_PART_CACHE.clear()
+    _PATH_PART_CACHE[rel_path] = parts
+    return parts
+
+
 def _update_file_summary(
     summary: FileSummary,
     *,
@@ -146,7 +192,7 @@ def _update_file_summary(
     severity_totals: Counter[str],
     rule_totals: Counter[RuleName],
     category_totals: Counter[CategoryName],
-    category_mapping: Mapping[str, Iterable[str]],
+    categoriser: _Categoriser,
 ) -> str:
     if severity == "error":
         summary.errors += 1
@@ -158,7 +204,7 @@ def _update_file_summary(
     severity_totals[severity] += 1
     if code:
         rule_totals[RuleName(code)] += 1
-    category = _categorise_code(code, category_mapping)
+    category = categoriser.categorise(code)
     category_totals[CategoryName(category)] += 1
     return category
 
@@ -168,7 +214,7 @@ def _folder_summaries_for_path(
     rel_path: str,
     max_depth: int,
 ) -> Iterable[FolderSummary]:
-    parts = [part for part in Path(rel_path).parts if part not in {".", ""}]
+    parts = _split_rel_path(rel_path)
     for depth in range(1, min(len(parts), max_depth) + 1):
         folder = "/".join(parts[:depth])
         level = folder_levels.setdefault(depth, {})
@@ -258,6 +304,7 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
     rule_totals: Counter[RuleName] = Counter()
     category_totals: Counter[CategoryName] = Counter()
     category_mapping = _canonical_category_mapping(run.category_mapping)
+    categoriser = _Categoriser(category_mapping)
 
     for diag in run.diagnostics:
         rel_path = _normalise_rel_path(diag.path)
@@ -277,7 +324,7 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
             severity_totals=severity_totals,
             rule_totals=rule_totals,
             category_totals=category_totals,
-            category_mapping=category_mapping,
+            categoriser=categoriser,
         )
         for bucket in _folder_summaries_for_path(folder_levels, rel_path, max_depth):
             _update_folder_summary(

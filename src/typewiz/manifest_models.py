@@ -14,6 +14,7 @@ from pydantic_core import PydanticCustomError
 
 from .manifest_versioning import (
     CURRENT_MANIFEST_VERSION,
+    InvalidManifestRunsError,
     InvalidManifestVersionTypeError,
     ManifestVersionError,
     UnsupportedManifestVersionError,
@@ -176,30 +177,41 @@ def validate_manifest_payload(payload: Any) -> ManifestData:
         )
         model = ManifestModel.model_validate(payload_to_validate)
     except ManifestVersionError as exc:
+        location: tuple[str, ...]
         if isinstance(exc, UnsupportedManifestVersionError):
             error = PydanticCustomError(
                 "manifest.version.unsupported",
                 "Unsupported manifest schema version: {version}",
                 {"version": exc.version},
             )
+            location = ("schemaVersion",)
         elif isinstance(exc, InvalidManifestVersionTypeError):
             error = PydanticCustomError(
                 "manifest.version.type",
                 "Unsupported schemaVersion type: {type}",
                 {"type": type(exc.value).__name__},
             )
+            location = ("schemaVersion",)
+        elif isinstance(exc, InvalidManifestRunsError):
+            error = PydanticCustomError(
+                "manifest.runs.type",
+                "runs must be a list of run payloads",
+                {},
+            )
+            location = ("runs",)
         else:
             error = PydanticCustomError(
                 "manifest.version",
                 "Manifest schema version error: {message}",
                 {"message": str(exc)},
             )
+            location = ("schemaVersion",)
         validation_error = ValidationError.from_exception_data(
             ManifestModel.__name__,
             [
                 {
                     "type": error,
-                    "loc": ("schemaVersion",),
+                    "loc": location,
                     "input": payload,
                 }
             ],
