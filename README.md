@@ -376,6 +376,14 @@ Typewiz includes a Pydantic-backed manifest validator and a CLI to emit the JSON
   If the optional `jsonschema` package is available, the CLI also validates against the
   generated schema and reports any schema errors.
 
+  Manifests include a `schemaVersion` field that Typewiz keeps current. Older payloads can be
+  upgraded in-place:
+
+  `typewiz manifest migrate --input legacy_manifest.json --output upgraded_manifest.json`
+
+  The upgrader normalises the schema version, ensures `runs` is always a list, and rejects
+  payloads with unexpected top-level fields before handing them to the runtime validator.
+
 - Emit the manifest JSON Schema:
 
   `typewiz manifest schema --output schemas/typing-manifest.schema.json`
@@ -383,6 +391,10 @@ Typewiz includes a Pydantic-backed manifest validator and a CLI to emit the JSON
 Programmatic validation is available via `typewiz.manifest_models.validate_manifest_payload`.
 Validation errors raise `TypewizValidationError` with access to the underlying Pydantic
 `ValidationError` for detailed diagnostics.
+
+For repositories that process manifests programmatically, use
+`typewiz.manifest_versioning.upgrade_manifest` to normalise a payload dict. Unknown future schema
+versions raise `UnsupportedManifestVersionError` so callers can prompt for an upgrade.
 
 ### Exception Reference
 
