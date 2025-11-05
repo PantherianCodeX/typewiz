@@ -454,7 +454,7 @@ Use the Makefile to run common workflows with consistent settings:
   - `make pytest.all` or `make tests.all` – Run pytest
   - `make pytest.verbose` or `make tests.verbose`
   - `make pytest.failfast` or `make tests.failfast`
-  - `make pytest.cov` or `make tests.cov`
+  - `make pytest.cov` or `make tests.cov` – Run tests with coverage (enforces ≥90%)
 - Benchmarks
   - `make bench` – Run readiness/aggregate benchmarks (skips if `pytest-benchmark` is unavailable)
 

@@ -39,7 +39,7 @@ ci.precommit.install: ## Install pre-commit and register hooks
 	$(PIP) install --quiet pre-commit || true
 	pre-commit install
 
-ci.check: typing.run all.lint all.type all.test ## Run typing, lint, and tests (CI parity)
+ci.check: typing.run all.lint all.type pytest.cov ## Run typing, lint, and tests with coverage gate (CI parity)
 
 ##@ Aggregate
 all.test: ## Run full pytest suite quietly
@@ -125,8 +125,8 @@ pytest.verbose: ## Run pytest verbosely
 pytest.failfast: ## Run pytest, stopping on first failure
 	$(PYTEST) -x
 
-pytest.cov: ## Run pytest with coverage on src/typewiz
-	$(PYTEST) --cov=src/typewiz
+pytest.cov: ## Run pytest with coverage on src/typewiz (90% gate)
+	$(PYTEST) --cov=src/typewiz --cov-report=term --cov-fail-under=90
 
 pytest.clean: ## Clean pytest cache
 	rm -rf .pytest_cache
