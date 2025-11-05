@@ -165,3 +165,30 @@ def test_manifest_schema_cli_round_trip(tmp_path: Path) -> None:
     validated = validate_manifest_payload(manifest)
     assert "runs" in validated
     assert validated["runs"][0]["durationMs"] == 0.25
+
+
+def test_manifest_schema_includes_metadata() -> None:
+    schema = manifest_json_schema()
+    assert schema.get("$schema") == "https://json-schema.org/draft/2020-12/schema"
+    assert "$id" in schema
+    assert schema.get("additionalProperties") is False
+
+
+def test_manifest_migrate_cli(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(_sample_manifest()), encoding="utf-8")
+    output_path = tmp_path / "migrated.json"
+
+    exit_code = main(
+        [
+            "manifest",
+            "migrate",
+            "--input",
+            str(manifest_path),
+            "--output",
+            str(output_path),
+        ]
+    )
+    assert exit_code == 0
+    migrated = json.loads(output_path.read_text(encoding="utf-8"))
+    assert "runs" in migrated

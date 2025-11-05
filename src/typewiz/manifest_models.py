@@ -167,8 +167,11 @@ def validate_manifest_payload(payload: Any) -> ManifestData:
 
 def manifest_json_schema() -> dict[str, Any]:
     """Return the canonical JSON Schema for typing audit manifests."""
-
-    return ManifestModel.model_json_schema()
+    schema = ManifestModel.model_json_schema()
+    schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+    schema.setdefault("$id", "https://typewiz.dev/schema/manifest.json")
+    schema.setdefault("additionalProperties", False)
+    return schema
 
 
 __all__ = [

@@ -641,6 +641,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Indentation level for JSON output",
     )
 
+    manifest_migrate = manifest_sub.add_parser(
+        "migrate",
+        help="Rewrite a manifest to the current schema",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    manifest_migrate.add_argument(
+        "--input",
+        type=pathlib.Path,
+        required=True,
+        help="Manifest to migrate",
+    )
+    manifest_migrate.add_argument(
+        "--output",
+        type=pathlib.Path,
+        default=None,
+        help="Optional path to write migrated manifest (defaults to input path)",
+    )
+
     query = subparsers.add_parser(
         "query",
         help="Inspect sections of a manifest summary without external tools",
@@ -1061,6 +1079,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.output.write_text(schema_text + "\n", encoding="utf-8")
             else:
                 print(schema_text)
+            return 0
+        if action == "migrate":
+            input_path: pathlib.Path = args.input
+            output_path = args.output or input_path
+            payload = json.loads(input_path.read_text(encoding="utf-8"))
+            migrated = validate_manifest_payload(payload)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(json.dumps(migrated, indent=2) + "\n", encoding="utf-8")
+            print(f"[typewiz] manifest migrated to {output_path}")
             return 0
         message = "Unknown manifest action"
         raise SystemExit(message)
