@@ -49,6 +49,8 @@ TYPEWIZ_LIMIT ?= 20
   tests.all tests.verbose tests.failfast tests.cov tests.clean \
   sec.lint sec.bandit \
   bench \
+  verifytypes \
+  hooks.update \
   check.error-codes \
   precommit.check \
   typewiz.audit typewiz.dashboard typewiz.readiness typewiz.clean \
@@ -117,6 +119,9 @@ type.pyright: ## Run pyright using repo config
 
 type.verify: ## Verify public typing completeness via pyright
 	PYTHONPATH=src $(PYRIGHT) --verifytypes typewiz --ignoreexternal
+
+verifytypes: ## Alias for type.verify (pyright --verifytypes)
+	@$(MAKE) type.verify
 
 typing.run: typing.baseline typing.strict ## Run baseline then strict checks
 
@@ -227,6 +232,11 @@ tests.failfast: ## Alias for pytest.failfast
 ##@ Benchmarks
 bench: ## Run performance benchmarks (requires pytest-benchmark plugin)
 	$(PYTEST) tests/perf/test_benchmarks.py --benchmark-only
+
+##@ Hooks
+hooks.update: ## Update pre-commit hooks to latest versions
+	$(PIP) install --quiet pre-commit || true
+	pre-commit autoupdate
 
 tests.cov: ## Alias for pytest.cov
 	@$(MAKE) pytest.cov

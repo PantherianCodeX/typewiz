@@ -454,6 +454,7 @@ Use the Makefile to run common workflows with consistent settings:
   - `make type` – Run mypy + pyright
   - `make typing.run` – Baseline (pyright + mypy) and strict pass
   - `make typing.ci` – Generate Typewiz manifest and dashboards (JSON/MD/HTML)
+  - `make verifytypes` – Run pyright `--verifytypes` for API contracts
 
 - Tests
   - `make pytest.all` or `make tests.all` – Run pytest
@@ -465,5 +466,8 @@ Use the Makefile to run common workflows with consistent settings:
 
 - CI aggregate
   - `make ci.check` – Lint, type checks, and tests
+
+- Hooks & maintenance
+  - `make hooks.update` – Autoupdate pinned pre-commit hook versions
 
 Run `make help` for grouped help and `make <group>.help` for a subset (e.g., `tests.help`).

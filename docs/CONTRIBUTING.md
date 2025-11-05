@@ -57,6 +57,8 @@ make all.lint            # lint + format check (Ruff)
 make type                # mypy + pyright (strict)
 make pytest.cov          # pytest with coverage ≥90%
 make check.error-codes   # ensure error code registry matches docs
+make verifytypes         # pyright --verifytypes for public typing
+make hooks.update        # autoupdate pre-commit hook versions
 ```
 
 All CI jobs invoke these targets, so running them locally ensures parity.
