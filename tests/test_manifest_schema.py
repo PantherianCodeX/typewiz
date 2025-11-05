@@ -18,6 +18,7 @@ from typewiz.manifest_models import (
     manifest_json_schema,
     validate_manifest_payload,
 )
+from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
 from typewiz.model_types import CategoryMapping
 from typewiz.typed_manifest import ManifestData
 
@@ -147,6 +148,31 @@ def test_validate_manifest_payload_rejects_malformed_perfile() -> None:
         validate_manifest_payload(manifest)
 
 
+def test_validate_manifest_payload_rejects_extra_fields() -> None:
+    manifest = _sample_manifest()
+    md = cast("dict[str, Any]", manifest)
+    run = cast("dict[str, Any]", md["runs"][0])
+    run["unexpectedField"] = "value"
+    with pytest.raises(ManifestValidationError):
+        validate_manifest_payload(manifest)
+
+
+def test_validate_manifest_payload_upgrades_missing_schema_version() -> None:
+    manifest = _sample_manifest()
+    manifest_dict = cast("dict[str, Any]", manifest)
+    manifest_dict.pop("schemaVersion")
+    validated = validate_manifest_payload(manifest)
+    assert validated.get("schemaVersion") == CURRENT_MANIFEST_VERSION
+
+
+def test_validate_manifest_payload_accepts_numeric_schema_version() -> None:
+    manifest = _sample_manifest()
+    manifest_dict = cast("dict[str, Any]", manifest)
+    manifest_dict["schemaVersion"] = 1
+    validated = validate_manifest_payload(manifest)
+    assert validated.get("schemaVersion") == CURRENT_MANIFEST_VERSION
+
+
 def test_manifest_schema_cli_round_trip(tmp_path: Path) -> None:
     manifest = _sample_manifest()
     schema_path = tmp_path / "manifest.schema.json"
@@ -192,3 +218,22 @@ def test_manifest_migrate_cli(tmp_path: Path) -> None:
     assert exit_code == 0
     migrated = json.loads(output_path.read_text(encoding="utf-8"))
     assert "runs" in migrated
+
+
+def test_manifest_migrate_cli_rejects_non_object(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text("[]", encoding="utf-8")
+
+    exit_code = main(
+        [
+            "manifest",
+            "migrate",
+            "--input",
+            str(manifest_path),
+        ]
+    )
+    assert exit_code == 2
+    captured = capsys.readouterr()
+    assert "expects a JSON object payload" in captured.out

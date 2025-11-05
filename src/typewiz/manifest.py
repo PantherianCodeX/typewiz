@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import cast
 
 from .aggregate import summarise_run
+from .manifest_versioning import CURRENT_MANIFEST_VERSION
 from .model_types import clone_override_entries
 from .typed_manifest import (
     AggregatedData,
@@ -34,7 +35,7 @@ class ManifestBuilder:
             {
                 "generatedAt": datetime.now(UTC).isoformat(),
                 "projectRoot": str(self.project_root),
-                "schemaVersion": "1",
+                "schemaVersion": CURRENT_MANIFEST_VERSION,
                 "runs": [],
             },
         )

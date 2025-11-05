@@ -6,8 +6,9 @@ import json
 import logging
 import pathlib
 import shlex
+from collections.abc import Mapping
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from .api import run_audit
 from .cli_helpers import collect_plugin_args as helpers_collect_plugin_args
@@ -24,6 +25,7 @@ from .manifest_models import (
     manifest_json_schema,
     validate_manifest_payload,
 )
+from .manifest_versioning import upgrade_manifest
 from .model_types import clone_override_entries
 from .override_utils import format_override_inline, override_detail_lines
 from .readiness_views import ReadinessValidationError, collect_readiness_view
@@ -1084,7 +1086,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             input_path: pathlib.Path = args.input
             output_path = args.output or input_path
             payload = json.loads(input_path.read_text(encoding="utf-8"))
-            migrated = validate_manifest_payload(payload)
+            if not isinstance(payload, Mapping):
+                print("[typewiz] manifest migrate expects a JSON object payload")
+                return 2
+            upgraded = upgrade_manifest(cast(Mapping[str, object], payload))
+            migrated = validate_manifest_payload(upgraded)
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(json.dumps(migrated, indent=2) + "\n", encoding="utf-8")
             print(f"[typewiz] manifest migrated to {output_path}")

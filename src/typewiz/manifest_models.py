@@ -6,17 +6,27 @@ compatible with the existing ``typed_manifest`` TypedDict definitions.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, ClassVar, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic_core import PydanticCustomError
 
+from .manifest_versioning import (
+    CURRENT_MANIFEST_VERSION,
+    InvalidManifestVersionTypeError,
+    ManifestVersionError,
+    UnsupportedManifestVersionError,
+    upgrade_manifest,
+)
+from .model_types import Mode, SeverityLevel
 from .typed_manifest import ManifestData
 
-IGNORE_EXTRA_CONFIG: ConfigDict = ConfigDict(extra="ignore")
+STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(extra="forbid")
 
 
 class OverrideEntryModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
+    model_config: ClassVar[ConfigDict] = STRICT_MODEL_CONFIG
 
     path: str | None = None
     profile: str | None = None
@@ -30,7 +40,7 @@ def _empty_override_list() -> list[OverrideEntryModel]:
 
 
 class ToolSummaryModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
+    model_config: ClassVar[ConfigDict] = STRICT_MODEL_CONFIG
 
     errors: int | None = None
     warnings: int | None = None
@@ -39,17 +49,17 @@ class ToolSummaryModel(BaseModel):
 
 
 class FileDiagnosticModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
+    model_config: ClassVar[ConfigDict] = STRICT_MODEL_CONFIG
 
     line: int
     column: int
-    severity: str
+    severity: SeverityLevel
     code: str | None = None
     message: str
 
 
 class FileEntryModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
+    model_config: ClassVar[ConfigDict] = STRICT_MODEL_CONFIG
 
     path: str
     errors: int
@@ -59,7 +69,7 @@ class FileEntryModel(BaseModel):
 
 
 class FolderEntryModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
+    model_config: ClassVar[ConfigDict] = STRICT_MODEL_CONFIG
 
     path: str
     depth: int
@@ -72,7 +82,7 @@ class FolderEntryModel(BaseModel):
 
 
 class RunSummaryModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
+    model_config: ClassVar[ConfigDict] = STRICT_MODEL_CONFIG
 
     errors: int | None = None
     warnings: int | None = None
@@ -84,7 +94,7 @@ class RunSummaryModel(BaseModel):
 
 
 class EngineOptionsModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
+    model_config: ClassVar[ConfigDict] = STRICT_MODEL_CONFIG
 
     profile: str | None = None
     configFile: str | None = None
@@ -96,7 +106,7 @@ class EngineOptionsModel(BaseModel):
 
 
 class EngineErrorModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
+    model_config: ClassVar[ConfigDict] = STRICT_MODEL_CONFIG
 
     message: str | None = None
     exitCode: int | None = None
@@ -104,10 +114,10 @@ class EngineErrorModel(BaseModel):
 
 
 class RunPayloadModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
+    model_config: ClassVar[ConfigDict] = STRICT_MODEL_CONFIG
 
     tool: str
-    mode: str
+    mode: Mode
     command: list[str]
     exitCode: int
     durationMs: float
@@ -126,11 +136,11 @@ def _empty_run_payload_list() -> list[RunPayloadModel]:
 
 
 class ManifestModel(BaseModel):
-    model_config: ClassVar[ConfigDict] = IGNORE_EXTRA_CONFIG
+    model_config: ClassVar[ConfigDict] = STRICT_MODEL_CONFIG
 
     generatedAt: str | None = None
     projectRoot: str | None = None
-    schemaVersion: str | None = None
+    schemaVersion: str = Field(default=CURRENT_MANIFEST_VERSION)
     fingerprintTruncated: bool | None = None
     toolVersions: dict[str, str] | None = None
     runs: list[RunPayloadModel] = Field(default_factory=_empty_run_payload_list)
@@ -159,7 +169,42 @@ def validate_manifest_payload(payload: Any) -> ManifestData:
     """Validate an arbitrary manifest payload using ``ManifestModel``."""
 
     try:
-        model = ManifestModel.model_validate(payload)
+        payload_to_validate = (
+            upgrade_manifest(cast(Mapping[str, Any], payload))
+            if isinstance(payload, Mapping)
+            else payload
+        )
+        model = ManifestModel.model_validate(payload_to_validate)
+    except ManifestVersionError as exc:
+        if isinstance(exc, UnsupportedManifestVersionError):
+            error = PydanticCustomError(
+                "manifest.version.unsupported",
+                "Unsupported manifest schema version: {version}",
+                {"version": exc.version},
+            )
+        elif isinstance(exc, InvalidManifestVersionTypeError):
+            error = PydanticCustomError(
+                "manifest.version.type",
+                "Unsupported schemaVersion type: {type}",
+                {"type": type(exc.value).__name__},
+            )
+        else:
+            error = PydanticCustomError(
+                "manifest.version",
+                "Manifest schema version error: {message}",
+                {"message": str(exc)},
+            )
+        validation_error = ValidationError.from_exception_data(
+            ManifestModel.__name__,
+            [
+                {
+                    "type": error,
+                    "loc": ("schemaVersion",),
+                    "input": payload,
+                }
+            ],
+        )
+        raise ManifestValidationError(validation_error) from exc
     except ValidationError as exc:
         raise ManifestValidationError(exc) from exc
     return manifest_from_model(model)
