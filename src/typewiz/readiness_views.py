@@ -261,8 +261,14 @@ def _folder_payload_for_status(
     status: str,
     limit: int,
 ) -> list[dict[str, object]]:
-    bucket = options_tab.get("unknownChecks", {})
-    entries = _extract_folder_entries(bucket, status)
+    # Prefer unknownChecks, then optionalChecks, then unusedSymbols, then general
+    category_order = ("unknownChecks", "optionalChecks", "unusedSymbols", "general")
+    entries: list[ReadinessOptionEntry] = []
+    for category in category_order:
+        bucket = options_tab.get(category, {})
+        entries = _extract_folder_entries(bucket, status)
+        if entries:
+            break
     records: list[FolderReadinessRecord] = []
     for option_entry in entries:
         try:

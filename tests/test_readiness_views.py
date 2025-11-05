@@ -96,6 +96,42 @@ def test_collect_readiness_view_file() -> None:
     assert categories_dict.get("unknownChecks") == 3
 
 
+def test_collect_readiness_view_folder_fallback_category() -> None:
+    # unknownChecks bucket intentionally empty; optionalChecks contains entries
+    readiness_tab: ReadinessTab = {
+        "strict": {"blocked": []},
+        "options": {
+            "unknownChecks": ReadinessOptionsBucket(blocked=[], ready=[], close=[], threshold=2),
+            "optionalChecks": ReadinessOptionsBucket(
+                blocked=[ReadinessOptionEntry(path="src/opt", count=2, errors=1, warnings=1)],
+                ready=[],
+                close=[],
+                threshold=2,
+            ),
+        },
+    }
+    tabs: SummaryTabs = {
+        "overview": {"severityTotals": {}, "categoryTotals": {}, "runSummary": {}},
+        "engines": {"runSummary": {}},
+        "hotspots": {"topRules": {}, "topFolders": [], "topFiles": []},
+        "readiness": readiness_tab,
+        "runs": {"runSummary": {}},
+    }
+    summary: SummaryData = {
+        "generatedAt": "now",
+        "projectRoot": ".",
+        "runSummary": {},
+        "severityTotals": {},
+        "categoryTotals": {},
+        "topRules": {},
+        "topFolders": [],
+        "topFiles": [],
+        "tabs": tabs,
+    }
+    view = collect_readiness_view(summary, level="folder", statuses=["blocked"], limit=5)
+    assert view["blocked"][0]["path"] == "src/opt"
+
+
 def test_collect_readiness_view_rejects_invalid() -> None:
     summary = _make_summary()
     # Inject a negative value to trigger validation error
