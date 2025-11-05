@@ -124,72 +124,83 @@ def _categorise_code(code: str | None, mapping: Mapping[str, Iterable[str]]) -> 
     return "general"
 
 
-def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
-    files: dict[str, FileSummary] = {}
-    folder_levels: dict[int, dict[str, FolderSummary]] = {
-        depth: {} for depth in range(1, max_depth + 1)
-    }
+def _normalise_rel_path(path: Path) -> str:
+    return str(path).replace("\\", "/")
 
-    severity_totals: Counter[str] = Counter()
-    rule_totals: Counter[str] = Counter()
-    category_totals: Counter[str] = Counter()
-    category_mapping = _canonical_category_mapping(run.category_mapping)
 
-    for diag in run.diagnostics:
-        rel_path = str(diag.path).replace("\\", "/")
-        summary = files.get(rel_path)
-        if summary is None:
-            summary = FileSummary(path=rel_path)
-            files[rel_path] = summary
-        if diag.severity == "error":
-            summary.errors += 1
-        elif diag.severity == "warning":
-            summary.warnings += 1
-        else:
-            summary.information += 1
-        severity_totals[diag.severity] += 1
-        if diag.code:
-            rule_totals[diag.code] += 1
-        category = _categorise_code(diag.code, category_mapping)
-        category_totals[category] += 1
+def _ensure_file_summary(files: dict[str, FileSummary], rel_path: str) -> FileSummary:
+    summary = files.get(rel_path)
+    if summary is None:
+        summary = FileSummary(path=rel_path)
+        files[rel_path] = summary
+    return summary
 
-        file_diag: FileDiagnostic = {
-            "line": diag.line,
-            "column": diag.column,
-            "severity": diag.severity,
-            "code": diag.code,
-            "message": diag.message,
-        }
-        summary.diagnostics.append(file_diag)
 
-        parts = [part for part in Path(rel_path).parts if part not in {".", ""}]
-        for depth in range(1, min(len(parts), max_depth) + 1):
-            folder = "/".join(parts[:depth])
-            level = folder_levels.setdefault(depth, {})
-            bucket = level.get(folder)
-            if bucket is None:
-                bucket = FolderSummary(path=folder, depth=depth)
-                level[folder] = bucket
-            if diag.severity == "error":
-                bucket.errors += 1
-            elif diag.severity == "warning":
-                bucket.warnings += 1
-            else:
-                bucket.information += 1
-            if diag.code:
-                bucket.code_counts[diag.code] += 1
-            bucket.category_counts[category] += 1
+def _update_file_summary(
+    summary: FileSummary,
+    *,
+    severity: str,
+    code: str | None,
+    diagnostic: FileDiagnostic,
+    severity_totals: Counter[str],
+    rule_totals: Counter[str],
+    category_totals: Counter[str],
+    category_mapping: Mapping[str, Iterable[str]],
+) -> str:
+    if severity == "error":
+        summary.errors += 1
+    elif severity == "warning":
+        summary.warnings += 1
+    else:
+        summary.information += 1
+    summary.diagnostics.append(diagnostic)
+    severity_totals[severity] += 1
+    if code:
+        rule_totals[code] += 1
+    category = _categorise_code(code, category_mapping)
+    category_totals[category] += 1
+    return category
 
+
+def _folder_summaries_for_path(
+    folder_levels: dict[int, dict[str, FolderSummary]],
+    rel_path: str,
+    max_depth: int,
+) -> Iterable[FolderSummary]:
+    parts = [part for part in Path(rel_path).parts if part not in {".", ""}]
+    for depth in range(1, min(len(parts), max_depth) + 1):
+        folder = "/".join(parts[:depth])
+        level = folder_levels.setdefault(depth, {})
+        bucket = level.get(folder)
+        if bucket is None:
+            bucket = FolderSummary(path=folder, depth=depth)
+            level[folder] = bucket
+        yield bucket
+
+
+def _update_folder_summary(
+    bucket: FolderSummary,
+    *,
+    severity: str,
+    code: str | None,
+    category: str,
+) -> None:
+    if severity == "error":
+        bucket.errors += 1
+    elif severity == "warning":
+        bucket.warnings += 1
+    else:
+        bucket.information += 1
+    if code:
+        bucket.code_counts[code] += 1
+    bucket.category_counts[category] += 1
+
+
+def _finalise_file_entries(files: dict[str, FileSummary]) -> list[FileEntry]:
     for summary in files.values():
         summary.diagnostics.sort(key=lambda entry: (entry["line"], entry["column"]))
-
     file_list = sorted(files.values(), key=lambda item: item.path)
-    folder_entries: list[FolderEntry] = []
-    for depth in sorted(folder_levels):
-        entries = sorted(folder_levels[depth].values(), key=lambda item: item.path)
-        folder_entries.extend(entry.to_folder_entry() for entry in entries)
-
-    per_file: list[FileEntry] = [
+    return [
         cast(
             "FileEntry",
             {
@@ -203,20 +214,88 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
         for item in file_list
     ]
 
+
+def _finalise_folder_entries(
+    folder_levels: dict[int, dict[str, FolderSummary]],
+) -> list[FolderEntry]:
+    folder_entries: list[FolderEntry] = []
+    for depth in sorted(folder_levels):
+        entries = sorted(folder_levels[depth].values(), key=lambda item: item.path)
+        folder_entries.extend(entry.to_folder_entry() for entry in entries)
+    return folder_entries
+
+
+def _build_summary_counts(
+    run: RunResult,
+    *,
+    severity_totals: Counter[str],
+    rule_totals: Counter[str],
+    category_totals: Counter[str],
+) -> dict[str, object]:
+    return {
+        "errors": sum(1 for diag in run.diagnostics if diag.severity == "error"),
+        "warnings": sum(1 for diag in run.diagnostics if diag.severity == "warning"),
+        "information": sum(
+            1 for diag in run.diagnostics if diag.severity not in {"error", "warning"}
+        ),
+        "total": len(run.diagnostics),
+        "severityBreakdown": {key: severity_totals[key] for key in sorted(severity_totals)},
+        "ruleCounts": {key: rule_totals[key] for key in sorted(rule_totals)},
+        "categoryCounts": {key: category_totals[key] for key in sorted(category_totals)},
+    }
+
+
+def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
+    files: dict[str, FileSummary] = {}
+    folder_levels: dict[int, dict[str, FolderSummary]] = {
+        depth: {} for depth in range(1, max_depth + 1)
+    }
+
+    severity_totals: Counter[str] = Counter()
+    rule_totals: Counter[str] = Counter()
+    category_totals: Counter[str] = Counter()
+    category_mapping = _canonical_category_mapping(run.category_mapping)
+
+    for diag in run.diagnostics:
+        rel_path = _normalise_rel_path(diag.path)
+        summary = _ensure_file_summary(files, rel_path)
+        file_diag: FileDiagnostic = {
+            "line": diag.line,
+            "column": diag.column,
+            "severity": diag.severity,
+            "code": diag.code,
+            "message": diag.message,
+        }
+        category = _update_file_summary(
+            summary,
+            severity=diag.severity,
+            code=diag.code,
+            diagnostic=file_diag,
+            severity_totals=severity_totals,
+            rule_totals=rule_totals,
+            category_totals=category_totals,
+            category_mapping=category_mapping,
+        )
+        for bucket in _folder_summaries_for_path(folder_levels, rel_path, max_depth):
+            _update_folder_summary(
+                bucket,
+                severity=diag.severity,
+                code=diag.code,
+                category=category,
+            )
+
+    per_file = _finalise_file_entries(files)
+    folder_entries = _finalise_folder_entries(folder_levels)
+
     return cast(
         "AggregatedData",
         {
-            "summary": {
-                "errors": sum(1 for diag in run.diagnostics if diag.severity == "error"),
-                "warnings": sum(1 for diag in run.diagnostics if diag.severity == "warning"),
-                "information": sum(
-                    1 for diag in run.diagnostics if diag.severity not in {"error", "warning"}
-                ),
-                "total": len(run.diagnostics),
-                "severityBreakdown": {key: severity_totals[key] for key in sorted(severity_totals)},
-                "ruleCounts": {key: rule_totals[key] for key in sorted(rule_totals)},
-                "categoryCounts": {key: category_totals[key] for key in sorted(category_totals)},
-            },
+            "summary": _build_summary_counts(
+                run,
+                severity_totals=severity_totals,
+                rule_totals=rule_totals,
+                category_totals=category_totals,
+            ),
             "perFile": per_file,
             "perFolder": folder_entries,
         },

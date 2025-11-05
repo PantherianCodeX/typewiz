@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Literal, TypedDict
 
+from .type_aliases import CategoryName
+
 # Category patterns and thresholds can be tuned here without touching renderers
 CATEGORY_PATTERNS: dict[str, tuple[str, ...]] = {
     "unknownChecks": (
@@ -33,45 +35,49 @@ CATEGORY_LABELS = {
     "general": "General diagnostics",
 }
 
+CategoryCountMap = dict[CategoryName, int]
+CategoryStatusMap = dict[CategoryName, "StatusName"]
 
-def _category_counts_from_entry(entry: ReadinessEntry) -> dict[str, int]:
+
+def _category_counts_from_entry(entry: ReadinessEntry) -> CategoryCountMap:
     raw_counts = entry.get("categoryCounts")
     if raw_counts:
-        categories_init = dict.fromkeys(CATEGORY_PATTERNS, 0)
-        categories = {key: int(value) for key, value in categories_init.items()}
+        categories: CategoryCountMap = {CategoryName(name): 0 for name in CATEGORY_PATTERNS}
         general_extra = 0
         for category, count in raw_counts.items():
             try:
                 count_int = int(count)
             except (TypeError, ValueError):
                 continue
-            if category in categories:
-                categories[category] += max(count_int, 0)
+            category_key = CategoryName(category)
+            if category_key in categories:
+                categories[category_key] += max(count_int, 0)
             else:
                 general_extra += max(count_int, 0)
-        categories["general"] += general_extra
+        categories[CategoryName("general")] += general_extra
         return categories
     code_counts = entry.get("codeCounts", {})
     return _bucket_code_counts(code_counts)
 
 
-def _category_status_map(categories: dict[str, int]) -> dict[str, StatusName]:
-    return {
-        category: _status_for_category(category, categories.get(category, 0))
-        for category in CATEGORY_PATTERNS
-    }
+def _category_status_map(categories: CategoryCountMap) -> CategoryStatusMap:
+    status_map: CategoryStatusMap = {}
+    for category_name in CATEGORY_PATTERNS:
+        key = CategoryName(category_name)
+        status_map[key] = _status_for_category(category_name, categories.get(key, 0))
+    return status_map
 
 
 def _append_option_buckets(
     options: OptionsBuckets,
     entry_path: str,
-    category_status: dict[str, StatusName],
-    categories: dict[str, int],
+    category_status: CategoryStatusMap,
+    categories: CategoryCountMap,
     errors: int,
     warnings: int,
 ) -> None:
     for category, status in category_status.items():
-        bucket = options[category]
+        bucket = options[str(category)]
         bucket[status].append(
             {
                 "path": entry_path,
@@ -84,19 +90,19 @@ def _append_option_buckets(
 
 def _strict_status_details(
     total_diagnostics: int,
-    category_status: dict[str, StatusName],
-    categories: dict[str, int],
+    category_status: CategoryStatusMap,
+    categories: CategoryCountMap,
 ) -> tuple[StatusName, list[str]]:
     if total_diagnostics == 0:
         return "ready", []
     blocking_categories = [
-        category
+        f"{category}"
         for category, status in category_status.items()
-        if status == "blocked" and category != "general"
+        if status == "blocked" and str(category) != "general"
     ]
     if total_diagnostics <= STRICT_CLOSE_THRESHOLD and not blocking_categories:
         notes = [
-            f"{category}: {categories.get(category, 0)}"
+            f"{category!s}: {categories.get(category, 0)}"
             for category, status in category_status.items()
             if status != "ready"
         ]
@@ -106,8 +112,8 @@ def _strict_status_details(
 
 def _build_strict_entry_payload(
     entry: ReadinessEntry,
-    categories: dict[str, int],
-    category_status: dict[str, StatusName],
+    categories: CategoryCountMap,
+    category_status: CategoryStatusMap,
     total_diagnostics: int,
     notes: list[str],
 ) -> ReadinessStrictEntry:
@@ -117,8 +123,10 @@ def _build_strict_entry_payload(
         "warnings": entry.get("warnings", 0),
         "information": entry.get("information", 0),
         "diagnostics": total_diagnostics,
-        "categories": {category: categories.get(category, 0) for category in CATEGORY_PATTERNS},
-        "categoryStatus": category_status,
+        "categories": {
+            category: categories.get(CategoryName(category), 0) for category in CATEGORY_PATTERNS
+        },
+        "categoryStatus": {str(category): status for category, status in category_status.items()},
         "recommendations": entry.get("recommendations", []),
     }
     if notes:
@@ -126,19 +134,19 @@ def _build_strict_entry_payload(
     return strict_entry
 
 
-def _bucket_code_counts(code_counts: dict[str, int]) -> dict[str, int]:
-    buckets = dict.fromkeys(CATEGORY_PATTERNS, 0)
+def _bucket_code_counts(code_counts: dict[str, int]) -> CategoryCountMap:
+    buckets: CategoryCountMap = {CategoryName(name): 0 for name in CATEGORY_PATTERNS}
     for rule, count in code_counts.items():
         lowered = rule.lower()
-        matched_category = None
+        matched_category: CategoryName | None = None
         for category, patterns in CATEGORY_PATTERNS.items():
             if category == "general":
                 continue
             if any(pattern in lowered for pattern in patterns):
-                matched_category = category
+                matched_category = CategoryName(category)
                 break
         if matched_category is None:
-            matched_category = "general"
+            matched_category = CategoryName("general")
         buckets[matched_category] += count
     return buckets
 
