@@ -16,12 +16,11 @@
   "python.linting.mypyEnabled": false,
   // Pylance/pyright reads pyrightconfig.json (include: src)
   // Don’t override typeCheckingMode here; use repo config
-  // Formatting and linting to match repo tools
-  "python.formatting.provider": "black",
+  // Formatting and linting to match repo tools (Ruff-only)
   "editor.formatOnSave": true,
-  "isort.args": [
-    "--profile",
-    "black"
-  ],
-  "ruff.enable": true
+  "ruff.enable": true,
+  // Use Ruff as the default formatter for Python files
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  }
 }

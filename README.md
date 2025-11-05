@@ -115,6 +115,10 @@ clearer plan to move toward stricter typing across packages. A common pattern is
 - pyright baseline (warnings) across the monorepo, with `--strict` for green packages
 - mypy for projects using mypy plugins (e.g., pydantic, SQLAlchemy), with a strict profile in those packages
 
+### Exception Reference
+
+A catalog of exceptions with stable error codes is available in docs/EXCEPTIONS.md: see how to catch precise error types and map them to codes for logs or CI.
+
 ### Custom engines (plugins)
 
 Write a small class implementing the `BaseEngine` protocol and expose it via the `typewiz.engines` entry point.

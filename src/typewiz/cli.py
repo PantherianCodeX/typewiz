@@ -19,6 +19,7 @@ from .cli_helpers import parse_summary_fields as helpers_parse_summary_fields
 from .config import AuditConfig, load_config
 from .dashboard import build_summary, load_manifest, render_markdown
 from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
+from .error_codes import error_code_for
 from .html_report import render_html
 from .logging_utils import LOG_FORMATS, configure_logging
 from .manifest_models import (
@@ -183,7 +184,8 @@ def _collect_readiness_view(
     try:
         return collect_readiness_view(summary, level=level, statuses=statuses, limit=limit)
     except ReadinessValidationError as exc:
-        message = f"Invalid readiness data encountered: {exc}"
+        code = error_code_for(exc)
+        message = f"({code}) Invalid readiness data encountered: {exc}"
         raise SystemExit(message) from exc
 
 
@@ -299,7 +301,8 @@ def _query_readiness(
     try:
         return _collect_readiness_view(summary, level=level, statuses=statuses, limit=limit)
     except ReadinessValidationError as exc:
-        message = f"Invalid readiness data encountered: {exc}"
+        code = error_code_for(exc)
+        message = f"({code}) Invalid readiness data encountered: {exc}"
         raise SystemExit(message) from exc
 
 
@@ -1057,10 +1060,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             try:
                 validate_manifest_payload(payload)
             except ManifestValidationError as exc:
+                code = error_code_for(exc)
                 for err in exc.validation_error.errors():
                     location = ".".join(str(part) for part in err.get("loc", ())) or "<root>"
                     message = err.get("msg", "invalid value")
-                    print(f"[typewiz] validation error at {location}: {message}")
+                    print(f"[typewiz] ({code}) validation error at {location}: {message}")
                 return 2
 
             schema_payload: dict[str, Any] | None

@@ -38,12 +38,11 @@ If any hook fails, fix the issues and commit again.
 Recommended extensions (automatically suggested):
 
 - Python (ms-python.python)
-- Black Formatter (ms-python.black-formatter)
 - Ruff (charliermarsh.ruff)
 
 Settings applied by `.vscode/settings.json`:
 
-- Format on save using Black
+- Format on save using Ruff (formatter)
 - Ruff lint on save
 - Enable pytest
 

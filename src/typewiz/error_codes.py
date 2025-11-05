@@ -19,6 +19,7 @@ from .manifest_versioning import (
     InvalidManifestVersionTypeError,
     UnsupportedManifestVersionError,
 )
+from .readiness_views import ReadinessValidationError
 
 ErrorCode = str
 
@@ -36,6 +37,7 @@ _ERROR_CODES: dict[type[BaseException], ErrorCode] = {
     DirectoryOverrideValidationError: "TW117",
     InvalidConfigFileError: "TW118",
     DashboardTypeError: "TW200",
+    ReadinessValidationError: "TW201",
     ManifestValidationError: "TW300",
     InvalidManifestRunsError: "TW301",
     UnsupportedManifestVersionError: "TW302",
