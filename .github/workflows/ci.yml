@@ -22,6 +22,11 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install GNU Make (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install make --yes
+
       - name: Cache pip
         uses: actions/cache@v4
         with:
@@ -60,13 +65,15 @@ jobs:
           if [ ! -d .venv ]; then
             python -m venv .venv
           fi
-          if [ -f .venv/bin/activate ]; then
-            source .venv/bin/activate
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            PY_EXE=.venv/Scripts/python.exe
+            PIP_EXE=.venv/Scripts/pip.exe
           else
-            source .venv/Scripts/activate
+            PY_EXE=.venv/bin/python
+            PIP_EXE=.venv/bin/pip
           fi
-          python -m pip install -U pip
-          pip install -r requirements-dev.txt
+          $PY_EXE -m pip install -U pip
+          $PIP_EXE install -r requirements-dev.txt
 
       - name: Run task
         run: |
@@ -140,24 +147,18 @@ jobs:
           if [ ! -d .venv ]; then
             python -m venv .venv
           fi
-          if [ -f .venv/bin/activate ]; then
-            source .venv/bin/activate
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            PY_EXE=.venv/Scripts/python.exe
+            PIP_EXE=.venv/Scripts/pip.exe
           else
-            source .venv/Scripts/activate
+            PY_EXE=.venv/bin/python
+            PIP_EXE=.venv/bin/pip
           fi
-          python -m pip install -U pip
-          pip install -r requirements-dev.txt
+          $PY_EXE -m pip install -U pip
+          $PIP_EXE install -r requirements-dev.txt
 
-      - name: Run tests with coverage
-        run: |
-          if [ -f .venv/bin/activate ]; then
-            source .venv/bin/activate
-            PYTHON=python
-          else
-            source .venv/Scripts/activate
-            PYTHON=python
-          fi
-          $PYTHON -m pytest --cov=src/typewiz --cov-report=term --cov-fail-under=90
+      - name: Run tests with coverage (make)
+        run: make pytest.cov
 
   tests-python-313:
     needs: quality
@@ -210,14 +211,13 @@ jobs:
           if [ ! -d .venv ]; then
             python -m venv .venv
           fi
-          source .venv/bin/activate
-          python -m pip install -U pip
-          pip install -r requirements-dev.txt
+          PY_EXE=.venv/bin/python
+          PIP_EXE=.venv/bin/pip
+          $PY_EXE -m pip install -U pip
+          $PIP_EXE install -r requirements-dev.txt
 
       - name: Run tests with coverage (Python 3.13)
-        run: |
-          source .venv/bin/activate
-          python -m pytest --cov=src/typewiz --cov-report=term --cov-fail-under=90
+        run: make pytest.cov
 
   typewiz:
     runs-on: ubuntu-latest

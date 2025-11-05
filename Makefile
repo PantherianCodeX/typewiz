@@ -4,13 +4,32 @@ SHELL := /bin/bash
 
 # Tooling
 VENV ?= .venv
-PYTHON ?= $(VENV)/bin/python
-PIP ?= $(VENV)/bin/pip
-RUFF ?= $(VENV)/bin/ruff
-MYPY ?= $(VENV)/bin/mypy
-PYRIGHT ?= $(VENV)/bin/pyright
-PYTEST ?= $(VENV)/bin/pytest
-TYPEWIZ ?= $(VENV)/bin/typewiz
+
+ifeq ($(origin OS), undefined)
+  OS_NAME := $(shell uname -s 2>/dev/null)
+else
+  OS_NAME := $(OS)
+endif
+
+ifeq ($(OS_NAME),Windows_NT)
+  BIN_DIR := $(VENV)/Scripts
+  PYTHON ?= $(BIN_DIR)/python.exe
+  PIP ?= $(BIN_DIR)/pip.exe
+  RUFF ?= $(BIN_DIR)/ruff.exe
+  MYPY ?= $(BIN_DIR)/mypy.exe
+  PYRIGHT ?= $(BIN_DIR)/pyright.exe
+  PYTEST ?= $(BIN_DIR)/pytest.exe
+  TYPEWIZ ?= $(BIN_DIR)/typewiz.exe
+else
+  BIN_DIR := $(VENV)/bin
+  PYTHON ?= $(BIN_DIR)/python
+  PIP ?= $(BIN_DIR)/pip
+  RUFF ?= $(BIN_DIR)/ruff
+  MYPY ?= $(BIN_DIR)/mypy
+  PYRIGHT ?= $(BIN_DIR)/pyright
+  PYTEST ?= $(BIN_DIR)/pytest
+  TYPEWIZ ?= $(BIN_DIR)/typewiz
+endif
 
 # Reports / defaults
 REPORTS_DIR ?= reports
