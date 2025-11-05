@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 line-length = 100
 target-version = "py312"
 # Broadened rule set for better hygiene
-lint.select = ["E", "F", "B", "UP", "TID", "N", "SIM", "TRY", "RET", "S", "I"]
+lint.select = ["E", "F", "B", "UP", "TID", "N", "SIM", "TRY", "RET", "S", "I", "PERF", "C4", "PTH", "YTT", "RUF"]
 lint.ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]

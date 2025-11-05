@@ -21,7 +21,6 @@ from .typed_manifest import ToolSummary
 from .types import Diagnostic, RunResult
 
 __all__ = [
-    "__version__",
     "AuditConfig",
     "AuditResult",
     "Config",
@@ -32,6 +31,7 @@ __all__ = [
     "TypewizError",
     "TypewizTypeError",
     "TypewizValidationError",
+    "__version__",
     "build_summary",
     "load_config",
     "load_manifest",

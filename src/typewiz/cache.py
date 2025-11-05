@@ -229,22 +229,20 @@ class EngineCache:
             plugin_args_list: list[str] = [str(a) for a in plugin_args_any]
             include_list: list[str] = [str(i) for i in include_any]
             exclude_list: list[str] = [str(i) for i in exclude_any]
-            overrides_list: list[OverrideEntry] = []
-            for override_raw in coerce_object_list(overrides_any):
-                if isinstance(override_raw, Mapping):
-                    overrides_list.append(
-                        _normalise_override_entry(cast("Mapping[str, object]", override_raw))
-                    )
+            overrides_list: list[OverrideEntry] = [
+                _normalise_override_entry(cast("Mapping[str, object]", override_raw))
+                for override_raw in coerce_object_list(overrides_any)
+                if isinstance(override_raw, Mapping)
+            ]
             file_hashes_map: dict[str, FileHashPayload] = {}
             file_hashes_mapping: Mapping[str, Mapping[str, object]] = file_hashes_any
             for hash_key, hash_payload in file_hashes_mapping.items():
                 file_hashes_map[hash_key] = _normalise_file_hash_payload(hash_payload)
-            diagnostics_list: list[DiagnosticPayload] = []
-            for diag_raw in coerce_object_list(diagnostics_any):
-                if isinstance(diag_raw, Mapping):
-                    diagnostics_list.append(
-                        _normalise_diagnostic_payload(cast("Mapping[str, object]", diag_raw))
-                    )
+            diagnostics_list: list[DiagnosticPayload] = [
+                _normalise_diagnostic_payload(cast("Mapping[str, object]", diag_raw))
+                for diag_raw in coerce_object_list(diagnostics_any)
+                if isinstance(diag_raw, Mapping)
+            ]
             exit_code_int = int(exit_code)
             duration_val = float(duration_ms)
             self._entries[key] = CacheEntry(

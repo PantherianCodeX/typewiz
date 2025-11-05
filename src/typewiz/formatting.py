@@ -23,12 +23,10 @@ class Table[T]:
         header_line = " | ".join(header.ljust(widths[header]) for header in self.headers)
         separator = "-+-".join("-" * widths[header] for header in self.headers)
         lines = [header_line, separator]
-        for row in self.rows:
-            lines.append(
-                " | ".join(
-                    stringify(row.get(header)).ljust(widths[header]) for header in self.headers
-                )
-            )
+        lines.extend(
+            " | ".join(stringify(row.get(header)).ljust(widths[header]) for header in self.headers)
+            for row in self.rows
+        )
         return lines
 
 

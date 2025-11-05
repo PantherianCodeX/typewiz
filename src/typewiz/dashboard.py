@@ -117,11 +117,15 @@ def _validate_readiness_tab(raw: Mapping[str, object]) -> ReadinessTab:
 
 def build_summary(manifest: ManifestData) -> SummaryData:
     runs_raw = manifest.get("runs")
-    run_entries: list[dict[str, JSONValue]] = []
-    if isinstance(runs_raw, Sequence):
-        for item in cast(Sequence[object], runs_raw):
-            if isinstance(item, Mapping):
-                run_entries.append(coerce_mapping(cast(Mapping[object, object], item)))
+    run_entries: list[dict[str, JSONValue]] = (
+        [
+            coerce_mapping(cast(Mapping[object, object], item))
+            for item in cast(Sequence[object], runs_raw)
+            if isinstance(item, Mapping)
+        ]
+        if isinstance(runs_raw, Sequence)
+        else []
+    )
     run_summary: dict[str, SummaryRunEntry] = {}
     folder_totals: dict[str, Counter[str]] = defaultdict(Counter)
     folder_counts: dict[str, int] = defaultdict(int)
@@ -258,10 +262,11 @@ def build_summary(manifest: ManifestData) -> SummaryData:
         category_totals.update(category_counts)
 
         per_folder_entries_raw = coerce_object_list(run.get("perFolder"))
-        per_folder_entries: list[dict[str, JSONValue]] = []
-        for entry in per_folder_entries_raw:
-            if isinstance(entry, Mapping):
-                per_folder_entries.append(coerce_mapping(cast(Mapping[object, object], entry)))
+        per_folder_entries: list[dict[str, JSONValue]] = [
+            coerce_mapping(cast(Mapping[object, object], entry))
+            for entry in per_folder_entries_raw
+            if isinstance(entry, Mapping)
+        ]
         for folder in per_folder_entries:
             path_obj = folder.get("path")
             if not isinstance(path_obj, str) or not path_obj:
@@ -286,10 +291,11 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 if rec_text:
                     folder_recommendations[path].add(rec_text)
         per_file_entries_raw = coerce_object_list(run.get("perFile"))
-        per_file_entries: list[dict[str, JSONValue]] = []
-        for entry in per_file_entries_raw:
-            if isinstance(entry, Mapping):
-                per_file_entries.append(coerce_mapping(cast(Mapping[object, object], entry)))
+        per_file_entries: list[dict[str, JSONValue]] = [
+            coerce_mapping(cast(Mapping[object, object], entry))
+            for entry in per_file_entries_raw
+            if isinstance(entry, Mapping)
+        ]
         for entry in per_file_entries:
             path_obj = entry.get("path")
             if not isinstance(path_obj, str) or not path_obj:
@@ -494,8 +500,7 @@ def render_markdown(summary: SummaryData) -> str:
                 "| --- | ---: |",
             ]
         )
-        for rule, count in top_rules.items():
-            lines.append(f"| `{rule}` | {count} |")
+        lines.extend(f"| `{rule}` | {count} |" for rule, count in top_rules.items())
     else:
         lines.append("- No diagnostic rules recorded")
 
@@ -510,10 +515,10 @@ def render_markdown(summary: SummaryData) -> str:
         ]
     )
     if top_folders:
-        for folder in top_folders:
-            lines.append(
-                f"| `{folder['path']}` | {folder['errors']} | {folder['warnings']} | {folder['information']} | {folder['participatingRuns']} |"
-            )
+        lines.extend(
+            f"| `{folder['path']}` | {folder['errors']} | {folder['warnings']} | {folder['information']} | {folder['participatingRuns']} |"
+            for folder in top_folders
+        )
     else:
         lines.append("| _No folder hotspots_ | 0 | 0 | 0 | 0 |")
 
@@ -528,10 +533,10 @@ def render_markdown(summary: SummaryData) -> str:
         ]
     )
     if top_files:
-        for file_entry in top_files:
-            lines.append(
-                f"| `{file_entry['path']}` | {file_entry['errors']} | {file_entry['warnings']} |"
-            )
+        lines.extend(
+            f"| `{file_entry['path']}` | {file_entry['errors']} | {file_entry['warnings']} |"
+            for file_entry in top_files
+        )
     else:
         lines.append("| _No file hotspots_ | 0 | 0 |")
 
@@ -570,7 +575,7 @@ def render_markdown(summary: SummaryData) -> str:
         for entry in cast(Sequence[object], values):
             if isinstance(entry, Mapping):
                 entry_map = coerce_mapping(cast(Mapping[object, object], entry))
-                result.append({key: value for key, value in entry_map.items()})
+                result.append(dict(entry_map.items()))
         return result
 
     ready_entries = _materialise_dict_list(strict_ready_raw)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__all__ = ["TypewizError", "TypewizValidationError", "TypewizTypeError"]
+__all__ = ["TypewizError", "TypewizTypeError", "TypewizValidationError"]
 
 
 class TypewizError(Exception):

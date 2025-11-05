@@ -92,6 +92,17 @@ def _build_option_entry(raw: Mapping[str, object]) -> ReadinessOptionEntry:
     return entry
 
 
+def _coerce_option_entries(
+    mapping_value: Mapping[str, object], key: str
+) -> list[ReadinessOptionEntry]:
+    entries: list[ReadinessOptionEntry] = []
+    for entry in coerce_object_list(mapping_value.get(key)):
+        if isinstance(entry, Mapping):
+            entry_map = coerce_mapping(cast(Mapping[object, object], entry))
+            entries.append(_build_option_entry(cast(Mapping[str, object], entry_map)))
+    return entries
+
+
 def _build_strict_entry(raw: Mapping[str, object]) -> ReadinessStrictEntry:
     entry: ReadinessStrictEntry = {}
     path = raw.get("path")
@@ -131,37 +142,28 @@ def _coerce_options_bucket(value: object) -> ReadinessOptionsBucket:
     if not isinstance(value, Mapping):
         return bucket
     mapping_value = coerce_mapping(cast(Mapping[object, object], value))
-    ready_raw = coerce_object_list(mapping_value.get("ready"))
-    if ready_raw:
-        ready_entries: list[ReadinessOptionEntry] = []
-        for entry in ready_raw:
-            if isinstance(entry, Mapping):
-                entry_map = coerce_mapping(cast(Mapping[object, object], entry))
-                ready_entries.append(_build_option_entry(cast(Mapping[str, object], entry_map)))
-        if ready_entries:
-            bucket["ready"] = ready_entries
-    close_raw = coerce_object_list(mapping_value.get("close"))
-    if close_raw:
-        close_entries: list[ReadinessOptionEntry] = []
-        for entry in close_raw:
-            if isinstance(entry, Mapping):
-                entry_map = coerce_mapping(cast(Mapping[object, object], entry))
-                close_entries.append(_build_option_entry(cast(Mapping[str, object], entry_map)))
-        if close_entries:
-            bucket["close"] = close_entries
-    blocked_raw = coerce_object_list(mapping_value.get("blocked"))
-    if blocked_raw:
-        blocked_entries: list[ReadinessOptionEntry] = []
-        for entry in blocked_raw:
-            if isinstance(entry, Mapping):
-                entry_map = coerce_mapping(cast(Mapping[object, object], entry))
-                blocked_entries.append(_build_option_entry(cast(Mapping[str, object], entry_map)))
-        if blocked_entries:
-            bucket["blocked"] = blocked_entries
+    for status in ("ready", "close", "blocked"):
+        entries = _coerce_option_entries(mapping_value, status)
+        if entries:
+            bucket[status] = entries
     threshold_val = mapping_value.get("threshold")
     if isinstance(threshold_val, int):
         bucket["threshold"] = threshold_val
     return bucket
+
+
+def _coerce_options_map(raw: object) -> dict[str, ReadinessOptionsBucket]:
+    if not isinstance(raw, Mapping):
+        return {}
+    mapping_value = cast(Mapping[object, object], raw)
+    return {str(key): _coerce_options_bucket(value) for key, value in mapping_value.items()}
+
+
+def _coerce_strict_map(raw: object) -> dict[str, list[ReadinessStrictEntry]]:
+    if not isinstance(raw, Mapping):
+        return {}
+    mapping_value = cast(Mapping[object, object], raw)
+    return {str(key): _coerce_strict_entries(value) for key, value in mapping_value.items()}
 
 
 def _coerce_strict_entries(value: object) -> list[ReadinessStrictEntry]:
@@ -244,6 +246,51 @@ def _extract_file_entries(
     return []
 
 
+def _normalise_status_filters(statuses: Sequence[str] | None) -> list[str]:
+    if statuses is None:
+        return ["blocked"]
+    result: list[str] = []
+    for status in statuses:
+        if status in {"ready", "close", "blocked"} and status not in result:
+            result.append(status)
+    return result or ["blocked"]
+
+
+def _folder_payload_for_status(
+    options_tab: Mapping[str, ReadinessOptionsBucket],
+    status: str,
+    limit: int,
+) -> list[dict[str, object]]:
+    bucket = options_tab.get("unknownChecks", {})
+    entries = _extract_folder_entries(bucket, status)
+    records: list[FolderReadinessRecord] = []
+    for option_entry in entries:
+        try:
+            records.append(_normalise_folder_entry(option_entry))
+        except ValueError as exc:
+            raise ReadinessValidationError(str(exc)) from exc
+    if limit > 0:
+        records = records[:limit]
+    return [record.to_payload() for record in records]
+
+
+def _file_payload_for_status(
+    strict_map: Mapping[str, list[ReadinessStrictEntry]],
+    status: str,
+    limit: int,
+) -> list[dict[str, object]]:
+    entries = _extract_file_entries(strict_map, status)
+    records: list[FileReadinessRecord] = []
+    for strict_entry in entries:
+        try:
+            records.append(_normalise_file_entry(strict_entry))
+        except ValueError as exc:
+            raise ReadinessValidationError(str(exc)) from exc
+    if limit > 0:
+        records = records[:limit]
+    return [record.to_payload() for record in records]
+
+
 def collect_readiness_view(
     summary: SummaryData,
     *,
@@ -253,56 +300,14 @@ def collect_readiness_view(
 ) -> dict[str, list[dict[str, object]]]:
     tabs: SummaryTabs = summary["tabs"]
     readiness_tab = tabs.get("readiness") or {}
-    options_tab_raw = readiness_tab.get("options")
-    options_tab: dict[str, ReadinessOptionsBucket] = {}
-    if isinstance(options_tab_raw, Mapping):
-        for key, value in options_tab_raw.items():
-            options_tab[str(key)] = _coerce_options_bucket(value)
+    options_tab = _coerce_options_map(readiness_tab.get("options"))
+    strict_map = _coerce_strict_map(readiness_tab.get("strict"))
 
-    strict_map_raw = readiness_tab.get("strict")
-    if isinstance(strict_map_raw, Mapping):
-        strict_map = {
-            str(key): _coerce_strict_entries(value) for key, value in strict_map_raw.items()
-        }
-    else:
-        strict_map = {}
-
-    statuses_normalised: list[str] = []
-    status_iter: Sequence[str] = list(statuses) if statuses is not None else ["blocked"]
-    for status in status_iter:
-        if status not in {"ready", "close", "blocked"}:
-            continue
-        if status not in statuses_normalised:
-            statuses_normalised.append(status)
-    if not statuses_normalised:
-        statuses_normalised = ["blocked"]
-
+    statuses_normalised = _normalise_status_filters(statuses)
     result: dict[str, list[dict[str, object]]] = {}
-    empty_bucket: ReadinessOptionsBucket = {}
     for status in statuses_normalised:
-        entries_payload: list[dict[str, object]]
         if level == "folder":
-            bucket = options_tab.get("unknownChecks", empty_bucket)
-            bucket_entries = _extract_folder_entries(bucket, status)
-            records: list[FolderReadinessRecord] = []
-            for option_entry in bucket_entries:
-                try:
-                    records.append(_normalise_folder_entry(option_entry))
-                except ValueError as exc:
-                    raise ReadinessValidationError(str(exc)) from exc
-            if limit > 0:
-                records = records[:limit]
-            entries_payload = [record.to_payload() for record in records]
+            result[status] = _folder_payload_for_status(options_tab, status, limit)
         else:
-            strict_entries = _extract_file_entries(strict_map, status)
-            file_records: list[FileReadinessRecord] = []
-            for strict_entry in strict_entries:
-                try:
-                    file_records.append(_normalise_file_entry(strict_entry))
-                except ValueError as exc:
-                    raise ReadinessValidationError(str(exc)) from exc
-            if limit > 0:
-                file_records = file_records[:limit]
-            entries_payload = [record.to_payload() for record in file_records]
-        result[status] = entries_payload
+            result[status] = _file_payload_for_status(strict_map, status, limit)
     return result

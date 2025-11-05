@@ -173,7 +173,7 @@ __all__ = [
     "ManifestModel",
     "ManifestValidationError",
     "manifest_from_model",
+    "manifest_json_schema",
     "manifest_to_model",
     "validate_manifest_payload",
-    "manifest_json_schema",
 ]

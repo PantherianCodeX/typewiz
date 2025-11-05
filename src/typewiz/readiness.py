@@ -14,7 +14,7 @@ CATEGORY_PATTERNS: dict[str, tuple[str, ...]] = {
     ),
     "optionalChecks": ("optional", "nonecheck", "maybeunbound"),
     "unusedSymbols": ("unused", "warnunused", "redundant"),
-    "general": tuple(),
+    "general": (),
 }
 
 CATEGORY_CLOSE_THRESHOLD = {
@@ -32,6 +32,98 @@ CATEGORY_LABELS = {
     "unusedSymbols": "Unused symbol warnings",
     "general": "General diagnostics",
 }
+
+
+def _category_counts_from_entry(entry: ReadinessEntry) -> dict[str, int]:
+    raw_counts = entry.get("categoryCounts")
+    if raw_counts:
+        categories_init = dict.fromkeys(CATEGORY_PATTERNS, 0)
+        categories = {key: int(value) for key, value in categories_init.items()}
+        general_extra = 0
+        for category, count in raw_counts.items():
+            try:
+                count_int = int(count)
+            except (TypeError, ValueError):
+                continue
+            if category in categories:
+                categories[category] += max(count_int, 0)
+            else:
+                general_extra += max(count_int, 0)
+        categories["general"] += general_extra
+        return categories
+    code_counts = entry.get("codeCounts", {})
+    return _bucket_code_counts(code_counts)
+
+
+def _category_status_map(categories: dict[str, int]) -> dict[str, StatusName]:
+    return {
+        category: _status_for_category(category, categories.get(category, 0))
+        for category in CATEGORY_PATTERNS
+    }
+
+
+def _append_option_buckets(
+    options: OptionsBuckets,
+    entry_path: str,
+    category_status: dict[str, StatusName],
+    categories: dict[str, int],
+    errors: int,
+    warnings: int,
+) -> None:
+    for category, status in category_status.items():
+        bucket = options[category]
+        bucket[status].append(
+            {
+                "path": entry_path,
+                "count": categories.get(category, 0),
+                "errors": errors,
+                "warnings": warnings,
+            }
+        )
+
+
+def _strict_status_details(
+    total_diagnostics: int,
+    category_status: dict[str, StatusName],
+    categories: dict[str, int],
+) -> tuple[StatusName, list[str]]:
+    if total_diagnostics == 0:
+        return "ready", []
+    blocking_categories = [
+        category
+        for category, status in category_status.items()
+        if status == "blocked" and category != "general"
+    ]
+    if total_diagnostics <= STRICT_CLOSE_THRESHOLD and not blocking_categories:
+        notes = [
+            f"{category}: {categories.get(category, 0)}"
+            for category, status in category_status.items()
+            if status != "ready"
+        ]
+        return "close", notes
+    return "blocked", []
+
+
+def _build_strict_entry_payload(
+    entry: ReadinessEntry,
+    categories: dict[str, int],
+    category_status: dict[str, StatusName],
+    total_diagnostics: int,
+    notes: list[str],
+) -> ReadinessStrictEntry:
+    strict_entry: ReadinessStrictEntry = {
+        "path": entry["path"],
+        "errors": entry.get("errors", 0),
+        "warnings": entry.get("warnings", 0),
+        "information": entry.get("information", 0),
+        "diagnostics": total_diagnostics,
+        "categories": {category: categories.get(category, 0) for category in CATEGORY_PATTERNS},
+        "categoryStatus": category_status,
+        "recommendations": entry.get("recommendations", []),
+    }
+    if notes:
+        strict_entry["notes"] = notes
+    return strict_entry
 
 
 def _bucket_code_counts(code_counts: dict[str, int]) -> dict[str, int]:
@@ -128,77 +220,28 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPayl
     }
 
     for entry in folder_entries:
-        raw_category_counts = entry.get("categoryCounts") or {}
-        if raw_category_counts:
-            categories = dict.fromkeys(CATEGORY_PATTERNS, 0)
-            general_extra = 0
-            for category, count in raw_category_counts.items():
-                try:
-                    count_int = int(count)
-                except (TypeError, ValueError):
-                    continue
-                if category in categories:
-                    categories[category] += max(count_int, 0)
-                else:
-                    general_extra += max(count_int, 0)
-            categories["general"] += general_extra
-        else:
-            code_counts = entry.get("codeCounts", {})
-            categories = _bucket_code_counts(code_counts)
-
-        class CategoryMeta(TypedDict):
-            status: StatusName
-            count: int
-
-        category_status: dict[str, CategoryMeta] = {}
-        for category in CATEGORY_PATTERNS:
-            count = categories.get(category, 0)
-            status = _status_for_category(category, count)
-            category_status[category] = {"status": status, "count": count}
-            bucket = readiness["options"][category]
-            status_list = bucket[status]
-            status_list.append(
-                {
-                    "path": entry["path"],
-                    "count": count,
-                    "errors": entry.get("errors", 0),
-                    "warnings": entry.get("warnings", 0),
-                }
-            )
+        categories = _category_counts_from_entry(entry)
+        category_status = _category_status_map(categories)
+        _append_option_buckets(
+            readiness["options"],
+            entry_path=entry["path"],
+            category_status=category_status,
+            categories=categories,
+            errors=entry.get("errors", 0),
+            warnings=entry.get("warnings", 0),
+        )
 
         total_diagnostics = entry.get("errors", 0) + entry.get("warnings", 0)
-        if total_diagnostics == 0:
-            strict_status: StatusName = "ready"
-        else:
-            blocking_categories: list[str] = [
-                cat
-                for cat, meta in category_status.items()
-                if meta["status"] == "blocked" and cat != "general"
-            ]
-            if total_diagnostics <= STRICT_CLOSE_THRESHOLD and not blocking_categories:
-                strict_status = "close"
-            else:
-                strict_status = "blocked"
-
-        strict_entry: ReadinessStrictEntry = {
-            "path": entry["path"],
-            "errors": entry.get("errors", 0),
-            "warnings": entry.get("warnings", 0),
-            "information": entry.get("information", 0),
-            "diagnostics": total_diagnostics,
-            "categories": {cat: meta["count"] for cat, meta in category_status.items()},
-            "categoryStatus": {cat: meta["status"] for cat, meta in category_status.items()},
-            "recommendations": entry.get("recommendations", []),
-        }
-        if strict_status == "close":
-            blockers = [
-                f"{cat}: {category_status[cat]['count']}"
-                for cat in category_status
-                if category_status[cat]["status"] != "ready"
-            ]
-            if blockers:
-                strict_entry["notes"] = blockers
-
+        strict_status, notes = _strict_status_details(
+            total_diagnostics, category_status, categories
+        )
+        strict_entry = _build_strict_entry_payload(
+            entry,
+            categories,
+            category_status,
+            total_diagnostics,
+            notes,
+        )
         readiness["strict"][strict_status].append(strict_entry)
 
     return readiness

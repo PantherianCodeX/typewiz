@@ -11,12 +11,12 @@ from .formatting import render_table_rows, stringify
 from .utils import JSONValue
 
 __all__ = [
-    "format_list",
-    "parse_summary_fields",
-    "render_data_structure",
     "collect_plugin_args",
     "collect_profile_args",
+    "format_list",
     "normalise_modes",
+    "parse_summary_fields",
+    "render_data_structure",
 ]
 
 

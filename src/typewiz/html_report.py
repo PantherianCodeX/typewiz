@@ -50,10 +50,10 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
         '  <nav class="tabs" role="tablist">',
     ]
 
-    for tab in _TAB_ORDER:
-        parts.append(
-            f'    <button type="button" data-tab-target="{tab}" role="tab" aria-selected="false">{_TAB_LABELS[tab]}</button>'
-        )
+    parts.extend(
+        f'    <button type="button" data-tab-target="{tab}" role="tab" aria-selected="false">{_TAB_LABELS[tab]}</button>'
+        for tab in _TAB_ORDER
+    )
     parts.append("  </nav>")
 
     # Overview tab
@@ -201,8 +201,10 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
                 "        <thead><tr><th>Rule</th><th>Count</th></tr></thead><tbody>",
             ]
         )
-        for rule, count in top_rules.items():
-            parts.append(f"          <tr><td><code>{h(rule)}</code></td><td>{count}</td></tr>")
+        parts.extend(
+            f"          <tr><td><code>{h(rule)}</code></td><td>{count}</td></tr>"
+            for rule, count in top_rules.items()
+        )
         parts.extend(["        </tbody>", "      </table>", "    </section>"])
     else:
         parts.append("    <p>No diagnostic rules recorded.</p>")
@@ -216,10 +218,10 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
         ]
     )
     if top_folders:
-        for folder in top_folders:
-            parts.append(
-                f"          <tr><td>{h(folder['path'])}</td><td>{folder['errors']}</td><td>{folder['warnings']}</td><td>{folder['information']}</td><td>{folder['participatingRuns']}</td></tr>"
-            )
+        parts.extend(
+            f"          <tr><td>{h(folder['path'])}</td><td>{folder['errors']}</td><td>{folder['warnings']}</td><td>{folder['information']}</td><td>{folder['participatingRuns']}</td></tr>"
+            for folder in top_folders
+        )
     else:
         parts.append('          <tr><td colspan="5"><em>No folder hotspots</em></td></tr>')
     parts.extend(["        </tbody>", "      </table>", "    </section>"])
@@ -233,10 +235,10 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
         ]
     )
     if top_files:
-        for file_entry in top_files:
-            parts.append(
-                f"          <tr><td>{h(file_entry['path'])}</td><td>{file_entry['errors']}</td><td>{file_entry['warnings']}</td></tr>"
-            )
+        parts.extend(
+            f"          <tr><td>{h(file_entry['path'])}</td><td>{file_entry['errors']}</td><td>{file_entry['warnings']}</td></tr>"
+            for file_entry in top_files
+        )
     else:
         parts.append('          <tr><td colspan="3"><em>No file hotspots</em></td></tr>')
     parts.extend(["        </tbody>", "      </table>", "    </section>"])

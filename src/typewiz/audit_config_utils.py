@@ -87,16 +87,14 @@ def merge_engine_settings_map(
 def clone_path_overrides(overrides: Sequence[PathOverride]) -> list[PathOverride]:
     """Clone path override records so that callers can mutate safely."""
 
-    cloned: list[PathOverride] = []
-    for override in overrides:
-        cloned.append(
-            PathOverride(
-                path=override.path,
-                engine_settings=clone_engine_settings_map(override.engine_settings),
-                active_profiles=dict(override.active_profiles),
-            )
+    return [
+        PathOverride(
+            path=override.path,
+            engine_settings=clone_engine_settings_map(override.engine_settings),
+            active_profiles=dict(override.active_profiles),
         )
-    return cloned
+        for override in overrides
+    ]
 
 
 def clone_audit_config(source: AuditConfig) -> AuditConfig:
