@@ -282,6 +282,13 @@ jobs:
       - name: Typewiz CI dashboard (optional)
         run: make typing.ci || true
 
+      - name: Packaging validation
+        run: |
+          make package.build
+          make package.check
+          make package.install-test
+          make package.clean
+
       - name: Upload typing artifacts
         if: always()
         uses: actions/upload-artifact@v4

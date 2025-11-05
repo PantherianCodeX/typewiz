@@ -51,6 +51,7 @@ TYPEWIZ_LIMIT ?= 20
   bench \
   verifytypes \
   hooks.update \
+  package.build package.check package.clean package.install-test \
   check.error-codes \
   precommit.check \
   typewiz.audit typewiz.dashboard typewiz.readiness typewiz.clean \
@@ -237,6 +238,21 @@ bench: ## Run performance benchmarks (requires pytest-benchmark plugin)
 hooks.update: ## Update pre-commit hooks to latest versions
 	$(PIP) install --quiet pre-commit || true
 	pre-commit autoupdate
+
+##@ Packaging
+package.build: ## Build sdist and wheel into dist/
+	$(PYTHON) -m build --no-isolation
+
+package.check: package.build ## Run Twine check on built artifacts
+	$(PYTHON) -m twine check dist/*
+
+
+package.install-test: package.build ## Install built wheel in a temporary venv to ensure installability
+	$(PYTHON) scripts/install_test_wheel.py
+
+
+package.clean: ## Remove build artifacts
+	$(PYTHON) scripts/clean_build_artifacts.py
 
 tests.cov: ## Alias for pytest.cov
 	@$(MAKE) pytest.cov

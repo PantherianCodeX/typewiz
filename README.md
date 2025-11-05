@@ -464,6 +464,12 @@ Use the Makefile to run common workflows with consistent settings:
 - Benchmarks
   - `make bench` – Run readiness/aggregate benchmarks (skips if `pytest-benchmark` is unavailable)
 
+- Packaging
+  - `make package.build` – Build sdist and wheel into `dist/`
+  - `make package.check` – Run `twine check` on the built artifacts
+  - `make package.install-test` – Install the wheel into a temporary venv to confirm installability
+  - `make package.clean` – Remove `dist/`, `build/`, and egg-info artifacts
+
 - CI aggregate
   - `make ci.check` – Lint, type checks, and tests
 

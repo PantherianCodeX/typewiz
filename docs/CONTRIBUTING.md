@@ -59,6 +59,10 @@ make pytest.cov          # pytest with coverage ≥90%
 make check.error-codes   # ensure error code registry matches docs
 make verifytypes         # pyright --verifytypes for public typing
 make hooks.update        # autoupdate pre-commit hook versions
+make package.build       # build wheel + sdist via python -m build
+make package.check       # run twine check on built artifacts
+make package.install-test # install built wheel in a throwaway virtualenv
+make package.clean        # remove build/dist artifacts
 ```
 
 All CI jobs invoke these targets, so running them locally ensures parity.
