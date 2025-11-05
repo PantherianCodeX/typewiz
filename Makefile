@@ -30,6 +30,7 @@ TYPEWIZ_LIMIT ?= 20
   tests.all tests.verbose tests.failfast tests.cov tests.clean \
   sec.lint sec.bandit \
   bench \
+  check.error-codes \
   precommit.check \
   typewiz.audit typewiz.dashboard typewiz.readiness typewiz.clean \
   clean.all clean.mypy clean.pyright clean.pycache clean.coverage
@@ -148,6 +149,10 @@ typewiz.readiness: ## Show Typewiz readiness summary
 typewiz.clean: ## Remove Typewiz caches and reports
 	rm -rf .typewiz_cache
 	rm -rf $(TYPING_REPORT_DIR)
+
+##@ Internal checks
+check.error-codes: ## Verify error code registry and documentation are in sync
+	$(PYTHON) scripts/check_error_codes.py
 
 ##@ Cleaning
 clean.mypy: ## Remove mypy cache directory

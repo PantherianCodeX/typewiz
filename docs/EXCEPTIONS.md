@@ -33,6 +33,10 @@ Dashboard errors:
 
 - `typewiz.dashboard.DashboardTypeError` — invalid dashboard input types. Code: `TW200`.
 
+Readiness errors:
+
+- `typewiz.readiness_views.ReadinessValidationError` — readiness payload contained invalid data. Code: `TW201`.
+
 Usage tips:
 
 - Prefer catching specific exceptions when you can; fall back to `TypewizError` for a single broad handler.

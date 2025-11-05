@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from .config import (
     ConfigFieldChoiceError,
     ConfigFieldTypeError,
@@ -55,4 +57,18 @@ def error_code_for(exc: BaseException) -> ErrorCode:
     return "TW000"
 
 
-__all__ = ["ErrorCode", "error_code_for"]
+def error_code_catalog() -> Mapping[str, ErrorCode]:
+    """Return a stable mapping of fully-qualified exception names to error codes.
+
+    Intended for diagnostics, tests, and documentation generation - avoids
+    exposing the private mapping while keeping a single source of truth.
+    """
+
+    result: dict[str, ErrorCode] = {}
+    for exc_type, code in _ERROR_CODES.items():
+        key = f"{exc_type.__module__}.{exc_type.__name__}"
+        result[key] = code
+    return result
+
+
+__all__ = ["ErrorCode", "error_code_catalog", "error_code_for"]

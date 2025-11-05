@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 from pydantic import ValidationError
 from pydantic_core import PydanticCustomError
 
 from typewiz.config import ConfigValidationError
-from typewiz.error_codes import error_code_for
+from typewiz.error_codes import error_code_catalog, error_code_for
 from typewiz.exceptions import TypewizError, TypewizTypeError, TypewizValidationError
 from typewiz.manifest_models import ManifestValidationError
 
@@ -33,3 +36,20 @@ def test_error_code_for_unknown_defaults_to_base() -> None:
         pass
 
     assert error_code_for(CustomError("x")) == "TW000"
+
+
+def test_error_code_catalog_uniqueness() -> None:
+    catalog = error_code_catalog()
+    codes = list(catalog.values())
+    assert len(set(codes)) == len(codes)
+    assert catalog["typewiz.exceptions.TypewizError"] == "TW000"
+
+
+def test_error_code_documentation_is_in_sync() -> None:
+    catalog = error_code_catalog()
+    repo_root = Path(__file__).resolve().parents[1]
+    doc_path = repo_root / "docs" / "EXCEPTIONS.md"
+    content = doc_path.read_text(encoding="utf-8")
+    documented_codes = set(re.findall(r"TW\d{3}", content))
+    registry_codes = set(catalog.values())
+    assert registry_codes == documented_codes
