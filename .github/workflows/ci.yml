@@ -39,19 +39,41 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-venv-
 
+      - name: Cache Ruff cache
+        uses: actions/cache@v4
+        with:
+          path: .ruff_cache
+          key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-ruff-
+
+      - name: Cache mypy cache
+        uses: actions/cache@v4
+        with:
+          path: .mypy_cache
+          key: ${{ runner.os }}-mypy-${{ hashFiles('mypy.ini', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-mypy-
+
       - name: Install dependencies
         run: |
-          if [ ! -f .venv/bin/activate ]; then
+          if [ ! -d .venv ]; then
             python -m venv .venv
           fi
-          .venv/bin/python -m pip install -U pip
-          .venv/bin/pip install -r requirements-dev.txt
+          if [ -f .venv/bin/activate ]; then
+            source .venv/bin/activate
+          else
+            source .venv/Scripts/activate
+          fi
+          python -m pip install -U pip
+          pip install -r requirements-dev.txt
 
       - name: Run task
         run: |
           case "${{ matrix.task }}" in
             lint)
               make lint
+              make check.error-codes
               ;;
             type)
               make type
@@ -61,9 +83,16 @@ jobs:
               ;;
           esac
 
-  typewiz:
-    runs-on: ubuntu-latest
+  tests-matrix:
     needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,13 +119,165 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-venv-
 
+      - name: Cache Ruff cache
+        uses: actions/cache@v4
+        with:
+          path: .ruff_cache
+          key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-ruff-
+
+      - name: Cache mypy cache
+        uses: actions/cache@v4
+        with:
+          path: .mypy_cache
+          key: ${{ runner.os }}-mypy-${{ hashFiles('mypy.ini', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-mypy-
+
       - name: Install dependencies
         run: |
-          if [ ! -f .venv/bin/activate ]; then
+          if [ ! -d .venv ]; then
             python -m venv .venv
           fi
-          .venv/bin/python -m pip install -U pip
-          .venv/bin/pip install -r requirements-dev.txt
+          if [ -f .venv/bin/activate ]; then
+            source .venv/bin/activate
+          else
+            source .venv/Scripts/activate
+          fi
+          python -m pip install -U pip
+          pip install -r requirements-dev.txt
+
+      - name: Run tests with coverage
+        run: |
+          if [ -f .venv/bin/activate ]; then
+            source .venv/bin/activate
+            PYTHON=python
+          else
+            source .venv/Scripts/activate
+            PYTHON=python
+          fi
+          $PYTHON -m pytest --cov=src/typewiz --cov-report=term --cov-fail-under=90
+
+  tests-python-313:
+    needs: quality
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-py313-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache virtualenv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv-py313-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-
+
+      - name: Cache Ruff cache
+        uses: actions/cache@v4
+        with:
+          path: .ruff_cache
+          key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-ruff-
+
+      - name: Cache mypy cache
+        uses: actions/cache@v4
+        with:
+          path: .mypy_cache
+          key: ${{ runner.os }}-mypy-${{ hashFiles('mypy.ini', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-mypy-
+
+      - name: Install dependencies
+        run: |
+          if [ ! -d .venv ]; then
+            python -m venv .venv
+          fi
+          source .venv/bin/activate
+          python -m pip install -U pip
+          pip install -r requirements-dev.txt
+
+      - name: Run tests with coverage (Python 3.13)
+        run: |
+          source .venv/bin/activate
+          python -m pytest --cov=src/typewiz --cov-report=term --cov-fail-under=90
+
+  typewiz:
+    runs-on: ubuntu-latest
+    needs:
+      - quality
+      - tests-matrix
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache virtualenv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-
+
+      - name: Cache Ruff cache
+        uses: actions/cache@v4
+        with:
+          path: .ruff_cache
+          key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-ruff-
+
+      - name: Cache mypy cache
+        uses: actions/cache@v4
+        with:
+          path: .mypy_cache
+          key: ${{ runner.os }}-mypy-${{ hashFiles('mypy.ini', 'pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-mypy-
+
+      - name: Install dependencies
+        run: |
+          if [ ! -d .venv ]; then
+            python -m venv .venv
+          fi
+          if [ -f .venv/bin/activate ]; then
+            source .venv/bin/activate
+          else
+            source .venv/Scripts/activate
+          fi
+          python -m pip install -U pip
+          pip install -r requirements-dev.txt
 
       - name: Typewiz CI dashboard (optional)
         run: make typing.ci || true
