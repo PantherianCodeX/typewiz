@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, TypedDict
+from typing import Final, Literal, TypedDict
 
 from .type_aliases import CategoryName
 
+StatusName = Literal["ready", "close", "blocked"]
+STATUSES: Final[tuple[StatusName, StatusName, StatusName]] = ("ready", "close", "blocked")
+DEFAULT_CLOSE_THRESHOLD: Final[int] = 3
+STRICT_CLOSE_THRESHOLD: Final[int] = 3
+GENERAL_CATEGORY: Final[CategoryName] = CategoryName("general")
+
 # Category patterns and thresholds can be tuned here without touching renderers
-CATEGORY_PATTERNS: dict[str, tuple[str, ...]] = {
+CATEGORY_PATTERNS: Final[dict[str, tuple[str, ...]]] = {
     "unknownChecks": (
         "unknown",
         "missingtype",
@@ -19,14 +25,12 @@ CATEGORY_PATTERNS: dict[str, tuple[str, ...]] = {
     "general": (),
 }
 
-CATEGORY_CLOSE_THRESHOLD = {
+CATEGORY_CLOSE_THRESHOLD: Final[dict[str, int]] = {
     "unknownChecks": 2,
     "optionalChecks": 2,
     "unusedSymbols": 4,
     "general": 5,
 }
-
-STRICT_CLOSE_THRESHOLD = 3
 
 CATEGORY_LABELS = {
     "unknownChecks": "Unknown type checks",
@@ -35,11 +39,73 @@ CATEGORY_LABELS = {
     "general": "General diagnostics",
 }
 
+CATEGORY_KEYS: Final[tuple[str, ...]] = tuple(CATEGORY_PATTERNS.keys())
+CATEGORY_NAMES: Final[tuple[CategoryName, ...]] = tuple(CategoryName(key) for key in CATEGORY_KEYS)
+_CATEGORY_PATTERN_LOOKUPS: Final[tuple[tuple[CategoryName, tuple[str, ...]], ...]] = tuple(
+    (
+        CategoryName(category),
+        tuple(pattern.lower() for pattern in patterns if pattern),
+    )
+    for category, patterns in CATEGORY_PATTERNS.items()
+    if category != str(GENERAL_CATEGORY)
+)
+
+
+class ReadinessEntry(TypedDict):
+    path: str
+    errors: int
+    warnings: int
+    information: int
+    codeCounts: dict[str, int]
+    categoryCounts: dict[str, int]
+    recommendations: list[str]
+
+
+class ReadinessOptionEntry(TypedDict):
+    path: str
+    count: int
+    errors: int
+    warnings: int
+
+
+class ReadinessOptionBucket(TypedDict):
+    ready: list[ReadinessOptionEntry]
+    close: list[ReadinessOptionEntry]
+    blocked: list[ReadinessOptionEntry]
+    threshold: int
+
+
+class ReadinessStrictEntry(TypedDict, total=False):
+    path: str
+    errors: int
+    warnings: int
+    information: int
+    diagnostics: int
+    categories: dict[str, int]
+    categoryStatus: dict[str, StatusName]
+    recommendations: list[str]
+    notes: list[str]
+
+
+CategoryCountMap = dict[CategoryName, int]
+CategoryStatusMap = dict[CategoryName, StatusName]
+StrictBuckets = dict[StatusName, list[ReadinessStrictEntry]]
+OptionsBuckets = dict[str, ReadinessOptionBucket]
+
+
+class ReadinessPayload(TypedDict):
+    strict: StrictBuckets
+    options: OptionsBuckets
+
+
+def _new_category_counts() -> CategoryCountMap:
+    return dict.fromkeys(CATEGORY_NAMES, 0)
+
 
 def _category_counts_from_entry(entry: ReadinessEntry) -> CategoryCountMap:
     raw_counts = entry.get("categoryCounts")
     if raw_counts:
-        categories: CategoryCountMap = {CategoryName(name): 0 for name in CATEGORY_PATTERNS}
+        categories = _new_category_counts()
         general_extra = 0
         for category, count in raw_counts.items():
             try:
@@ -47,11 +113,12 @@ def _category_counts_from_entry(entry: ReadinessEntry) -> CategoryCountMap:
             except (TypeError, ValueError):
                 continue
             category_key = CategoryName(category)
+            increment = max(count_int, 0)
             if category_key in categories:
-                categories[category_key] += max(count_int, 0)
+                categories[category_key] += increment
             else:
-                general_extra += max(count_int, 0)
-        categories[CategoryName("general")] += general_extra
+                general_extra += increment
+        categories[GENERAL_CATEGORY] += general_extra
         return categories
     code_counts = entry.get("codeCounts", {})
     return _bucket_code_counts(code_counts)
@@ -95,7 +162,7 @@ def _strict_status_details(
     blocking_categories = [
         f"{category}"
         for category, status in category_status.items()
-        if status == "blocked" and str(category) != "general"
+        if status == "blocked" and category != GENERAL_CATEGORY
     ]
     if total_diagnostics <= STRICT_CLOSE_THRESHOLD and not blocking_categories:
         notes = [
@@ -132,80 +199,25 @@ def _build_strict_entry_payload(
 
 
 def _bucket_code_counts(code_counts: dict[str, int]) -> CategoryCountMap:
-    buckets: CategoryCountMap = {CategoryName(name): 0 for name in CATEGORY_PATTERNS}
+    buckets = _new_category_counts()
     for rule, count in code_counts.items():
         lowered = rule.lower()
         matched_category: CategoryName | None = None
-        for category, patterns in CATEGORY_PATTERNS.items():
-            if category == "general":
-                continue
+        for category, patterns in _CATEGORY_PATTERN_LOOKUPS:
             if any(pattern in lowered for pattern in patterns):
-                matched_category = CategoryName(category)
+                matched_category = category
                 break
         if matched_category is None:
-            matched_category = CategoryName("general")
+            matched_category = GENERAL_CATEGORY
         buckets[matched_category] += count
     return buckets
-
-
-StatusName = Literal["ready", "close", "blocked"]
-STATUSES: tuple[StatusName, StatusName, StatusName] = ("ready", "close", "blocked")
 
 
 def _status_for_category(category: str, count: int) -> StatusName:
     if count == 0:
         return "ready"
-    close_threshold = CATEGORY_CLOSE_THRESHOLD.get(category, 3)
+    close_threshold = CATEGORY_CLOSE_THRESHOLD.get(category, DEFAULT_CLOSE_THRESHOLD)
     return "close" if count <= close_threshold else "blocked"
-
-
-class ReadinessEntry(TypedDict):
-    path: str
-    errors: int
-    warnings: int
-    information: int
-    codeCounts: dict[str, int]
-    categoryCounts: dict[str, int]
-    recommendations: list[str]
-
-
-class ReadinessOptionEntry(TypedDict):
-    path: str
-    count: int
-    errors: int
-    warnings: int
-
-
-class ReadinessOptionBucket(TypedDict):
-    ready: list[ReadinessOptionEntry]
-    close: list[ReadinessOptionEntry]
-    blocked: list[ReadinessOptionEntry]
-    threshold: int
-
-
-class ReadinessStrictEntry(TypedDict, total=False):
-    path: str
-    errors: int
-    warnings: int
-    information: int
-    diagnostics: int
-    categories: dict[str, int]
-    categoryStatus: dict[str, StatusName]
-    recommendations: list[str]
-    notes: list[str]
-
-
-StrictBuckets = dict[StatusName, list[ReadinessStrictEntry]]
-OptionsBuckets = dict[str, ReadinessOptionBucket]
-
-
-class ReadinessPayload(TypedDict):
-    strict: StrictBuckets
-    options: OptionsBuckets
-
-
-CategoryCountMap = dict[CategoryName, int]
-CategoryStatusMap = dict[CategoryName, StatusName]
 
 
 def _empty_option_bucket(category: str) -> ReadinessOptionBucket:
@@ -213,7 +225,7 @@ def _empty_option_bucket(category: str) -> ReadinessOptionBucket:
         "ready": [],
         "close": [],
         "blocked": [],
-        "threshold": CATEGORY_CLOSE_THRESHOLD.get(category, 3),
+        "threshold": CATEGORY_CLOSE_THRESHOLD.get(category, DEFAULT_CLOSE_THRESHOLD),
     }
 
 
@@ -242,7 +254,9 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPayl
 
         total_diagnostics = entry.get("errors", 0) + entry.get("warnings", 0)
         strict_status, notes = _strict_status_details(
-            total_diagnostics, category_status, categories
+            total_diagnostics,
+            category_status,
+            categories,
         )
         strict_entry = _build_strict_entry_payload(
             entry,
