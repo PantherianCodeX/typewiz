@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import json
@@ -10,14 +12,14 @@ from typing import cast
 from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
 from .exceptions import TypewizTypeError
 from .manifest_loader import load_manifest_data
-from .model_types import CategoryMapping, OverrideEntry, clone_override_entries
+from .model_types import CategoryMapping, OverrideEntry, ReadinessStatus, clone_override_entries
 from .override_utils import format_overrides_block
 from .readiness import (
     CATEGORY_LABELS,
+    STATUS_VALUES,
     STATUSES,
     ReadinessEntry,
     ReadinessPayload,
-    StatusName,
     compute_readiness,
 )
 from .summary_types import (
@@ -54,7 +56,7 @@ def _collect_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPay
 
 def _empty_readiness_tab() -> ReadinessTab:
     return {
-        "strict": {"ready": [], "close": [], "blocked": []},
+        "strict": {status_value: [] for status_value in STATUS_VALUES},
         "options": {},
     }
 
@@ -65,10 +67,10 @@ def _coerce_readiness_entries(value: object, context: str) -> list[dict[str, JSO
     if not isinstance(value, Sequence) or isinstance(value, str | bytes | bytearray):
         raise DashboardTypeError(context, "a sequence of mappings")
     entries: list[dict[str, JSONValue]] = []
-    for index, entry in enumerate(cast(Sequence[object], value)):
+    for index, entry in enumerate(cast("Sequence[object]", value)):
         if not isinstance(entry, Mapping):
             raise DashboardTypeError(f"{context}[{index}]", "a mapping")
-        entries.append(coerce_mapping(cast(Mapping[object, object], entry)))
+        entries.append(coerce_mapping(cast("Mapping[object, object]", entry)))
     return entries
 
 
@@ -76,27 +78,31 @@ def _validate_readiness_tab(raw: Mapping[str, object]) -> ReadinessTab:
     strict_raw = raw.get("strict")
     if not isinstance(strict_raw, Mapping):
         raise DashboardTypeError("readiness.strict", "a mapping")
-    strict_map = coerce_mapping(cast(Mapping[object, object], strict_raw))
-    strict_section: dict[StatusName, list[dict[str, JSONValue]]] = {}
+    strict_map = coerce_mapping(cast("Mapping[object, object]", strict_raw))
+    strict_section: dict[str, list[dict[str, JSONValue]]] = {}
     for status in STATUSES:
-        strict_section[status] = _coerce_readiness_entries(
-            strict_map.get(status), f"readiness.strict.{status}"
+        key = status.value
+        strict_section[key] = _coerce_readiness_entries(
+            strict_map.get(key),
+            f"readiness.strict.{key}",
         )
 
     options_raw = raw.get("options")
     if not isinstance(options_raw, Mapping):
         raise DashboardTypeError("readiness.options", "a mapping")
-    options_map = coerce_mapping(cast(Mapping[object, object], options_raw))
+    options_map = coerce_mapping(cast("Mapping[object, object]", options_raw))
     options_section: dict[str, dict[str, object]] = {}
     for category, bucket_obj in options_map.items():
         if not isinstance(bucket_obj, Mapping):
             raise DashboardTypeError(f"readiness.options[{category!r}]", "a mapping")
-        bucket_map = coerce_mapping(cast(Mapping[object, object], bucket_obj))
+        bucket_map = coerce_mapping(cast("Mapping[object, object]", bucket_obj))
         validated_bucket: dict[str, object] = {}
         for status in STATUSES:
-            if status in bucket_map:
-                validated_bucket[status] = _coerce_readiness_entries(
-                    bucket_map.get(status), f"readiness.options[{category!r}].{status}"
+            key = status.value
+            if key in bucket_map:
+                validated_bucket[key] = _coerce_readiness_entries(
+                    bucket_map.get(key),
+                    f"readiness.options[{category!r}].{key}",
                 )
         threshold_value = bucket_map.get("threshold")
         if threshold_value is not None:
@@ -107,7 +113,7 @@ def _validate_readiness_tab(raw: Mapping[str, object]) -> ReadinessTab:
         options_section[str(category)] = validated_bucket
 
     return cast(
-        ReadinessTab,
+        "ReadinessTab",
         {
             "strict": strict_section,
             "options": options_section,
@@ -119,8 +125,8 @@ def build_summary(manifest: ManifestData) -> SummaryData:
     runs_raw = manifest.get("runs")
     run_entries: list[dict[str, JSONValue]] = (
         [
-            coerce_mapping(cast(Mapping[object, object], item))
-            for item in cast(Sequence[object], runs_raw)
+            coerce_mapping(cast("Mapping[object, object]", item))
+            for item in cast("Sequence[object]", runs_raw)
             if isinstance(item, Mapping)
         ]
         if isinstance(runs_raw, Sequence)
@@ -146,23 +152,23 @@ def build_summary(manifest: ManifestData) -> SummaryData:
         if not isinstance(summary_obj, Mapping):
             continue
         summary_map: dict[str, JSONValue] = coerce_mapping(
-            cast(Mapping[object, object], summary_obj)
+            cast("Mapping[object, object]", summary_obj),
         )
         command_list = [str(part) for part in coerce_object_list(run.get("command"))]
         options_obj = run.get("engineOptions")
         options_map: dict[str, JSONValue] = (
-            coerce_mapping(cast(Mapping[object, object], options_obj))
+            coerce_mapping(cast("Mapping[object, object]", options_obj))
             if isinstance(options_obj, Mapping)
             else {}
         )
 
         profile_obj = options_map.get("profile")
         profile = str(profile_obj).strip() if isinstance(profile_obj, str) else None
-        if profile == "":
+        if not profile:
             profile = None
         config_obj = options_map.get("configFile")
         config_file = str(config_obj).strip() if isinstance(config_obj, str) else None
-        if config_file == "":
+        if not config_file:
             config_file = None
         plugin_args = coerce_str_list(options_map.get("pluginArgs", []))
         include_paths = coerce_str_list(options_map.get("include", []))
@@ -193,7 +199,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
         category_mapping: CategoryMapping = {}
         if isinstance(category_mapping_raw, Mapping):
             category_mapping_source: dict[str, JSONValue] = coerce_mapping(
-                cast(Mapping[object, object], category_mapping_raw)
+                cast(Mapping[object, object], category_mapping_raw),
             )
             for key, values in category_mapping_source.items():
                 key_str = str(key).strip()
@@ -317,7 +323,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 "codeCounts": dict(folder_code_totals.get(path, {})),
                 "categoryCounts": dict(folder_category_totals.get(path, {})),
                 "recommendations": sorted(folder_recommendations.get(path, [])),
-            }
+            },
         )
 
     top_folders = sorted(
@@ -353,7 +359,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 "participatingRuns": folder_counts[path],
                 "codeCounts": code_counts,
                 "recommendations": recommendations,
-            }
+            },
         )
     top_files_list: list[SummaryFileEntry] = [
         {"path": path, "errors": errors, "warnings": warnings}
@@ -419,7 +425,7 @@ def render_markdown(summary: SummaryData) -> str:
                 f"- Errors: {severity.get('error', 0)}",
                 f"- Warnings: {severity.get('warning', 0)}",
                 f"- Information: {severity.get('information', 0)}",
-            ]
+            ],
         )
 
     lines.extend(
@@ -429,12 +435,12 @@ def render_markdown(summary: SummaryData) -> str:
             "",
             "| Run | Errors | Warnings | Information | Command |",
             "| --- | ---: | ---: | ---: | --- |",
-        ]
+        ],
     )
     for key, data in run_summary.items():
         cmd = " ".join(str(part) for part in data.get("command", []))
         lines.append(
-            f"| `{key}` | {data.get('errors', 0)} | {data.get('warnings', 0)} | {data.get('information', 0)} | `{cmd}` |"
+            f"| `{key}` | {data.get('errors', 0)} | {data.get('warnings', 0)} | {data.get('information', 0)} | `{cmd}` |",
         )
     if not run_summary:
         lines.append("| _No runs recorded_ | 0 | 0 | 0 | — |")
@@ -459,7 +465,7 @@ def render_markdown(summary: SummaryData) -> str:
                     f"- Plugin args: {plugin_args}",
                     f"- Include paths: {include}",
                     f"- Exclude paths: {exclude}",
-                ]
+                ],
             )
             # If the raw tool totals are present, surface them for transparency.
             tool_totals = data.get("toolSummary")
@@ -479,7 +485,7 @@ def render_markdown(summary: SummaryData) -> str:
                     else ""
                 )
                 lines.append(
-                    f"- Tool totals: errors={t_errors}, warnings={t_warnings}, information={t_info}, total={t_total}{mismatch_note}"
+                    f"- Tool totals: errors={t_errors}, warnings={t_warnings}, information={t_info}, total={t_total}{mismatch_note}",
                 )
             overrides: list[OverrideEntry] = options.get("overrides", []) or []
             if overrides:
@@ -498,7 +504,7 @@ def render_markdown(summary: SummaryData) -> str:
                 "",
                 "| Rule | Count |",
                 "| --- | ---: |",
-            ]
+            ],
         )
         lines.extend(f"| `{rule}` | {count} |" for rule, count in top_rules.items())
     else:
@@ -512,7 +518,7 @@ def render_markdown(summary: SummaryData) -> str:
             "",
             "| Folder | Errors | Warnings | Information | Runs |",
             "| --- | ---: | ---: | ---: | ---: |",
-        ]
+        ],
     )
     if top_folders:
         lines.extend(
@@ -530,7 +536,7 @@ def render_markdown(summary: SummaryData) -> str:
             "",
             "| File | Errors | Warnings |",
             "| --- | ---: | ---: |",
-        ]
+        ],
     )
     if top_files:
         lines.extend(
@@ -554,8 +560,8 @@ def render_markdown(summary: SummaryData) -> str:
                     f"- Warnings: {data.get('warnings', 0)}",
                     f"- Information: {data.get('information', 0)}",
                     f"- Total diagnostics: {data.get('total', 0)}",
-                    f"- Severity breakdown: {breakdown if breakdown else '{}'}",
-                ]
+                    f"- Severity breakdown: {breakdown or '{}'}",
+                ],
             )
     else:
         lines.append("- No runs recorded")
@@ -564,9 +570,9 @@ def render_markdown(summary: SummaryData) -> str:
     empty_readiness = _empty_readiness_tab()
     readiness_section = tabs.get("readiness") or empty_readiness
     strict_section_raw = readiness_section.get("strict", {})
-    strict_ready_raw = strict_section_raw.get("ready", [])
-    strict_close_raw = strict_section_raw.get("close", [])
-    strict_blocked_raw = strict_section_raw.get("blocked", [])
+    strict_ready_raw = strict_section_raw.get(ReadinessStatus.READY.value, [])
+    strict_close_raw = strict_section_raw.get(ReadinessStatus.CLOSE.value, [])
+    strict_blocked_raw = strict_section_raw.get(ReadinessStatus.BLOCKED.value, [])
 
     def _materialise_dict_list(values: object) -> list[dict[str, object]]:
         result: list[dict[str, object]] = []
@@ -598,16 +604,15 @@ def render_markdown(summary: SummaryData) -> str:
     if readiness_options_raw:
         lines.extend(["", "#### Per-option readiness"])
         for category, buckets_obj in readiness_options_raw.items():
-            buckets_dict = {
-                str(key): buckets_obj.get(key) for key in ("ready", "close", "blocked", "threshold")
-            }
+            buckets_dict = {status.value: buckets_obj.get(status.value) for status in STATUSES}
+            buckets_dict["threshold"] = buckets_obj.get("threshold")
             label = CATEGORY_LABELS.get(category, category)
             threshold = buckets_dict.get("threshold")
             threshold_value = threshold if isinstance(threshold, int) else 0
             lines.append(f"- **{label}** (≤{threshold_value} to be close):")
             for status in STATUSES:
-                entries = _materialise_dict_list(buckets_dict.get(status))
-                lines.append(f"  - {status.title()}: {_format_entry_list(entries)}")
+                entries = _materialise_dict_list(buckets_dict.get(status.value))
+                lines.append(f"  - {status.value.title()}: {_format_entry_list(entries)}")
 
     lines.append("")
     return "\n".join(lines)

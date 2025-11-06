@@ -1,0 +1,421 @@
+# Copyright (c) 2024 PantherianCodeX
+"""Audit command wiring for the modular Typewiz CLI."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any, Protocol
+
+from typewiz.api import run_audit
+from typewiz.config import AuditConfig, Config, load_config
+from typewiz.dashboard import build_summary, render_markdown
+from typewiz.html_report import render_html
+from typewiz.summary_types import SummaryData
+from typewiz.utils import default_full_paths, resolve_project_root
+
+from ...cli_helpers import collect_plugin_args, collect_profile_args, normalise_modes
+from ...model_types import (
+    DashboardView,
+    FailOnPolicy,
+    Mode,
+    ReadinessLevel,
+    ReadinessStatus,
+    SummaryStyle,
+)
+from ..helpers import (
+    SUMMARY_FIELD_CHOICES,
+    parse_summary_fields,
+    print_readiness_summary,
+    print_summary,
+    register_argument,
+)
+from ..helpers.io import echo as _echo
+
+
+class SubparserRegistry(Protocol):
+    def add_parser(
+        self, *args: Any, **kwargs: Any
+    ) -> argparse.ArgumentParser: ...  # pragma: no cover - Protocol
+
+
+def register_audit_command(subparsers: SubparserRegistry) -> None:
+    """Register the ``typewiz audit`` command and return the configured parser."""
+    audit = subparsers.add_parser(
+        "audit",
+        help="Run typing audits and produce manifests/dashboards",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=(
+            "Collect diagnostics from configured engines and optionally write manifests or dashboards."
+        ),
+    )
+
+    register_argument(
+        audit,
+        "paths",
+        nargs="*",
+        metavar="PATH",
+        help="Directories to include in full runs (default: auto-detected python packages).",
+    )
+    register_argument(
+        audit,
+        "-C",
+        "--config",
+        type=Path,
+        default=None,
+        help="Explicit typewiz.toml path (default: search in cwd).",
+    )
+    register_argument(
+        audit,
+        "--project-root",
+        type=Path,
+        default=None,
+        help="Override the project root (default: auto-detected).",
+    )
+    register_argument(
+        audit,
+        "--manifest",
+        type=Path,
+        default=None,
+        help="Write manifest JSON to this path.",
+    )
+    register_argument(
+        audit,
+        "--runner",
+        dest="runners",
+        action="append",
+        default=None,
+        help="Limit to specific engines (repeatable).",
+    )
+    register_argument(
+        audit,
+        "--mode",
+        dest="modes",
+        action="append",
+        default=None,
+        help="Select which modes to run (repeatable: current, full).",
+    )
+    register_argument(
+        audit,
+        "--max-depth",
+        type=int,
+        default=None,
+        help="Limit directory recursion depth for fingerprinting.",
+    )
+    register_argument(
+        audit,
+        "--max-files",
+        type=int,
+        default=None,
+        help="Limit number of files fingerprinted per run.",
+    )
+    register_argument(
+        audit,
+        "--max-fingerprint-bytes",
+        type=int,
+        default=None,
+        help="Limit bytes fingerprinted per file.",
+    )
+    register_argument(
+        audit,
+        "--respect-gitignore",
+        action="store_true",
+        help="Respect .gitignore rules when expanding directories.",
+    )
+    register_argument(
+        audit,
+        "--plugin-arg",
+        dest="plugin_arg",
+        action="append",
+        metavar="RUNNER=ARG",
+        default=[],
+        help="Pass an extra argument to a runner (repeatable). Example: --plugin-arg pyright=--verifytypes",
+    )
+    register_argument(
+        audit,
+        "--profile",
+        dest="profiles",
+        action="append",
+        nargs=2,
+        metavar=("RUNNER", "PROFILE"),
+        default=[],
+        help="Activate a named profile for a runner (repeatable).",
+    )
+    register_argument(
+        audit,
+        "-S",
+        "--summary",
+        choices=[style.value for style in SummaryStyle],
+        default=SummaryStyle.COMPACT.value,
+        help="Compact (default), expanded (multi-line), or full (expanded + all fields).",
+    )
+    register_argument(
+        audit,
+        "--summary-fields",
+        default=None,
+        help=(
+            "Comma-separated extra summary fields (profile, config, plugin-args, paths, all). "
+            "Ignored for --summary=full."
+        ),
+    )
+    register_argument(
+        audit,
+        "--fail-on",
+        choices=[policy.value for policy in FailOnPolicy],
+        default=None,
+        help="Non-zero exit when diagnostics reach this severity (aliases: none=never, any=any finding).",
+    )
+    register_argument(
+        audit,
+        "--dashboard-json",
+        type=Path,
+        default=None,
+        help="Optional dashboard JSON output path.",
+    )
+    register_argument(
+        audit,
+        "--dashboard-markdown",
+        type=Path,
+        default=None,
+        help="Optional dashboard Markdown output path.",
+    )
+    register_argument(
+        audit,
+        "--dashboard-html",
+        type=Path,
+        default=None,
+        help="Optional dashboard HTML output path.",
+    )
+    register_argument(
+        audit,
+        "--compare-to",
+        type=Path,
+        default=None,
+        help="Optional path to a previous manifest to compare totals against (adds deltas to CI line).",
+    )
+    register_argument(
+        audit,
+        "--dashboard-view",
+        choices=[view.value for view in DashboardView],
+        default=DashboardView.OVERVIEW.value,
+        help="Default tab when writing the HTML dashboard.",
+    )
+    register_argument(
+        audit,
+        "--readiness",
+        action="store_true",
+        help="After audit completes, print a readiness summary.",
+    )
+    register_argument(
+        audit,
+        "--readiness-level",
+        choices=[level.value for level in ReadinessLevel],
+        default=ReadinessLevel.FOLDER.value,
+        help="Granularity for readiness summaries when --readiness is enabled.",
+    )
+    register_argument(
+        audit,
+        "--readiness-status",
+        dest="readiness_status",
+        action="append",
+        choices=[status.value for status in ReadinessStatus],
+        default=None,
+        help="Status buckets to display for readiness summaries (repeatable).",
+    )
+    register_argument(
+        audit,
+        "--readiness-limit",
+        type=int,
+        default=10,
+        help="Maximum entries per status when printing readiness summaries.",
+    )
+
+
+def _resolve_full_paths(args: argparse.Namespace, config: Config, project_root: Path) -> list[str]:
+    cli_full_paths = [path for path in args.paths if path]
+    return cli_full_paths or config.audit.full_paths or default_full_paths(project_root)
+
+
+def normalise_modes_tuple(modes: Sequence[str] | None) -> tuple[bool, bool, bool]:
+    normalised = normalise_modes(modes)
+    if not normalised:
+        return (False, True, True)
+    run_current = Mode.CURRENT in normalised
+    run_full = Mode.FULL in normalised
+    if not run_current and not run_full:
+        raise SystemExit("No modes selected. Choose at least one of: current, full.")
+    return (True, run_current, run_full)
+
+
+def _update_override_with_plugin_args(override: AuditConfig, entries: Sequence[str]) -> None:
+    plugin_arg_map = collect_plugin_args(entries)
+    for name, values in plugin_arg_map.items():
+        override.plugin_args.setdefault(name, []).extend(values)
+
+
+def _update_override_with_profiles(
+    override: AuditConfig,
+    entries: Sequence[Sequence[str]],
+) -> None:
+    flattened: list[str] = []
+    for pair in entries:
+        if len(pair) != 2:
+            raise SystemExit("--profile entries must specify both runner and profile")
+        runner, profile = pair
+        runner_clean = runner.strip()
+        profile_clean = profile.strip()
+        if not runner_clean or not profile_clean:
+            raise SystemExit("--profile entries must specify both runner and profile")
+        flattened.append(f"{runner_clean}={profile_clean}")
+    override.active_profiles.update(collect_profile_args(flattened))
+
+
+def _resolve_summary_fields(args: argparse.Namespace) -> tuple[list[str], SummaryStyle]:
+    style_choice = SummaryStyle.from_str(args.summary)
+    if style_choice is SummaryStyle.FULL:
+        return (sorted(SUMMARY_FIELD_CHOICES), SummaryStyle.EXPANDED)
+    render_style = (
+        SummaryStyle.EXPANDED if style_choice is SummaryStyle.EXPANDED else SummaryStyle.COMPACT
+    )
+    return (parse_summary_fields(args.summary_fields), render_style)
+
+
+def _maybe_print_readiness(args: argparse.Namespace, summary: SummaryData) -> None:
+    if not args.readiness:
+        return
+    level_choice = ReadinessLevel.from_str(args.readiness_level)
+    statuses = (
+        [ReadinessStatus.from_str(status) for status in args.readiness_status]
+        if args.readiness_status
+        else None
+    )
+    print_readiness_summary(
+        summary,
+        level=level_choice,
+        statuses=statuses,
+        limit=args.readiness_limit,
+    )
+
+
+def _build_delta_line(
+    args: argparse.Namespace,
+    error_count: int,
+    warning_count: int,
+    info_count: int,
+) -> str:
+    if not args.compare_to or not args.compare_to.exists():
+        return ""
+    try:
+        from typewiz.dashboard import load_manifest as load_manifest_for_delta
+
+        prev_manifest = load_manifest_for_delta(args.compare_to)
+        prev_summary = build_summary(prev_manifest)
+        prev_totals = prev_summary["tabs"]["overview"]["severityTotals"]
+        de = error_count - int(prev_totals.get("error", 0))
+        dw = warning_count - int(prev_totals.get("warning", 0))
+        di = info_count - int(prev_totals.get("information", 0))
+
+        def _fmt(value: int) -> str:
+            return f"+{value}" if value > 0 else (f"{value}" if value < 0 else "0")
+
+        return f"; delta: errors={_fmt(de)} warnings={_fmt(dw)} info={_fmt(di)}"
+    except Exception:  # pragma: no cover - defensive guard mirrors historical behaviour
+        return ""
+
+
+def _emit_dashboard_outputs(args: argparse.Namespace, summary: SummaryData) -> None:
+    view_choice = DashboardView.from_str(args.dashboard_view)
+    if args.dashboard_json:
+        args.dashboard_json.parent.mkdir(parents=True, exist_ok=True)
+        args.dashboard_json.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    if args.dashboard_markdown:
+        args.dashboard_markdown.parent.mkdir(parents=True, exist_ok=True)
+        args.dashboard_markdown.write_text(render_markdown(summary), encoding="utf-8")
+    if args.dashboard_html:
+        args.dashboard_html.parent.mkdir(parents=True, exist_ok=True)
+        args.dashboard_html.write_text(
+            render_html(summary, default_view=view_choice.value),
+            encoding="utf-8",
+        )
+
+
+def execute_audit(args: argparse.Namespace) -> int:
+    """Execute the ``typewiz audit`` command."""
+    config = load_config(args.config)
+    project_root = resolve_project_root(args.project_root)
+
+    selected_full_paths = _resolve_full_paths(args, config, project_root)
+    if not selected_full_paths:
+        raise SystemExit("No paths found for full runs. Provide paths or configure 'full_paths'.")
+
+    modes_specified, run_current, run_full = normalise_modes_tuple(args.modes)
+    override = AuditConfig(
+        manifest_path=args.manifest,
+        full_paths=[path for path in args.paths if path] or None,
+        max_depth=args.max_depth,
+        max_files=args.max_files,
+        max_bytes=args.max_fingerprint_bytes,
+        skip_current=(not run_current) if modes_specified else None,
+        skip_full=(not run_full) if modes_specified else None,
+        fail_on=args.fail_on,
+        dashboard_json=args.dashboard_json,
+        dashboard_markdown=args.dashboard_markdown,
+        dashboard_html=args.dashboard_html,
+        respect_gitignore=args.respect_gitignore,
+        runners=args.runners,
+    )
+
+    if args.plugin_arg:
+        _update_override_with_plugin_args(override, args.plugin_arg)
+    if args.profiles:
+        _update_override_with_profiles(override, args.profiles)
+
+    summary_fields, summary_style = _resolve_summary_fields(args)
+
+    result = run_audit(
+        project_root=project_root,
+        config=config,
+        override=override,
+        full_paths=selected_full_paths,
+        write_manifest_to=args.manifest or None,
+        build_summary_output=True,
+    )
+
+    print_summary(result.runs, summary_fields, summary_style)
+
+    audit_summary: SummaryData = result.summary or build_summary(result.manifest)
+
+    _maybe_print_readiness(args, audit_summary)
+
+    fail_on_raw = args.fail_on or config.audit.fail_on or FailOnPolicy.NEVER.value
+    fail_on_policy = FailOnPolicy.from_str(fail_on_raw)
+    if fail_on_policy is FailOnPolicy.NONE:
+        fail_on_policy = FailOnPolicy.NEVER
+    error_count = sum(run.severity_counts().get("error", 0) for run in result.runs)
+    warning_count = sum(run.severity_counts().get("warning", 0) for run in result.runs)
+    info_count = sum(run.severity_counts().get("information", 0) for run in result.runs)
+
+    delta_segment = _build_delta_line(args, error_count, warning_count, info_count)
+
+    exit_code = 0
+    if fail_on_policy is FailOnPolicy.ERRORS and error_count > 0:
+        exit_code = 2
+    elif fail_on_policy is FailOnPolicy.WARNINGS and (error_count > 0 or warning_count > 0):
+        exit_code = 2
+    elif fail_on_policy is FailOnPolicy.ANY and (
+        error_count > 0 or warning_count > 0 or info_count > 0
+    ):
+        exit_code = 2
+
+    _echo(
+        f"[typewiz] totals: errors={error_count} warnings={warning_count} info={info_count}; runs={len(result.runs)}"
+        + delta_segment,
+    )
+
+    _emit_dashboard_outputs(args, audit_summary)
+    return exit_code
+
+
+__all__ = ["execute_audit", "register_audit_command"]

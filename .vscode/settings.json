@@ -1,4 +1,5 @@
 {
+  "chatgpt.cliExecutable": "${workspaceFolder}/scripts/codex-vscode.sh",
   "python.analysis.diagnosticMode": "workspace",
   // Use pytest with quiet default like tox
   "python.testing.pytestEnabled": true,

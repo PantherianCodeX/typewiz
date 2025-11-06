@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 """Common exception hierarchy for Typewiz."""
 
 from __future__ import annotations

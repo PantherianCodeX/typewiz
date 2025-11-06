@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 """Utility helpers for validating and coercing loosely typed data structures."""
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ def coerce_optional_str(value: object) -> str | None:
     if value is None:
         return None
     result = coerce_str(value)
-    return result if result else None
+    return result or None
 
 
 def coerce_int(value: object, default: int = 0) -> int:
@@ -65,9 +67,9 @@ def _coerce_json_value(value: object) -> JSONValue:
     if isinstance(value, str | int | float | bool):
         return value
     if isinstance(value, Mapping):
-        return coerce_mapping(cast(Mapping[object, object], value))
+        return coerce_mapping(cast("Mapping[object, object]", value))
     if isinstance(value, Sequence) and not isinstance(value, str | bytes | bytearray):
-        sequence_value = cast(Sequence[object], value)
+        sequence_value = cast("Sequence[object]", value)
         return [_coerce_json_value(item) for item in sequence_value]
     return str(value)
 
@@ -76,7 +78,7 @@ def coerce_mapping(value: object) -> dict[str, JSONValue]:
     if not isinstance(value, Mapping):
         return {}
     result: dict[str, JSONValue] = {}
-    value_map = cast(Mapping[object, object], value)
+    value_map = cast("Mapping[object, object]", value)
     for key, item in value_map.items():
         result[str(key)] = _coerce_json_value(item)
     return result
@@ -84,7 +86,7 @@ def coerce_mapping(value: object) -> dict[str, JSONValue]:
 
 def coerce_object_list(value: object) -> list[object]:
     if isinstance(value, Sequence) and not isinstance(value, str | bytes | bytearray):
-        sequence_value = cast(Sequence[object], value)
+        sequence_value = cast("Sequence[object]", value)
         return list(sequence_value)
     return []
 
@@ -111,4 +113,4 @@ def ensure_optional_str_list(value: object | None) -> list[str] | None:
     if value is None:
         return None
     result = coerce_str_list(value)
-    return result if result else None
+    return result or None

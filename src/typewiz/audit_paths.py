@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 """Path normalisation utilities shared by audit orchestration logic."""
 
 from __future__ import annotations
@@ -66,7 +68,9 @@ def fingerprint_targets(
 
 
 def normalise_override_entries(
-    project_root: Path, override_path: Path, entries: Sequence[str]
+    project_root: Path,
+    override_path: Path,
+    entries: Sequence[str],
 ) -> list[str]:
     """Normalise include/exclude lists when sourced from a path override."""
 

@@ -1,6 +1,21 @@
 # Changelog
 
-## v0.2.0 — 2025-11-05
+## v0.1.0 — 2026-01-15
+
+### Highlights
+- First commercial release under the Typewiz Software License Agreement.
+- Includes readiness dashboards, policy-ready CLI commands, manifest tooling, and cache optimisations from the prior development stream.
+- Packaging, docs, and licensing reset for the new repository baseline.
+
+### Notes
+- Python 3.12+ required; all tooling is aligned with the modern typing ecosystem.
+- For historical OSS releases, see the legacy history section below.
+
+---
+
+### Legacy history (pre-commercial reset)
+
+#### v0.2.0 — 2025-11-05
 
 ### Added
 - `typewiz query` surfaces overview, hotspot, readiness, run, engine, and rule insights without needing external filters; supports `json` and `table` output.
@@ -10,7 +25,7 @@
 - Tooling baseline is Python 3.12+: native `tomllib` and PEP 695 type aliases replace historical `tomli` shims.
 - Requirements bumped (`pyright>=1.1.407`) to align with the Python floor.
 
-## v0.1.1 — 2025-11-03
+#### v0.1.1 — 2025-11-03
 
 ### Added
 - `typewiz audit --readiness` prints a post-run readiness summary without requiring a second command.
@@ -22,7 +37,7 @@
 - Coverage configuration excludes integration-heavy engine runners so pytest coverage gates reflect actionable modules.
 - 3.12-only: codebase targets Python 3.12+ with `tomllib`, PEP 695 type aliases, and timezone-aware timestamps.
 
-## v0.1.0 — 2025-10-31
+#### v0.1.0 — 2025-10-31
 
 Highlights
 - Cache-key hardening: include tool versions and resolved config file hash/mtime to ensure upgrades and config edits invalidate predictably.

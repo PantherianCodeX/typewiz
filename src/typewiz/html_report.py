@@ -1,14 +1,16 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from html import escape
 from typing import cast
 
-from .model_types import OverrideEntry
+from .model_types import DashboardView, OverrideEntry, ReadinessStatus
 from .override_utils import get_override_components
 from .readiness import CATEGORY_LABELS
 from .summary_types import HotspotsTab, OverviewTab, ReadinessTab, SummaryData, SummaryTabs
 
-_TAB_ORDER = ("overview", "engines", "hotspots", "readiness", "runs")
+_TAB_ORDER = tuple(view.value for view in DashboardView)
 _TAB_LABELS = {
     "overview": "Overview",
     "engines": "Engine Details",
@@ -18,8 +20,17 @@ _TAB_LABELS = {
 }
 
 
-def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
-    default_view = default_view if default_view in _TAB_ORDER else "overview"
+def render_html(
+    summary: SummaryData,
+    *,
+    default_view: DashboardView | str = DashboardView.OVERVIEW.value,
+) -> str:
+    view_choice = (
+        default_view
+        if isinstance(default_view, DashboardView)
+        else DashboardView.from_str(default_view)
+    )
+    default_view_value = view_choice.value
 
     def h(text: str) -> str:
         return escape(text, quote=True)
@@ -43,7 +54,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
         "  <title>typewiz Dashboard</title>",
         "  <style>\n    :root{color-scheme:light dark;}\n    body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:2rem;background:#f5f5f5;color:#1f2330;}\n    h1,h2{color:#2b4b80;}\n    table{border-collapse:collapse;width:100%;margin-bottom:1.5rem;background:white;}\n    th,td{border:1px solid #d0d7e2;padding:0.5rem;text-align:left;}\n    th{background:#e8edf7;}\n    section{margin-bottom:2rem;}\n    .metrics{display:flex;flex-wrap:wrap;gap:1.5rem;}\n    .metric{background:white;border:1px solid #d0d7e2;padding:1rem;border-radius:6px;min-width:8rem;text-align:center;}\n    .metric strong{display:block;font-size:1.5rem;}\n    .tabs{display:flex;gap:0.75rem;margin:1.5rem 0;}\n    .tabs button{border:1px solid #2b4b80;background:white;color:#2b4b80;padding:0.45rem 1rem;border-radius:999px;cursor:pointer;font-weight:600;}\n    .tabs button.active{background:#2b4b80;color:white;}\n    .tab-pane{margin-top:1.5rem;}\n    .has-js .tab-pane{display:none;}\n    .has-js .tab-pane.active{display:block;}\n    .no-js .tabs{display:none;}\n    code{background:#eef1fb;padding:0.1rem 0.35rem;border-radius:4px;}\n    details{background:white;border:1px solid #d0d7e2;border-radius:8px;margin-bottom:1rem;padding:0.75rem;}\n    details[open]>summary{margin-bottom:0.5rem;}\n    summary{cursor:pointer;font-weight:600;}\n  </style>",
         "</head>",
-        f'<body class="no-js" data-default-tab="{default_view}">',
+        f'<body class="no-js" data-default-tab="{default_view_value}">',
         "  <h1>typewiz Dashboard</h1>",
         f"  <p><strong>Generated:</strong> {h(str(summary['generatedAt']))}<br />",
         f"     <strong>Project root:</strong> {h(str(summary['projectRoot']))}</p>",
@@ -73,20 +84,20 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
             "      <table>",
             "        <thead><tr><th>Run</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Total</th><th>Command</th></tr></thead>",
             "        <tbody>",
-        ]
+        ],
     )
     if run_summary:
         for key, data in run_summary.items():
             cmd = " ".join(h(part) for part in data.get("command", []))
             parts.append(
-                "          <tr>"  # pyright: ignore[reportImplicitStringConcatenation]
-                f"<td>{h(key)}</td>"
-                f"<td>{data.get('errors', 0)}</td>"
-                f"<td>{data.get('warnings', 0)}</td>"
-                f"<td>{data.get('information', 0)}</td>"
-                f"<td>{data.get('total', 0)}</td>"
-                f"<td><code>{cmd}</code></td>"
-                "</tr>"
+                (
+                    f"          <tr><td>{h(key)}</td>"
+                    f"<td>{data.get('errors', 0)}</td>"
+                    f"<td>{data.get('warnings', 0)}</td>"
+                    f"<td>{data.get('information', 0)}</td>"
+                    f"<td>{data.get('total', 0)}</td>"
+                    f"<td><code>{cmd}</code></td></tr>"
+                ),
             )
     else:
         parts.append('          <tr><td colspan="6"><em>No runs recorded</em></td></tr>')
@@ -96,7 +107,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
             "      </table>",
             "    </section>",
             "  </section>",
-        ]
+        ],
     )
 
     def _as_code_list(items: list[str]) -> str:
@@ -128,7 +139,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
                     f"        <li>Plugin args: {_as_code_list(plugin_args)}</li>",
                     f"        <li>Include paths: {_as_code_list(include)}</li>",
                     f"        <li>Exclude paths: {_as_code_list(exclude)}</li>",
-                ]
+                ],
             )
             if overrides:
                 parts.append("        <li>Folder overrides:<ul>")
@@ -142,17 +153,17 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
                     if plugin_args:
                         detail_bits.append(
                             "plugin args="
-                            + " ".join(f"<code>{h(arg)}</code>" for arg in plugin_args)
+                            + " ".join(f"<code>{h(arg)}</code>" for arg in plugin_args),
                         )
                     if include_paths:
                         detail_bits.append(
                             "include="
-                            + " ".join(f"<code>{h(item)}</code>" for item in include_paths)
+                            + " ".join(f"<code>{h(item)}</code>" for item in include_paths),
                         )
                     if exclude_paths:
                         detail_bits.append(
                             "exclude="
-                            + " ".join(f"<code>{h(item)}</code>" for item in exclude_paths)
+                            + " ".join(f"<code>{h(item)}</code>" for item in exclude_paths),
                         )
                     if not detail_bits:
                         detail_bits.append("no explicit changes")
@@ -163,7 +174,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
                 [
                     "      </ul>",
                     "    </details>",
-                ]
+                ],
             )
             # Optional: display raw tool totals if present, and indicate mismatch with parsed counts.
             tool_totals = data.get("toolSummary")
@@ -183,7 +194,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
                     else ""
                 )
                 parts.append(
-                    f"    <p><strong>Tool totals:</strong> errors={t_errors}, warnings={t_warnings}, information={t_info}, total={t_total}{mismatch_note}</p>"
+                    f"    <p><strong>Tool totals:</strong> errors={t_errors}, warnings={t_warnings}, information={t_info}, total={t_total}{mismatch_note}</p>",
                 )
     else:
         parts.append("    <p>No engine data available.</p>")
@@ -199,7 +210,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
                 "      <h3>Common Diagnostic Rules</h3>",
                 "      <table>",
                 "        <thead><tr><th>Rule</th><th>Count</th></tr></thead><tbody>",
-            ]
+            ],
         )
         parts.extend(
             f"          <tr><td><code>{h(rule)}</code></td><td>{count}</td></tr>"
@@ -215,7 +226,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
             "      <h3>Top Folder Hotspots</h3>",
             "      <table>",
             "        <thead><tr><th>Folder</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Runs</th></tr></thead><tbody>",
-        ]
+        ],
     )
     if top_folders:
         parts.extend(
@@ -232,7 +243,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
             "      <h3>Top File Hotspots</h3>",
             "      <table>",
             "        <thead><tr><th>File</th><th>Errors</th><th>Warnings</th></tr></thead><tbody>",
-        ]
+        ],
     )
     if top_files:
         parts.extend(
@@ -248,9 +259,9 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
     parts.append('  <section class="tab-pane" data-tab-pane="readiness">')
     parts.append("    <h2>Strict Typing Readiness</h2>")
     strict = cast(dict[str, list[dict[str, object]]], readiness.get("strict", {}))
-    ready_list = strict.get("ready", [])
-    close_list = strict.get("close", [])
-    blocked_list = strict.get("blocked", [])
+    ready_list = strict.get(ReadinessStatus.READY.value, [])
+    close_list = strict.get(ReadinessStatus.CLOSE.value, [])
+    blocked_list = strict.get(ReadinessStatus.BLOCKED.value, [])
     parts.extend(
         [
             '    <div class="metrics">',
@@ -258,7 +269,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
             f'      <div class="metric"><strong>{len(close_list)}</strong>Close</div>',
             f'      <div class="metric"><strong>{len(blocked_list)}</strong>Blocked</div>',
             "    </div>",
-        ]
+        ],
     )
 
     def _render_strict_entries(label: str, entries: list[dict[str, object]]) -> None:
@@ -266,14 +277,14 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
             parts.append(f"    <p><strong>{label}:</strong> none</p>")
             return
         parts.append(
-            f"    <details open><summary><strong>{label}</strong> ({len(entries)})</summary>"
+            f"    <details open><summary><strong>{label}</strong> ({len(entries)})</summary>",
         )
         parts.append("      <ul>")
         for entry in entries[:12]:
             notes_list = cast(list[str], entry.get("notes") or entry.get("recommendations") or [])
             note_text = f" — {', '.join(notes_list)}" if notes_list else ""
             parts.append(
-                f"        <li><code>{h(str(entry['path']))}</code> (diagnostics={entry['diagnostics']}){note_text}</li>"
+                f"        <li><code>{h(str(entry['path']))}</code> (diagnostics={entry['diagnostics']}){note_text}</li>",
             )
         if len(entries) > 12:
             parts.append(f"        <li>… plus {len(entries) - 12} more</li>")
@@ -289,18 +300,18 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
         parts.append("    <section>")
         parts.append("      <h3>Per-option readiness</h3>")
         parts.append(
-            "      <table><thead><tr><th>Option</th><th>Ready</th><th>Close</th><th>Blocked</th><th>Close threshold</th></tr></thead><tbody>"
+            "      <table><thead><tr><th>Option</th><th>Ready</th><th>Close</th><th>Blocked</th><th>Close threshold</th></tr></thead><tbody>",
         )
         for category, buckets in readiness_options.items():
             label = CATEGORY_LABELS.get(category, category)
             parts.append(
-                "        <tr>"  # pyright: ignore[reportImplicitStringConcatenation]
-                f"<td>{h(label)}</td>"
-                f"<td>{len(buckets.get('ready', []))}</td>"
-                f"<td>{len(buckets.get('close', []))}</td>"
-                f"<td>{len(buckets.get('blocked', []))}</td>"
-                f"<td>{buckets.get('threshold', 0)}</td>"
-                "</tr>"
+                (
+                    f"        <tr><td>{h(label)}</td>"
+                    f"<td>{len(buckets.get(ReadinessStatus.READY.value, []))}</td>"
+                    f"<td>{len(buckets.get(ReadinessStatus.CLOSE.value, []))}</td>"
+                    f"<td>{len(buckets.get(ReadinessStatus.BLOCKED.value, []))}</td>"
+                    f"<td>{buckets.get('threshold', 0)}</td></tr>"
+                ),
             )
         parts.extend(["      </tbody></table>", "    </section>"])
     else:
@@ -325,10 +336,10 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
                     f"        <li>Warnings: {data.get('warnings', 0)}</li>",
                     f"        <li>Information: {data.get('information', 0)}</li>",
                     f"        <li>Total diagnostics: {data.get('total', 0)}</li>",
-                    f"        <li>Severity breakdown: {breakdown if breakdown else {}}</li>",
+                    f"        <li>Severity breakdown: {breakdown or {}}</li>",
                     "      </ul>",
                     "    </details>",
-                ]
+                ],
             )
     else:
         parts.append("    <p>No runs recorded.</p>")
@@ -339,7 +350,7 @@ def render_html(summary: SummaryData, *, default_view: str = "overview") -> str:
             "  <script>\n    (function(){\n      const body=document.body;\n      body.classList.remove('no-js');\n      body.classList.add('has-js');\n      const storageKey='typewiz-dashboard-tab';\n      const tabs=Array.from(document.querySelectorAll('[data-tab-target]'));\n      const panes=Array.from(document.querySelectorAll('[data-tab-pane]'));\n      function activate(name){\n        tabs.forEach(btn=>{const active=btn.dataset.tabTarget===name;btn.classList.toggle('active',active);btn.setAttribute('aria-selected',String(active));});\n        panes.forEach(pane=>pane.classList.toggle('active',pane.dataset.tabPane===name));\n      }\n      let stored=null;\n      try{stored=window.localStorage.getItem(storageKey);}catch(_){}\n      const initial=tabs.some(btn=>btn.dataset.tabTarget===stored) ? stored : body.dataset.defaultTab || 'overview';\n      activate(initial);\n      tabs.forEach(btn=>btn.addEventListener('click',()=>{const name=btn.dataset.tabTarget;activate(name);try{window.localStorage.setItem(storageKey,name);}catch(_){};}));\n    })();\n  </script>",
             "</body>",
             "</html>",
-        ]
+        ],
     )
 
     return "\n".join(parts) + "\n"

@@ -1,6 +1,9 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import NewType
 
 from .config import (
     ConfigFieldChoiceError,
@@ -23,27 +26,27 @@ from .manifest_versioning import (
 )
 from .readiness_views import ReadinessValidationError
 
-ErrorCode = str
+ErrorCode = NewType("ErrorCode", str)
 
 _ERROR_CODES: dict[type[BaseException], ErrorCode] = {
-    TypewizError: "TW000",
-    TypewizValidationError: "TW100",
-    TypewizTypeError: "TW101",
-    ConfigValidationError: "TW110",
-    ConfigFieldTypeError: "TW111",
-    ConfigFieldChoiceError: "TW112",
-    UndefinedDefaultProfileError: "TW113",
-    UnknownEngineProfileError: "TW114",
-    UnsupportedConfigVersionError: "TW115",
-    ConfigReadError: "TW116",
-    DirectoryOverrideValidationError: "TW117",
-    InvalidConfigFileError: "TW118",
-    DashboardTypeError: "TW200",
-    ReadinessValidationError: "TW201",
-    ManifestValidationError: "TW300",
-    InvalidManifestRunsError: "TW301",
-    UnsupportedManifestVersionError: "TW302",
-    InvalidManifestVersionTypeError: "TW303",
+    TypewizError: ErrorCode("TW000"),
+    TypewizValidationError: ErrorCode("TW100"),
+    TypewizTypeError: ErrorCode("TW101"),
+    ConfigValidationError: ErrorCode("TW110"),
+    ConfigFieldTypeError: ErrorCode("TW111"),
+    ConfigFieldChoiceError: ErrorCode("TW112"),
+    UndefinedDefaultProfileError: ErrorCode("TW113"),
+    UnknownEngineProfileError: ErrorCode("TW114"),
+    UnsupportedConfigVersionError: ErrorCode("TW115"),
+    ConfigReadError: ErrorCode("TW116"),
+    DirectoryOverrideValidationError: ErrorCode("TW117"),
+    InvalidConfigFileError: ErrorCode("TW118"),
+    DashboardTypeError: ErrorCode("TW200"),
+    ReadinessValidationError: ErrorCode("TW201"),
+    ManifestValidationError: ErrorCode("TW300"),
+    InvalidManifestRunsError: ErrorCode("TW301"),
+    UnsupportedManifestVersionError: ErrorCode("TW302"),
+    InvalidManifestVersionTypeError: ErrorCode("TW303"),
 }
 
 
@@ -54,7 +57,7 @@ def error_code_for(exc: BaseException) -> ErrorCode:
         code = _ERROR_CODES.get(cls)
         if code:
             return code
-    return "TW000"
+    return ErrorCode("TW000")
 
 
 def error_code_catalog() -> Mapping[str, ErrorCode]:

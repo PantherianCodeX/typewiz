@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 """Shared readiness view helpers used by CLI and dashboards."""
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from .data_validation import (
     coerce_optional_str_list,
     coerce_str,
 )
+from .model_types import ReadinessStatus
 from .summary_types import (
     ReadinessOptionEntry,
     ReadinessOptionsBucket,
@@ -93,7 +96,8 @@ def _build_option_entry(raw: Mapping[str, object]) -> ReadinessOptionEntry:
 
 
 def _coerce_option_entries(
-    mapping_value: Mapping[str, object], key: str
+    mapping_value: Mapping[str, object],
+    key: str,
 ) -> list[ReadinessOptionEntry]:
     entries: list[ReadinessOptionEntry] = []
     for entry in coerce_object_list(mapping_value.get(key)):
@@ -142,10 +146,11 @@ def _coerce_options_bucket(value: object) -> ReadinessOptionsBucket:
     if not isinstance(value, Mapping):
         return bucket
     mapping_value = coerce_mapping(cast(Mapping[object, object], value))
-    for status in ("ready", "close", "blocked"):
-        entries = _coerce_option_entries(mapping_value, status)
-        if entries:
-            bucket[status] = entries
+    for status in ReadinessStatus:
+        entries = _coerce_option_entries(mapping_value, status.value)
+        if not entries:
+            continue
+        bucket[status.value] = entries
     threshold_val = mapping_value.get("threshold")
     if isinstance(threshold_val, int):
         bucket["threshold"] = threshold_val
@@ -229,7 +234,8 @@ def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
 
 
 def _extract_folder_entries(
-    bucket: ReadinessOptionsBucket, status: str
+    bucket: ReadinessOptionsBucket,
+    status: str,
 ) -> list[ReadinessOptionEntry]:
     entries = bucket.get(status)
     if isinstance(entries, list):
@@ -238,7 +244,8 @@ def _extract_folder_entries(
 
 
 def _extract_file_entries(
-    strict_map: Mapping[str, Sequence[ReadinessStrictEntry]], status: str
+    strict_map: Mapping[str, Sequence[ReadinessStrictEntry]],
+    status: str,
 ) -> list[ReadinessStrictEntry]:
     entries = strict_map.get(status)
     if isinstance(entries, list):
@@ -248,12 +255,16 @@ def _extract_file_entries(
 
 def _normalise_status_filters(statuses: Sequence[str] | None) -> list[str]:
     if statuses is None:
-        return ["blocked"]
+        return [ReadinessStatus.BLOCKED.value]
     result: list[str] = []
     for status in statuses:
-        if status in {"ready", "close", "blocked"} and status not in result:
-            result.append(status)
-    return result or ["blocked"]
+        try:
+            parsed = ReadinessStatus.from_str(status)
+        except ValueError:
+            continue
+        if parsed.value not in result:
+            result.append(parsed.value)
+    return result or [ReadinessStatus.BLOCKED.value]
 
 
 def _folder_payload_for_status(

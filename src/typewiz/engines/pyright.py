@@ -1,9 +1,12 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import override
 
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from typewiz.model_types import Mode
 from typewiz.runner import run_pyright
 
 
@@ -18,7 +21,7 @@ class PyrightEngine(BaseEngine):
         default_config = context.project_root / "pyrightconfig.json"
         config_path = context.engine_options.config_file
         command: list[str] = ["pyright", "--outputjson"]
-        if context.mode == "current":
+        if context.mode is Mode.CURRENT:
             if config_path:
                 command.extend(["--project", str(config_path)])
             elif default_config.exists():

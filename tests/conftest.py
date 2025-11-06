@@ -144,7 +144,7 @@ def sample_summary() -> SummaryData:
             "categories": readiness_ready_categories,
             "categoryStatus": readiness_ready_status,
             "recommendations": ["strict-ready"],
-        }
+        },
     ]
     readiness_close_categories: dict[str, int] = {
         "unknownChecks": 1,
@@ -169,7 +169,7 @@ def sample_summary() -> SummaryData:
             "categoryStatus": readiness_close_status,
             "recommendations": ["resolve 1 unknown-type issues"],
             "notes": ["unknownChecks: 1"],
-        }
+        },
     ]
 
     def _bucket(
@@ -196,28 +196,28 @@ def sample_summary() -> SummaryData:
         "options": {
             "unknownChecks": _bucket(
                 ready=[
-                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0},
                 ],
                 close=[{"path": "packages/agents", "count": 1, "errors": 1, "warnings": 1}],
                 threshold=2,
             ),
             "optionalChecks": _bucket(
                 ready=[
-                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0},
                 ],
                 close=[],
                 threshold=2,
             ),
             "unusedSymbols": _bucket(
                 ready=[
-                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0},
                 ],
                 close=[],
                 threshold=4,
             ),
             "general": _bucket(
                 ready=[
-                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0}
+                    {"path": "apps/platform/operations", "count": 0, "errors": 0, "warnings": 0},
                 ],
                 close=[],
                 threshold=5,

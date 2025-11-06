@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -14,6 +16,7 @@ from typewiz.audit_paths import (
 )
 from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from typewiz.utils import consume
 
 
 def test_merge_engine_settings_map_merges_profiles(tmp_path: Path) -> None:
@@ -23,7 +26,7 @@ def test_merge_engine_settings_map_merges_profiles(tmp_path: Path) -> None:
             include=["src"],
             exclude=["legacy"],
             profiles={"strict": EngineProfile(plugin_args=["--strict"])},
-        )
+        ),
     }
     override_settings = {
         "stub": EngineSettings(
@@ -59,9 +62,14 @@ def test_normalise_paths_handles_duplicates(tmp_path: Path) -> None:
 
 
 def test_fingerprint_targets_dedupe(tmp_path: Path) -> None:
-    (tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
+    consume(
+        (tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8"),
+    )
     targets = fingerprint_targets(
-        tmp_path, mode_paths=["src"], default_paths=["pkg"], extra=["src"]
+        tmp_path,
+        mode_paths=["src"],
+        default_paths=["pkg"],
+        extra=["src"],
     )
     assert targets[0] == "src"
     assert "pyproject.toml" in targets
@@ -120,8 +128,9 @@ def test_resolve_engine_options_with_overrides(tmp_path: Path) -> None:
         include=["pkg/override"],
         profiles={
             "strict": EngineProfile(
-                plugin_args=["--override-strict"], include=["pkg/override/strict"]
-            )
+                plugin_args=["--override-strict"],
+                include=["pkg/override/strict"],
+            ),
         },
         default_profile="strict",
     )

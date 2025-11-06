@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import json
@@ -6,6 +8,7 @@ import logging
 from pytest import CaptureFixture
 
 from typewiz.logging_utils import configure_logging
+from typewiz.model_types import Mode
 
 
 def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str]) -> None:
@@ -16,7 +19,7 @@ def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str
         extra={
             "component": "engine",
             "tool": "pyright",
-            "mode": "current",
+            "mode": Mode.CURRENT.value,
             "duration_ms": 1.2,
             "cached": False,
             "exit_code": 0,

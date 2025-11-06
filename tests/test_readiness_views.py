@@ -1,9 +1,12 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from typing import cast
 
 import pytest
 
+from typewiz.model_types import ReadinessStatus
 from typewiz.readiness_views import (
     FileReadinessRecord,
     FolderReadinessRecord,
@@ -18,6 +21,11 @@ from typewiz.summary_types import (
     SummaryData,
     SummaryTabs,
 )
+from typewiz.utils import consume
+
+READY = ReadinessStatus.READY.value
+CLOSE = ReadinessStatus.CLOSE.value
+BLOCKED = ReadinessStatus.BLOCKED.value
 
 
 def _make_summary() -> SummaryData:
@@ -30,15 +38,15 @@ def _make_summary() -> SummaryData:
             "information": 0,
             "categories": {"unknownChecks": 3, "general": 1},
             "categoryStatus": {"unknownChecks": "blocked", "general": "close"},
-        }
+        },
     ]
     strict_ready: list[ReadinessStrictEntry] = []
     readiness_ready_options: list[ReadinessOptionEntry] = []
     readiness_close_options: list[ReadinessOptionEntry] = []
     readiness_tab: ReadinessTab = {
         "strict": {
-            "blocked": strict_blocked,
-            "ready": strict_ready,
+            BLOCKED: strict_blocked,
+            READY: strict_ready,
         },
         "options": {
             "unknownChecks": ReadinessOptionsBucket(
@@ -46,7 +54,7 @@ def _make_summary() -> SummaryData:
                 ready=readiness_ready_options,
                 close=readiness_close_options,
                 threshold=2,
-            )
+            ),
         },
     }
     tabs: SummaryTabs = {
@@ -72,9 +80,14 @@ def _make_summary() -> SummaryData:
 
 def test_collect_readiness_view_folder() -> None:
     summary = _make_summary()
-    view = collect_readiness_view(summary, level="folder", statuses=["blocked"], limit=5)
-    assert "blocked" in view
-    blocked_entries = view["blocked"]
+    view = collect_readiness_view(
+        summary,
+        level="folder",
+        statuses=[BLOCKED],
+        limit=5,
+    )
+    assert BLOCKED in view
+    blocked_entries = view[BLOCKED]
     assert blocked_entries
     first_entry = blocked_entries[0]
     assert first_entry.get("path") == "src/app"
@@ -83,9 +96,14 @@ def test_collect_readiness_view_folder() -> None:
 
 def test_collect_readiness_view_file() -> None:
     summary = _make_summary()
-    view = collect_readiness_view(summary, level="file", statuses=["blocked"], limit=5)
-    assert "blocked" in view
-    blocked_entries = view["blocked"]
+    view = collect_readiness_view(
+        summary,
+        level="file",
+        statuses=[BLOCKED],
+        limit=5,
+    )
+    assert BLOCKED in view
+    blocked_entries = view[BLOCKED]
     assert blocked_entries
     entry = blocked_entries[0]
     assert entry["path"] == "src/app"
@@ -99,7 +117,7 @@ def test_collect_readiness_view_file() -> None:
 def test_collect_readiness_view_folder_fallback_category() -> None:
     # unknownChecks bucket intentionally empty; optionalChecks contains entries
     readiness_tab: ReadinessTab = {
-        "strict": {"blocked": []},
+        "strict": {BLOCKED: []},
         "options": {
             "unknownChecks": ReadinessOptionsBucket(blocked=[], ready=[], close=[], threshold=2),
             "optionalChecks": ReadinessOptionsBucket(
@@ -128,8 +146,8 @@ def test_collect_readiness_view_folder_fallback_category() -> None:
         "topFiles": [],
         "tabs": tabs,
     }
-    view = collect_readiness_view(summary, level="folder", statuses=["blocked"], limit=5)
-    assert view["blocked"][0]["path"] == "src/opt"
+    view = collect_readiness_view(summary, level="folder", statuses=[BLOCKED], limit=5)
+    assert view[BLOCKED][0]["path"] == "src/opt"
 
 
 def test_collect_readiness_view_rejects_invalid() -> None:
@@ -138,12 +156,19 @@ def test_collect_readiness_view_rejects_invalid() -> None:
     readiness = summary["tabs"]["readiness"]
     assert "strict" in readiness
     strict_map = readiness["strict"]
-    assert "blocked" in strict_map
-    blocked_entries = strict_map["blocked"]
+    assert BLOCKED in strict_map
+    blocked_entries = strict_map[BLOCKED]
     assert blocked_entries
     blocked_entries[0]["diagnostics"] = -1
     with pytest.raises(ReadinessValidationError):
-        collect_readiness_view(summary, level="file", statuses=["blocked"], limit=5)
+        consume(
+            collect_readiness_view(
+                summary,
+                level="file",
+                statuses=[BLOCKED],
+                limit=5,
+            ),
+        )
 
 
 def test_folder_record_to_payload_roundtrip() -> None:

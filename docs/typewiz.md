@@ -59,6 +59,30 @@ python -m typewiz dashboard --manifest typing_audit_manifest.json --format html 
 - `markdown` – compact textual report (mirrors the tab content with override digests and readiness notes).
 - `html` – interactive dashboard with tabs for Overview, Engine Details, Hotspots, Readiness, and Run Logs (`--view` chooses the initial tab).
 
+### Ratchet budgets
+
+Ratchets answer the “no regressions” requirement by snapshotting per-file diagnostics and reusing that budget in subsequent runs. You create, check, and refresh them entirely through the CLI:
+
+```bash
+# Generate a baseline from the latest manifest.
+typewiz ratchet init \
+  --manifest reports/typing/typing_audit.json \
+  --output .typewiz/ratchet.json \
+  --run pyright:current --severities errors,warnings --target errors=0
+
+# Gate CI: any file that exceeds its allowance fails the step.
+typewiz ratchet check \
+  --manifest reports/typing/typing_audit.json \
+  --ratchet .typewiz/ratchet.json
+
+# After improvements, ratchet budgets drop automatically (never above configured targets).
+typewiz ratchet update \
+  --manifest reports/typing/typing_audit.json \
+  --ratchet .typewiz/ratchet.json
+```
+
+Each ratchet is keyed to the tool, mode, and fully merged engine options (profile, plugin arguments, include/exclude paths, overrides, category mappings). If any of those change—for example, enabling a Ruff runner—`typewiz ratchet check` will flag a signature mismatch so you deliberately rebuild the baseline instead of silently accepting stale budgets.
+
 ### Engines & plugins
 
 typewiz loads engines from the built-in registry (`pyright`, `mypy`) and from any entry points exposed under

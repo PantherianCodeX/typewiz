@@ -1,12 +1,15 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Final, Literal, TypedDict
+from typing import Final, TypedDict
 
+from .model_types import ReadinessStatus
 from .type_aliases import CategoryName
 
-StatusName = Literal["ready", "close", "blocked"]
-STATUSES: Final[tuple[StatusName, StatusName, StatusName]] = ("ready", "close", "blocked")
+STATUSES: Final[tuple[ReadinessStatus, ...]] = tuple(ReadinessStatus)
+STATUS_VALUES: Final[tuple[str, ...]] = tuple(status.value for status in STATUSES)
 DEFAULT_CLOSE_THRESHOLD: Final[int] = 3
 STRICT_CLOSE_THRESHOLD: Final[int] = 3
 GENERAL_CATEGORY: Final[CategoryName] = CategoryName("general")
@@ -82,14 +85,14 @@ class ReadinessStrictEntry(TypedDict, total=False):
     information: int
     diagnostics: int
     categories: dict[str, int]
-    categoryStatus: dict[str, StatusName]
+    categoryStatus: dict[str, str]
     recommendations: list[str]
     notes: list[str]
 
 
 CategoryCountMap = dict[CategoryName, int]
-CategoryStatusMap = dict[CategoryName, StatusName]
-StrictBuckets = dict[StatusName, list[ReadinessStrictEntry]]
+CategoryStatusMap = dict[CategoryName, ReadinessStatus]
+StrictBuckets = dict[str, list[ReadinessStrictEntry]]
 OptionsBuckets = dict[str, ReadinessOptionBucket]
 
 
@@ -142,36 +145,40 @@ def _append_option_buckets(
 ) -> None:
     for category, status in category_status.items():
         bucket = options[str(category)]
-        bucket[status].append(
-            {
-                "path": entry_path,
-                "count": categories.get(category, 0),
-                "errors": errors,
-                "warnings": warnings,
-            }
-        )
+        entry_payload: ReadinessOptionEntry = {
+            "path": entry_path,
+            "count": categories.get(category, 0),
+            "errors": errors,
+            "warnings": warnings,
+        }
+        if status is ReadinessStatus.READY:
+            bucket["ready"].append(entry_payload)
+        elif status is ReadinessStatus.CLOSE:
+            bucket["close"].append(entry_payload)
+        else:
+            bucket["blocked"].append(entry_payload)
 
 
 def _strict_status_details(
     total_diagnostics: int,
     category_status: CategoryStatusMap,
     categories: CategoryCountMap,
-) -> tuple[StatusName, list[str]]:
+) -> tuple[ReadinessStatus, list[str]]:
     if total_diagnostics == 0:
-        return "ready", []
+        return ReadinessStatus.READY, []
     blocking_categories = [
         f"{category}"
         for category, status in category_status.items()
-        if status == "blocked" and category != GENERAL_CATEGORY
+        if status is ReadinessStatus.BLOCKED and category != GENERAL_CATEGORY
     ]
     if total_diagnostics <= STRICT_CLOSE_THRESHOLD and not blocking_categories:
         notes = [
             f"{category!s}: {categories.get(category, 0)}"
             for category, status in category_status.items()
-            if status != "ready"
+            if status is not ReadinessStatus.READY
         ]
-        return "close", notes
-    return "blocked", []
+        return ReadinessStatus.CLOSE, notes
+    return ReadinessStatus.BLOCKED, []
 
 
 def _build_strict_entry_payload(
@@ -190,7 +197,9 @@ def _build_strict_entry_payload(
         "categories": {
             category: categories.get(CategoryName(category), 0) for category in CATEGORY_PATTERNS
         },
-        "categoryStatus": {str(category): status for category, status in category_status.items()},
+        "categoryStatus": {
+            str(category): status.value for category, status in category_status.items()
+        },
         "recommendations": entry.get("recommendations", []),
     }
     if notes:
@@ -213,18 +222,18 @@ def _bucket_code_counts(code_counts: dict[str, int]) -> CategoryCountMap:
     return buckets
 
 
-def _status_for_category(category: str, count: int) -> StatusName:
+def _status_for_category(category: str, count: int) -> ReadinessStatus:
     if count == 0:
-        return "ready"
+        return ReadinessStatus.READY
     close_threshold = CATEGORY_CLOSE_THRESHOLD.get(category, DEFAULT_CLOSE_THRESHOLD)
-    return "close" if count <= close_threshold else "blocked"
+    return ReadinessStatus.CLOSE if count <= close_threshold else ReadinessStatus.BLOCKED
 
 
 def _empty_option_bucket(category: str) -> ReadinessOptionBucket:
     return {
-        "ready": [],
-        "close": [],
-        "blocked": [],
+        ReadinessStatus.READY.value: [],
+        ReadinessStatus.CLOSE.value: [],
+        ReadinessStatus.BLOCKED.value: [],
         "threshold": CATEGORY_CLOSE_THRESHOLD.get(category, DEFAULT_CLOSE_THRESHOLD),
     }
 
@@ -236,7 +245,7 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPayl
     and optionally codeCounts, recommendations.
     """
     readiness: ReadinessPayload = {
-        "strict": {status: [] for status in STATUSES},
+        "strict": {status_value: [] for status_value in STATUS_VALUES},
         "options": {category: _empty_option_bucket(category) for category in CATEGORY_PATTERNS},
     }
 
@@ -265,6 +274,6 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPayl
             total_diagnostics,
             notes,
         )
-        readiness["strict"][strict_status].append(strict_entry)
+        readiness["strict"][strict_status.value].append(strict_entry)
 
     return readiness

@@ -17,6 +17,7 @@
   "reportUnnecessaryTypeIgnoreComment": "error",
   "reportUnreachable": "error",
   "reportImplicitStringConcatenation": "error",
+  "reportPrivateUsage": "error",
   "strictListInference": true,
   "strictDictionaryInference": true,
   "strictSetInference": true,
@@ -28,14 +29,19 @@
   "reportUnusedVariable": "error",
   "reportUnusedFunction": "error",
   "reportUnusedClass": "error",
+  "reportUnusedExpression": "error",
+  "reportUnusedCallResult": "error",
+  "reportUnusedCoroutine": "error",
+  "reportCallInDefaultInitializer": "error",
+  "reportMissingSuperCall": "error",
+  "reportDuplicateImport": "error",
+  "reportConstantRedefinition": "error",
+  "reportDeprecated": "error",
+  "reportUnnecessaryComparison": "error",
+  "reportUnnecessaryContains": "error",
+  "reportUnnecessaryIsInstance": "error",
   "executionEnvironments": [
-    {
-      "root": "tests",
-      "reportPrivateUsage": "none",
-      "reportPrivateImportUsage": "none"
-    },
-    {
-      "root": "src"
-    }
+    { "root": "tests" },
+    { "root": "src" }
   ]
 }

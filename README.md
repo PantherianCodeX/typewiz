@@ -3,7 +3,7 @@
 typewiz collects typing diagnostics from Pyright, mypy, and custom plugins, aggregates them into a JSON
 manifest, and renders dashboards to help teams plan stricter typing rollouts.
 
-> Status: `0.2.0` — see CHANGELOG.md for full release notes. Manifest schema, caching, and CLI are stabilized within the 0.x line.
+> Status: `0.1.0` — see CHANGELOG.md for full release notes. This release inaugurates the commercial Typewiz distribution under the Typewiz Software License Agreement.
 
 ## Features
 
@@ -73,6 +73,23 @@ typewiz query rules --manifest typing_audit.json --limit 10
 
 Each subcommand accepts `--format json` (default) or `--format table` for a human-friendly view.
 
+### Per-file ratchets
+
+Lock today’s state in place and keep teams from backsliding by generating a ratchet budget and checking it in CI:
+
+```bash
+# capture current diagnostics per file
+typewiz ratchet init --manifest typing_audit.json --output .typewiz/ratchet.json --run pyright:current --severities errors,warnings --target errors=0
+
+# fail builds when a file exceeds its allowance (also flags engine/profile drift)
+typewiz ratchet check --manifest typing_audit.json --ratchet .typewiz/ratchet.json
+
+# auto-ratchet improvements down to new baselines after fixes land
+typewiz ratchet update --manifest typing_audit.json --ratchet .typewiz/ratchet.json
+```
+
+Ratchet files record the merged engine options (profiles, plugin args, overrides). If the configuration for a run changes—such as adding a new plugin or flipping profiles—the signature mismatch is called out so you can intentionally rebuild the baseline. This keeps future engines like Ruff aligned with the budgets you enforce today.
+
 ### Typing & CI
 
 Type checking locally:
@@ -115,9 +132,23 @@ clearer plan to move toward stricter typing across packages. A common pattern is
 - pyright baseline (warnings) across the monorepo, with `--strict` for green packages
 - mypy for projects using mypy plugins (e.g., pydantic, SQLAlchemy), with a strict profile in those packages
 
-### Exception Reference
+### Exception References
 
 A catalog of exceptions with stable error codes is available in docs/EXCEPTIONS.md: see how to catch precise error types and map them to codes for logs or CI.
+
+## Licensing & Commercial Use
+
+Typewiz is distributed under the **Typewiz Software License Agreement (Proprietary)**.
+
+- **Evaluation:** You may install and evaluate Typewiz internally for up to 30 days.
+- **Commercial/Production use:** Requires a commercial license.
+- **Prohibited:** Redistribution, sublicensing, hosting as a service, or sublicensing without written authorization.
+- **License keys:** Set `TYPEWIZ_LICENSE_KEY=<your-key>` in the environment to suppress the evaluation banner and unlock licensed features.
+
+See [`LICENSE`](./LICENSE) and [`TERMS.md`](./TERMS.md) for the full agreement and summary.
+For commercial licensing or extended evaluations, contact **pantheriancodex@pm.me**.
+
+Historical OSS releases prior to the commercial reset remain available under their original terms in the legacy repository history.
 
 ### Custom engines (plugins)
 
@@ -372,6 +403,7 @@ When `typewiz` writes dashboards during `audit`, you can control the default HTM
    - Ship VS Code/IDE tasks that hydrate profiles and dashboards
    - Grow first-party engines (Pyre, Pytype) once profile API is stable
    - Prepare for PyPI release with migration guide covering new config surface
+
 ### Manifest validation and schema
 
 Typewiz includes a Pydantic-backed manifest validator and a CLI to emit the JSON Schema:
@@ -383,14 +415,6 @@ Typewiz includes a Pydantic-backed manifest validator and a CLI to emit the JSON
   If the optional `jsonschema` package is available, the CLI also validates against the
   generated schema and reports any schema errors.
 
-  Manifests include a `schemaVersion` field that Typewiz keeps current. Older payloads can be
-  upgraded in-place:
-
-  `typewiz manifest migrate --input legacy_manifest.json --output upgraded_manifest.json`
-
-  The upgrader normalises the schema version, ensures `runs` is always a list, and rejects
-  payloads with unexpected top-level fields before handing them to the runtime validator.
-
 - Emit the manifest JSON Schema:
 
   `typewiz manifest schema --output schemas/typing-manifest.schema.json`
@@ -398,10 +422,6 @@ Typewiz includes a Pydantic-backed manifest validator and a CLI to emit the JSON
 Programmatic validation is available via `typewiz.manifest_models.validate_manifest_payload`.
 Validation errors raise `TypewizValidationError` with access to the underlying Pydantic
 `ValidationError` for detailed diagnostics.
-
-For repositories that process manifests programmatically, use
-`typewiz.manifest_versioning.upgrade_manifest` to normalise a payload dict. Unknown future schema
-versions raise `UnsupportedManifestVersionError` so callers can prompt for an upgrade.
 
 ### Exception Reference
 
@@ -412,6 +432,7 @@ Typewiz exposes a small, precise exception hierarchy to enable robust error hand
 - `typewiz.TypewizTypeError`: Raised when runtime inputs have invalid types.
 
 Config-specific exceptions (raised from `typewiz.config`):
+
 - `ConfigValidationError`: Base for config validation issues.
 - `ConfigFieldTypeError`: Field has the wrong type (e.g., `fail_on` not a string).
 - `ConfigFieldChoiceError`: Field value not among allowed choices (e.g., `fail_on`).
@@ -423,14 +444,16 @@ Config-specific exceptions (raised from `typewiz.config`):
 - `InvalidConfigFileError`: Invalid top-level config file.
 
 Dashboard:
+
 - `DashboardTypeError`: Unexpected types in readiness/dashboard inputs.
 
 Manifest:
+
 - `ManifestValidationError`: Wraps a Pydantic `ValidationError` for manifest payloads.
 
 Example usage:
 
-```
+```python
 from typewiz import TypewizValidationError
 from typewiz.config import load_config
 
@@ -440,6 +463,7 @@ except TypewizValidationError as exc:
     # Handle or log validation details
     print("Config invalid:", exc)
 ```
+
 ## Make Targets
 
 Use the Makefile to run common workflows with consistent settings:

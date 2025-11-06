@@ -1,5 +1,8 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
+import operator
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -134,6 +137,7 @@ class _Categoriser:
     __slots__ = ("_cache", "_custom_lookup")
 
     def __init__(self, mapping: Mapping[str, Iterable[str]]) -> None:
+        super().__init__()
         self._custom_lookup = _build_category_lookup(mapping)
         self._cache: dict[str, str] = {}
 
@@ -245,7 +249,7 @@ def _update_folder_summary(
 
 def _finalise_file_entries(files: dict[str, FileSummary]) -> list[FileEntry]:
     for summary in files.values():
-        summary.diagnostics.sort(key=lambda entry: (entry["line"], entry["column"]))
+        summary.diagnostics.sort(key=operator.itemgetter("line", "column"))
     file_list = sorted(files.values(), key=lambda item: item.path)
     return [
         cast(

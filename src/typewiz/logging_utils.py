@@ -1,11 +1,15 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import json
 import logging
 from datetime import datetime
-from typing import Literal, override
+from typing import override
 
-LOG_FORMATS = ("text", "json")
+from .model_types import LogFormat
+
+LOG_FORMATS: tuple[str, ...] = tuple(format_.value for format_ in LogFormat)
 
 
 class JSONLogFormatter(logging.Formatter):
@@ -34,11 +38,18 @@ class TextLogFormatter(logging.Formatter):
         super().__init__("[%(levelname)s] %(message)s")
 
 
-def configure_logging(log_format: Literal["text", "json"]) -> None:
+def _coerce_log_format(log_format: LogFormat | str) -> LogFormat:
+    if isinstance(log_format, LogFormat):
+        return log_format
+    return LogFormat.from_str(log_format)
+
+
+def configure_logging(log_format: LogFormat | str) -> None:
     """Configure Typewiz logging according to the requested format."""
 
+    selected_format = _coerce_log_format(log_format)
     handler = logging.StreamHandler()
-    if log_format == "json":
+    if selected_format is LogFormat.JSON:
         handler.setFormatter(JSONLogFormatter())
     else:
         handler.setFormatter(TextLogFormatter())

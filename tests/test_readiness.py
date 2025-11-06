@@ -1,5 +1,8 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
+from typewiz.model_types import ReadinessStatus
 from typewiz.readiness import CATEGORY_PATTERNS, ReadinessEntry, compute_readiness
 
 
@@ -14,13 +17,13 @@ def test_compute_readiness_ready_bucket() -> None:
         "recommendations": [],
     }
     readiness = compute_readiness([entry])
-    ready_entries = readiness["strict"]["ready"]
+    ready_entries = readiness["strict"][ReadinessStatus.READY.value]
     assert len(ready_entries) == 1
     assert ready_entries[0].get("path") == "src/pkg"
     options = readiness["options"]
     for category in CATEGORY_PATTERNS:
         bucket = options[category]
-        assert bucket["ready"]
+        assert bucket[ReadinessStatus.READY.value]
 
 
 def test_compute_readiness_close_notes() -> None:
@@ -34,14 +37,14 @@ def test_compute_readiness_close_notes() -> None:
         "recommendations": ["fix unknowns"],
     }
     readiness = compute_readiness([entry])
-    close_entries = readiness["strict"]["close"]
+    close_entries = readiness["strict"][ReadinessStatus.CLOSE.value]
     assert len(close_entries) == 1
     strict_entry = close_entries[0]
     assert strict_entry.get("diagnostics") == 2
     category_status = strict_entry.get("categoryStatus") or {}
-    assert category_status.get("unknownChecks") == "close"
+    assert category_status.get("unknownChecks") == ReadinessStatus.CLOSE.value
     assert strict_entry.get("notes")
-    options_bucket = readiness["options"]["unknownChecks"]["close"]
+    options_bucket = readiness["options"]["unknownChecks"][ReadinessStatus.CLOSE.value]
     assert options_bucket and options_bucket[0]["path"] == "src/pkg"
 
 
@@ -56,8 +59,8 @@ def test_compute_readiness_general_extra() -> None:
         "recommendations": [],
     }
     readiness = compute_readiness([entry])
-    close_entries = readiness["strict"]["close"]
+    close_entries = readiness["strict"][ReadinessStatus.CLOSE.value]
     assert close_entries
     categories = close_entries[0].get("categories") or {}
     assert categories.get("general") == 2
-    assert readiness["options"]["unknownChecks"]["close"][0]["count"] == 1
+    assert readiness["options"]["unknownChecks"][ReadinessStatus.CLOSE.value][0]["count"] == 1

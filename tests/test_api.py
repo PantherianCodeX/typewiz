@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -9,17 +11,20 @@ import pytest
 from typewiz import AuditConfig, Config, run_audit
 from typewiz.config import EngineProfile, EngineSettings
 from typewiz.engines.base import EngineContext, EngineResult
+from typewiz.model_types import Mode
 from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic, RunResult
+from typewiz.utils import consume
 
 
 class StubEngine:
     def __init__(self, result: RunResult) -> None:
+        super().__init__()
         self.name = "stub"
         self._result = result
 
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
-        if context.mode == "current":
+        if context.mode is Mode.CURRENT:
             return EngineResult(
                 engine=self.name,
                 mode=context.mode,
@@ -62,11 +67,11 @@ def fake_run_result(tmp_path: Path) -> RunResult:
             code="reportGeneralTypeIssues",
             message="problem",
             raw={},
-        )
+        ),
     ]
     return RunResult(
         tool="stub",
-        mode="full",
+        mode=Mode.FULL,
         command=["stub"],
         exit_code=1,
         duration_ms=5.0,
@@ -76,7 +81,9 @@ def fake_run_result(tmp_path: Path) -> RunResult:
 
 
 def test_run_audit_programmatic(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, fake_run_result: RunResult
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_run_result: RunResult,
 ) -> None:
     def _resolve_stub(_: Sequence[str]) -> list[StubEngine]:
         return [StubEngine(fake_run_result)]
@@ -85,13 +92,18 @@ def test_run_audit_programmatic(
     monkeypatch.setattr("typewiz.api.resolve_engines", _resolve_stub)
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8")
+    consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
     override = AuditConfig(
-        full_paths=["src"], dashboard_json=tmp_path / "summary.json", runners=["stub"]
+        full_paths=["src"],
+        dashboard_json=tmp_path / "summary.json",
+        runners=["stub"],
     )
 
     result = run_audit(
-        project_root=tmp_path, override=override, full_paths=["src"], build_summary_output=True
+        project_root=tmp_path,
+        override=override,
+        full_paths=["src"],
+        build_summary_output=True,
     )
 
     assert result.summary is not None
@@ -99,7 +111,7 @@ def test_run_audit_programmatic(
     assert summary["topFolders"]
     assert result.error_count == 1
     assert (tmp_path / "summary.json").exists()
-    full_run = next(run for run in result.runs if run.mode == "full")
+    full_run = next(run for run in result.runs if run.mode is Mode.FULL)
     assert full_run.category_mapping == {"unknownChecks": ["reportGeneralTypeIssues"]}
     assert full_run.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
     manifest = result.manifest
@@ -135,6 +147,7 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
         name = "stub"
 
         def __init__(self) -> None:
+            super().__init__()
             self.invocations: list[tuple[str, list[str], list[str], str | None]] = []
 
         def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
@@ -144,12 +157,12 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
                     list(context.engine_options.plugin_args),
                     list(paths),
                     context.engine_options.profile,
-                )
+                ),
             )
             return EngineResult(
                 engine=self.name,
                 mode=context.mode,
-                command=["stub", context.mode],
+                command=["stub", str(context.mode)],
                 exit_code=0,
                 duration_ms=0.1,
                 diagnostics=[],
@@ -159,7 +172,9 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
             return {}
 
         def fingerprint_targets(
-            self, context: EngineContext, paths: Sequence[str]
+            self,
+            context: EngineContext,
+            paths: Sequence[str],
         ) -> Sequence[str]:
             return []
 
@@ -173,7 +188,7 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     # ensure compatibility with new API method
     (tmp_path / "src").mkdir(parents=True, exist_ok=True)
     (tmp_path / "extra").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
+    consume((tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8"))
 
     profile = EngineProfile(plugin_args=["--strict"], include=["extra"], exclude=[])
     settings = EngineSettings(plugin_args=["--engine"], profiles={"strict": profile})
@@ -184,15 +199,15 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
             engine_settings={"stub": settings},
             active_profiles={"stub": "strict"},
             runners=["stub"],
-        )
+        ),
     )
 
     result = run_audit(project_root=tmp_path, config=config, build_summary_output=False)
 
     assert len(engine.invocations) == 2
     modes = {mode for mode, _, _, _ in engine.invocations}
-    assert modes == {"current", "full"}
-    full_invocation = next(entry for entry in engine.invocations if entry[0] == "full")
+    assert modes == {Mode.CURRENT, Mode.FULL}
+    full_invocation = next(entry for entry in engine.invocations if entry[0] is Mode.FULL)
     _, args, paths, profile_name = full_invocation
     assert args == ["--base", "--engine", "--strict"]
     assert sorted(paths) == ["extra", "src"]
@@ -211,12 +226,14 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
 
 
 def test_run_audit_respects_folder_overrides(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     class RecordingEngine:
         name = "stub"
 
         def __init__(self) -> None:
+            super().__init__()
             self.invocations: list[EngineContext] = []
 
         def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
@@ -234,7 +251,9 @@ def test_run_audit_respects_folder_overrides(
             return {}
 
         def fingerprint_targets(
-            self, context: EngineContext, paths: Sequence[str]
+            self,
+            context: EngineContext,
+            paths: Sequence[str],
         ) -> Sequence[str]:
             return []
 
@@ -247,24 +266,27 @@ def test_run_audit_respects_folder_overrides(
     monkeypatch.setattr("typewiz.api.resolve_engines", _resolve_folder)
 
     root_config = tmp_path / "typewiz.toml"
-    root_config.write_text(
-        """
+    consume(
+        root_config.write_text(
+            """
 config_version = 0
 
 [audit]
 full_paths = ["packages"]
 runners = ["stub"]
 """,
-        encoding="utf-8",
+            encoding="utf-8",
+        ),
     )
 
     packages = tmp_path / "packages"
     billing = packages / "billing"
     billing.mkdir(parents=True, exist_ok=True)
-    (billing / "module.py").write_text("x = 1\n", encoding="utf-8")
+    consume((billing / "module.py").write_text("x = 1\n", encoding="utf-8"))
     override = billing / "typewiz.dir.toml"
-    override.write_text(
-        """
+    consume(
+        override.write_text(
+            """
 [active_profiles]
 stub = "strict"
 
@@ -272,14 +294,15 @@ stub = "strict"
 plugin_args = ["--billing"]
 exclude = ["legacy"]
 """,
-        encoding="utf-8",
+            encoding="utf-8",
+        ),
     )
 
     monkeypatch.chdir(tmp_path)
     result = run_audit(project_root=tmp_path, config=None, build_summary_output=False)
 
     assert engine.invocations
-    full_context = next(ctx for ctx in engine.invocations if ctx.mode == "full")
+    full_context = next(ctx for ctx in engine.invocations if ctx.mode is Mode.FULL)
     assert full_context.engine_options.profile == "strict"
     assert "--billing" in full_context.engine_options.plugin_args
     assert any("packages/billing" in path for path in full_context.engine_options.include)
@@ -301,7 +324,8 @@ exclude = ["legacy"]
 
 
 def test_run_audit_cache_preserves_tool_summary(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     diagnostics = [
         Diagnostic(
@@ -313,27 +337,28 @@ def test_run_audit_cache_preserves_tool_summary(
             code="E001",
             message="failure",
             raw={},
-        )
+        ),
     ]
 
     class RecordingEngine:
         name = "stub"
 
         def __init__(self) -> None:
-            self.invocations: list[str] = []
+            super().__init__()
+            self.invocations: list[Mode] = []
 
         def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
             self.invocations.append(context.mode)
             return EngineResult(
                 engine=self.name,
                 mode=context.mode,
-                command=["stub", context.mode],
-                exit_code=1 if context.mode == "full" else 0,
+                command=["stub", str(context.mode)],
+                exit_code=1 if context.mode is Mode.FULL else 0,
                 duration_ms=0.5,
                 diagnostics=list(diagnostics),
                 tool_summary=(
                     {"errors": 1, "warnings": 0, "information": 0, "total": 1}
-                    if context.mode == "full"
+                    if context.mode is Mode.FULL
                     else None
                 ),
             )
@@ -342,7 +367,9 @@ def test_run_audit_cache_preserves_tool_summary(
             return {}
 
         def fingerprint_targets(
-            self, context: EngineContext, paths: Sequence[str]
+            self,
+            context: EngineContext,
+            paths: Sequence[str],
         ) -> Sequence[str]:
             return []
 
@@ -355,13 +382,13 @@ def test_run_audit_cache_preserves_tool_summary(
     monkeypatch.setattr("typewiz.api.resolve_engines", _resolve_cache)
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8")
+    consume((tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8"))
 
     override = AuditConfig(full_paths=["pkg"], runners=["stub"])
 
     first = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
-    assert engine.invocations.count("full") == 1
-    first_full = next(run for run in first.runs if run.mode == "full")
+    assert engine.invocations.count(Mode.FULL) == 1
+    first_full = next(run for run in first.runs if run.mode is Mode.FULL)
     assert first_full.cached is False
     assert first_full.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
     cache_path = tmp_path / ".typewiz_cache" / "cache.json"
@@ -377,8 +404,8 @@ def test_run_audit_cache_preserves_tool_summary(
 
     second = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
     # cache hit should avoid new invocations
-    assert engine.invocations.count("full") == 1
-    cached_full = next(run for run in second.runs if run.mode == "full")
+    assert engine.invocations.count(Mode.FULL) == 1
+    cached_full = next(run for run in second.runs if run.mode is Mode.FULL)
     assert cached_full.cached is True
     assert cached_full.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
     second_manifest = second.manifest

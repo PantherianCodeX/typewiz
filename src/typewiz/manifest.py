@@ -18,7 +18,7 @@ from .typed_manifest import (
     RunPayload,
 )
 from .types import RunResult
-from .utils import detect_tool_versions
+from .utils import consume, detect_tool_versions
 
 logger: logging.Logger = logging.getLogger("typewiz")
 
@@ -56,7 +56,7 @@ class ManifestBuilder:
         }
         payload: RunPayload = {
             "tool": run.tool,
-            "mode": run.mode,
+            "mode": run.mode.value,
             "command": run.command,
             "exitCode": run.exit_code,
             "durationMs": run.duration_ms,
@@ -105,4 +105,4 @@ class ManifestBuilder:
             logger.debug("Failed to detect tool versions: %s", exc)
         if self.fingerprint_truncated:
             self.data["fingerprintTruncated"] = True
-        path.write_text(json.dumps(self.data, indent=2) + "\n", encoding="utf-8")
+        consume(path.write_text(json.dumps(self.data, indent=2) + "\n", encoding="utf-8"))

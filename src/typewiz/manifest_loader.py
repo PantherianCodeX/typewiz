@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import logging
@@ -25,7 +27,8 @@ def _is_run_payload(obj: object) -> TypeGuard[RunPayload]:
     if not isinstance(typed_obj.get("summary"), Mapping):
         return False
     if not isinstance(typed_obj.get("perFile"), list) or not isinstance(
-        typed_obj.get("perFolder"), list
+        typed_obj.get("perFolder"),
+        list,
     ):
         return False
     return isinstance(typed_obj.get("engineOptions"), Mapping)
@@ -76,7 +79,8 @@ def load_manifest_data(raw: Any) -> ManifestData:
         return validate_manifest_payload(raw)
     except ManifestValidationError as exc:
         logger.debug(
-            "Manifest validation failed; falling back to coercion: %s", exc.validation_error
+            "Manifest validation failed; falling back to coercion: %s",
+            exc.validation_error,
         )
         if not isinstance(raw, Mapping):
             raise

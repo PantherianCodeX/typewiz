@@ -1,0 +1,199 @@
+# Copyright (c) 2024 PantherianCodeX
+
+"""Tests for the ratchet helpers."""
+
+from __future__ import annotations
+
+from collections import Counter
+from typing import Any, TypedDict, cast
+
+from typewiz.ratchet import (
+    apply_auto_update,
+    build_ratchet_from_manifest,
+    compare_manifest_to_ratchet,
+)
+from typewiz.typed_manifest import (
+    EngineOptionsEntry,
+    FileEntry,
+    ManifestData,
+    RunPayload,
+    RunSummary,
+)
+
+EXPECTED_ERROR_AFTER_UPDATE = 2
+EXPECTED_ALLOWED_BASELINE = 1
+
+
+class _DiagnosticDict(TypedDict, total=False):
+    line: int
+    column: int
+    severity: str
+    code: str | None
+    message: str
+
+
+def _make_manifest(
+    per_file: dict[str, Counter[str]],
+    *,
+    plugin_args: list[str] | None = None,
+) -> ManifestData:
+    """Build a synthetic manifest with per-file diagnostics.
+
+    Returns:
+        dict: Manifest-like payload matching the provided diagnostics.
+
+    """
+    per_file_entries: list[FileEntry] = []
+    for path, counts in per_file.items():
+        diag_list: list[_DiagnosticDict] = []
+        for severity, count in counts.items():
+            diag_list.extend(
+                {
+                    "line": 1,
+                    "column": 1,
+                    "severity": severity,
+                    "code": f"{severity[:1].upper()}{index}",
+                    "message": f"{severity} {index}",
+                }
+                for index in range(count)
+            )
+        per_file_entries.append(
+            cast(
+                FileEntry,
+                {
+                    "path": path,
+                    "errors": counts.get("error", 0),
+                    "warnings": counts.get("warning", 0),
+                    "information": counts.get("information", 0),
+                    "diagnostics": diag_list,
+                },
+            )
+        )
+    engine_options: EngineOptionsEntry = {
+        "profile": "baseline",
+        "pluginArgs": plugin_args or ["--strict"],
+        "include": ["src"],
+        "exclude": [],
+    }
+    summary_totals = cast(
+        RunSummary,
+        {
+            "errors": sum(counts.get("error", 0) for counts in per_file.values()),
+            "warnings": sum(counts.get("warning", 0) for counts in per_file.values()),
+            "information": sum(counts.get("information", 0) for counts in per_file.values()),
+            "total": sum(counts.total() for counts in per_file.values()),
+            "severityBreakdown": {},
+            "ruleCounts": {},
+            "categoryCounts": {},
+        },
+    )
+    run_payload = cast(
+        RunPayload,
+        {
+            "tool": "pyright",
+            "mode": "current",
+            "command": ["pyright", "--strict"],
+            "exitCode": 0,
+            "durationMs": 1.0,
+            "summary": summary_totals,
+            "perFile": per_file_entries,
+            "perFolder": [],
+            "engineOptions": engine_options,
+        },
+    )
+    manifest = cast(
+        ManifestData,
+        {
+            "generatedAt": "2025-01-01T00:00:00Z",
+            "projectRoot": "/project",
+            "runs": [run_payload],
+        },
+    )
+    return manifest
+
+
+def test_build_ratchet_uses_manifest_counts() -> None:
+    """Baseline budgets match the manifest counts for each severity."""
+    per_file_counts = {"src/foo.py": Counter({"error": 1, "warning": 2})}
+    manifest = _make_manifest(per_file_counts)
+    ratchet = build_ratchet_from_manifest(
+        manifest=manifest,
+        runs=None,
+        severities=["error", "warning"],
+        targets=None,
+        manifest_path="baseline.json",
+    )
+    run_budget = ratchet.runs["pyright:current"]
+    foo_budget = run_budget.paths["src/foo.py"]
+    expected_counts = per_file_counts["src/foo.py"]
+    assert foo_budget.severities["error"] == expected_counts["error"]
+    assert foo_budget.severities["warning"] == expected_counts["warning"]
+    assert run_budget.engine_signature["hash"]
+
+
+def test_compare_detects_regressions_and_signature_changes() -> None:
+    """Regression and signature mismatches are surfaced in the report."""
+    baseline_manifest = _make_manifest({"src/foo.py": Counter({"error": 1})})
+    ratchet = build_ratchet_from_manifest(
+        manifest=baseline_manifest,
+        runs=None,
+        severities=["error"],
+        targets=None,
+        manifest_path="baseline.json",
+    )
+    regress_manifest = _make_manifest(
+        {"src/foo.py": Counter({"error": 2})}, plugin_args=["--strict", "--verifytypes"]
+    )
+    report = compare_manifest_to_ratchet(manifest=regress_manifest, ratchet=ratchet, runs=None)
+    assert report.has_violations()
+    run_report = report.runs[0]
+    assert run_report.violations[0].path == "src/foo.py"
+    assert not run_report.signature_matches
+
+
+def test_auto_update_reduces_budgets_but_respects_targets() -> None:
+    """Auto-update ratchets only decrease budgets down to configured targets."""
+    manifest = _make_manifest({"src/foo.py": Counter({"error": 3})})
+    ratchet = build_ratchet_from_manifest(
+        manifest=manifest,
+        runs=None,
+        severities=["error"],
+        targets={"error": 1},
+        manifest_path="baseline.json",
+    )
+    improved_manifest = _make_manifest({"src/foo.py": Counter({"error": 2})})
+    updated = apply_auto_update(
+        manifest=improved_manifest,
+        ratchet=ratchet,
+        runs=None,
+        generated_at=improved_manifest.get("generatedAt") or "2025-01-01T00:00:00Z",
+    )
+    updated_budget = updated.runs["pyright:current"].paths["src/foo.py"]
+    # decreased from 3 to 2 but not below target 1
+    assert updated_budget.severities["error"] == EXPECTED_ERROR_AFTER_UPDATE
+
+
+def test_report_payload_and_formatting() -> None:
+    """Ratchet reports expose payloads and human-friendly lines."""
+    baseline = _make_manifest({"src/foo.py": Counter({"error": 1})})
+    ratchet = build_ratchet_from_manifest(
+        manifest=baseline,
+        runs=None,
+        severities=["error"],
+        targets=None,
+        manifest_path="baseline.json",
+    )
+    regression = _make_manifest({"src/foo.py": Counter({"error": 2})})
+    report = compare_manifest_to_ratchet(manifest=regression, ratchet=ratchet, runs=None)
+
+    payload = report.to_payload()
+    assert payload["has_violations"] is True
+    runs_payload = cast(list[dict[str, Any]], payload["runs"])
+    run_payload = runs_payload[0]
+    violations = cast(list[dict[str, Any]], run_payload["violations"])
+    assert violations[0]["actual"] == EXPECTED_ERROR_AFTER_UPDATE
+    assert violations[0]["allowed"] == EXPECTED_ALLOWED_BASELINE
+
+    lines = report.format_lines(ignore_signature=True)
+    assert any("Violations" in line for line in lines)
+    assert report.exit_code(ignore_signature=True) == 1

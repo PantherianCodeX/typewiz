@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -5,6 +7,7 @@ from pathlib import Path
 from typing import override
 
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from typewiz.model_types import Mode
 from typewiz.runner import run_mypy
 from typewiz.utils import python_executable
 
@@ -27,7 +30,7 @@ class MypyEngine(BaseEngine):
         config_file = self._config_file(context)
         if config_file:
             base.extend(["--config-file", str(config_file)])
-        if context.mode == "current":
+        if context.mode is Mode.CURRENT:
             command = [*base, "--no-pretty", *args]
         else:
             command = [

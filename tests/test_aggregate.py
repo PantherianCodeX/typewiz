@@ -1,13 +1,21 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from pathlib import Path
 
 from typewiz.aggregate import summarise_run
+from typewiz.model_types import Mode
 from typewiz.types import Diagnostic, RunResult
 
 
 def make_diag(
-    path: str, *, severity: str, line: int = 1, column: int = 1, code: str | None = None
+    path: str,
+    *,
+    severity: str,
+    line: int = 1,
+    column: int = 1,
+    code: str | None = None,
 ) -> Diagnostic:
     return Diagnostic(
         tool="pyright",
@@ -29,7 +37,7 @@ def test_summarise_run_typed_output() -> None:
     ]
     run = RunResult(
         tool="pyright",
-        mode="full",
+        mode=Mode.FULL,
         command=["pyright"],
         exit_code=0,
         duration_ms=10.0,

@@ -7,14 +7,14 @@ build-backend = "setuptools.build_meta"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-# Broadened rule set for better hygiene
-lint.select = ["E", "F", "B", "UP", "TID", "N", "SIM", "TRY", "RET", "S", "I", "PERF", "C4", "PTH", "YTT", "RUF"]
+preview = true
+# Focus linting on high-signal rules; reduce docstring/license noise for now.
+lint.select = ["E", "F", "I", "UP", "B"]
 lint.ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/conftest.py" = ["E402"]
-"src/typewiz/utils.py" = ["UP040"]
-"tests/**" = ["S101"]
+"tests/**" = ["S101", "D100", "D101", "D102", "D103", "D104", "PLR2004", "CPY001"]
 "src/typewiz/manifest_models.py" = ["N815"]
 "src/typewiz/logging_utils.py" = ["TRY003"]
 

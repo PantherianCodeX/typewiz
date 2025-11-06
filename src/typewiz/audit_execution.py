@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 """Execution helpers for running engines during an audit."""
 
 from __future__ import annotations
@@ -6,7 +8,7 @@ import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, cast
+from typing import cast
 
 from .audit_config_utils import normalise_category_mapping, prepare_category_mapping
 from .audit_paths import fingerprint_targets as build_fingerprint_targets
@@ -16,7 +18,7 @@ from .collection_utils import merge_preserve
 from .config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from .engines import EngineContext, EngineOptions
 from .engines.base import BaseEngine, EngineResult
-from .model_types import FileHashPayload, OverrideEntry
+from .model_types import FileHashPayload, Mode, OverrideEntry
 from .type_aliases import CacheKey, PathKey
 from .typed_manifest import ToolSummary
 from .types import RunResult
@@ -41,7 +43,8 @@ class _EngineOptionState:
 
 
 def _resolve_base_profile(
-    audit_config: AuditConfig, engine_name: str
+    audit_config: AuditConfig,
+    engine_name: str,
 ) -> tuple[EngineSettings | None, str | None, EngineProfile | None]:
     settings = audit_config.engine_settings.get(engine_name)
     profile_name = audit_config.active_profiles.get(engine_name)
@@ -66,7 +69,8 @@ def _merge_base_plugin_args(
 
 
 def _merge_base_paths(
-    settings: EngineSettings | None, profile: EngineProfile | None
+    settings: EngineSettings | None,
+    profile: EngineProfile | None,
 ) -> tuple[list[str], list[str]]:
     include_raw: list[str] = []
     exclude_raw: list[str] = []
@@ -165,10 +169,14 @@ def _apply_path_override(
     if path_settings:
         state.plugin_args = merge_preserve(state.plugin_args, path_settings.plugin_args)
         include_override = normalise_override_entries(
-            project_root, override.path, path_settings.include
+            project_root,
+            override.path,
+            path_settings.include,
         )
         exclude_override = normalise_override_entries(
-            project_root, override.path, path_settings.exclude
+            project_root,
+            override.path,
+            path_settings.exclude,
         )
         state.include = merge_preserve(state.include, include_override)
         state.exclude = merge_preserve(state.exclude, exclude_override)
@@ -182,10 +190,14 @@ def _apply_path_override(
     if profile_override:
         state.plugin_args = merge_preserve(state.plugin_args, profile_override.plugin_args)
         include_profile_override = normalise_override_entries(
-            project_root, override.path, profile_override.include
+            project_root,
+            override.path,
+            profile_override.include,
         )
         exclude_profile_override = normalise_override_entries(
-            project_root, override.path, profile_override.exclude
+            project_root,
+            override.path,
+            profile_override.exclude,
         )
         state.include = merge_preserve(state.include, include_profile_override)
         state.exclude = merge_preserve(state.exclude, exclude_profile_override)
@@ -201,13 +213,15 @@ def _apply_path_override(
 
 
 def _paths_for_mode(
-    mode: Literal["current", "full"],
+    mode: Mode,
     engine_options: EngineOptions,
     full_paths_normalised: Sequence[str],
 ) -> list[str]:
-    if mode == "full":
+    if mode is Mode.FULL:
         return apply_engine_paths(
-            full_paths_normalised, engine_options.include, engine_options.exclude
+            full_paths_normalised,
+            engine_options.include,
+            engine_options.exclude,
         )
     return []
 
@@ -261,7 +275,7 @@ def _fingerprint_targets_for_run(
 def _prepare_cache_inputs(
     *,
     engine: BaseEngine,
-    mode: Literal["current", "full"],
+    mode: Mode,
     engine_options: EngineOptions,
     cache: EngineCache,
     tool_versions: Mapping[str, str],
@@ -295,7 +309,7 @@ def _prepare_cache_inputs(
 def _build_cached_run_result(
     *,
     engine_name: str,
-    mode: Literal["current", "full"],
+    mode: Mode,
     cached_run: CachedRun,
     mode_paths: Sequence[str],
 ) -> RunResult:
@@ -315,7 +329,7 @@ def _build_cached_run_result(
         overrides=[cast("OverrideEntry", dict(item)) for item in cached_run.overrides],
         category_mapping={k: list(v) for k, v in cached_run.category_mapping.items()},
         tool_summary=(
-            cast(ToolSummary, dict(cached_run.tool_summary))
+            cast("ToolSummary", dict(cached_run.tool_summary))
             if cached_run.tool_summary is not None
             else None
         ),
@@ -363,10 +377,11 @@ def _path_matches(candidate: str, pattern: str) -> bool:
 
 
 def apply_engine_paths(
-    default_paths: Sequence[str], include: Sequence[str], exclude: Sequence[str]
+    default_paths: Sequence[str],
+    include: Sequence[str],
+    exclude: Sequence[str],
 ) -> list[str]:
     """Merge include/exclude directives with default paths for a run."""
-
     ordered: list[str] = []
     seen: set[str] = set()
 
@@ -390,14 +405,20 @@ def apply_engine_paths(
 
 
 def resolve_engine_options(
-    project_root: Path, audit_config: AuditConfig, engine: BaseEngine
+    project_root: Path,
+    audit_config: AuditConfig,
+    engine: BaseEngine,
 ) -> EngineOptions:
     """Compute engine options including overrides and category mappings."""
-
     engine_name = engine.name
     settings, profile_name, profile = _resolve_base_profile(audit_config, engine_name)
     state = _initial_option_state(
-        project_root, audit_config, engine_name, settings, profile_name, profile
+        project_root,
+        audit_config,
+        engine_name,
+        settings,
+        profile_name,
+        profile,
     )
     applied_details: list[OverrideEntry] = []
     for override in _sort_overrides(project_root, audit_config.path_overrides):
@@ -419,7 +440,7 @@ def resolve_engine_options(
 def execute_engine_mode(
     *,
     engine: BaseEngine,
-    mode: Literal["current", "full"],
+    mode: Mode,
     context: EngineContext,
     audit_config: AuditConfig,
     cache: EngineCache,
@@ -428,7 +449,6 @@ def execute_engine_mode(
     full_paths_normalised: Sequence[str],
 ) -> tuple[RunResult, bool]:
     """Execute or fetch a cached engine run and return the result."""
-
     engine_options = context.engine_options
     mode_paths = _paths_for_mode(mode, engine_options, full_paths_normalised)
     cache_key, file_hashes, truncated = _prepare_cache_inputs(

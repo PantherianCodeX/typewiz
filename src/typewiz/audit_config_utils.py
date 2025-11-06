@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 """Helpers for cloning and merging audit configuration structures.
 
 These routines provide strongly typed utilities that keep `AuditConfig`
@@ -18,7 +20,6 @@ from .data_validation import coerce_object_list
 
 def clone_profile(profile: EngineProfile) -> EngineProfile:
     """Return a deep copy of an ``EngineProfile`` instance."""
-
     return EngineProfile(
         inherit=profile.inherit,
         plugin_args=list(profile.plugin_args),
@@ -30,7 +31,6 @@ def clone_profile(profile: EngineProfile) -> EngineProfile:
 
 def clone_engine_settings_map(settings: Mapping[str, EngineSettings]) -> dict[str, EngineSettings]:
     """Return a mutable copy of an engine-settings mapping."""
-
     cloned: dict[str, EngineSettings] = {}
     for name, value in settings.items():
         cloned[name] = EngineSettings(
@@ -49,7 +49,6 @@ def merge_engine_settings_map(
     override: Mapping[str, EngineSettings],
 ) -> dict[str, EngineSettings]:
     """Merge engine settings, cloning results to avoid mutating inputs."""
-
     result = clone_engine_settings_map(base)
     for name, override_settings in override.items():
         if name not in result:
@@ -73,20 +72,22 @@ def merge_engine_settings_map(
             if override_profile.config_file is not None:
                 profile_target.config_file = override_profile.config_file
             profile_target.plugin_args = merge_preserve(
-                profile_target.plugin_args, override_profile.plugin_args
+                profile_target.plugin_args,
+                override_profile.plugin_args,
             )
             profile_target.include = merge_preserve(
-                profile_target.include, override_profile.include
+                profile_target.include,
+                override_profile.include,
             )
             profile_target.exclude = merge_preserve(
-                profile_target.exclude, override_profile.exclude
+                profile_target.exclude,
+                override_profile.exclude,
             )
     return result
 
 
 def clone_path_overrides(overrides: Sequence[PathOverride]) -> list[PathOverride]:
     """Clone path override records so that callers can mutate safely."""
-
     return [
         PathOverride(
             path=override.path,
@@ -99,7 +100,6 @@ def clone_path_overrides(overrides: Sequence[PathOverride]) -> list[PathOverride
 
 def clone_audit_config(source: AuditConfig) -> AuditConfig:
     """Produce a deep copy of an ``AuditConfig`` instance."""
-
     return AuditConfig(
         manifest_path=source.manifest_path,
         full_paths=list(source.full_paths) if source.full_paths is not None else None,
@@ -120,7 +120,6 @@ def clone_audit_config(source: AuditConfig) -> AuditConfig:
 
 def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> AuditConfig:
     """Merge ``override`` into ``base`` (if supplied) and return a fresh config."""
-
     base_copy = clone_audit_config(base)
     if override is None:
         return base_copy
@@ -148,7 +147,8 @@ def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> Audi
     merged.plugin_args = dict(sorted(merged.plugin_args.items()))
 
     merged.engine_settings = merge_engine_settings_map(
-        base_copy.engine_settings, override.engine_settings
+        base_copy.engine_settings,
+        override.engine_settings,
     )
     merged.active_profiles = dict(base_copy.active_profiles)
     merged.active_profiles.update({k: v for k, v in override.active_profiles.items() if v})
@@ -160,7 +160,6 @@ def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> Audi
 
 def prepare_category_mapping(value: object) -> Mapping[str, Sequence[str]] | None:
     """Normalise raw engine category mappings into a predictable structure."""
-
     if value is None or not isinstance(value, Mapping):
         return None
     prepared: dict[str, list[str]] = {}
@@ -176,7 +175,6 @@ def prepare_category_mapping(value: object) -> Mapping[str, Sequence[str]] | Non
 
 def normalise_category_mapping(mapping: Mapping[str, Sequence[str]] | None) -> dict[str, list[str]]:
     """Provide a deterministic ordering for category mappings."""
-
     if mapping is None:
         return {}
     normalised: dict[str, list[str]] = {}

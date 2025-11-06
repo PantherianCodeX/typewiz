@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import logging
@@ -84,7 +86,7 @@ def run_pyright(
                 code=rule,
                 message=str(d.get("message", "")).strip(),
                 raw=d,
-            )
+            ),
         )
     diagnostics.sort(key=lambda d: (str(d.path), d.line, d.column))
     # If pyright's own summary (if present) disagrees with parsed diagnostics, log a warning
@@ -129,7 +131,7 @@ def run_pyright(
 
 
 _MYPY_LINE = re.compile(
-    r"^(?P<path>.+?):(?P<line>\d+):(?:(?P<column>\d+):)? (?P<severity>error|note|warning): (?P<message>.*?)(?: \[(?P<code>[^\]]+)\])?$"
+    r"^(?P<path>.+?):(?P<line>\d+):(?:(?P<column>\d+):)? (?P<severity>error|note|warning): (?P<message>.*?)(?: \[(?P<code>[^\]]+)\])?$",
 )
 
 
@@ -159,7 +161,7 @@ def run_mypy(
                 code=None,
                 message=remaining_stderr,
                 raw={"stderr": remaining_stderr},
-            )
+            ),
         )
     for line in result.stdout.splitlines():
         line = line.strip()
@@ -177,7 +179,7 @@ def run_mypy(
                     code=None,
                     message=line,
                     raw={"unparsed": line},
-                )
+                ),
             )
             continue
         data = match.groupdict()
@@ -192,7 +194,7 @@ def run_mypy(
                 code=data.get("code"),
                 message=data["message"].strip(),
                 raw=cast(dict[str, object], dict(data)),
-            )
+            ),
         )
     diagnostics.sort(key=lambda d: (str(d.path), d.line, d.column))
     engine_result = EngineResult(

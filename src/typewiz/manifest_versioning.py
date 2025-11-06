@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -49,7 +51,7 @@ def _ensure_runs(value: object) -> list[object]:
         return []
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         return list(cast(Sequence[object], value))
-    raise InvalidManifestRunsError()
+    raise InvalidManifestRunsError
 
 
 def upgrade_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:

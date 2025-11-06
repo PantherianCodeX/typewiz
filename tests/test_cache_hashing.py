@@ -9,11 +9,12 @@ import pytest
 from typewiz.cache import collect_file_hashes
 from typewiz.model_types import FileHashPayload
 from typewiz.type_aliases import PathKey
+from typewiz.utils import consume
 
 
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+    consume(path.write_text(content, encoding="utf-8"))
 
 
 def test_collect_file_hashes_sorted_output(tmp_path: Path) -> None:
@@ -27,7 +28,8 @@ def test_collect_file_hashes_sorted_output(tmp_path: Path) -> None:
 
 
 def test_collect_file_hashes_respects_gitignore(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     repo_root = tmp_path / "repo"
     project_root = repo_root / "project"
@@ -49,7 +51,8 @@ def test_collect_file_hashes_respects_gitignore(
 
 
 def test_collect_file_hashes_reuses_baseline(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     target = tmp_path / "sample.py"
     _write(target, "print('hello')\n")
@@ -76,7 +79,8 @@ def test_collect_file_hashes_reuses_baseline(
 
 
 def test_collect_file_hashes_honours_worker_env(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     _write(tmp_path / "worker.py", "print('hi')\n")
     recorded: dict[str, Any] = {}

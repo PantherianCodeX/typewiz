@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
@@ -9,7 +11,7 @@ from .utils import JSONValue
 
 
 @dataclass(slots=True)
-class Table[T]:
+class Table:
     headers: list[str]
     rows: list[Mapping[str, JSONValue]]
 
@@ -57,7 +59,7 @@ def render_table_rows(rows: Sequence[Mapping[str, JSONValue]]) -> list[str]:
     if not rows:
         return ["<empty>"]
     headers = sorted({key for row in rows for key in row})
-    table: Table[JSONValue] = Table(headers=headers, rows=list(rows))
+    table = Table(headers=headers, rows=list(rows))
     return table.render()
 
 

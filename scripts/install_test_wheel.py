@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import argparse
@@ -21,9 +23,9 @@ MISSING_WHEEL_MSG = "No typewiz wheel found in dist/. Run `make package.build` f
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Install a built typewiz wheel in an isolated virtualenv"
+        description="Install a built typewiz wheel in an isolated virtualenv",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--wheel",
         type=pathlib.Path,
         default=None,
@@ -46,8 +48,8 @@ def main() -> int:
             pip_path = venv_dir / "bin" / "pip"
             python_path = venv_dir / "bin" / "python"
 
-        subprocess.run([str(pip_path), "install", str(wheel_path)], check=True)  # noqa: S603
-        subprocess.run([str(python_path), "-c", "import typewiz"], check=True)  # noqa: S603
+        _ = subprocess.run([str(pip_path), "install", str(wheel_path)], check=True)  # noqa: S603
+        _ = subprocess.run([str(python_path), "-c", "import typewiz"], check=True)  # noqa: S603
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
     return 0

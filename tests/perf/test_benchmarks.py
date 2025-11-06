@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,6 +10,7 @@ import pytest
 pytest.importorskip("pytest_benchmark")
 
 from typewiz.aggregate import summarise_run
+from typewiz.model_types import Mode
 from typewiz.readiness import ReadinessEntry, compute_readiness
 from typewiz.types import Diagnostic, RunResult
 
@@ -29,7 +32,7 @@ def _build_readiness_entries(count: int = 200) -> list[ReadinessEntry]:
                 },
                 "categoryCounts": {},
                 "recommendations": [],
-            }
+            },
         )
     return entries
 
@@ -52,7 +55,7 @@ def _build_sample_run(num_files: int = 120, diagnostics_per_file: int = 5) -> Ru
         )
     return RunResult(
         tool="pyright",
-        mode="current",
+        mode=Mode.CURRENT,
         command=["pyright"],
         exit_code=0,
         duration_ms=0.0,

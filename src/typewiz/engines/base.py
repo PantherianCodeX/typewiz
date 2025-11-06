@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import logging
@@ -58,11 +60,15 @@ class EngineResult:
             logger.warning("Engine '%s' returned an empty command", self.engine)
         if self.duration_ms < 0:
             logger.warning(
-                "Engine '%s' reported negative duration %.2f ms", self.engine, self.duration_ms
+                "Engine '%s' reported negative duration %.2f ms",
+                self.engine,
+                self.duration_ms,
             )
         if self.exit_code < 0:
             logger.warning(
-                "Engine '%s' returned negative exit code %s", self.engine, self.exit_code
+                "Engine '%s' returned negative exit code %s",
+                self.engine,
+                self.exit_code,
             )
 
 

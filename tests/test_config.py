@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -16,15 +18,17 @@ from typewiz.config import (
     PathOverride,
     load_config,
 )
+from typewiz.utils import consume
 
-ensure_list = config_module._ensure_list
-resolve_path_fields = config_module._resolve_path_fields
+ensure_list = config_module.ensure_list
+resolve_path_fields = config_module.resolve_path_fields
 
 
 def test_load_config_from_toml(tmp_path: Path) -> None:
     config_path = tmp_path / "typewiz.toml"
-    config_path.write_text(
-        """
+    consume(
+        config_path.write_text(
+            """
 [audit]
 full_paths = ["apps", "packages"]
 skip_full = true
@@ -33,7 +37,8 @@ runners = ["pyright"]
 plugin_args.pyright = ["--pythonversion", "3.12"]
 dashboard_html = "reports/dashboard.html"
 """,
-        encoding="utf-8",
+            encoding="utf-8",
+        ),
     )
     cfg = load_config(config_path)
     assert cfg.audit.full_paths == ["apps", "packages"]
@@ -46,8 +51,9 @@ dashboard_html = "reports/dashboard.html"
 
 def test_load_config_engine_profiles(tmp_path: Path) -> None:
     config_path = tmp_path / "typewiz.toml"
-    config_path.write_text(
-        """
+    consume(
+        config_path.write_text(
+            """
 [audit]
 full_paths = ["src"]
 plugin_args.stub = ["--base"]
@@ -63,10 +69,13 @@ include = ["extras"]
 plugin_args = ["--strict"]
 config_file = "configs/strict.json"
 """,
-        encoding="utf-8",
+            encoding="utf-8",
+        ),
     )
     (config_path.parent / "configs").mkdir(exist_ok=True)
-    (config_path.parent / "configs" / "strict.json").write_text("{}", encoding="utf-8")
+    consume(
+        (config_path.parent / "configs" / "strict.json").write_text("{}", encoding="utf-8"),
+    )
 
     cfg = load_config(config_path)
     settings = cfg.audit.engine_settings["stub"]
@@ -97,7 +106,7 @@ def test_merge_config_merges_engine_settings() -> None:
             "stub": EngineSettings(
                 plugin_args=["--engine"],
                 profiles={"strict": EngineProfile(plugin_args=["--strict"])},
-            )
+            ),
         },
         active_profiles={"stub": "strict"},
     )
@@ -111,7 +120,7 @@ def test_merge_config_merges_engine_settings() -> None:
                     "strict": EngineProfile(plugin_args=["--stricter"]),
                     "lenient": EngineProfile(plugin_args=["--lenient"]),
                 },
-            )
+            ),
         },
         active_profiles={"stub": "lenient"},
     )
@@ -128,20 +137,23 @@ def test_merge_config_merges_engine_settings() -> None:
 
 def test_load_config_discovers_folder_overrides(tmp_path: Path) -> None:
     config_path = tmp_path / "typewiz.toml"
-    config_path.write_text(
-        """
+    consume(
+        config_path.write_text(
+            """
 config_version = 0
 
 [audit]
 full_paths = ["src"]
 """,
-        encoding="utf-8",
+            encoding="utf-8",
+        ),
     )
     package_dir = tmp_path / "packages" / "billing"
     package_dir.mkdir(parents=True, exist_ok=True)
     override = package_dir / "typewiz.dir.toml"
-    override.write_text(
-        """
+    consume(
+        override.write_text(
+            """
 [active_profiles]
 pyright = "strict"
 
@@ -150,7 +162,8 @@ plugin_args = ["--project", "pyrightconfig.billing.json"]
 include = ["."]
 exclude = ["legacy"]
 """,
-        encoding="utf-8",
+            encoding="utf-8",
+        ),
     )
 
     cfg = load_config(config_path)
@@ -173,18 +186,20 @@ def test_load_config_defaults_without_file(monkeypatch: pytest.MonkeyPatch, tmp_
 
 def test_load_config_raises_for_unknown_default_profile(tmp_path: Path) -> None:
     config_path = tmp_path / "typewiz.toml"
-    config_path.write_text(
-        """
+    consume(
+        config_path.write_text(
+            """
 [audit]
 runners = ["stub"]
 
 [audit.engines.stub]
 default_profile = "strict"
 """,
-        encoding="utf-8",
+            encoding="utf-8",
+        ),
     )
     with pytest.raises(ValueError):
-        load_config(config_path)
+        consume(load_config(config_path))
 
 
 def test_ensure_list_variants() -> None:
@@ -196,12 +211,12 @@ def test_ensure_list_variants() -> None:
 
 def test_engine_profile_model_strips_inherit() -> None:
     profile = EngineProfileModel.model_validate(
-        {"inherit": " base ", "plugin_args": ["--x", "--x"]}
+        {"inherit": " base ", "plugin_args": ["--x", "--x"]},
     )
     assert profile.inherit == "base"
     assert profile.plugin_args == ["--x"]
     with pytest.raises(ValueError):
-        EngineProfileModel.model_validate({"inherit": 123})
+        consume(EngineProfileModel.model_validate({"inherit": 123}))
 
 
 def test_engine_settings_model_validators() -> None:
@@ -210,18 +225,20 @@ def test_engine_settings_model_validators() -> None:
             "default_profile": " strict ",
             "plugin_args": ["--a", "--a"],
             "profiles": {" strict ": {"plugin_args": ["--p"]}},
-        }
+        },
     )
     assert model.default_profile == "strict"
     assert model.profiles["strict"].plugin_args == ["--p"]
     with pytest.raises(ValueError):
-        EngineSettingsModel.model_validate({"default_profile": 123})
+        consume(EngineSettingsModel.model_validate({"default_profile": 123}))
     with pytest.raises(ValueError):
-        EngineSettingsModel.model_validate(
-            {
-                "default_profile": "missing",
-                "profiles": {"strict": {"plugin_args": []}},
-            }
+        consume(
+            EngineSettingsModel.model_validate(
+                {
+                    "default_profile": "missing",
+                    "profiles": {"strict": {"plugin_args": []}},
+                },
+            ),
         )
 
 
@@ -231,16 +248,18 @@ def test_audit_config_model_plugin_args_normalisation() -> None:
             "plugin_args": {"pyright": ["--x", "--x"], "": ["ignored"]},
             "active_profiles": {" stub ": " strict "},
             "engines": {" stub ": {"profiles": {"strict": {}}}},
-        }
+        },
     )
     assert model.plugin_args == {"pyright": ["--x"]}
     assert model.active_profiles == {"stub": "strict"}
     with pytest.raises(ValueError):
-        AuditConfigModel.model_validate(
-            {
-                "active_profiles": {"stub": "missing"},
-                "engines": {"stub": {"profiles": {}}},
-            }
+        consume(
+            AuditConfigModel.model_validate(
+                {
+                    "active_profiles": {"stub": "missing"},
+                    "engines": {"stub": {"profiles": {}}},
+                },
+            ),
         )
 
 
@@ -248,7 +267,7 @@ def test_resolve_path_fields_resolves_relative_paths(tmp_path: Path) -> None:
     config_file = Path("configs/strict.json")
     override_config = Path("strict_override.json")
     (tmp_path / "configs").mkdir(exist_ok=True)
-    (tmp_path / "configs" / "strict.json").write_text("{}", encoding="utf-8")
+    consume((tmp_path / "configs" / "strict.json").write_text("{}", encoding="utf-8"))
     (tmp_path / "pkg").mkdir(exist_ok=True)
     audit = AuditConfig(
         manifest_path=Path("manifest.json"),
@@ -257,7 +276,7 @@ def test_resolve_path_fields_resolves_relative_paths(tmp_path: Path) -> None:
             "stub": EngineSettings(
                 config_file=config_file,
                 profiles={"strict": EngineProfile(config_file=config_file)},
-            )
+            ),
         },
         path_overrides=[
             PathOverride(
@@ -266,9 +285,9 @@ def test_resolve_path_fields_resolves_relative_paths(tmp_path: Path) -> None:
                     "stub": EngineSettings(
                         config_file=override_config,
                         profiles={"strict": EngineProfile(config_file=override_config)},
-                    )
+                    ),
                 },
-            )
+            ),
         ],
     )
     resolve_path_fields(tmp_path, audit)

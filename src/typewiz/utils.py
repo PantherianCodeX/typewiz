@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import json
@@ -8,21 +10,27 @@ import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TypeAlias, cast
+from typing import cast
 
 logger: logging.Logger = logging.getLogger("typewiz")
 
 # JSON typing helpers
 # A recursive JSON value used for parsing engine outputs safely.
-JSONValue: TypeAlias = str | int | float | bool | None | dict[str, "JSONValue"] | list["JSONValue"]
-JSONMapping: TypeAlias = dict[str, JSONValue]
-JSONList: TypeAlias = list[JSONValue]
+type JSONValue = str | int | float | bool | None | dict[str, "JSONValue"] | list["JSONValue"]
+type JSONMapping = dict[str, JSONValue]
+type JSONList = list[JSONValue]
 
 ROOT_MARKERS: tuple[str, ...] = (
     "typewiz.toml",
     ".typewiz.toml",
     "pyproject.toml",
 )
+
+
+def consume(value: object | None) -> None:
+    """Explicitly mark a value as intentionally unused."""
+
+    _ = value
 
 
 @dataclass(slots=True)
@@ -35,7 +43,10 @@ class CommandOutput:
 
 
 def run_command(
-    args: Iterable[str], cwd: Path | None = None, *, allowed: set[str] | None = None
+    args: Iterable[str],
+    cwd: Path | None = None,
+    *,
+    allowed: set[str] | None = None,
 ) -> CommandOutput:
     """Run a subprocess safely and return its captured output.
 
@@ -55,6 +66,7 @@ def run_command(
     logger.debug("Executing command: %s", " ".join(argv))
     completed = subprocess.run(  # noqa: S603 - command arguments provided by caller
         argv,
+        check=False,
         cwd=str(cwd) if cwd else None,
         capture_output=True,
         text=True,

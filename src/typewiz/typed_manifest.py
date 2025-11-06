@@ -1,8 +1,10 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from typing import TypedDict
 
-from .model_types import CategoryMapping, Mode, OverrideEntry
+from .model_types import CategoryMapping, OverrideEntry
 
 
 class FileDiagnostic(TypedDict):
@@ -64,7 +66,7 @@ class ToolSummary(TypedDict, total=False):
 
 class RunPayloadRequired(TypedDict):
     tool: str
-    mode: Mode
+    mode: str
     command: list[str]
     exitCode: int
     durationMs: float

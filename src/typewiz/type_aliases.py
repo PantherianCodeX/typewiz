@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 """Typed aliases used across Typewiz internals."""
 
 from __future__ import annotations

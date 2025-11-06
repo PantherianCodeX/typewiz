@@ -1,4 +1,6 @@
 # mypy: ignore-errors
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import copy
@@ -10,17 +12,20 @@ from typewiz.dashboard import build_summary, load_manifest, render_markdown
 from typewiz.html_report import render_html
 from typewiz.summary_types import SummaryData
 from typewiz.typed_manifest import FileEntry, FolderEntry, ManifestData, RunPayload
+from typewiz.utils import consume
 
 
 def test_render_markdown_snapshot(
-    sample_summary: SummaryData, snapshot_text: Callable[[str], str]
+    sample_summary: SummaryData,
+    snapshot_text: Callable[[str], str],
 ) -> None:
     output = render_markdown(sample_summary)
     assert output == snapshot_text("dashboard.md")
 
 
 def test_render_html_snapshot(
-    sample_summary: SummaryData, snapshot_text: Callable[[str], str]
+    sample_summary: SummaryData,
+    snapshot_text: Callable[[str], str],
 ) -> None:
     output = render_html(sample_summary)
     assert output == snapshot_text("dashboard.html")
@@ -35,14 +40,14 @@ def test_build_summary_minimal(tmp_path: Path) -> None:
 
 def test_load_manifest_reads_file(tmp_path: Path) -> None:
     manifest_path = tmp_path / "manifest.json"
-    manifest_path.write_text('{"runs": []}', encoding="utf-8")
+    consume(manifest_path.write_text('{"runs": []}', encoding="utf-8"))
     data = load_manifest(manifest_path)
     assert "runs" in data and data["runs"] == []
 
 
 def test_load_manifest_discards_invalid_runs(tmp_path: Path) -> None:
     manifest_path = tmp_path / "manifest.json"
-    manifest_path.write_text('{"runs": ["not-a-run", 3]}', encoding="utf-8")
+    consume(manifest_path.write_text('{"runs": ["not-a-run", 3]}', encoding="utf-8"))
     data = load_manifest(manifest_path)
     assert "runs" in data and data["runs"] == []
 
@@ -75,7 +80,7 @@ def test_build_summary_skips_missing_entries(tmp_path: Path) -> None:
                         [{"path": "pkg/module.py", "errors": 0, "warnings": 0}],
                     ),
                 },
-            )
+            ),
         ],
     }
     summary = build_summary(manifest)

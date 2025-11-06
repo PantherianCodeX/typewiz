@@ -1,7 +1,22 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from typewiz.model_types import (
+    DashboardView,
+    DataFormat,
+    FailOnPolicy,
+    HotspotKind,
+    LogFormat,
+    Mode,
+    ReadinessLevel,
+    SignaturePolicy,
+    SummaryStyle,
+)
 from typewiz.types import Diagnostic, RunResult
 
 
@@ -40,7 +55,7 @@ def test_run_result_severity_counts() -> None:
     ]
     result = RunResult(
         tool="stub",
-        mode="current",
+        mode=Mode.CURRENT,
         command=["stub"],
         exit_code=0,
         duration_ms=0.1,
@@ -50,3 +65,19 @@ def test_run_result_severity_counts() -> None:
     assert counts["error"] == 1
     assert counts["warning"] == 2
     assert counts["info"] == 1
+
+
+def test_model_type_from_str_helpers() -> None:
+    assert LogFormat.from_str(" JSON ") is LogFormat.JSON
+    assert DataFormat.from_str("table") is DataFormat.TABLE
+    assert DashboardView.from_str("READINESS") is DashboardView.READINESS
+    assert ReadinessLevel.from_str("Folder") is ReadinessLevel.FOLDER
+    assert HotspotKind.from_str("FILES") is HotspotKind.FILES
+    assert SummaryStyle.from_str("full") is SummaryStyle.FULL
+    assert SignaturePolicy.from_str(" Warn ") is SignaturePolicy.WARN
+    assert FailOnPolicy.from_str("ANY") is FailOnPolicy.ANY
+
+    with pytest.raises(ValueError):
+        _ = LogFormat.from_str("binary")
+    with pytest.raises(ValueError):
+        _ = DataFormat.from_str("yaml")

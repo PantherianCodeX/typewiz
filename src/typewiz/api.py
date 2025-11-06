@@ -1,9 +1,11 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import json
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from .audit_config_utils import merge_audit_configs
 from .audit_execution import execute_engine_mode, resolve_engine_options
@@ -12,15 +14,16 @@ from .cache import EngineCache
 from .config import AuditConfig, Config, load_config
 from .dashboard import build_summary, render_markdown
 from .engines import EngineContext, resolve_engines
-from .engines.base import BaseEngine
 from .html_report import render_html
 from .manifest import ManifestBuilder
-from .utils import default_full_paths, detect_tool_versions, resolve_project_root
+from .model_types import Mode
+from .utils import consume, default_full_paths, detect_tool_versions, resolve_project_root
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from .engines.base import BaseEngine
     from .summary_types import SummaryData
     from .typed_manifest import ManifestData
     from .types import RunResult
@@ -50,7 +53,9 @@ class _AuditInputs:
 
 
 def _determine_full_paths(
-    root: Path, audit_config: AuditConfig, full_paths: Sequence[str] | None
+    root: Path,
+    audit_config: AuditConfig,
+    full_paths: Sequence[str] | None,
 ) -> list[str]:
     raw_full_paths = (
         list(full_paths) if full_paths else (audit_config.full_paths or default_full_paths(root))
@@ -85,12 +90,12 @@ def _prepare_audit_inputs(
     )
 
 
-def _iterate_modes(audit_config: AuditConfig) -> list[Literal["current", "full"]]:
-    modes: list[Literal["current", "full"]] = []
+def _iterate_modes(audit_config: AuditConfig) -> list[Mode]:
+    modes: list[Mode] = []
     if not audit_config.skip_current:
-        modes.append("current")
+        modes.append(Mode.CURRENT)
     if not audit_config.skip_full:
-        modes.append("full")
+        modes.append(Mode.FULL)
     return modes
 
 
@@ -168,7 +173,7 @@ def _write_dashboard_files(inputs: _AuditInputs, summary: SummaryData) -> None:
             else (root / audit_config.dashboard_json)
         )
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+        consume(target.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8"))
     if audit_config.dashboard_markdown:
         target = (
             audit_config.dashboard_markdown
@@ -176,7 +181,7 @@ def _write_dashboard_files(inputs: _AuditInputs, summary: SummaryData) -> None:
             else (root / audit_config.dashboard_markdown)
         )
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(render_markdown(summary), encoding="utf-8")
+        consume(target.write_text(render_markdown(summary), encoding="utf-8"))
     if audit_config.dashboard_html:
         target = (
             audit_config.dashboard_html
@@ -184,7 +189,7 @@ def _write_dashboard_files(inputs: _AuditInputs, summary: SummaryData) -> None:
             else (root / audit_config.dashboard_html)
         )
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(render_html(summary), encoding="utf-8")
+        consume(target.write_text(render_html(summary), encoding="utf-8"))
 
 
 def _compute_run_totals(runs: list[RunResult]) -> tuple[int, int]:

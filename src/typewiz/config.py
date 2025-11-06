@@ -1,7 +1,9 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import tomllib as toml
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar, Final, cast
@@ -10,9 +12,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from .collection_utils import dedupe_preserve
 from .exceptions import TypewizValidationError
+from .model_types import FailOnPolicy
 
 CONFIG_VERSION: Final[int] = 0
-FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = ("errors", "warnings", "never", "none", "any")
+FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)
 
 
 class ConfigValidationError(TypewizValidationError):
@@ -133,6 +136,27 @@ def _default_list_path_override() -> list[PathOverride]:
     return []
 
 
+def _default_dict_str_int() -> dict[str, int]:
+    return {}
+
+
+def _default_ratchet_runs() -> list[str]:
+    return []
+
+
+def _default_ratchet_severities() -> list[str]:
+    return ["error", "warning"]
+
+
+def _normalise_severity_token(value: str) -> str:
+    token = value.strip().lower()
+    if token == "errors":
+        return "error"
+    if token == "warnings":
+        return "warning"
+    return token
+
+
 @dataclass(slots=True)
 class AuditConfig:
     manifest_path: Path | None = None
@@ -150,7 +174,7 @@ class AuditConfig:
     runners: list[str] | None = None
     plugin_args: dict[str, list[str]] = field(default_factory=_default_dict_str_liststr)
     engine_settings: dict[str, EngineSettings] = field(
-        default_factory=_default_dict_str_enginesettings
+        default_factory=_default_dict_str_enginesettings,
     )
     active_profiles: dict[str, str] = field(default_factory=_default_dict_str_str)
     path_overrides: list[PathOverride] = field(default_factory=_default_list_path_override)
@@ -159,18 +183,31 @@ class AuditConfig:
 @dataclass(slots=True)
 class Config:
     audit: AuditConfig = field(default_factory=AuditConfig)
+    ratchet: RatchetConfig = field(default_factory=lambda: RatchetConfig())
 
 
 @dataclass(slots=True)
 class PathOverride:
     path: Path
     engine_settings: dict[str, EngineSettings] = field(
-        default_factory=_default_dict_str_enginesettings
+        default_factory=_default_dict_str_enginesettings,
     )
     active_profiles: dict[str, str] = field(default_factory=_default_dict_str_str)
 
 
-def _ensure_list(value: object | None) -> list[str] | None:
+@dataclass(slots=True)
+class RatchetConfig:
+    manifest_path: Path | None = None
+    output_path: Path | None = None
+    runs: list[str] = field(default_factory=_default_ratchet_runs)
+    severities: list[str] = field(default_factory=_default_ratchet_severities)
+    targets: dict[str, int] = field(default_factory=_default_dict_str_int)
+    signature: str = "fail"
+    limit: int | None = None
+    summary_only: bool = False
+
+
+def ensure_list(value: object | None) -> list[str] | None:
     if value is None:
         return None
     if isinstance(value, str):
@@ -179,7 +216,7 @@ def _ensure_list(value: object | None) -> list[str] | None:
     if not isinstance(value, Iterable):
         return []
     result: list[str] = []
-    for item in cast(Iterable[object], value):
+    for item in cast("Iterable[object]", value):
         if isinstance(item, str):
             stripped = item.strip()
             if stripped:
@@ -197,7 +234,7 @@ class EngineProfileModel(BaseModel):
     @field_validator("plugin_args", "include", "exclude", mode="before")
     @classmethod
     def _coerce_list(cls, value: object) -> list[str]:
-        return _ensure_list(value) or []
+        return ensure_list(value) or []
 
     @field_validator("inherit", mode="before")
     @classmethod
@@ -228,7 +265,7 @@ class EngineSettingsModel(BaseModel):
     @field_validator("plugin_args", "include", "exclude", mode="before")
     @classmethod
     def _coerce_list(cls, value: object) -> list[str]:
-        return _ensure_list(value) or []
+        return ensure_list(value) or []
 
     @field_validator("default_profile", mode="before")
     @classmethod
@@ -300,7 +337,7 @@ class AuditConfigModel(BaseModel):
     @field_validator("full_paths", "runners", mode="before")
     @classmethod
     def _coerce_list(cls, value: object) -> list[str] | None:
-        return _ensure_list(value)
+        return ensure_list(value)
 
     @field_validator("fail_on", mode="before")
     @classmethod
@@ -320,12 +357,12 @@ class AuditConfigModel(BaseModel):
         result: dict[str, list[str]] = {}
         if not isinstance(value, dict):
             return result
-        value_dict: dict[object, object] = cast(dict[object, object], value)
+        value_dict: dict[object, object] = cast("dict[object, object]", value)
         for key, raw in value_dict.items():
             key_str = str(key).strip()
             if not key_str:
                 continue
-            result[key_str] = _ensure_list(raw) or []
+            result[key_str] = ensure_list(raw) or []
         return result
 
     @model_validator(mode="after")
@@ -351,9 +388,72 @@ class AuditConfigModel(BaseModel):
         return self
 
 
+class RatchetConfigModel(BaseModel):
+    manifest_path: Path | None = None
+    output_path: Path | None = None
+    runs: list[str] = Field(default_factory=list)
+    severities: list[str] = Field(default_factory=_default_ratchet_severities)
+    targets: dict[str, int] = Field(default_factory=dict)
+    signature: str = Field(default="fail")
+    limit: int | None = None
+    summary_only: bool = False
+
+    @field_validator("runs", mode="before")
+    @classmethod
+    def _coerce_runs(cls, value: object) -> list[str]:
+        return ensure_list(value) or []
+
+    @field_validator("severities", mode="before")
+    @classmethod
+    def _coerce_severities(cls, value: object) -> list[str]:
+        severities = ensure_list(value)
+        if not severities:
+            return _default_ratchet_severities()
+        return [_normalise_severity_token(token) for token in severities]
+
+    @field_validator("targets", mode="before")
+    @classmethod
+    def _coerce_targets(cls, value: object) -> dict[str, int]:
+        if not isinstance(value, Mapping):
+            return {}
+        result: dict[str, int] = {}
+        for key, raw in cast("Mapping[object, object]", value).items():
+            key_str = str(key).strip()
+            if not key_str:
+                continue
+            candidate: int | None
+            if isinstance(raw, bool):
+                candidate = int(raw)
+            elif isinstance(raw, (int, float)):
+                candidate = int(raw)
+            elif isinstance(raw, str):
+                try:
+                    candidate = int(raw.strip())
+                except ValueError:
+                    candidate = None
+            else:
+                candidate = None
+            if candidate is None:
+                continue
+            result[key_str] = max(candidate, 0)
+        return result
+
+    @field_validator("signature", mode="before")
+    @classmethod
+    def _normalise_signature(cls, value: object) -> str:
+        if value is None:
+            return "fail"
+        if isinstance(value, str):
+            token = value.strip().lower()
+            if token in {"fail", "warn", "ignore"}:
+                return token
+        raise ConfigFieldChoiceError("ratchet.signature", ("fail", "warn", "ignore"))
+
+
 class ConfigModel(BaseModel):
     config_version: int = Field(default=CONFIG_VERSION)
     audit: AuditConfigModel = Field(default_factory=AuditConfigModel)
+    ratchet: RatchetConfigModel = Field(default_factory=RatchetConfigModel)
 
     @model_validator(mode="after")
     def _check_version(self) -> ConfigModel:
@@ -414,7 +514,15 @@ def _model_to_dataclass(model: AuditConfigModel) -> AuditConfig:
     return audit
 
 
-def _resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:
+def _ratchet_from_model(model: RatchetConfigModel) -> RatchetConfig:
+    payload = model.model_dump(mode="python")
+    config = RatchetConfig(**payload)
+    config.severities = [_normalise_severity_token(item) for item in config.severities]
+    config.signature = payload.get("signature", "fail")
+    return config
+
+
+def resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:
     for field_name in ("manifest_path", "dashboard_json", "dashboard_markdown", "dashboard_html"):
         value = getattr(audit, field_name)
         if value is None:
@@ -437,6 +545,13 @@ def _resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:
             for profile in settings.profiles.values():
                 if profile.config_file and not profile.config_file.is_absolute():
                     profile.config_file = (override.path / profile.config_file).resolve()
+
+
+def _resolve_ratchet_paths(base_dir: Path, ratchet: RatchetConfig) -> None:
+    if ratchet.manifest_path and not ratchet.manifest_path.is_absolute():
+        ratchet.manifest_path = (base_dir / ratchet.manifest_path).resolve()
+    if ratchet.output_path and not ratchet.output_path.is_absolute():
+        ratchet.output_path = (base_dir / ratchet.output_path).resolve()
 
 
 def _discover_path_overrides(root: Path) -> list[PathOverride]:
@@ -467,8 +582,7 @@ def load_config(explicit_path: Path | None = None) -> Config:
     if explicit_path:
         search_order.append(explicit_path)
     else:
-        search_order.append(Path("typewiz.toml"))
-        search_order.append(Path(".typewiz.toml"))
+        search_order.extend((Path("typewiz.toml"), Path(".typewiz.toml")))
 
     for candidate in search_order:
         if not candidate.exists():
@@ -476,24 +590,27 @@ def load_config(explicit_path: Path | None = None) -> Config:
         raw_map: dict[str, object] = toml.loads(candidate.read_text(encoding="utf-8"))
         tool_obj = raw_map.get("tool")
         if isinstance(tool_obj, dict):
-            tool_section_any = cast(dict[str, object], tool_obj).get("typewiz")
+            tool_section_any = cast("dict[str, object]", tool_obj).get("typewiz")
             if isinstance(tool_section_any, dict):
-                raw_map = cast(dict[str, object], tool_section_any)
+                raw_map = cast("dict[str, object]", tool_section_any)
         try:
             cfg_model = ConfigModel.model_validate(raw_map)
         except ValidationError as exc:  # pragma: no cover - configuration errors
             raise InvalidConfigFileError(candidate, exc) from exc
         audit = _model_to_dataclass(cfg_model.audit)
+        ratchet = _ratchet_from_model(cfg_model.ratchet)
         root = candidate.parent.resolve()
         audit.path_overrides = _discover_path_overrides(root)
-        _resolve_path_fields(root, audit)
-        return Config(audit=audit)
+        resolve_path_fields(root, audit)
+        _resolve_ratchet_paths(root, ratchet)
+        return Config(audit=audit, ratchet=ratchet)
 
     root = Path.cwd().resolve()
     cfg = Config()
     cfg.audit.runners = ["pyright", "mypy"]
     cfg.audit.path_overrides = _discover_path_overrides(root)
-    _resolve_path_fields(root, cfg.audit)
+    resolve_path_fields(root, cfg.audit)
+    _resolve_ratchet_paths(root, cfg.ratchet)
     return cfg
 
 

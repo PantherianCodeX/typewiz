@@ -1,10 +1,11 @@
-from __future__ import annotations
+# Copyright (c) 2024 PantherianCodeX
 
-from typing import cast
+from __future__ import annotations
 
 import hypothesis.strategies as st
 from hypothesis import given
 
+from typewiz.model_types import ReadinessStatus
 from typewiz.readiness_views import collect_readiness_view
 from typewiz.summary_types import (
     ReadinessOptionEntry,
@@ -15,9 +16,11 @@ from typewiz.summary_types import (
     SummaryTabs,
 )
 
+STATUS_VALUES = tuple(status.value for status in ReadinessStatus)
+
 
 def _status() -> st.SearchStrategy[str]:
-    return st.sampled_from(["ready", "close", "blocked"])
+    return st.sampled_from(STATUS_VALUES)
 
 
 def _folder_entry() -> st.SearchStrategy[ReadinessOptionEntry]:
@@ -49,23 +52,25 @@ def _readiness_tab() -> st.SearchStrategy[ReadinessTab]:
         blocked=st.lists(_folder_entry(), max_size=3),
         threshold=st.integers(min_value=0, max_value=10),
     )
-    strict_map = st.fixed_dictionaries(
-        {status: st.lists(_strict_entry(), max_size=3) for status in ["ready", "close", "blocked"]}
+    strict_map: st.SearchStrategy[dict[str, list[ReadinessStrictEntry]]] = st.fixed_dictionaries(
+        {status: st.lists(_strict_entry(), max_size=3) for status in STATUS_VALUES},
     )
-    options_map = st.fixed_dictionaries(
+    options_map: st.SearchStrategy[dict[str, ReadinessOptionsBucket]] = st.fixed_dictionaries(
         {
             "unknownChecks": bucket,
             "optionalChecks": bucket,
             "unusedSymbols": bucket,
             "general": bucket,
-        }
+        },
     )
-    # Hypothesis' type inference widens fixed_dictionaries to dict[str, object].
-    # Narrow explicitly for mypy via cast to the TypedDict ReadinessTab.
-    return cast(
-        st.SearchStrategy[ReadinessTab],
-        st.fixed_dictionaries({"strict": strict_map, "options": options_map}),
-    )
+
+    def _build_tab(
+        strict: dict[str, list[ReadinessStrictEntry]],
+        options: dict[str, ReadinessOptionsBucket],
+    ) -> ReadinessTab:
+        return {"strict": strict, "options": options}
+
+    return st.builds(_build_tab, strict_map, options_map)
 
 
 @given(
@@ -74,7 +79,9 @@ def _readiness_tab() -> st.SearchStrategy[ReadinessTab]:
     st.integers(min_value=0, max_value=5),
 )
 def test_h_collect_readiness_view_shapes(
-    readiness_tab: ReadinessTab, statuses: list[str], limit: int
+    readiness_tab: ReadinessTab,
+    statuses: list[str],
+    limit: int,
 ) -> None:
     tabs: SummaryTabs = {
         "overview": {"severityTotals": {}, "categoryTotals": {}, "runSummary": {}},
@@ -98,7 +105,7 @@ def test_h_collect_readiness_view_shapes(
     # Folder view
     folder_view = collect_readiness_view(summary, level="folder", statuses=statuses, limit=limit)
     for stat, entries in folder_view.items():
-        assert stat in {"ready", "close", "blocked"}
+        assert stat in STATUS_VALUES
         assert isinstance(entries, list)
         if limit > 0:
             assert len(entries) <= limit
@@ -111,7 +118,7 @@ def test_h_collect_readiness_view_shapes(
     # File view
     file_view = collect_readiness_view(summary, level="file", statuses=statuses, limit=limit)
     for stat, entries in file_view.items():
-        assert stat in {"ready", "close", "blocked"}
+        assert stat in STATUS_VALUES
         if limit > 0:
             assert len(entries) <= limit
         for e in entries:

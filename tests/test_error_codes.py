@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import re
@@ -25,7 +27,7 @@ def test_error_code_for_known_hierarchy() -> None:
                 "type": custom,
                 "loc": ("runs",),
                 "input": {},
-            }
+            },
         ],
     )
     assert error_code_for(ManifestValidationError(ve)) == "TW300"

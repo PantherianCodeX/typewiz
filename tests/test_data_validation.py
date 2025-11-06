@@ -1,6 +1,6 @@
-from __future__ import annotations
+# Copyright (c) 2024 PantherianCodeX
 
-import math
+from __future__ import annotations
 
 import pytest
 
@@ -15,6 +15,7 @@ from typewiz.data_validation import (
     ensure_optional_str_list,
     require_non_negative_int,
 )
+from typewiz.utils import consume
 
 
 def test_coerce_str_handles_non_string() -> None:
@@ -38,11 +39,12 @@ def test_coerce_optional_str_handles_empty() -> None:
 def test_require_non_negative_int_rejects_negative() -> None:
     assert require_non_negative_int("6", context="count") == 6
     with pytest.raises(ValueError):
-        require_non_negative_int(-5, context="count")
+        consume(require_non_negative_int(-5, context="count"))
 
 
 def test_coerce_float_parses_values() -> None:
-    assert math.isclose(coerce_float("3.14"), 3.14, rel_tol=1e-6)
+    result = coerce_float("3.14")
+    assert abs(result - 3.14) < 1e-9
     assert coerce_float("bad", default=1.5) == 1.5
 
 

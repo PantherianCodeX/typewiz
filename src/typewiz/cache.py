@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import hashlib
@@ -16,6 +18,7 @@ from .model_types import clone_override_entries
 from .type_aliases import CacheKey, PathKey
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
+from .utils import consume
 
 if TYPE_CHECKING:
     from .model_types import (
@@ -211,6 +214,7 @@ def fingerprint_path(path: Path) -> FileHashPayload:
 
 class EngineCache:
     def __init__(self, project_root: Path) -> None:
+        super().__init__()
         self.project_root = project_root
         self.path: Path = project_root / CACHE_DIRNAME / CACHE_FILENAME
         self._entries: dict[CacheKey, CacheEntry] = {}
@@ -337,9 +341,9 @@ class EngineCache:
                     "tool_summary": entry.tool_summary,
                 }
                 for key, entry in sorted(self._entries.items())
-            }
+            },
         }
-        self.path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        consume(self.path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8"))
         self._dirty = False
 
     def peek_file_hashes(self, key: CacheKey) -> dict[PathKey, FileHashPayload] | None:
@@ -352,7 +356,11 @@ class EngineCache:
         }
 
     def key_for(
-        self, engine: str, mode: Mode, paths: Sequence[str], flags: Sequence[str]
+        self,
+        engine: str,
+        mode: Mode,
+        paths: Sequence[str],
+        flags: Sequence[str],
     ) -> CacheKey:
         path_part = ",".join(sorted({str(item) for item in paths}))
         flag_part = ",".join(str(flag) for flag in flags)
@@ -400,7 +408,7 @@ class EngineCache:
                     code=code_str,
                     message=str(raw.get("message", "")),
                     raw=raw_dict,
-                )
+                ),
             )
         diagnostics.sort(key=lambda diag: (str(diag.path), diag.line, diag.column))
         return CachedRun(
@@ -416,7 +424,7 @@ class EngineCache:
             overrides=clone_override_entries(entry.overrides),
             category_mapping={k: list(v) for k, v in entry.category_mapping.items()},
             tool_summary=(
-                cast(ToolSummary, dict(entry.tool_summary))
+                cast("ToolSummary", dict(entry.tool_summary))
                 if entry.tool_summary is not None
                 else None
             ),
@@ -441,7 +449,8 @@ class EngineCache:
         tool_summary: ToolSummary | None,
     ) -> None:
         canonical_diags = sorted(
-            diagnostics, key=lambda diag: (str(diag.path), diag.line, diag.column)
+            diagnostics,
+            key=lambda diag: (str(diag.path), diag.line, diag.column),
         )
         file_hash_payloads: dict[PathKey, FileHashPayload] = {
             hash_key: cast("FileHashPayload", dict(hash_payload))
@@ -513,6 +522,7 @@ def _git_list_files(repo_root: Path) -> set[str]:
 
         completed = subprocess.run(  # noqa: S603
             [git_cmd, "ls-files", "-co", "--exclude-standard"],
+            check=False,
             cwd=str(repo_root),
             capture_output=True,
             text=True,
@@ -630,7 +640,7 @@ def collect_file_hashes(
     new_hashes = _compute_hashes(pending, hash_workers)
     hashes.update(new_hashes)
     ordered_hashes: dict[PathKey, FileHashPayload] = dict(
-        sorted(hashes.items(), key=lambda item: str(item[0]))
+        sorted(hashes.items(), key=lambda item: str(item[0])),
     )
     return (ordered_hashes, truncated)
 

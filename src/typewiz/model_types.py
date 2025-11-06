@@ -1,10 +1,162 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Literal, TypedDict, cast
+from enum import StrEnum
+from typing import TypedDict, cast
 
-type Mode = Literal["current", "full"]
-type SeverityLevel = Literal["error", "warning", "information"]
+
+class Mode(StrEnum):
+    CURRENT = "current"
+    FULL = "full"
+
+    @classmethod
+    def from_str(cls, raw: str) -> Mode:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown mode '{raw}'") from exc
+
+
+class SeverityLevel(StrEnum):
+    ERROR = "error"
+    WARNING = "warning"
+    INFORMATION = "information"
+
+    @classmethod
+    def from_str(cls, raw: str) -> SeverityLevel:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown severity '{raw}'") from exc
+
+
+class ReadinessStatus(StrEnum):
+    READY = "ready"
+    CLOSE = "close"
+    BLOCKED = "blocked"
+
+    @classmethod
+    def from_str(cls, raw: str) -> ReadinessStatus:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown readiness status '{raw}'") from exc
+
+
+class LogFormat(StrEnum):
+    TEXT = "text"
+    JSON = "json"
+
+    @classmethod
+    def from_str(cls, raw: str) -> LogFormat:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown log format '{raw}'") from exc
+
+
+class DataFormat(StrEnum):
+    JSON = "json"
+    TABLE = "table"
+
+    @classmethod
+    def from_str(cls, raw: str) -> DataFormat:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown data format '{raw}'") from exc
+
+
+class DashboardView(StrEnum):
+    OVERVIEW = "overview"
+    ENGINES = "engines"
+    HOTSPOTS = "hotspots"
+    READINESS = "readiness"
+    RUNS = "runs"
+
+    @classmethod
+    def from_str(cls, raw: str) -> DashboardView:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown dashboard view '{raw}'") from exc
+
+
+class ReadinessLevel(StrEnum):
+    FOLDER = "folder"
+    FILE = "file"
+
+    @classmethod
+    def from_str(cls, raw: str) -> ReadinessLevel:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown readiness level '{raw}'") from exc
+
+
+class HotspotKind(StrEnum):
+    FILES = "files"
+    FOLDERS = "folders"
+
+    @classmethod
+    def from_str(cls, raw: str) -> HotspotKind:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown hotspot kind '{raw}'") from exc
+
+
+class SummaryStyle(StrEnum):
+    COMPACT = "compact"
+    EXPANDED = "expanded"
+    FULL = "full"
+
+    @classmethod
+    def from_str(cls, raw: str) -> SummaryStyle:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown summary style '{raw}'") from exc
+
+
+class SignaturePolicy(StrEnum):
+    FAIL = "fail"
+    WARN = "warn"
+    IGNORE = "ignore"
+
+    @classmethod
+    def from_str(cls, raw: str) -> SignaturePolicy:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown signature policy '{raw}'") from exc
+
+
+class FailOnPolicy(StrEnum):
+    NEVER = "never"
+    NONE = "none"
+    WARNINGS = "warnings"
+    ERRORS = "errors"
+    ANY = "any"
+
+    @classmethod
+    def from_str(cls, raw: str) -> FailOnPolicy:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown fail-on policy '{raw}'") from exc
+
 
 type CategoryMapping = dict[str, list[str]]
 

@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 from __future__ import annotations
 
 import json
@@ -7,8 +9,9 @@ from pathlib import Path
 
 import pytest
 
+from typewiz.model_types import Mode
 from typewiz.runner import run_pyright
-from typewiz.utils import CommandOutput
+from typewiz.utils import CommandOutput, consume
 
 
 def _command_output(payload: Mapping[str, object], *, exit_code: int = 1) -> CommandOutput:
@@ -41,17 +44,17 @@ def test_run_pyright_records_tool_summary(tmp_path: Path, monkeypatch: pytest.Mo
             "message": "failure",
             "rule": "reportGeneralTypeIssues",
             "range": {"start": {"line": 4, "character": 1}},
-        }
+        },
     ]
     payload = {
         "summary": {"errorCount": 1, "warningCount": 0, "informationCount": 0},
         "generalDiagnostics": diagnostics,
     }
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8")
+    consume((tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8"))
     _patch_run_command(monkeypatch, payload)
 
-    result = run_pyright(tmp_path, mode="full", command=["pyright", "--outputjson"])
+    result = run_pyright(tmp_path, mode=Mode.FULL, command=["pyright", "--outputjson"])
 
     assert result.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
     assert len(result.diagnostics) == 1
@@ -63,7 +66,9 @@ def test_run_pyright_records_tool_summary(tmp_path: Path, monkeypatch: pytest.Mo
 
 
 def test_run_pyright_logs_mismatch(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     diagnostics = [
         {
@@ -72,18 +77,18 @@ def test_run_pyright_logs_mismatch(
             "message": "issue",
             "rule": "reportUnknownArgumentType",
             "range": {"start": {"line": 0, "character": 0}},
-        }
+        },
     ]
     payload = {
         "summary": {"errorCount": 0, "warningCount": 2, "informationCount": 0},
         "generalDiagnostics": diagnostics,
     }
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8")
+    consume((tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8"))
     _patch_run_command(monkeypatch, payload)
 
     with caplog.at_level(logging.WARNING):
-        result = run_pyright(tmp_path, mode="current", command=["pyright", "--outputjson"])
+        result = run_pyright(tmp_path, mode=Mode.CURRENT, command=["pyright", "--outputjson"])
 
     warnings = [record for record in caplog.records if record.levelno == logging.WARNING]
     assert any("pyright summary mismatch" in record.message for record in warnings)

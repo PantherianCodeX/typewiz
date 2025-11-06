@@ -1,3 +1,5 @@
+# Copyright (c) 2024 PantherianCodeX
+
 """Pydantic models mirroring the manifest typed structures.
 
 These models provide runtime validation and JSON Schema generation while staying
@@ -213,7 +215,7 @@ def validate_manifest_payload(payload: Any) -> ManifestData:
                     "type": error,
                     "loc": location,
                     "input": payload,
-                }
+                },
             ],
         )
         raise ManifestValidationError(validation_error) from exc
