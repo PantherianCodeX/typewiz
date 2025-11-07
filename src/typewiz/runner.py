@@ -11,7 +11,7 @@ from typing import Final, cast
 from .engines.base import EngineResult
 from .logging_utils import StructuredLogExtra
 from .model_types import Mode, SeverityLevel
-from .type_aliases import ToolName
+from .type_aliases import BuiltinEngineName, ToolName
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
 from .utils import (
@@ -25,8 +25,10 @@ from .utils import (
 )
 
 logger: logging.Logger = logging.getLogger("typewiz")
-PYRIGHT_TOOL: Final[ToolName] = ToolName("pyright")
-MYPY_TOOL: Final[ToolName] = ToolName("mypy")
+PYRIGHT_NAME: Final[BuiltinEngineName] = "pyright"
+MYPY_NAME: Final[BuiltinEngineName] = "mypy"
+PYRIGHT_TOOL: Final[ToolName] = ToolName(PYRIGHT_NAME)
+MYPY_TOOL: Final[ToolName] = ToolName(MYPY_NAME)
 
 
 def _make_diag_path(project_root: Path, file_path: str) -> Path:

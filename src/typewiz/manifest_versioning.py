@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, Final, cast
+from typing import Any, Final, Literal, cast
 
-CURRENT_MANIFEST_VERSION: Final[str] = "1"
-LEGACY_MANIFEST_VERSIONS: Final[tuple[str, ...]] = ("0", "")
+type ManifestVersion = Literal["1"]
+type LegacyManifestVersion = Literal["0", ""]
+
+CURRENT_MANIFEST_VERSION: Final[ManifestVersion] = "1"
+LEGACY_MANIFEST_VERSIONS: Final[tuple[LegacyManifestVersion, ...]] = ("0", "")
 
 
 class ManifestVersionError(ValueError):

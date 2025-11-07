@@ -20,6 +20,7 @@ from typewiz.error_codes import error_code_for
 from typewiz.model_types import (
     DataFormat,
     HotspotKind,
+    OverrideEntry,
     ReadinessLevel,
     ReadinessStatus,
     SeverityLevel,
@@ -99,7 +100,7 @@ class EngineEntry(TypedDict):
     plugin_args: list[str]
     include: list[str]
     exclude: list[str]
-    overrides: list[dict[str, object]]
+    overrides: list[OverrideEntry]
 
 
 class RuleEntry(TypedDict):
@@ -404,11 +405,29 @@ def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:
         run_id, _, _ = _parse_run_identifier(name)
         options = entry.get("engineOptions", {})
         overrides_raw = coerce_object_list(options.get("overrides", []))
-        overrides: list[dict[str, object]] = []
+        overrides: list[OverrideEntry] = []
         for override in overrides_raw:
-            if isinstance(override, Mapping):
-                override_map = coerce_mapping(cast(Mapping[object, object], override))
-                overrides.append({str(key): value for key, value in override_map.items()})
+            if not isinstance(override, Mapping):
+                continue
+            override_map = coerce_mapping(cast(Mapping[object, object], override))
+            typed_entry: OverrideEntry = {}
+            path = override_map.get("path")
+            if isinstance(path, str) and path:
+                typed_entry["path"] = path
+            profile = override_map.get("profile")
+            if isinstance(profile, str) and profile:
+                typed_entry["profile"] = profile
+            plugin_args = coerce_str_list(override_map.get("pluginArgs", []))
+            if plugin_args:
+                typed_entry["pluginArgs"] = plugin_args
+            include_paths = coerce_str_list(override_map.get("include", []))
+            if include_paths:
+                typed_entry["include"] = include_paths
+            exclude_paths = coerce_str_list(override_map.get("exclude", []))
+            if exclude_paths:
+                typed_entry["exclude"] = exclude_paths
+            if typed_entry:
+                overrides.append(typed_entry)
         records.append(
             EngineEntry(
                 run=run_id,

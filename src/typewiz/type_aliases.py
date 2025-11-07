@@ -15,10 +15,12 @@ EngineName = NewType("EngineName", str)
 ProfileName = NewType("ProfileName", str)
 
 CategoryKey = Literal["unknownChecks", "optionalChecks", "unusedSymbols", "general"]
+BuiltinEngineName = Literal["pyright", "mypy"]
 RunId = NewType("RunId", str)
 RunnerName = EngineName
 
 __all__ = [
+    "BuiltinEngineName",
     "CacheKey",
     "CategoryKey",
     "CategoryName",

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, ClassVar, Final, TypedDict, cast
+from typing import Any, ClassVar, Final, Literal, TypedDict, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -13,7 +13,9 @@ from ..model_types import Mode, SeverityLevel
 from ..type_aliases import RunId
 from ..utils import JSONValue
 
-RATCHET_SCHEMA_VERSION: Final[int] = 1
+type RatchetSchemaVersion = Literal[1]
+
+RATCHET_SCHEMA_VERSION: Final[RatchetSchemaVersion] = 1
 
 
 def _new_severity_map() -> dict[SeverityLevel, int]:
@@ -126,7 +128,10 @@ class RatchetModel(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    schema_version: int = Field(default=RATCHET_SCHEMA_VERSION, alias="schemaVersion")
+    schema_version: RatchetSchemaVersion = Field(
+        default=RATCHET_SCHEMA_VERSION,
+        alias="schemaVersion",
+    )
     generated_at: str = Field(alias="generatedAt")
     manifest_path: Path | None = Field(default=None, alias="manifestPath")
     project_root: Path | None = Field(default=None, alias="projectRoot")
