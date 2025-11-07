@@ -14,7 +14,7 @@ def _new_finding_list() -> list[RatchetFinding]:
     return []
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class RatchetFinding:
     """Single severity finding for a path compared against its budget."""
 
@@ -49,7 +49,7 @@ class RatchetFinding:
         return payload
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class RatchetRunReport:
     """Aggregated findings for a single tool/mode run."""
 

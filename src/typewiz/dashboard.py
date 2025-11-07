@@ -7,7 +7,7 @@ import logging
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import cast
+from typing import Final, cast
 
 from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
 from .exceptions import TypewizTypeError
@@ -23,17 +23,28 @@ from .readiness import (
     compute_readiness,
 )
 from .summary_types import (
+    CountsByCategory,
+    CountsByRule,
+    CountsBySeverity,
     ReadinessTab,
+    StatusKey,
     SummaryData,
     SummaryFileEntry,
     SummaryFolderEntry,
     SummaryRunEntry,
     SummaryTabs,
 )
-from .typed_manifest import ManifestData, ToolSummary
+from .typed_manifest import ManifestData, SeverityStr, ToolSummary
 from .utils import JSONValue
 
 logger: logging.Logger = logging.getLogger("typewiz.dashboard")
+_STATUS_KEY_SET: Final[frozenset[str]] = frozenset(STATUS_VALUES)
+
+
+def _as_status_key(value: str) -> StatusKey:
+    if value not in _STATUS_KEY_SET:
+        raise DashboardTypeError("readiness.strict", "known readiness status")
+    return cast(StatusKey, value)
 
 
 class DashboardTypeError(TypewizTypeError):
@@ -55,10 +66,16 @@ def _collect_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPay
 
 
 def _empty_readiness_tab() -> ReadinessTab:
-    return {
-        "strict": {status_value: [] for status_value in STATUS_VALUES},
-        "options": {},
+    strict_defaults: dict[StatusKey, list[dict[str, JSONValue]]] = {
+        _as_status_key(status_value): [] for status_value in STATUS_VALUES
     }
+    return cast(
+        "ReadinessTab",
+        {
+            "strict": strict_defaults,
+            "options": {},
+        },
+    )
 
 
 def _coerce_readiness_entries(value: object, context: str) -> list[dict[str, JSONValue]]:
@@ -79,9 +96,9 @@ def _validate_readiness_tab(raw: Mapping[str, object]) -> ReadinessTab:
     if not isinstance(strict_raw, Mapping):
         raise DashboardTypeError("readiness.strict", "a mapping")
     strict_map = coerce_mapping(cast("Mapping[object, object]", strict_raw))
-    strict_section: dict[str, list[dict[str, JSONValue]]] = {}
+    strict_section: dict[StatusKey, list[dict[str, JSONValue]]] = {}
     for status in STATUSES:
-        key = status.value
+        key = _as_status_key(status.value)
         strict_section[key] = _coerce_readiness_entries(
             strict_map.get(key),
             f"readiness.strict.{key}",
@@ -138,7 +155,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
     folder_code_totals: dict[str, Counter[str]] = defaultdict(Counter)
     folder_recommendations: dict[str, set[str]] = defaultdict(set)
     file_entries: list[tuple[str, int, int]] = []
-    severity_totals: Counter[str] = Counter()
+    severity_totals: Counter[SeverityStr] = Counter()
     rule_totals: Counter[str] = Counter()
     category_totals: Counter[str] = Counter()
     folder_category_totals: dict[str, Counter[str]] = defaultdict(Counter)
@@ -231,15 +248,16 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 "categoryMapping": category_mapping,
             },
         }
-        severity_breakdown = {
-            key: coerce_int(value)
-            for key, value in coerce_mapping(summary_map.get("severityBreakdown")).items()
+        severity_breakdown_map = coerce_mapping(summary_map.get("severityBreakdown"))
+        severity_breakdown: CountsBySeverity = {
+            cast(SeverityStr, key): coerce_int(value)
+            for key, value in severity_breakdown_map.items()
         }
-        rule_counts = {
+        rule_counts: CountsByRule = {
             key: coerce_int(value)
             for key, value in coerce_mapping(summary_map.get("ruleCounts")).items()
         }
-        category_counts = {
+        category_counts: CountsByCategory = {
             key: coerce_int(value)
             for key, value in coerce_mapping(summary_map.get("categoryCounts")).items()
         }
@@ -341,7 +359,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
         logger.warning("Discarding invalid readiness payload: %s", exc)
         readiness_tab = _empty_readiness_tab()
 
-    top_rules_dict = dict(rule_totals.most_common(20))
+    top_rules_dict: CountsByRule = dict(rule_totals.most_common(20))
     folder_entry_lookup: dict[str, ReadinessEntry] = {
         entry["path"]: entry for entry in folder_entries_full
     }
@@ -386,11 +404,16 @@ def build_summary(manifest: ManifestData) -> SummaryData:
         },
     }
 
+    generated_at_value = manifest.get("generatedAt")
+    project_root_value = manifest.get("projectRoot")
+    generated_at = generated_at_value if isinstance(generated_at_value, str) else ""
+    project_root = project_root_value if isinstance(project_root_value, str) else ""
+
     return cast(
         SummaryData,
         {
-            "generatedAt": manifest.get("generatedAt"),
-            "projectRoot": manifest.get("projectRoot"),
+            "generatedAt": generated_at,
+            "projectRoot": project_root,
             "runSummary": run_summary,
             "severityTotals": dict(severity_totals),
             "categoryTotals": dict(category_totals),

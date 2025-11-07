@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from .model_types import CategoryMapping, OverrideEntry
+
+SeverityStr = Literal["error", "warning", "information"]
+ModeStr = Literal["current", "full"]
 
 
 class FileDiagnostic(TypedDict):
     line: int
     column: int
-    severity: str
+    severity: SeverityStr
     code: str | None
     message: str
 
@@ -66,7 +69,7 @@ class ToolSummary(TypedDict, total=False):
 
 class RunPayloadRequired(TypedDict):
     tool: str
-    mode: str
+    mode: ModeStr
     command: list[str]
     exitCode: int
     durationMs: float

@@ -12,7 +12,10 @@ pytest.importorskip("pytest_benchmark")
 from typewiz.aggregate import summarise_run
 from typewiz.model_types import Mode, SeverityLevel
 from typewiz.readiness import ReadinessEntry, compute_readiness
+from typewiz.type_aliases import ToolName
 from typewiz.types import Diagnostic, RunResult
+
+PYRIGHT_TOOL = ToolName("pyright")
 
 
 def _build_readiness_entries(count: int = 200) -> list[ReadinessEntry]:
@@ -43,7 +46,7 @@ def _build_sample_run(num_files: int = 120, diagnostics_per_file: int = 5) -> Ru
         path = Path(f"pkg/module_{file_index}.py")
         diagnostics.extend(
             Diagnostic(
-                tool="pyright",
+                tool=PYRIGHT_TOOL,
                 severity=(SeverityLevel.ERROR if diag_index % 3 == 0 else SeverityLevel.WARNING),
                 path=path,
                 line=diag_index + 1,
@@ -54,7 +57,7 @@ def _build_sample_run(num_files: int = 120, diagnostics_per_file: int = 5) -> Ru
             for diag_index in range(diagnostics_per_file)
         )
     return RunResult(
-        tool="pyright",
+        tool=PYRIGHT_TOOL,
         mode=Mode.CURRENT,
         command=["pyright"],
         exit_code=0,

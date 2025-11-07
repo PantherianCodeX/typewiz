@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Final, TypedDict, cast
 
 from .data_validation import coerce_int, coerce_object_list, coerce_str_list
 from .model_types import SeverityLevel, clone_override_entries
-from .type_aliases import CacheKey, PathKey
+from .type_aliases import CacheKey, PathKey, ToolName
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
 from .utils import consume
@@ -400,7 +400,7 @@ class EngineCache:
 
             diagnostics.append(
                 Diagnostic(
-                    tool=str(raw.get("tool", "")),
+                    tool=ToolName(str(raw.get("tool", ""))),
                     severity=SeverityLevel.coerce(raw.get("severity") or "error"),
                     path=Path(path_val),
                     line=line_num,

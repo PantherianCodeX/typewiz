@@ -18,12 +18,15 @@ from typewiz.model_types import (
     SignaturePolicy,
     SummaryStyle,
 )
+from typewiz.type_aliases import ToolName
 from typewiz.types import Diagnostic, RunResult
+
+STUB_TOOL = ToolName("stub")
 
 
 def _make_diag(code: str | None, severity: SeverityLevel) -> Diagnostic:
     return Diagnostic(
-        tool="stub",
+        tool=STUB_TOOL,
         severity=severity,
         path=Path("example.py"),
         line=1,
@@ -41,7 +44,7 @@ def test_run_result_severity_counts() -> None:
         _make_diag("code", SeverityLevel.INFORMATION),
     ]
     result = RunResult(
-        tool="stub",
+        tool=STUB_TOOL,
         mode=Mode.CURRENT,
         command=["stub"],
         exit_code=0,

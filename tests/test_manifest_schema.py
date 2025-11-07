@@ -22,6 +22,7 @@ from typewiz.manifest_models import (
 )
 from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION, upgrade_manifest
 from typewiz.model_types import CategoryMapping
+from typewiz.type_aliases import ToolName
 from typewiz.typed_manifest import ManifestData
 from typewiz.utils import consume
 
@@ -31,7 +32,7 @@ class RecordingEngine:
 
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
         return EngineResult(
-            engine=self.name,
+            engine=ToolName(self.name),
             mode=context.mode,
             command=["stub", str(context.mode)],
             exit_code=0,

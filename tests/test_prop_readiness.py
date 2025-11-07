@@ -20,6 +20,7 @@ from typewiz.summary_types import (
     ReadinessTab,
     SummaryData,
     SummaryTabs,
+    StatusKey,
 )
 
 STATUS_VALUES = tuple(status.value for status in ReadinessStatus)
@@ -74,7 +75,10 @@ def _readiness_tab() -> st.SearchStrategy[ReadinessTab]:
         strict: dict[str, list[ReadinessStrictEntry]],
         options: dict[str, ReadinessOptionsBucket],
     ) -> ReadinessTab:
-        return {"strict": strict, "options": options}
+        strict_typed: dict[StatusKey, list[ReadinessStrictEntry]] = {
+            cast(StatusKey, key): value for key, value in strict.items()
+        }
+        return {"strict": strict_typed, "options": options}
 
     return st.builds(_build_tab, strict_map, options_map)
 

@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from .model_types import ReadinessStatus
-from .typed_manifest import EngineOptionsEntry, ToolSummary
+from .typed_manifest import EngineOptionsEntry, SeverityStr, ToolSummary
+
+StatusKey = Literal["ready", "close", "blocked"]
+CountsBySeverity = dict[SeverityStr, int]
+CountsByRule = dict[str, int]
+CountsByCategory = dict[str, int]
 
 
 class SummaryRunEntry(TypedDict, total=False):
@@ -14,9 +19,9 @@ class SummaryRunEntry(TypedDict, total=False):
     warnings: int
     information: int
     total: int
-    severityBreakdown: dict[str, int]
-    ruleCounts: dict[str, int]
-    categoryCounts: dict[str, int]
+    severityBreakdown: CountsBySeverity
+    ruleCounts: CountsByRule
+    categoryCounts: CountsByCategory
     engineOptions: EngineOptionsEntry
     toolSummary: ToolSummary
 
@@ -38,8 +43,8 @@ class SummaryFileEntry(TypedDict):
 
 
 class OverviewTab(TypedDict):
-    severityTotals: dict[str, int]
-    categoryTotals: dict[str, int]
+    severityTotals: CountsBySeverity
+    categoryTotals: CountsByCategory
     runSummary: dict[str, SummaryRunEntry]
 
 
@@ -73,7 +78,7 @@ class ReadinessOptionsBucket(TypedDict, total=False):
 
 
 class ReadinessTab(TypedDict, total=False):
-    strict: dict[str, list[ReadinessStrictEntry]]
+    strict: dict[StatusKey, list[ReadinessStrictEntry]]
     options: dict[str, ReadinessOptionsBucket]
 
 
@@ -97,11 +102,11 @@ class SummaryTabs(TypedDict):
 
 
 class SummaryData(TypedDict):
-    generatedAt: object
-    projectRoot: object
+    generatedAt: str
+    projectRoot: str
     runSummary: dict[str, SummaryRunEntry]
-    severityTotals: dict[str, int]
-    categoryTotals: dict[str, int]
+    severityTotals: CountsBySeverity
+    categoryTotals: CountsByCategory
     topRules: dict[str, int]
     topFolders: list[SummaryFolderEntry]
     topFiles: list[SummaryFileEntry]

@@ -31,10 +31,14 @@ from typewiz.model_types import (
 )
 from typewiz.readiness_views import FolderReadinessPayload
 from typewiz.summary_types import (
+    CountsByCategory,
+    CountsByRule,
+    CountsBySeverity,
     ReadinessOptionEntry,
     ReadinessOptionsBucket,
     ReadinessTab,
     SummaryData,
+    StatusKey,
 )
 
 
@@ -117,9 +121,11 @@ def test_query_readiness_payload() -> None:
 
 def _sample_summary() -> SummaryData:
     blocked = ReadinessStatus.BLOCKED.value
+    ready = ReadinessStatus.READY.value
+    close = ReadinessStatus.CLOSE.value
     readiness_tab: ReadinessTab = {
         "strict": {
-            blocked: [
+            cast(StatusKey, blocked): [
                 {
                     "path": "src/app.py",
                     "diagnostics": 2,
@@ -127,7 +133,9 @@ def _sample_summary() -> SummaryData:
                     "warnings": 1,
                     "information": 0,
                 }
-            ]
+            ],
+            cast(StatusKey, ready): [],
+            cast(StatusKey, close): [],
         },
         "options": {
             "unknownChecks": ReadinessOptionsBucket(
@@ -140,19 +148,22 @@ def _sample_summary() -> SummaryData:
             ),
         },
     }
+    severity_totals: CountsBySeverity = {"error": 2}
+    category_totals: CountsByCategory = {"unknownChecks": 2}
+    top_rules: CountsByRule = {}
     summary: SummaryData = {
         "generatedAt": "now",
         "projectRoot": "/repo",
-        "severityTotals": {},
-        "categoryTotals": {},
+        "severityTotals": severity_totals,
+        "categoryTotals": category_totals,
         "runSummary": {},
         "topFolders": [],
         "topFiles": [],
-        "topRules": {},
+        "topRules": top_rules,
         "tabs": {
             "overview": {
-                "severityTotals": {"error": 2},
-                "categoryTotals": {"unknownChecks": 2},
+                "severityTotals": severity_totals,
+                "categoryTotals": category_totals,
                 "runSummary": {
                     "pyright:current": {
                         "errors": 1,

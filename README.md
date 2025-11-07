@@ -163,21 +163,23 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
 from typewiz.model_types import SeverityLevel
+from typewiz.type_aliases import ToolName
 from typewiz.types import Diagnostic
 
 @dataclass
 class SimpleEngine(BaseEngine):
     name: str = "simple"
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+        tool_name = ToolName(self.name)
         return EngineResult(
-            engine=self.name,
+            engine=tool_name,
             mode=context.mode,
             command=[self.name, context.mode],
             exit_code=0,
             duration_ms=0.1,
             diagnostics=[
                 Diagnostic(
-                    tool=self.name,
+                    tool=tool_name,
                     severity=SeverityLevel.INFORMATION,
                     path=context.project_root / "example.py",
                     line=1,

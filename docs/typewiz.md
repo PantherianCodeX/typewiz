@@ -98,6 +98,7 @@ my_runner = "my_package.runners:MyRunner"
 from typing import Sequence
 
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from typewiz.type_aliases import ToolName
 
 
 class MyRunner(BaseEngine):
@@ -109,8 +110,9 @@ class MyRunner(BaseEngine):
             args.extend(["--profile", context.engine_options.profile])
         command = [*args, *paths]
         # execute subprocess here (see typewiz.engines.mypy for a template)
+        tool_name = ToolName(self.name)
         return EngineResult(
-            engine=self.name,
+            engine=tool_name,
             mode=context.mode,
             command=command,
             exit_code=0,
@@ -136,7 +138,7 @@ Implement the following on your engine class:
     - `context.engine_options.config_file`: resolved config path if provided.
     - `paths`: directories/files for the full run; empty for "current" mode.
   - Execute your tool (see `typewiz.runner.run_pyright` / `run_mypy` as references) and return:
-    - `engine`: your `name`.
+    - `engine`: `ToolName(self.name)`.
     - `mode`: `"current"` or `"full"`.
     - `command`: the argv used (for reproducibility and caching keys).
     - `exit_code`, `duration_ms`.

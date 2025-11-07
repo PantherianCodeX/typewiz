@@ -10,6 +10,7 @@ from typing import Protocol
 
 from typewiz.config import AuditConfig
 from typewiz.model_types import CategoryMapping, Mode, OverrideEntry
+from typewiz.type_aliases import ToolName
 from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic
 
@@ -24,7 +25,7 @@ def _default_category_mapping() -> CategoryMapping:
     return {}
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class EngineOptions:
     plugin_args: list[str]
     config_file: Path | None
@@ -35,7 +36,7 @@ class EngineOptions:
     category_mapping: CategoryMapping = field(default_factory=_default_category_mapping)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class EngineContext:
     project_root: Path
     audit_config: AuditConfig
@@ -45,7 +46,7 @@ class EngineContext:
 
 @dataclass(slots=True)
 class EngineResult:
-    engine: str
+    engine: ToolName
     mode: Mode
     command: list[str]
     exit_code: int

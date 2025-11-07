@@ -22,6 +22,7 @@ from typewiz.summary_types import (
     ReadinessTab,
     SummaryData,
     SummaryTabs,
+    StatusKey,
 )
 from typewiz.utils import consume
 
@@ -46,12 +47,14 @@ def _make_summary() -> SummaryData:
         },
     ]
     strict_ready: list[ReadinessStrictEntry] = []
+    strict_close: list[ReadinessStrictEntry] = []
     readiness_ready_options: list[ReadinessOptionEntry] = []
     readiness_close_options: list[ReadinessOptionEntry] = []
     readiness_tab: ReadinessTab = {
         "strict": {
-            BLOCKED: strict_blocked,
-            READY: strict_ready,
+            cast(StatusKey, BLOCKED): strict_blocked,
+            cast(StatusKey, READY): strict_ready,
+            cast(StatusKey, CLOSE): strict_close,
         },
         "options": {
             "unknownChecks": ReadinessOptionsBucket(
@@ -124,7 +127,11 @@ def test_collect_readiness_view_file() -> None:
 def test_collect_readiness_view_folder_fallback_category() -> None:
     # unknownChecks bucket intentionally empty; optionalChecks contains entries
     readiness_tab: ReadinessTab = {
-        "strict": {BLOCKED: []},
+        "strict": {
+            cast(StatusKey, BLOCKED): [],
+            cast(StatusKey, READY): [],
+            cast(StatusKey, CLOSE): [],
+        },
         "options": {
             "unknownChecks": ReadinessOptionsBucket(blocked=[], ready=[], close=[], threshold=2),
             "optionalChecks": ReadinessOptionsBucket(
@@ -169,8 +176,9 @@ def test_collect_readiness_view_rejects_invalid() -> None:
     readiness = summary["tabs"]["readiness"]
     assert "strict" in readiness
     strict_map = readiness["strict"]
-    assert BLOCKED in strict_map
-    blocked_entries = strict_map[BLOCKED]
+    blocked_key = cast(StatusKey, BLOCKED)
+    assert blocked_key in strict_map
+    blocked_entries = strict_map[blocked_key]
     assert blocked_entries
     blocked_entries[0]["diagnostics"] = -1
     with pytest.raises(ReadinessValidationError):

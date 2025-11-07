@@ -13,6 +13,7 @@ import pytest
 
 from typewiz.model_types import OverrideEntry, ReadinessStatus
 from typewiz.summary_types import (
+    CountsBySeverity,
     ReadinessOptionEntry,
     ReadinessOptionsBucket,
     ReadinessStrictEntry,
@@ -90,7 +91,7 @@ def sample_summary() -> SummaryData:
         "mypy:full": mypy_run,
     }
 
-    severity_totals: dict[str, int] = {"error": 1, "warning": 1, "information": 0}
+    severity_totals: CountsBySeverity = {"error": 1, "warning": 1, "information": 0}
     top_rules: dict[str, int] = {
         "reportUnknownMemberType": 1,
         "reportGeneralTypeIssues": 1,

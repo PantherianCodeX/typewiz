@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .model_types import SeverityLevel
+from .type_aliases import ToolName
 from .typed_manifest import EngineError, ToolSummary
 
 if TYPE_CHECKING:
@@ -22,7 +23,7 @@ def _default_raw_mapping() -> Mapping[str, object]:
 
 @dataclass(slots=True)
 class Diagnostic:
-    tool: str
+    tool: ToolName
     severity: SeverityLevel
     path: Path
     line: int
@@ -46,7 +47,7 @@ def _default_category_mapping() -> CategoryMapping:
 
 @dataclass(slots=True)
 class RunResult:
-    tool: str
+    tool: ToolName
     mode: Mode
     command: list[str]
     exit_code: int

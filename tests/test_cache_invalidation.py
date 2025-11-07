@@ -11,7 +11,7 @@ from typewiz.api import run_audit
 from typewiz.config import AuditConfig, Config, EngineSettings
 from typewiz.engines.base import EngineContext, EngineResult
 from typewiz.model_types import Mode
-from typewiz.type_aliases import EngineName
+from typewiz.type_aliases import EngineName, ToolName
 from typewiz.utils import consume
 
 
@@ -25,7 +25,7 @@ class RecordingEngine:
     def run(self, context: EngineContext, paths: list[str]) -> EngineResult:
         self.invocations.append(context.mode)
         return EngineResult(
-            engine=self.name,
+            engine=ToolName(self.name),
             mode=context.mode,
             command=["stub", str(context.mode)],
             exit_code=0,

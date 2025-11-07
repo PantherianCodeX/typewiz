@@ -38,6 +38,9 @@ from typewiz.model_types import (
     SummaryStyle,
 )
 from typewiz.summary_types import (
+    CountsByCategory,
+    CountsByRule,
+    CountsBySeverity,
     EnginesTab,
     HotspotsTab,
     OverviewTab,
@@ -51,7 +54,9 @@ from typewiz.summary_types import (
     SummaryFolderEntry,
     SummaryRunEntry,
     SummaryTabs,
+    StatusKey,
 )
+from typewiz.type_aliases import ToolName
 from typewiz.types import Diagnostic, RunResult
 from typewiz.utils import consume
 
@@ -60,6 +65,8 @@ _print_readiness_summary = print_readiness_summary
 _query_readiness = query_readiness
 _write_config_template = write_config_template
 _normalise_modes_cli = normalise_modes_tuple
+STUB_TOOL = ToolName("stub")
+PYRIGHT_TOOL = ToolName("pyright")
 
 
 def _write_manifest(tmp_path: Path) -> Path:
@@ -155,20 +162,26 @@ def _write_manifest(tmp_path: Path) -> Path:
 
 def _empty_summary() -> SummaryData:
     run_summary: dict[str, SummaryRunEntry] = {}
+    severity_totals: CountsBySeverity = {}
+    category_totals: CountsByCategory = {}
+    top_rules: CountsByRule = {}
     overview: OverviewTab = {
-        "severityTotals": {},
-        "categoryTotals": {},
+        "severityTotals": severity_totals,
+        "categoryTotals": category_totals,
         "runSummary": run_summary,
     }
     engines: EnginesTab = {"runSummary": run_summary}
     top_folders: list[SummaryFolderEntry] = []
     top_files: list[SummaryFileEntry] = []
     hotspots: HotspotsTab = {
-        "topRules": {},
+        "topRules": top_rules,
         "topFolders": top_folders,
         "topFiles": top_files,
     }
-    readiness: ReadinessTab = {"strict": {}, "options": {}}
+    readiness: ReadinessTab = cast(
+        ReadinessTab,
+        {"strict": {"ready": [], "close": [], "blocked": []}, "options": {}},
+    )
     runs: RunsTab = {"runSummary": run_summary}
     tabs: SummaryTabs = {
         "overview": overview,
@@ -177,9 +190,6 @@ def _empty_summary() -> SummaryData:
         "readiness": readiness,
         "runs": runs,
     }
-    severity_totals: dict[str, int] = {}
-    category_totals: dict[str, int] = {}
-    top_rules: dict[str, int] = {}
     summary: SummaryData = {
         "generatedAt": "now",
         "projectRoot": ".",
@@ -208,9 +218,10 @@ class StubEngine:
         self.invocations.append(
             (context.mode, list(context.engine_options.plugin_args), list(paths)),
         )
+        tool_name = ToolName(self.name)
         if context.mode is Mode.FULL:
             return EngineResult(
-                engine=self.name,
+                engine=tool_name,
                 mode=context.mode,
                 command=["stub", *paths],
                 exit_code=0,
@@ -218,7 +229,7 @@ class StubEngine:
                 diagnostics=[],
             )
         return EngineResult(
-            engine=self.name,
+            engine=tool_name,
             mode=context.mode,
             command=list(self._result.command),
             exit_code=self._result.exit_code,
@@ -245,7 +256,7 @@ def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: StubEngine
 def fake_run(tmp_path: Path) -> RunResult:
     (tmp_path / "pkg").mkdir(exist_ok=True)
     diag = Diagnostic(
-        tool="stub",
+        tool=STUB_TOOL,
         severity=SeverityLevel.ERROR,
         path=tmp_path / "pkg" / "module.py",
         line=1,
@@ -255,7 +266,7 @@ def fake_run(tmp_path: Path) -> RunResult:
         raw={},
     )
     return RunResult(
-        tool="stub",
+        tool=STUB_TOOL,
         mode=Mode.CURRENT,
         command=["stub"],
         exit_code=1,
@@ -519,7 +530,7 @@ def test_cli_mode_only_full(
 def test_cli_plugin_arg_validation(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     engine = StubEngine(
         RunResult(
-            tool="stub",
+            tool=STUB_TOOL,
             mode=Mode.CURRENT,
             command=["stub"],
             exit_code=0,
@@ -619,7 +630,7 @@ def test_cli_audit_full_outputs(
     }
 
     diag = Diagnostic(
-        tool="pyright",
+        tool=PYRIGHT_TOOL,
         severity=SeverityLevel.INFORMATION,
         path=tmp_path / "pkg" / "module.py",
         line=1,
@@ -629,7 +640,7 @@ def test_cli_audit_full_outputs(
     )
     override_entry_full: OverrideEntry = {"path": "pkg", "profile": "strict"}
     run = RunResult(
-        tool="pyright",
+        tool=PYRIGHT_TOOL,
         mode=Mode.CURRENT,
         command=["pyright", "pkg"],
         exit_code=0,
@@ -1106,9 +1117,10 @@ def test_print_readiness_summary_variants(capsys: pytest.CaptureFixture[str]) ->
         },
     )
     readiness_tab["strict"] = cast(
-        dict[str, list[ReadinessStrictEntry]],
+        dict[StatusKey, list[ReadinessStrictEntry]],
         {
             "ready": [{"path": "pkg/module.py", "diagnostics": 0}],
+            "close": [],
             "blocked": [{"path": "pkg/other.py", "diagnostics": "3"}],
         },
     )
@@ -1171,7 +1183,7 @@ def test_query_readiness_invalid_data_raises() -> None:
 
 def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     diag = Diagnostic(
-        tool="pyright",
+        tool=PYRIGHT_TOOL,
         severity=SeverityLevel.ERROR,
         path=tmp_path / "pkg" / "module.py",
         line=1,
@@ -1188,7 +1200,7 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
         "exclude": ["tests"],
     }
     run_expanded = RunResult(
-        tool="pyright",
+        tool=PYRIGHT_TOOL,
         mode=Mode.CURRENT,
         command=["pyright", "--project"],
         exit_code=0,
@@ -1202,7 +1214,7 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
         overrides=[override_entry],
     )
     run_present = RunResult(
-        tool="pyright",
+        tool=PYRIGHT_TOOL,
         mode=Mode.FULL,
         command=["pyright", "."],
         exit_code=0,

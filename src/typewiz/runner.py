@@ -10,6 +10,7 @@ from typing import Final, cast
 
 from .engines.base import EngineResult
 from .model_types import Mode, SeverityLevel
+from .type_aliases import ToolName
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
 from .utils import (
@@ -23,6 +24,8 @@ from .utils import (
 )
 
 logger: logging.Logger = logging.getLogger("typewiz")
+PYRIGHT_TOOL: Final[ToolName] = ToolName("pyright")
+MYPY_TOOL: Final[ToolName] = ToolName("mypy")
 
 
 def _make_diag_path(project_root: Path, file_path: str) -> Path:
@@ -79,7 +82,7 @@ def run_pyright(
         severity = SeverityLevel.coerce(d.get("severity") or "error")
         diagnostics.append(
             Diagnostic(
-                tool="pyright",
+                tool=PYRIGHT_TOOL,
                 severity=severity,
                 path=_make_diag_path(project_root, file_path),
                 line=line_num,
@@ -110,7 +113,7 @@ def run_pyright(
                 tool_summary.get("total"),
             )
     engine_result = EngineResult(
-        engine="pyright",
+        engine=PYRIGHT_TOOL,
         mode=mode,
         command=list(command),
         exit_code=result.exit_code,
@@ -154,7 +157,7 @@ def run_mypy(
         # mypy may emit structural errors here (e.g., config issues). capture as pseudo diagnostics.
         diagnostics.append(
             Diagnostic(
-                tool="mypy",
+                tool=MYPY_TOOL,
                 severity=SeverityLevel.ERROR,
                 path=Path("<stderr>"),
                 line=0,
@@ -172,7 +175,7 @@ def run_mypy(
         if not match:
             diagnostics.append(
                 Diagnostic(
-                    tool="mypy",
+                    tool=MYPY_TOOL,
                     severity=SeverityLevel.ERROR,
                     path=Path("<parse-error>"),
                     line=0,
@@ -188,7 +191,7 @@ def run_mypy(
         severity = SeverityLevel.coerce(data.get("severity") or "error")
         diagnostics.append(
             Diagnostic(
-                tool="mypy",
+                tool=MYPY_TOOL,
                 severity=severity,
                 path=diag_path,
                 line=int(data["line"]),
@@ -200,7 +203,7 @@ def run_mypy(
         )
     diagnostics.sort(key=lambda d: (str(d.path), d.line, d.column))
     engine_result = EngineResult(
-        engine="mypy",
+        engine=MYPY_TOOL,
         mode=mode,
         command=list(command),
         exit_code=result.exit_code,

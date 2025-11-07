@@ -6,7 +6,10 @@ from pathlib import Path
 
 from typewiz.aggregate import summarise_run
 from typewiz.model_types import Mode, SeverityLevel
+from typewiz.type_aliases import ToolName
 from typewiz.types import Diagnostic, RunResult
+
+PYRIGHT_TOOL = ToolName("pyright")
 
 
 def make_diag(
@@ -18,7 +21,7 @@ def make_diag(
     code: str | None = None,
 ) -> Diagnostic:
     return Diagnostic(
-        tool="pyright",
+        tool=PYRIGHT_TOOL,
         severity=severity,
         path=Path(path),
         line=line,
@@ -40,7 +43,7 @@ def test_summarise_run_typed_output() -> None:
         make_diag("pkg/sub/module2.py", severity=SeverityLevel.INFORMATION),
     ]
     run = RunResult(
-        tool="pyright",
+        tool=PYRIGHT_TOOL,
         mode=Mode.FULL,
         command=["pyright"],
         exit_code=0,

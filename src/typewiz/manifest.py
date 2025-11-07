@@ -55,7 +55,7 @@ class ManifestBuilder:
             },
         }
         payload: RunPayload = {
-            "tool": run.tool,
+            "tool": str(run.tool),
             "mode": run.mode.value,
             "command": run.command,
             "exitCode": run.exit_code,

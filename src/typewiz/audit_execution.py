@@ -19,7 +19,7 @@ from .config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from .engines import EngineContext, EngineOptions
 from .engines.base import BaseEngine, EngineResult
 from .model_types import FileHashPayload, Mode, OverrideEntry
-from .type_aliases import CacheKey, EngineName, PathKey
+from .type_aliases import CacheKey, EngineName, PathKey, ToolName
 from .typed_manifest import ToolSummary
 from .types import RunResult
 
@@ -308,7 +308,7 @@ def _prepare_cache_inputs(
 
 def _build_cached_run_result(
     *,
-    engine_name: str,
+    engine_name: ToolName,
     mode: Mode,
     cached_run: CachedRun,
     mode_paths: Sequence[str],
@@ -473,7 +473,7 @@ def execute_engine_mode(
             extra={"component": "audit", "tool": engine.name, "mode": mode, "cached": True},
         )
         return _build_cached_run_result(
-            engine_name=engine.name,
+            engine_name=ToolName(engine.name),
             mode=mode,
             cached_run=cached_run,
             mode_paths=mode_paths,
@@ -483,7 +483,7 @@ def execute_engine_mode(
         result = engine.run(context, mode_paths)
     except Exception as exc:
         run_result = RunResult(
-            tool=engine.name,
+            tool=ToolName(engine.name),
             mode=mode,
             command=[engine.name, mode],
             exit_code=1,

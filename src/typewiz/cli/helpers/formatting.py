@@ -273,8 +273,8 @@ def query_overview(
     severity_totals_map = coerce_mapping(overview.get("severityTotals", {}))
     severity_totals = {str(key): coerce_int(value) for key, value in severity_totals_map.items()}
     payload: OverviewQueryPayload = {
-        "generated_at": cast(str | None, summary.get("generatedAt")),
-        "project_root": cast(str | None, summary.get("projectRoot")),
+        "generated_at": summary["generatedAt"],
+        "project_root": summary["projectRoot"],
         "severity_totals": severity_totals,
     }
     if include_categories:

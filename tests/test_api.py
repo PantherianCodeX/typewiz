@@ -12,10 +12,12 @@ from typewiz import AuditConfig, Config, run_audit
 from typewiz.config import EngineProfile, EngineSettings
 from typewiz.engines.base import EngineContext, EngineResult
 from typewiz.model_types import Mode, SeverityLevel
-from typewiz.type_aliases import EngineName
+from typewiz.type_aliases import EngineName, ToolName
 from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic, RunResult
 from typewiz.utils import consume
+
+STUB_TOOL = ToolName("stub")
 
 
 class StubEngine:
@@ -27,7 +29,7 @@ class StubEngine:
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
         if context.mode is Mode.CURRENT:
             return EngineResult(
-                engine=self.name,
+                engine=STUB_TOOL,
                 mode=context.mode,
                 command=["stub", "current"],
                 exit_code=0,
@@ -35,7 +37,7 @@ class StubEngine:
                 diagnostics=[],
             )
         return EngineResult(
-            engine=self.name,
+            engine=STUB_TOOL,
             mode=context.mode,
             command=list(self._result.command),
             exit_code=self._result.exit_code,
@@ -60,7 +62,7 @@ def fake_run_result(tmp_path: Path) -> RunResult:
     (tmp_path / "pkg").mkdir(exist_ok=True)
     diagnostics = [
         Diagnostic(
-            tool="stub",
+            tool=STUB_TOOL,
             severity=SeverityLevel.ERROR,
             path=tmp_path / "pkg" / "module.py",
             line=1,
@@ -71,7 +73,7 @@ def fake_run_result(tmp_path: Path) -> RunResult:
         ),
     ]
     return RunResult(
-        tool="stub",
+        tool=STUB_TOOL,
         mode=Mode.FULL,
         command=["stub"],
         exit_code=1,
@@ -161,7 +163,7 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
                 ),
             )
             return EngineResult(
-                engine=self.name,
+                engine=ToolName(self.name),
                 mode=context.mode,
                 command=["stub", str(context.mode)],
                 exit_code=0,
@@ -240,7 +242,7 @@ def test_run_audit_respects_folder_overrides(
         def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
             self.invocations.append(context)
             return EngineResult(
-                engine=self.name,
+                engine=ToolName(self.name),
                 mode=context.mode,
                 command=["stub", context.mode],
                 exit_code=0,
@@ -330,7 +332,7 @@ def test_run_audit_cache_preserves_tool_summary(
 ) -> None:
     diagnostics = [
         Diagnostic(
-            tool="stub",
+            tool=STUB_TOOL,
             severity=SeverityLevel.ERROR,
             path=tmp_path / "pkg" / "module.py",
             line=1,
@@ -351,7 +353,7 @@ def test_run_audit_cache_preserves_tool_summary(
         def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
             self.invocations.append(context.mode)
             return EngineResult(
-                engine=self.name,
+                engine=ToolName(self.name),
                 mode=context.mode,
                 command=["stub", str(context.mode)],
                 exit_code=1 if context.mode is Mode.FULL else 0,

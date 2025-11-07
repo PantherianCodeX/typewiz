@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
 from typewiz.model_types import SeverityLevel
+from typewiz.type_aliases import ToolName
 from typewiz.types import Diagnostic
 
 if TYPE_CHECKING:
@@ -24,8 +25,9 @@ class SimpleEngine(BaseEngine):
     name: str = "simple"
 
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+        tool_name = ToolName(self.name)
         diag = Diagnostic(
-            tool=self.name,
+            tool=tool_name,
             severity=SeverityLevel.INFORMATION,
             path=context.project_root / "example.py",
             line=1,
@@ -35,7 +37,7 @@ class SimpleEngine(BaseEngine):
             raw={},
         )
         return EngineResult(
-            engine=self.name,
+            engine=tool_name,
             mode=context.mode,
             command=[self.name, context.mode],
             exit_code=0,
