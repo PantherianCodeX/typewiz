@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from typing import Final, TypedDict
 
 from .model_types import ReadinessStatus
-from .type_aliases import CategoryName
+from .type_aliases import CategoryKey, CategoryName
 
 STATUSES: Final[tuple[ReadinessStatus, ...]] = tuple(ReadinessStatus)
 STATUS_VALUES: Final[tuple[str, ...]] = tuple(status.value for status in STATUSES)
@@ -15,7 +15,7 @@ STRICT_CLOSE_THRESHOLD: Final[int] = 3
 GENERAL_CATEGORY: Final[CategoryName] = CategoryName("general")
 
 # Category patterns and thresholds can be tuned here without touching renderers
-CATEGORY_PATTERNS: Final[dict[str, tuple[str, ...]]] = {
+CATEGORY_PATTERNS: Final[dict[CategoryKey, tuple[str, ...]]] = {
     "unknownChecks": (
         "unknown",
         "missingtype",
@@ -28,21 +28,21 @@ CATEGORY_PATTERNS: Final[dict[str, tuple[str, ...]]] = {
     "general": (),
 }
 
-CATEGORY_CLOSE_THRESHOLD: Final[dict[str, int]] = {
+CATEGORY_CLOSE_THRESHOLD: Final[dict[CategoryKey, int]] = {
     "unknownChecks": 2,
     "optionalChecks": 2,
     "unusedSymbols": 4,
     "general": 5,
 }
 
-CATEGORY_LABELS = {
+CATEGORY_LABELS: Final[dict[CategoryKey, str]] = {
     "unknownChecks": "Unknown type checks",
     "optionalChecks": "Optional member checks",
     "unusedSymbols": "Unused symbol warnings",
     "general": "General diagnostics",
 }
 
-CATEGORY_KEYS: Final[tuple[str, ...]] = tuple(CATEGORY_PATTERNS.keys())
+CATEGORY_KEYS: Final[tuple[CategoryKey, ...]] = tuple(CATEGORY_PATTERNS.keys())
 CATEGORY_NAMES: Final[tuple[CategoryName, ...]] = tuple(CategoryName(key) for key in CATEGORY_KEYS)
 _CATEGORY_PATTERN_LOOKUPS: Final[tuple[tuple[CategoryName, tuple[str, ...]], ...]] = tuple(
     (
@@ -129,9 +129,9 @@ def _category_counts_from_entry(entry: ReadinessEntry) -> CategoryCountMap:
 
 def _category_status_map(categories: CategoryCountMap) -> CategoryStatusMap:
     status_map: CategoryStatusMap = {}
-    for category_name in CATEGORY_PATTERNS:
-        key = CategoryName(category_name)
-        status_map[key] = _status_for_category(category_name, categories.get(key, 0))
+    for category_key in CATEGORY_PATTERNS:
+        key = CategoryName(category_key)
+        status_map[key] = _status_for_category(category_key, categories.get(key, 0))
     return status_map
 
 
@@ -222,14 +222,14 @@ def _bucket_code_counts(code_counts: dict[str, int]) -> CategoryCountMap:
     return buckets
 
 
-def _status_for_category(category: str, count: int) -> ReadinessStatus:
+def _status_for_category(category: CategoryKey, count: int) -> ReadinessStatus:
     if count == 0:
         return ReadinessStatus.READY
     close_threshold = CATEGORY_CLOSE_THRESHOLD.get(category, DEFAULT_CLOSE_THRESHOLD)
     return ReadinessStatus.CLOSE if count <= close_threshold else ReadinessStatus.BLOCKED
 
 
-def _empty_option_bucket(category: str) -> ReadinessOptionBucket:
+def _empty_option_bucket(category: CategoryKey) -> ReadinessOptionBucket:
     return {
         ReadinessStatus.READY.value: [],
         ReadinessStatus.CLOSE.value: [],

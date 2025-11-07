@@ -351,6 +351,7 @@ def execute_audit(args: argparse.Namespace) -> int:
         raise SystemExit("No paths found for full runs. Provide paths or configure 'full_paths'.")
 
     modes_specified, run_current, run_full = normalise_modes_tuple(args.modes)
+    cli_fail_on = FailOnPolicy.from_str(args.fail_on) if args.fail_on else None
     override = AuditConfig(
         manifest_path=args.manifest,
         full_paths=[path for path in args.paths if path] or None,
@@ -359,7 +360,7 @@ def execute_audit(args: argparse.Namespace) -> int:
         max_bytes=args.max_fingerprint_bytes,
         skip_current=(not run_current) if modes_specified else None,
         skip_full=(not run_full) if modes_specified else None,
-        fail_on=args.fail_on,
+        fail_on=cli_fail_on,
         dashboard_json=args.dashboard_json,
         dashboard_markdown=args.dashboard_markdown,
         dashboard_html=args.dashboard_html,
@@ -389,8 +390,7 @@ def execute_audit(args: argparse.Namespace) -> int:
 
     _maybe_print_readiness(args, audit_summary)
 
-    fail_on_raw = args.fail_on or config.audit.fail_on or FailOnPolicy.NEVER.value
-    fail_on_policy = FailOnPolicy.from_str(fail_on_raw)
+    fail_on_policy = cli_fail_on or config.audit.fail_on or FailOnPolicy.NEVER
     if fail_on_policy is FailOnPolicy.NONE:
         fail_on_policy = FailOnPolicy.NEVER
     error_count = sum(run.severity_counts().get("error", 0) for run in result.runs)

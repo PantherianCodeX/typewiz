@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import cast
 
 from .engines.base import EngineResult
-from .model_types import Mode
+from .model_types import Mode, SeverityLevel
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
 from .utils import (
@@ -76,10 +76,11 @@ def run_pyright(
         col_num = as_int(start.get("character", 0), 0) + 1
         rule_obj = d.get("rule")
         rule = rule_obj if isinstance(rule_obj, str) else None
+        severity = SeverityLevel.coerce(d.get("severity") or "error")
         diagnostics.append(
             Diagnostic(
                 tool="pyright",
-                severity=str(d.get("severity", "error")).lower(),
+                severity=severity,
                 path=_make_diag_path(project_root, file_path),
                 line=line_num,
                 column=col_num,
@@ -91,8 +92,8 @@ def run_pyright(
     diagnostics.sort(key=lambda d: (str(d.path), d.line, d.column))
     # If pyright's own summary (if present) disagrees with parsed diagnostics, log a warning
     if tool_summary is not None:
-        parsed_errors = sum(1 for d in diagnostics if d.severity == "error")
-        parsed_warnings = sum(1 for d in diagnostics if d.severity == "warning")
+        parsed_errors = sum(1 for d in diagnostics if d.severity is SeverityLevel.ERROR)
+        parsed_warnings = sum(1 for d in diagnostics if d.severity is SeverityLevel.WARNING)
         parsed_total = len(diagnostics)
         if (
             parsed_errors != tool_summary.get("errors", parsed_errors)
@@ -154,7 +155,7 @@ def run_mypy(
         diagnostics.append(
             Diagnostic(
                 tool="mypy",
-                severity="error",
+                severity=SeverityLevel.ERROR,
                 path=Path("<stderr>"),
                 line=0,
                 column=0,
@@ -172,7 +173,7 @@ def run_mypy(
             diagnostics.append(
                 Diagnostic(
                     tool="mypy",
-                    severity="error",
+                    severity=SeverityLevel.ERROR,
                     path=Path("<parse-error>"),
                     line=0,
                     column=0,
@@ -184,10 +185,11 @@ def run_mypy(
             continue
         data = match.groupdict()
         diag_path = _make_diag_path(project_root, data["path"])
+        severity = SeverityLevel.coerce(data.get("severity") or "error")
         diagnostics.append(
             Diagnostic(
                 tool="mypy",
-                severity=data["severity"].lower(),
+                severity=severity,
                 path=diag_path,
                 line=int(data["line"]),
                 column=int(data.get("column") or 0),

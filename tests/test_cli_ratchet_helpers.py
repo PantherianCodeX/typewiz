@@ -14,6 +14,7 @@ from typewiz.cli.helpers.ratchet import (
     resolve_signature_policy,
     split_target_mapping,
 )
+from typewiz.model_types import SignaturePolicy
 
 
 def test_parse_target_entries_supports_global_and_scoped() -> None:
@@ -69,13 +70,20 @@ def test_resolve_severities_handles_defaults() -> None:
     assert severities_override == ["error", "warning"]
 
 
-@pytest.mark.parametrize("value, expected", [("fail", "fail"), ("WARN", "warn"), (None, "fail")])
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("fail", SignaturePolicy.FAIL),
+        ("WARN", SignaturePolicy.WARN),
+        (None, SignaturePolicy.FAIL),
+    ],
+)
 def test_resolve_signature_policy_accepts_permitted_values(
-    value: str | None, expected: str
+    value: str | None, expected: SignaturePolicy
 ) -> None:
-    assert resolve_signature_policy(value, "fail") == expected
+    assert resolve_signature_policy(value, SignaturePolicy.FAIL) is expected
 
 
 def test_resolve_signature_policy_rejects_invalid() -> None:
     with pytest.raises(SystemExit):
-        _ = resolve_signature_policy("maybe", "fail")
+        _ = resolve_signature_policy("maybe", SignaturePolicy.FAIL)

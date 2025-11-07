@@ -28,7 +28,14 @@ from typewiz.cli_helpers import (
 )
 from typewiz.config import Config
 from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.model_types import Mode, OverrideEntry, ReadinessLevel, ReadinessStatus, SummaryStyle
+from typewiz.model_types import (
+    Mode,
+    OverrideEntry,
+    ReadinessLevel,
+    ReadinessStatus,
+    SeverityLevel,
+    SummaryStyle,
+)
 from typewiz.summary_types import (
     EnginesTab,
     HotspotsTab,
@@ -238,7 +245,7 @@ def fake_run(tmp_path: Path) -> RunResult:
     (tmp_path / "pkg").mkdir(exist_ok=True)
     diag = Diagnostic(
         tool="stub",
-        severity="error",
+        severity=SeverityLevel.ERROR,
         path=tmp_path / "pkg" / "module.py",
         line=1,
         column=1,
@@ -612,7 +619,7 @@ def test_cli_audit_full_outputs(
 
     diag = Diagnostic(
         tool="pyright",
-        severity="information",
+        severity=SeverityLevel.INFORMATION,
         path=tmp_path / "pkg" / "module.py",
         line=1,
         column=1,
@@ -1164,7 +1171,7 @@ def test_query_readiness_invalid_data_raises() -> None:
 def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     diag = Diagnostic(
         tool="pyright",
-        severity="error",
+        severity=SeverityLevel.ERROR,
         path=tmp_path / "pkg" / "module.py",
         line=1,
         column=1,

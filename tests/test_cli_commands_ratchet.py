@@ -260,8 +260,10 @@ def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) 
     ) -> list[str] | None:
         return list(cli or config_runs)
 
-    def passthrough_policy(arg: Any, default: Any) -> SignaturePolicy:
-        return SignaturePolicy.from_str(arg or default)
+    def passthrough_policy(arg: Any, default: SignaturePolicy) -> SignaturePolicy:
+        if arg is None:
+            return default
+        return SignaturePolicy.from_str(str(arg))
 
     def passthrough_two(arg: Any, default: Any) -> Any:
         return arg if arg is not None else default

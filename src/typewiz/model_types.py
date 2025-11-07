@@ -31,6 +31,17 @@ class SeverityLevel(StrEnum):
         except ValueError as exc:
             raise ValueError(f"Unknown severity '{raw}'") from exc
 
+    @classmethod
+    def coerce(cls, raw: object) -> SeverityLevel:
+        if isinstance(raw, SeverityLevel):
+            return raw
+        if isinstance(raw, str):
+            try:
+                return cls.from_str(raw)
+            except ValueError:
+                return cls.INFORMATION
+        return cls.INFORMATION
+
 
 class ReadinessStatus(StrEnum):
     READY = "ready"
@@ -57,6 +68,19 @@ class LogFormat(StrEnum):
             return cls(value)
         except ValueError as exc:
             raise ValueError(f"Unknown log format '{raw}'") from exc
+
+
+class LicenseMode(StrEnum):
+    COMMERCIAL = "commercial"
+    EVALUATION = "evaluation"
+
+    @classmethod
+    def from_str(cls, raw: str) -> LicenseMode:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown license mode '{raw}'") from exc
 
 
 class DataFormat(StrEnum):

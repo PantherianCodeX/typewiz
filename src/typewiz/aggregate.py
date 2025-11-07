@@ -8,8 +8,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, cast
 
+from .model_types import SeverityLevel
 from .readiness import CATEGORY_PATTERNS
-from .type_aliases import CategoryName, RuleName
+from .type_aliases import CategoryKey, CategoryName, RuleName
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -111,8 +112,8 @@ def _canonical_category_mapping(mapping: Mapping[str, Iterable[str]]) -> dict[st
     return canonical
 
 
-_GENERAL_CATEGORY: Final[str] = "general"
-_FALLBACK_CATEGORY_LOOKUPS: Final[tuple[tuple[str, tuple[str, ...]], ...]] = tuple(
+_GENERAL_CATEGORY: Final[CategoryKey] = "general"
+_FALLBACK_CATEGORY_LOOKUPS: Final[tuple[tuple[CategoryKey, tuple[str, ...]], ...]] = tuple(
     (
         category,
         tuple(pattern.lower() for pattern in patterns if pattern),
@@ -190,7 +191,7 @@ def _split_rel_path(rel_path: str) -> tuple[str, ...]:
 def _update_file_summary(
     summary: FileSummary,
     *,
-    severity: str,
+    severity: SeverityLevel,
     code: str | None,
     diagnostic: FileDiagnostic,
     severity_totals: Counter[str],
@@ -198,14 +199,14 @@ def _update_file_summary(
     category_totals: Counter[CategoryName],
     categoriser: _Categoriser,
 ) -> str:
-    if severity == "error":
+    if severity is SeverityLevel.ERROR:
         summary.errors += 1
-    elif severity == "warning":
+    elif severity is SeverityLevel.WARNING:
         summary.warnings += 1
     else:
         summary.information += 1
     summary.diagnostics.append(diagnostic)
-    severity_totals[severity] += 1
+    severity_totals[severity.value] += 1
     if code:
         rule_totals[RuleName(code)] += 1
     category = categoriser.categorise(code)
@@ -232,13 +233,13 @@ def _folder_summaries_for_path(
 def _update_folder_summary(
     bucket: FolderSummary,
     *,
-    severity: str,
+    severity: SeverityLevel,
     code: str | None,
     category: str,
 ) -> None:
-    if severity == "error":
+    if severity is SeverityLevel.ERROR:
         bucket.errors += 1
-    elif severity == "warning":
+    elif severity is SeverityLevel.WARNING:
         bucket.warnings += 1
     else:
         bucket.information += 1
@@ -284,10 +285,10 @@ def _build_summary_counts(
     category_totals: Counter[CategoryName],
 ) -> dict[str, object]:
     return {
-        "errors": sum(1 for diag in run.diagnostics if diag.severity == "error"),
-        "warnings": sum(1 for diag in run.diagnostics if diag.severity == "warning"),
+        "errors": sum(1 for diag in run.diagnostics if diag.severity is SeverityLevel.ERROR),
+        "warnings": sum(1 for diag in run.diagnostics if diag.severity is SeverityLevel.WARNING),
         "information": sum(
-            1 for diag in run.diagnostics if diag.severity not in {"error", "warning"}
+            1 for diag in run.diagnostics if diag.severity is SeverityLevel.INFORMATION
         ),
         "total": len(run.diagnostics),
         "severityBreakdown": {key: severity_totals[key] for key in sorted(severity_totals)},
@@ -316,7 +317,7 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
         file_diag: FileDiagnostic = {
             "line": diag.line,
             "column": diag.column,
-            "severity": diag.severity,
+            "severity": diag.severity.value,
             "code": diag.code,
             "message": diag.message,
         }

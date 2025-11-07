@@ -5,14 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from typewiz.aggregate import summarise_run
-from typewiz.model_types import Mode
+from typewiz.model_types import Mode, SeverityLevel
 from typewiz.types import Diagnostic, RunResult
 
 
 def make_diag(
     path: str,
     *,
-    severity: str,
+    severity: SeverityLevel,
     line: int = 1,
     column: int = 1,
     code: str | None = None,
@@ -24,16 +24,20 @@ def make_diag(
         line=line,
         column=column,
         code=code,
-        message=f"{severity} message",
+        message=f"{severity.value} message",
         raw={},
     )
 
 
 def test_summarise_run_typed_output() -> None:
     diagnostics = [
-        make_diag("pkg/module.py", severity="error", code="reportGeneralTypeIssues"),
-        make_diag("pkg/module.py", severity="warning", code="reportUnknownMemberType"),
-        make_diag("pkg/sub/module2.py", severity="information"),
+        make_diag("pkg/module.py", severity=SeverityLevel.ERROR, code="reportGeneralTypeIssues"),
+        make_diag(
+            "pkg/module.py",
+            severity=SeverityLevel.WARNING,
+            code="reportUnknownMemberType",
+        ),
+        make_diag("pkg/sub/module2.py", severity=SeverityLevel.INFORMATION),
     ]
     run = RunResult(
         tool="pyright",

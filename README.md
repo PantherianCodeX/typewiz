@@ -159,6 +159,7 @@ Write a small class implementing the `BaseEngine` protocol and expose it via the
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from typewiz.model_types import SeverityLevel
 from typewiz.types import Diagnostic
 
 @dataclass
@@ -171,7 +172,18 @@ class SimpleEngine(BaseEngine):
             command=[self.name, context.mode],
             exit_code=0,
             duration_ms=0.1,
-            diagnostics=[Diagnostic(tool=self.name, severity="information", path=context.project_root/"example.py", line=1, column=1, code="S000", message="Simple", raw={})],
+            diagnostics=[
+                Diagnostic(
+                    tool=self.name,
+                    severity=SeverityLevel.INFORMATION,
+                    path=context.project_root / "example.py",
+                    line=1,
+                    column=1,
+                    code="S000",
+                    message="Simple",
+                    raw={},
+                )
+            ],
         )
 ```
 

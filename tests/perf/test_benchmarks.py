@@ -10,7 +10,7 @@ import pytest
 pytest.importorskip("pytest_benchmark")
 
 from typewiz.aggregate import summarise_run
-from typewiz.model_types import Mode
+from typewiz.model_types import Mode, SeverityLevel
 from typewiz.readiness import ReadinessEntry, compute_readiness
 from typewiz.types import Diagnostic, RunResult
 
@@ -44,7 +44,7 @@ def _build_sample_run(num_files: int = 120, diagnostics_per_file: int = 5) -> Ru
         diagnostics.extend(
             Diagnostic(
                 tool="pyright",
-                severity="error" if diag_index % 3 == 0 else "warning",
+                severity=(SeverityLevel.ERROR if diag_index % 3 == 0 else SeverityLevel.WARNING),
                 path=path,
                 line=diag_index + 1,
                 column=1,

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from typewiz.model_types import Mode
+from typewiz.model_types import Mode, SeverityLevel
 from typewiz.runner import run_pyright
 from typewiz.utils import CommandOutput, consume
 
@@ -59,7 +59,7 @@ def test_run_pyright_records_tool_summary(tmp_path: Path, monkeypatch: pytest.Mo
     assert result.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
     assert len(result.diagnostics) == 1
     first = result.diagnostics[0]
-    assert first.severity == "error"
+    assert first.severity is SeverityLevel.ERROR
     assert first.code == "reportGeneralTypeIssues"
     assert first.line == 5  # pyright reports zero-based lines
     assert first.path == Path("pkg/module.py")
@@ -94,4 +94,4 @@ def test_run_pyright_logs_mismatch(
     assert any("pyright summary mismatch" in record.message for record in warnings)
     assert result.tool_summary == {"errors": 0, "warnings": 2, "information": 0, "total": 2}
     assert len(result.diagnostics) == 1
-    assert result.diagnostics[0].severity == "warning"
+    assert result.diagnostics[0].severity is SeverityLevel.WARNING

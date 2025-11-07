@@ -603,10 +603,12 @@ def render_markdown(summary: SummaryData) -> str:
     readiness_options_raw = readiness_section.get("options", {})
     if readiness_options_raw:
         lines.extend(["", "#### Per-option readiness"])
+        label_lookup = cast(dict[str, str], CATEGORY_LABELS)
         for category, buckets_obj in readiness_options_raw.items():
             buckets_dict = {status.value: buckets_obj.get(status.value) for status in STATUSES}
             buckets_dict["threshold"] = buckets_obj.get("threshold")
-            label = CATEGORY_LABELS.get(category, category)
+            label_key: str = str(category)
+            label = label_lookup.get(label_key, label_key)
             threshold = buckets_dict.get("threshold")
             threshold_value = threshold if isinstance(threshold, int) else 0
             lines.append(f"- **{label}** (≤{threshold_value} to be close):")

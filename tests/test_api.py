@@ -11,7 +11,7 @@ import pytest
 from typewiz import AuditConfig, Config, run_audit
 from typewiz.config import EngineProfile, EngineSettings
 from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.model_types import Mode
+from typewiz.model_types import Mode, SeverityLevel
 from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic, RunResult
 from typewiz.utils import consume
@@ -60,7 +60,7 @@ def fake_run_result(tmp_path: Path) -> RunResult:
     diagnostics = [
         Diagnostic(
             tool="stub",
-            severity="error",
+            severity=SeverityLevel.ERROR,
             path=tmp_path / "pkg" / "module.py",
             line=1,
             column=1,
@@ -330,7 +330,7 @@ def test_run_audit_cache_preserves_tool_summary(
     diagnostics = [
         Diagnostic(
             tool="stub",
-            severity="error",
+            severity=SeverityLevel.ERROR,
             path=tmp_path / "pkg" / "module.py",
             line=1,
             column=1,

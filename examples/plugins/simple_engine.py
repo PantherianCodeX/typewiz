@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from typewiz.model_types import SeverityLevel
 from typewiz.types import Diagnostic
 
 if TYPE_CHECKING:
@@ -25,7 +26,7 @@ class SimpleEngine(BaseEngine):
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
         diag = Diagnostic(
             tool=self.name,
-            severity="information",
+            severity=SeverityLevel.INFORMATION,
             path=context.project_root / "example.py",
             line=1,
             column=1,

@@ -18,6 +18,7 @@ from typewiz.config import (
     PathOverride,
     load_config,
 )
+from typewiz.model_types import FailOnPolicy, SignaturePolicy
 from typewiz.utils import consume
 
 ensure_list = config_module.ensure_list
@@ -200,6 +201,26 @@ default_profile = "strict"
     )
     with pytest.raises(ValueError):
         consume(load_config(config_path))
+
+
+def test_load_config_normalises_policy_enums(tmp_path: Path) -> None:
+    config_path = tmp_path / "typewiz.toml"
+    consume(
+        config_path.write_text(
+            """
+[audit]
+fail_on = "WARNINGS"
+
+[ratchet]
+signature = "ignore"
+""",
+            encoding="utf-8",
+        ),
+    )
+
+    cfg = load_config(config_path)
+    assert cfg.audit.fail_on is FailOnPolicy.WARNINGS
+    assert cfg.ratchet.signature is SignaturePolicy.IGNORE
 
 
 def test_ensure_list_variants() -> None:

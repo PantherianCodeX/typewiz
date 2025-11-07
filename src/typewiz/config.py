@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from .collection_utils import dedupe_preserve
 from .exceptions import TypewizValidationError
-from .model_types import FailOnPolicy
+from .model_types import FailOnPolicy, SignaturePolicy
 
 CONFIG_VERSION: Final[int] = 0
 FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)
@@ -166,7 +166,7 @@ class AuditConfig:
     max_bytes: int | None = None
     skip_current: bool | None = None
     skip_full: bool | None = None
-    fail_on: str | None = None
+    fail_on: FailOnPolicy | None = None
     dashboard_json: Path | None = None
     dashboard_markdown: Path | None = None
     dashboard_html: Path | None = None
@@ -202,7 +202,7 @@ class RatchetConfig:
     runs: list[str] = field(default_factory=_default_ratchet_runs)
     severities: list[str] = field(default_factory=_default_ratchet_severities)
     targets: dict[str, int] = field(default_factory=_default_dict_str_int)
-    signature: str = "fail"
+    signature: SignaturePolicy = SignaturePolicy.FAIL
     limit: int | None = None
     summary_only: bool = False
 
@@ -324,7 +324,7 @@ class AuditConfigModel(BaseModel):
     max_bytes: int | None = None
     skip_current: bool | None = None
     skip_full: bool | None = None
-    fail_on: str | None = None
+    fail_on: FailOnPolicy | None = None
     dashboard_json: Path | None = None
     dashboard_markdown: Path | None = None
     dashboard_html: Path | None = None
@@ -341,14 +341,16 @@ class AuditConfigModel(BaseModel):
 
     @field_validator("fail_on", mode="before")
     @classmethod
-    def _lower_fail_on(cls, value: object) -> str | None:
+    def _normalise_fail_on(cls, value: object) -> FailOnPolicy | None:
         if value is None:
             return None
+        if isinstance(value, FailOnPolicy):
+            return value
         if isinstance(value, str):
-            lowered = value.strip().lower()
-            if lowered in FAIL_ON_ALLOWED_VALUES:
-                return lowered
-            raise ConfigFieldChoiceError("fail_on", FAIL_ON_ALLOWED_VALUES)
+            try:
+                return FailOnPolicy.from_str(value)
+            except ValueError as exc:
+                raise ConfigFieldChoiceError("fail_on", FAIL_ON_ALLOWED_VALUES) from exc
         raise ConfigFieldTypeError("fail_on")
 
     @field_validator("plugin_args", mode="before")
@@ -394,7 +396,7 @@ class RatchetConfigModel(BaseModel):
     runs: list[str] = Field(default_factory=list)
     severities: list[str] = Field(default_factory=_default_ratchet_severities)
     targets: dict[str, int] = Field(default_factory=dict)
-    signature: str = Field(default="fail")
+    signature: SignaturePolicy = Field(default=SignaturePolicy.FAIL)
     limit: int | None = None
     summary_only: bool = False
 
@@ -440,14 +442,20 @@ class RatchetConfigModel(BaseModel):
 
     @field_validator("signature", mode="before")
     @classmethod
-    def _normalise_signature(cls, value: object) -> str:
+    def _normalise_signature(cls, value: object) -> SignaturePolicy:
         if value is None:
-            return "fail"
+            return SignaturePolicy.FAIL
+        if isinstance(value, SignaturePolicy):
+            return value
         if isinstance(value, str):
-            token = value.strip().lower()
-            if token in {"fail", "warn", "ignore"}:
-                return token
-        raise ConfigFieldChoiceError("ratchet.signature", ("fail", "warn", "ignore"))
+            try:
+                return SignaturePolicy.from_str(value)
+            except ValueError as exc:
+                raise ConfigFieldChoiceError(
+                    "ratchet.signature",
+                    tuple(policy.value for policy in SignaturePolicy),
+                ) from exc
+        raise ConfigFieldTypeError("ratchet.signature")
 
 
 class ConfigModel(BaseModel):
@@ -518,7 +526,6 @@ def _ratchet_from_model(model: RatchetConfigModel) -> RatchetConfig:
     payload = model.model_dump(mode="python")
     config = RatchetConfig(**payload)
     config.severities = [_normalise_severity_token(item) for item in config.severities]
-    config.signature = payload.get("signature", "fail")
     return config
 
 

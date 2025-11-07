@@ -302,8 +302,10 @@ def render_html(
         parts.append(
             "      <table><thead><tr><th>Option</th><th>Ready</th><th>Close</th><th>Blocked</th><th>Close threshold</th></tr></thead><tbody>",
         )
+        label_lookup = cast(dict[str, str], CATEGORY_LABELS)
         for category, buckets in readiness_options.items():
-            label = CATEGORY_LABELS.get(category, category)
+            label_key: str = str(category)
+            label = label_lookup.get(label_key, label_key)
             parts.append(
                 (
                     f"        <tr><td>{h(label)}</td>"

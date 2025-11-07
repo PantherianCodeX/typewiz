@@ -96,14 +96,17 @@ def resolve_severities(cli_value: str | None, config_values: Sequence[str]) -> l
     return ordered
 
 
-def resolve_signature_policy(cli_value: str | None, config_value: str) -> SignaturePolicy:
-    policy_raw = (cli_value or config_value or SignaturePolicy.FAIL.value).strip()
+def resolve_signature_policy(
+    cli_value: str | None, config_value: SignaturePolicy
+) -> SignaturePolicy:
+    if cli_value is None:
+        return config_value
     try:
-        return SignaturePolicy.from_str(policy_raw)
+        return SignaturePolicy.from_str(cli_value)
     except ValueError as exc:
         readable = ", ".join(policy.value for policy in SignaturePolicy)
         raise SystemExit(
-            f"Unknown signature policy '{policy_raw}'. Valid values: {readable}"
+            f"Unknown signature policy '{cli_value}'. Valid values: {readable}"
         ) from exc
 
 

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final, TypedDict, cast
 
 from .data_validation import coerce_int, coerce_object_list, coerce_str_list
-from .model_types import clone_override_entries
+from .model_types import SeverityLevel, clone_override_entries
 from .type_aliases import CacheKey, PathKey
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
@@ -401,7 +401,7 @@ class EngineCache:
             diagnostics.append(
                 Diagnostic(
                     tool=str(raw.get("tool", "")),
-                    severity=str(raw.get("severity", "error")),
+                    severity=SeverityLevel.coerce(raw.get("severity") or "error"),
                     path=Path(path_val),
                     line=line_num,
                     column=col_num,
@@ -466,7 +466,7 @@ class EngineCache:
                     "DiagnosticPayload",
                     {
                         "tool": diag.tool,
-                        "severity": diag.severity,
+                        "severity": diag.severity.value,
                         "path": str(diag.path),
                         "line": diag.line,
                         "column": diag.column,

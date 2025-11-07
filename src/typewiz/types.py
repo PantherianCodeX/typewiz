@@ -6,6 +6,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from .model_types import SeverityLevel
 from .typed_manifest import ToolSummary
 
 if TYPE_CHECKING:
@@ -22,7 +23,7 @@ def _default_raw_mapping() -> Mapping[str, object]:
 @dataclass(slots=True)
 class Diagnostic:
     tool: str
-    severity: str
+    severity: SeverityLevel
     path: Path
     line: int
     column: int
@@ -77,5 +78,5 @@ class RunResult:
     def severity_counts(self) -> Counter[str]:
         counts: Counter[str] = Counter()
         for diag in self.diagnostics:
-            counts[diag.severity.lower()] += 1
+            counts[diag.severity.value] += 1
         return counts

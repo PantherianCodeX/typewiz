@@ -8,6 +8,8 @@ import os
 from collections.abc import Callable
 from functools import lru_cache
 
+from .model_types import LicenseMode
+
 LICENSE_KEY_ENV = "TYPEWIZ_LICENSE_KEY"
 SUPPORT_EMAIL = "licensing@pantheriancodeX.com"
 
@@ -24,16 +26,16 @@ def get_license_key() -> str | None:
     return key.strip() or None
 
 
-def license_mode() -> str:
-    """Return the current license mode ('commercial' or 'evaluation')."""
+def license_mode() -> LicenseMode:
+    """Return the current license mode."""
 
-    return "commercial" if get_license_key() else "evaluation"
+    return LicenseMode.COMMERCIAL if get_license_key() else LicenseMode.EVALUATION
 
 
 def has_commercial_license() -> bool:
     """Return True when a license key is present."""
 
-    return license_mode() == "commercial"
+    return license_mode() is LicenseMode.COMMERCIAL
 
 
 def maybe_emit_evaluation_notice(emitter: Callable[[str], None]) -> None:
@@ -51,6 +53,14 @@ def maybe_emit_evaluation_notice(emitter: Callable[[str], None]) -> None:
     _notice_emitted = True
 
 
+def reset_license_notice_state() -> None:
+    """Reset cached license state (intended for tests)."""
+
+    global _notice_emitted  # noqa: PLW0603
+    _notice_emitted = False
+    get_license_key.cache_clear()
+
+
 __all__ = [
     "LICENSE_KEY_ENV",
     "SUPPORT_EMAIL",
@@ -58,4 +68,5 @@ __all__ = [
     "has_commercial_license",
     "license_mode",
     "maybe_emit_evaluation_notice",
+    "reset_license_notice_state",
 ]

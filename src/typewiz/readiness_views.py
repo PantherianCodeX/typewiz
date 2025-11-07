@@ -24,6 +24,7 @@ from .summary_types import (
     SummaryData,
     SummaryTabs,
 )
+from .type_aliases import CategoryKey
 
 
 @dataclass(frozen=True, slots=True)
@@ -273,7 +274,12 @@ def _folder_payload_for_status(
     limit: int,
 ) -> list[dict[str, object]]:
     # Prefer unknownChecks, then optionalChecks, then unusedSymbols, then general
-    category_order = ("unknownChecks", "optionalChecks", "unusedSymbols", "general")
+    category_order: tuple[CategoryKey, ...] = (
+        "unknownChecks",
+        "optionalChecks",
+        "unusedSymbols",
+        "general",
+    )
     entries: list[ReadinessOptionEntry] = []
     for category in category_order:
         bucket = options_tab.get(category, {})

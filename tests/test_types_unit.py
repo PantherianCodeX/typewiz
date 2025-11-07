@@ -14,13 +14,14 @@ from typewiz.model_types import (
     LogFormat,
     Mode,
     ReadinessLevel,
+    SeverityLevel,
     SignaturePolicy,
     SummaryStyle,
 )
 from typewiz.types import Diagnostic, RunResult
 
 
-def _make_diag(code: str | None, severity: str) -> Diagnostic:
+def _make_diag(code: str | None, severity: SeverityLevel) -> Diagnostic:
     return Diagnostic(
         tool="stub",
         severity=severity,
@@ -33,11 +34,11 @@ def _make_diag(code: str | None, severity: str) -> Diagnostic:
 
 
 def test_diagnostic_category_branches() -> None:
-    unknown = _make_diag("reportUnknownMemberType", "error")
-    optional = _make_diag("OptionalMemberAccess", "warning")
-    unused = _make_diag("warnUnusedCallResult", "warning")
-    general = _make_diag("attr-defined", "error")
-    none_code = _make_diag(None, "info")
+    unknown = _make_diag("reportUnknownMemberType", SeverityLevel.ERROR)
+    optional = _make_diag("OptionalMemberAccess", SeverityLevel.WARNING)
+    unused = _make_diag("warnUnusedCallResult", SeverityLevel.WARNING)
+    general = _make_diag("attr-defined", SeverityLevel.ERROR)
+    none_code = _make_diag(None, SeverityLevel.INFORMATION)
 
     assert unknown.category() == "unknown"
     assert optional.category() == "optional"
@@ -48,10 +49,10 @@ def test_diagnostic_category_branches() -> None:
 
 def test_run_result_severity_counts() -> None:
     diagnostics = [
-        _make_diag("code", "Error"),
-        _make_diag("code", "WARNING"),
-        _make_diag("code", "warning"),
-        _make_diag("code", "INFO"),
+        _make_diag("code", SeverityLevel.ERROR),
+        _make_diag("code", SeverityLevel.WARNING),
+        _make_diag("code", SeverityLevel.WARNING),
+        _make_diag("code", SeverityLevel.INFORMATION),
     ]
     result = RunResult(
         tool="stub",
@@ -64,7 +65,7 @@ def test_run_result_severity_counts() -> None:
     counts = result.severity_counts()
     assert counts["error"] == 1
     assert counts["warning"] == 2
-    assert counts["info"] == 1
+    assert counts["information"] == 1
 
 
 def test_model_type_from_str_helpers() -> None:
