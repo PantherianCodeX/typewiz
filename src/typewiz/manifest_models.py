@@ -23,6 +23,7 @@ from .manifest_versioning import (
     upgrade_manifest,
 )
 from .model_types import Mode, SeverityLevel
+from .type_aliases import CategoryKey
 from .typed_manifest import ManifestData
 
 STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(extra="forbid")
@@ -81,7 +82,7 @@ class FolderEntryModel(BaseModel):
     information: int
     codeCounts: dict[str, int]
     recommendations: list[str]
-    categoryCounts: dict[str, int] | None = None
+    categoryCounts: dict[CategoryKey, int] | None = None
 
 
 class RunSummaryModel(BaseModel):
@@ -91,9 +92,9 @@ class RunSummaryModel(BaseModel):
     warnings: int | None = None
     information: int | None = None
     total: int | None = None
-    severityBreakdown: dict[str, int] | None = None
+    severityBreakdown: dict[SeverityLevel, int] | None = None
     ruleCounts: dict[str, int] | None = None
-    categoryCounts: dict[str, int] | None = None
+    categoryCounts: dict[CategoryKey, int] | None = None
 
 
 class EngineOptionsModel(BaseModel):

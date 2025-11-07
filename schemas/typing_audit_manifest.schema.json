@@ -135,6 +135,16 @@
       "title": "SeverityLevel",
       "type": "string"
     },
+    "CategoryKeyEnum": {
+      "enum": [
+        "unknownChecks",
+        "optionalChecks",
+        "unusedSymbols",
+        "general"
+      ],
+      "title": "CategoryKey",
+      "type": "string"
+    },
     "FileDiagnosticModel": {
       "properties": {
         "code": {
@@ -217,6 +227,9 @@
             {
               "additionalProperties": {
                 "type": "integer"
+              },
+              "propertyNames": {
+                "$ref": "#/$defs/CategoryKeyEnum"
               },
               "type": "object"
             },
@@ -444,6 +457,9 @@
               "additionalProperties": {
                 "type": "integer"
               },
+              "propertyNames": {
+                "$ref": "#/$defs/CategoryKeyEnum"
+              },
               "type": "object"
             },
             {
@@ -497,6 +513,9 @@
             {
               "additionalProperties": {
                 "type": "integer"
+              },
+              "propertyNames": {
+                "$ref": "#/$defs/SeverityLevelEnum"
               },
               "type": "object"
             },
