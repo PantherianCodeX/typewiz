@@ -11,7 +11,7 @@ import pytest
 from typewiz import AuditConfig, Config, run_audit
 from typewiz.config import EngineProfile, EngineSettings
 from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.model_types import Mode, SeverityLevel
+from typewiz.model_types import Mode, ReadinessStatus, SeverityLevel
 from typewiz.type_aliases import EngineName, ProfileName, RunnerName, ToolName
 from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic, RunResult
@@ -139,8 +139,9 @@ def test_run_audit_programmatic(
     readiness_options = readiness["options"]
     assert "unknownChecks" in readiness_options
     unknown_checks = readiness_options["unknownChecks"]
-    assert "close" in unknown_checks
-    unknown_close_entries = unknown_checks["close"]
+    buckets = unknown_checks.get("buckets", {})
+    assert ReadinessStatus.CLOSE in buckets
+    unknown_close_entries = buckets.get(ReadinessStatus.CLOSE, ())
     counts = [entry["count"] for entry in unknown_close_entries if "count" in entry]
     assert counts and sum(counts) >= 1
 

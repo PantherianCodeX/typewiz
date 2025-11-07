@@ -17,7 +17,7 @@ from typewiz.readiness_views import (
 )
 from typewiz.summary_types import (
     ReadinessOptionEntry,
-    ReadinessOptionsBucket,
+    ReadinessOptionsPayload,
     ReadinessStrictEntry,
     ReadinessTab,
     SummaryData,
@@ -47,8 +47,6 @@ def _make_summary() -> SummaryData:
     ]
     strict_ready: list[ReadinessStrictEntry] = []
     strict_close: list[ReadinessStrictEntry] = []
-    readiness_ready_options: list[ReadinessOptionEntry] = []
-    readiness_close_options: list[ReadinessOptionEntry] = []
     readiness_tab: ReadinessTab = {
         "strict": {
             ReadinessStatus.BLOCKED: strict_blocked,
@@ -56,11 +54,13 @@ def _make_summary() -> SummaryData:
             ReadinessStatus.CLOSE: strict_close,
         },
         "options": {
-            "unknownChecks": ReadinessOptionsBucket(
-                blocked=[ReadinessOptionEntry(path="src/app", count=3, errors=2, warnings=1)],
-                ready=readiness_ready_options,
-                close=readiness_close_options,
+            "unknownChecks": ReadinessOptionsPayload(
                 threshold=2,
+                buckets={
+                    ReadinessStatus.BLOCKED: (
+                        ReadinessOptionEntry(path="src/app", count=3, errors=2, warnings=1),
+                    ),
+                },
             ),
         },
     }
@@ -132,12 +132,14 @@ def test_collect_readiness_view_folder_fallback_category() -> None:
             ReadinessStatus.CLOSE: [],
         },
         "options": {
-            "unknownChecks": ReadinessOptionsBucket(blocked=[], ready=[], close=[], threshold=2),
-            "optionalChecks": ReadinessOptionsBucket(
-                blocked=[ReadinessOptionEntry(path="src/opt", count=2, errors=1, warnings=1)],
-                ready=[],
-                close=[],
+            "unknownChecks": ReadinessOptionsPayload(threshold=2, buckets={}),
+            "optionalChecks": ReadinessOptionsPayload(
                 threshold=2,
+                buckets={
+                    ReadinessStatus.BLOCKED: (
+                        ReadinessOptionEntry(path="src/opt", count=2, errors=1, warnings=1),
+                    ),
+                },
             ),
         },
     }

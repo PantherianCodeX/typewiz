@@ -36,7 +36,7 @@ from typewiz.summary_types import (
     CountsByRule,
     CountsBySeverity,
     ReadinessOptionEntry,
-    ReadinessOptionsBucket,
+    ReadinessOptionsPayload,
     ReadinessTab,
     SummaryData,
 )
@@ -136,13 +136,13 @@ def _sample_summary() -> SummaryData:
             ReadinessStatus.CLOSE: [],
         },
         "options": {
-            "unknownChecks": ReadinessOptionsBucket(
-                blocked=[
-                    ReadinessOptionEntry(path="src", count=2, errors=1, warnings=1),
-                ],
-                ready=[],
-                close=[],
+            "unknownChecks": ReadinessOptionsPayload(
                 threshold=1,
+                buckets={
+                    ReadinessStatus.BLOCKED: (
+                        ReadinessOptionEntry(path="src", count=2, errors=1, warnings=1),
+                    ),
+                },
             ),
         },
     }

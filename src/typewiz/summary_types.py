@@ -70,23 +70,21 @@ class ReadinessStrictEntry(TypedDict, total=False):
     categoryStatus: dict[CategoryName, ReadinessStatus]
 
 
-class ReadinessOptionsBucket(TypedDict, total=False):
-    ready: list[ReadinessOptionEntry]
-    close: list[ReadinessOptionEntry]
-    blocked: list[ReadinessOptionEntry]
-    threshold: int
-
-
-class ReadinessTab(TypedDict, total=False):
-    strict: dict[ReadinessStatus, list[ReadinessStrictEntry]]
-    options: dict[CategoryKey, ReadinessOptionsBucket]
-
-
 class ReadinessOptionEntry(TypedDict, total=False):
     path: str
     count: int
     errors: int
     warnings: int
+
+
+class ReadinessOptionsPayload(TypedDict):
+    threshold: int
+    buckets: dict[ReadinessStatus, tuple[ReadinessOptionEntry, ...]]
+
+
+class ReadinessTab(TypedDict, total=False):
+    strict: dict[ReadinessStatus, list[ReadinessStrictEntry]]
+    options: dict[CategoryKey, ReadinessOptionsPayload]
 
 
 class RunsTab(TypedDict):

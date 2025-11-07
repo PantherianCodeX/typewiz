@@ -309,16 +309,21 @@ def render_html(
             "      <table><thead><tr><th>Option</th><th>Ready</th><th>Close</th><th>Blocked</th><th>Close threshold</th></tr></thead><tbody>",
         )
         label_lookup = cast(dict[str, str], CATEGORY_LABELS)
-        for category, buckets in readiness_options.items():
+        for category, payload in readiness_options.items():
             label_key: str = str(category)
             label = label_lookup.get(label_key, label_key)
+            bucket_map = payload.get("buckets", {})
+            ready_entries = bucket_map.get(ReadinessStatus.READY, ())
+            close_entries = bucket_map.get(ReadinessStatus.CLOSE, ())
+            blocked_entries = bucket_map.get(ReadinessStatus.BLOCKED, ())
+            threshold = int(payload.get("threshold", 0))
             parts.append(
                 (
                     f"        <tr><td>{h(label)}</td>"
-                    f"<td>{len(buckets.get(ReadinessStatus.READY.value, []))}</td>"
-                    f"<td>{len(buckets.get(ReadinessStatus.CLOSE.value, []))}</td>"
-                    f"<td>{len(buckets.get(ReadinessStatus.BLOCKED.value, []))}</td>"
-                    f"<td>{buckets.get('threshold', 0)}</td></tr>"
+                    f"<td>{len(ready_entries)}</td>"
+                    f"<td>{len(close_entries)}</td>"
+                    f"<td>{len(blocked_entries)}</td>"
+                    f"<td>{threshold}</td></tr>"
                 ),
             )
         parts.extend(["      </tbody></table>", "    </section>"])

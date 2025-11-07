@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Final, TypedDict, cast
 
 from .model_types import ReadinessStatus
-from .summary_types import ReadinessOptionEntry, ReadinessOptionsBucket, ReadinessStrictEntry
+from .summary_types import ReadinessOptionEntry, ReadinessOptionsPayload, ReadinessStrictEntry
 from .type_aliases import CategoryKey, CategoryName
 
 DEFAULT_CLOSE_THRESHOLD: Final[int] = 3
@@ -81,42 +81,56 @@ class ReadinessOptions:
         current = self.buckets.get(status, ())
         self.buckets[status] = (*current, entry)
 
-    def to_payload(self) -> ReadinessOptionsBucket:
-        payload: ReadinessOptionsBucket = {"threshold": self.threshold}
-        for status, entries in self.buckets.items():
-            if entries:
-                payload[status.value] = list(entries)
-        return payload
+    def to_payload(self) -> ReadinessOptionsPayload:
+        buckets: dict[ReadinessStatus, tuple[ReadinessOptionEntry, ...]] = {
+            status: entries for status, entries in self.buckets.items() if entries
+        }
+        return {
+            "threshold": self.threshold,
+            "buckets": buckets,
+        }
 
     @classmethod
     def from_payload(
         cls,
-        bucket: ReadinessOptionsBucket,
+        bucket: ReadinessOptionsPayload,
         *,
         default_threshold: int = DEFAULT_CLOSE_THRESHOLD,
     ) -> ReadinessOptions:
-        threshold_raw = bucket.get("threshold")
-        threshold = threshold_raw if isinstance(threshold_raw, int) else default_threshold
+        threshold = bucket.get("threshold", default_threshold)
         instance = cls(threshold=threshold)
-        for status in ReadinessStatus:
-            entries_obj = bucket.get(status.value)
-            if not isinstance(entries_obj, list):
+        source_map = cast("Mapping[object, object]", bucket.get("buckets", {}))
+        for raw_status, raw_entries in source_map.items():
+            if isinstance(raw_status, ReadinessStatus):
+                status: ReadinessStatus = raw_status
+            elif isinstance(raw_status, str):
+                try:
+                    status = ReadinessStatus.from_str(raw_status)
+                except ValueError:
+                    continue
+            else:
                 continue
-            typed_entries = cast(list[ReadinessOptionEntry], entries_obj)
-            instance.buckets[status] = tuple(typed_entries)
+            if isinstance(raw_entries, tuple):
+                instance.buckets[status] = cast(
+                    tuple[ReadinessOptionEntry, ...],
+                    raw_entries,
+                )
+            elif isinstance(raw_entries, list):
+                typed_entries = cast(list[ReadinessOptionEntry], raw_entries)
+                instance.buckets[status] = tuple(typed_entries)
         return instance
 
 
 CategoryCountMap = dict[CategoryName, int]
 CategoryStatusMap = dict[CategoryName, ReadinessStatus]
 StrictBuckets = dict[ReadinessStatus, list[ReadinessStrictEntry]]
-OptionsBuckets = dict[CategoryKey, ReadinessOptionsBucket]
+OptionsPayloads = dict[CategoryKey, ReadinessOptionsPayload]
 ReadinessOptionsMap = dict[CategoryKey, ReadinessOptions]
 
 
 class ReadinessPayload(TypedDict):
     strict: StrictBuckets
-    options: OptionsBuckets
+    options: OptionsPayloads
 
 
 def _new_category_counts() -> CategoryCountMap:
@@ -247,7 +261,7 @@ def _new_options_bucket(category: CategoryKey) -> ReadinessOptions:
     return ReadinessOptions(threshold=threshold)
 
 
-def _options_payload_from_map(options: ReadinessOptionsMap) -> OptionsBuckets:
+def _options_payload_from_map(options: ReadinessOptionsMap) -> OptionsPayloads:
     return {category: bucket.to_payload() for category, bucket in options.items()}
 
 

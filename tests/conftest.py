@@ -16,7 +16,7 @@ from typewiz.summary_types import (
     CountsByCategory,
     CountsBySeverity,
     ReadinessOptionEntry,
-    ReadinessOptionsBucket,
+    ReadinessOptionsPayload,
     ReadinessStrictEntry,
     ReadinessTab,
     SummaryData,
@@ -184,15 +184,16 @@ def sample_summary() -> SummaryData:
         close: list[ReadinessOptionEntry],
         *,
         threshold: int,
-    ) -> ReadinessOptionsBucket:
-        blocked: list[ReadinessOptionEntry] = []
-        bucket: ReadinessOptionsBucket = {
-            "ready": ready,
-            "close": close,
-            "blocked": blocked,
+    ) -> ReadinessOptionsPayload:
+        buckets: dict[ReadinessStatus, tuple[ReadinessOptionEntry, ...]] = {}
+        if ready:
+            buckets[ReadinessStatus.READY] = tuple(ready)
+        if close:
+            buckets[ReadinessStatus.CLOSE] = tuple(close)
+        return {
             "threshold": threshold,
+            "buckets": buckets,
         }
-        return bucket
 
     readiness_tab: ReadinessTab = {
         "strict": {

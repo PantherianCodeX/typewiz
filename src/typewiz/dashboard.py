@@ -35,7 +35,7 @@ from .summary_types import (
     CountsByRule,
     CountsBySeverity,
     ReadinessOptionEntry,
-    ReadinessOptionsBucket,
+    ReadinessOptionsPayload,
     ReadinessTab,
     SummaryData,
     SummaryFileEntry,
@@ -144,7 +144,7 @@ def _validate_readiness_tab(raw: Mapping[object, object]) -> ReadinessTab:
     if not isinstance(options_raw, Mapping):
         raise DashboardTypeError("readiness.options", "a mapping")
     options_map = coerce_mapping(cast("Mapping[object, object]", options_raw))
-    options_section: dict[CategoryKey, ReadinessOptionsBucket] = {}
+    options_section: dict[CategoryKey, ReadinessOptionsPayload] = {}
     for category_key_raw, bucket_obj in options_map.items():
         if not isinstance(bucket_obj, Mapping):
             raise DashboardTypeError(f"readiness.options[{category_key_raw!r}]", "a mapping")
@@ -156,11 +156,16 @@ def _validate_readiness_tab(raw: Mapping[object, object]) -> ReadinessTab:
                 "an integer",
             )
         threshold = threshold_value if isinstance(threshold_value, int) else DEFAULT_CLOSE_THRESHOLD
+        buckets_obj = bucket_map.get("buckets")
+        if not isinstance(buckets_obj, Mapping):
+            raise DashboardTypeError(
+                f"readiness.options[{category_key_raw!r}].buckets",
+                "a mapping",
+            )
+        buckets_map = coerce_mapping(cast("Mapping[object, object]", buckets_obj))
         options_bucket = ReadinessOptions(threshold=threshold)
-        for status in ReadinessStatus:
-            entries = bucket_map.get(status.value)
-            if entries is None:
-                continue
+        for status_key, entries in buckets_map.items():
+            status = _coerce_status_key(status_key)
             parsed_entries = _coerce_readiness_entries(
                 entries,
                 f"readiness.options[{category_key_raw!r}].{status.value}",
@@ -681,11 +686,11 @@ def render_markdown(summary: SummaryData) -> str:
         for category, buckets_obj in readiness_options_raw.items():
             label_key: str = str(category)
             label = label_lookup.get(label_key, label_key)
-            threshold = buckets_obj.get("threshold")
-            threshold_value = threshold if isinstance(threshold, int) else 0
+            threshold_value = buckets_obj.get("threshold", 0)
             lines.append(f"- **{label}** (≤{threshold_value} to be close):")
+            bucket_map = buckets_obj.get("buckets", {})
             for status in ReadinessStatus:
-                entries = _materialise_dict_list(buckets_obj.get(status.value))
+                entries = _materialise_dict_list(bucket_map.get(status, ()))
                 lines.append(f"  - {status.value.title()}: {_format_entry_list(entries)}")
 
     lines.append("")

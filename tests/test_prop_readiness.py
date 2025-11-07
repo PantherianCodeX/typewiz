@@ -15,7 +15,7 @@ from typewiz.readiness_views import (
 )
 from typewiz.summary_types import (
     ReadinessOptionEntry,
-    ReadinessOptionsBucket,
+    ReadinessOptionsPayload,
     ReadinessStrictEntry,
     ReadinessTab,
     SummaryData,
@@ -50,12 +50,27 @@ def _strict_entry() -> st.SearchStrategy[ReadinessStrictEntry]:
 
 
 def _readiness_tab() -> st.SearchStrategy[ReadinessTab]:
+    def _build_bucket(
+        ready_entries: list[ReadinessOptionEntry],
+        close_entries: list[ReadinessOptionEntry],
+        blocked_entries: list[ReadinessOptionEntry],
+        threshold: int,
+    ) -> ReadinessOptionsPayload:
+        buckets: dict[ReadinessStatus, tuple[ReadinessOptionEntry, ...]] = {}
+        if ready_entries:
+            buckets[ReadinessStatus.READY] = tuple(ready_entries)
+        if close_entries:
+            buckets[ReadinessStatus.CLOSE] = tuple(close_entries)
+        if blocked_entries:
+            buckets[ReadinessStatus.BLOCKED] = tuple(blocked_entries)
+        return {"threshold": threshold, "buckets": buckets}
+
     bucket = st.builds(
-        ReadinessOptionsBucket,
-        ready=st.lists(_folder_entry(), max_size=3),
-        close=st.lists(_folder_entry(), max_size=3),
-        blocked=st.lists(_folder_entry(), max_size=3),
-        threshold=st.integers(min_value=0, max_value=10),
+        _build_bucket,
+        st.lists(_folder_entry(), max_size=3),
+        st.lists(_folder_entry(), max_size=3),
+        st.lists(_folder_entry(), max_size=3),
+        st.integers(min_value=0, max_value=10),
     )
 
     def _build_strict_map(
@@ -77,11 +92,11 @@ def _readiness_tab() -> st.SearchStrategy[ReadinessTab]:
     )
 
     def _build_options_map(
-        unknown: ReadinessOptionsBucket,
-        optional: ReadinessOptionsBucket,
-        unused: ReadinessOptionsBucket,
-        general: ReadinessOptionsBucket,
-    ) -> dict[CategoryKey, ReadinessOptionsBucket]:
+        unknown: ReadinessOptionsPayload,
+        optional: ReadinessOptionsPayload,
+        unused: ReadinessOptionsPayload,
+        general: ReadinessOptionsPayload,
+    ) -> dict[CategoryKey, ReadinessOptionsPayload]:
         return {
             "unknownChecks": unknown,
             "optionalChecks": optional,
@@ -89,7 +104,7 @@ def _readiness_tab() -> st.SearchStrategy[ReadinessTab]:
             "general": general,
         }
 
-    options_map: st.SearchStrategy[dict[CategoryKey, ReadinessOptionsBucket]] = st.builds(
+    options_map: st.SearchStrategy[dict[CategoryKey, ReadinessOptionsPayload]] = st.builds(
         _build_options_map,
         bucket,
         bucket,
@@ -99,7 +114,7 @@ def _readiness_tab() -> st.SearchStrategy[ReadinessTab]:
 
     def _build_tab(
         strict: dict[ReadinessStatus, list[ReadinessStrictEntry]],
-        options: dict[CategoryKey, ReadinessOptionsBucket],
+        options: dict[CategoryKey, ReadinessOptionsPayload],
     ) -> ReadinessTab:
         return {"strict": strict, "options": options}
 

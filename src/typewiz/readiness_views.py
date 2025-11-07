@@ -128,12 +128,9 @@ def _coerce_status(value: object) -> ReadinessStatus:
     return ReadinessStatus.BLOCKED
 
 
-def _coerce_option_entries(
-    mapping_value: Mapping[str, object],
-    key: str,
-) -> list[ReadinessOptionEntry]:
+def _coerce_option_entries(value: object) -> list[ReadinessOptionEntry]:
     entries: list[ReadinessOptionEntry] = []
-    for entry in coerce_object_list(mapping_value.get(key)):
+    for entry in coerce_object_list(value):
         if isinstance(entry, Mapping):
             entry_map = coerce_mapping(cast(Mapping[object, object], entry))
             entries.append(_build_option_entry(cast(Mapping[str, object], entry_map)))
@@ -187,12 +184,16 @@ def _coerce_options_bucket(value: object) -> ReadinessOptions:
     threshold_val = mapping_value.get("threshold")
     threshold = threshold_val if isinstance(threshold_val, int) else DEFAULT_CLOSE_THRESHOLD
     bucket = ReadinessOptions(threshold=threshold)
-    for status in ReadinessStatus:
-        entries = _coerce_option_entries(mapping_value, status.value)
-        if not entries:
-            continue
-        for entry in entries:
-            bucket.add_entry(status, entry)
+    bucket_section = mapping_value.get("buckets")
+    if isinstance(bucket_section, Mapping):
+        buckets_map = coerce_mapping(cast(Mapping[object, object], bucket_section))
+        for key, entries_raw in buckets_map.items():
+            status = _coerce_status(key)
+            entries = _coerce_option_entries(entries_raw)
+            if not entries:
+                continue
+            for entry in entries:
+                bucket.add_entry(status, entry)
     return bucket
 
 

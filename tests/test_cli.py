@@ -45,7 +45,7 @@ from typewiz.summary_types import (
     HotspotsTab,
     OverviewTab,
     ReadinessOptionEntry,
-    ReadinessOptionsBucket,
+    ReadinessOptionsPayload,
     ReadinessStrictEntry,
     ReadinessTab,
     RunsTab,
@@ -1105,19 +1105,21 @@ def test_print_readiness_summary_variants(capsys: pytest.CaptureFixture[str]) ->
     summary = _empty_summary()
     readiness_tab = summary["tabs"]["readiness"]
     readiness_tab["options"] = cast(
-        dict[CategoryKey, ReadinessOptionsBucket],
+        dict[CategoryKey, ReadinessOptionsPayload],
         {
             "unknownChecks": {
-                "ready": cast(
-                    list[ReadinessOptionEntry],
-                    [{"path": "pkg", "count": "not-a-number"}],
-                ),
-                "close": [],
-                "blocked": cast(
-                    list[ReadinessOptionEntry],
-                    [{"path": "pkg", "count": 2}],
-                ),
                 "threshold": 0,
+                "buckets": {
+                    ReadinessStatus.READY: cast(
+                        tuple[ReadinessOptionEntry, ...],
+                        ({"path": "pkg", "count": "not-a-number"},),
+                    ),
+                    ReadinessStatus.CLOSE: (),
+                    ReadinessStatus.BLOCKED: cast(
+                        tuple[ReadinessOptionEntry, ...],
+                        ({"path": "pkg", "count": 2},),
+                    ),
+                },
             },
         },
     )
