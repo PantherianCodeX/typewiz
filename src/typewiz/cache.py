@@ -19,7 +19,7 @@ from .model_types import SeverityLevel, clone_override_entries
 from .type_aliases import CacheKey, CategoryKey, CategoryName, PathKey, ToolName
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
-from .utils import consume, normalise_enums_for_json
+from .utils import JSONValue, consume, normalise_enums_for_json
 
 if TYPE_CHECKING:
     from .model_types import (
@@ -166,7 +166,7 @@ def _normalise_override_entry(raw: Mapping[str, object]) -> OverrideEntry:
     return entry
 
 
-def _normalise_diagnostic_payload(raw: Mapping[str, object]) -> DiagnosticPayload:
+def _normalise_diagnostic_payload(raw: Mapping[str, JSONValue]) -> DiagnosticPayload:
     payload: DiagnosticPayload = {}
     tool = raw.get("tool")
     if isinstance(tool, str) and tool:
@@ -189,7 +189,7 @@ def _normalise_diagnostic_payload(raw: Mapping[str, object]) -> DiagnosticPayloa
         payload["message"] = message
     raw_payload = raw.get("raw")
     if isinstance(raw_payload, Mapping):
-        raw_mapping = cast("Mapping[str, object]", raw_payload)
+        raw_mapping = cast("Mapping[str, JSONValue]", raw_payload)
         payload["raw"] = {str(key): value for key, value in raw_mapping.items()}
     return payload
 
@@ -284,7 +284,7 @@ class EngineCache:
             for hash_key, hash_payload in file_hashes_mapping.items():
                 file_hashes_map[PathKey(hash_key)] = _normalise_file_hash_payload(hash_payload)
             diagnostics_list: list[DiagnosticPayload] = [
-                _normalise_diagnostic_payload(cast("Mapping[str, object]", diag_raw))
+                _normalise_diagnostic_payload(cast("Mapping[str, JSONValue]", diag_raw))
                 for diag_raw in coerce_object_list(diagnostics_any)
                 if isinstance(diag_raw, Mapping)
             ]
@@ -397,7 +397,7 @@ class EngineCache:
             code_str = str(code_val) if isinstance(code_val, str) else None
             raw_val = raw.get("raw")
             if isinstance(raw_val, Mapping):
-                raw_dict = {str(k): v for k, v in raw_val.items()}
+                raw_dict: dict[str, JSONValue] = {str(k): v for k, v in raw_val.items()}
             else:
                 raw_dict = {}
 

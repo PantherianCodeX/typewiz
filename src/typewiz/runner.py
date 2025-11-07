@@ -202,7 +202,7 @@ def run_mypy(
                 column=int(data.get("column") or 0),
                 code=data.get("code"),
                 message=data["message"].strip(),
-                raw=cast(dict[str, object], dict(data)),
+                raw=cast(dict[str, JSONValue], dict(data)),
             ),
         )
     diagnostics.sort(key=lambda d: (str(d.path), d.line, d.column))

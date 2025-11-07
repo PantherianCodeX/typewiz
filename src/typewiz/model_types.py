@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from enum import StrEnum
-from typing import TypedDict, cast
+from typing import Final, TypedDict, cast
 
 from .type_aliases import CategoryKey
+from .utils import JSONValue
 
 
 class Mode(StrEnum):
@@ -50,6 +51,12 @@ class SeverityLevel(StrEnum):
             except ValueError:
                 return cls.INFORMATION
         return cls.INFORMATION
+
+
+DEFAULT_SEVERITIES: Final[tuple[SeverityLevel, SeverityLevel]] = (
+    SeverityLevel.ERROR,
+    SeverityLevel.WARNING,
+)
 
 
 class ReadinessStatus(StrEnum):
@@ -308,7 +315,7 @@ class DiagnosticPayload(TypedDict, total=False):
     column: int
     code: str | None
     message: str
-    raw: dict[str, object]
+    raw: dict[str, JSONValue]
 
 
 class FileHashPayload(TypedDict, total=False):

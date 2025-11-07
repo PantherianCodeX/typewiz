@@ -8,11 +8,11 @@ import json
 from collections import Counter
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import Final, cast
+from typing import cast
 
 from ..category_utils import coerce_category_key
 from ..data_validation import coerce_int, coerce_mapping, coerce_object_list
-from ..model_types import Mode, SeverityLevel
+from ..model_types import DEFAULT_SEVERITIES, Mode, SeverityLevel
 from ..type_aliases import CategoryKey, RunId, ToolName
 from ..typed_manifest import ManifestData
 from ..utils import JSONValue, normalise_enums_for_json
@@ -25,11 +25,6 @@ from .models import (
     RatchetRunBudgetModel,
 )
 from .summary import RatchetFinding, RatchetReport, RatchetRunReport
-
-DEFAULT_SEVERITIES: Final[tuple[SeverityLevel, SeverityLevel]] = (
-    SeverityLevel.ERROR,
-    SeverityLevel.WARNING,
-)
 
 
 def _normalise_mode(value: object) -> Mode | None:

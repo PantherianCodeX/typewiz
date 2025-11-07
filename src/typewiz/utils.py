@@ -11,7 +11,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Final, cast
+from typing import Final, Literal, cast
 
 from .type_aliases import ToolName
 
@@ -22,8 +22,9 @@ logger: logging.Logger = logging.getLogger("typewiz")
 type JSONValue = str | int | float | bool | None | dict[str, "JSONValue"] | list["JSONValue"]
 type JSONMapping = dict[str, JSONValue]
 type JSONList = list[JSONValue]
+type RootMarker = Literal["typewiz.toml", ".typewiz.toml", "pyproject.toml"]
 
-ROOT_MARKERS: Final[tuple[str, ...]] = (
+ROOT_MARKERS: Final[tuple[RootMarker, RootMarker, RootMarker]] = (
     "typewiz.toml",
     ".typewiz.toml",
     "pyproject.toml",

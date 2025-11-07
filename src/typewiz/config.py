@@ -6,7 +6,7 @@ import tomllib as toml
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import ClassVar, Final, cast
+from typing import ClassVar, Final, Literal, cast
 
 from pydantic import (
     BaseModel,
@@ -689,4 +689,8 @@ def load_config(explicit_path: Path | None = None) -> Config:
     return cfg
 
 
-FOLDER_CONFIG_FILENAMES: Final[tuple[str, ...]] = ("typewiz.dir.toml", ".typewizdir.toml")
+type FolderConfigFilename = Literal["typewiz.dir.toml", ".typewizdir.toml"]
+FOLDER_CONFIG_FILENAMES: Final[tuple[FolderConfigFilename, FolderConfigFilename]] = (
+    "typewiz.dir.toml",
+    ".typewizdir.toml",
+)

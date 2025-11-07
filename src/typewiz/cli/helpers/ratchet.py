@@ -11,14 +11,10 @@ from typewiz.cli_helpers import (
     parse_comma_separated,
     parse_key_value_entries,
 )
-from typewiz.model_types import SeverityLevel, SignaturePolicy
+from typewiz.model_types import DEFAULT_SEVERITIES, SeverityLevel, SignaturePolicy
 from typewiz.ratchet.models import RatchetModel
 from typewiz.type_aliases import RunId
 
-DEFAULT_SEVERITIES: Final[tuple[SeverityLevel, SeverityLevel]] = (
-    SeverityLevel.ERROR,
-    SeverityLevel.WARNING,
-)
 MANIFEST_CANDIDATE_NAMES: Final[tuple[str, ...]] = (
     "typing_audit.json",
     "typing_audit_manifest.json",

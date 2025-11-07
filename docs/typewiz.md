@@ -18,6 +18,7 @@ This produces `typing_audit_manifest.json` (relative to the working directory) c
 - An expansive run across the project directories (`mode="full"`).
 - Aggregated per-file and per-folder summaries with recommendations for enabling stricter checks.
 - The original tool-provided summary counts (when present) under `toolSummary`, alongside the parsed totals used in `summary`. If the two diverge, typewiz logs a warning so the mismatch is visible in CI output.
+- Each diagnostic preserves the engine-provided payload under `raw`, normalised to a recursive JSON value (`JSONValue`) so downstream tooling can safely consume the data without resorting to casts or `Any`.
 
 Options:
 

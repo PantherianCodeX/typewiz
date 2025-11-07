@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from .model_types import SeverityLevel
 from .type_aliases import ToolName
 from .typed_manifest import EngineError, ToolSummary
+from .utils import JSONValue
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from .model_types import CategoryMapping, Mode, OverrideEntry
 
 
-def _default_raw_mapping() -> Mapping[str, object]:
+def _default_raw_mapping() -> Mapping[str, JSONValue]:
     return {}
 
 
@@ -30,7 +31,7 @@ class Diagnostic:
     column: int
     code: str | None
     message: str
-    raw: Mapping[str, object] = field(default_factory=_default_raw_mapping)
+    raw: Mapping[str, JSONValue] = field(default_factory=_default_raw_mapping)
 
 
 def _default_str_list() -> list[str]:
