@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from typing import override
 
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
-from typewiz.model_types import Mode
+from typewiz.model_types import CategoryMapping, Mode
 from typewiz.runner import run_pyright
 
 
@@ -46,7 +46,7 @@ class PyrightEngine(BaseEngine):
         return run_pyright(context.project_root, mode=context.mode, command=command)
 
     @override
-    def category_mapping(self) -> dict[str, list[str]]:
+    def category_mapping(self) -> CategoryMapping:
         return {
             "unknownChecks": [
                 "reportUnknown",

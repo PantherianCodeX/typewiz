@@ -10,9 +10,10 @@ from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
 from typing import Final, cast
 
+from ..category_utils import coerce_category_key
 from ..data_validation import coerce_int, coerce_mapping, coerce_object_list
 from ..model_types import Mode, SeverityLevel
-from ..type_aliases import RunId, ToolName
+from ..type_aliases import CategoryKey, RunId, ToolName
 from ..typed_manifest import ManifestData
 from ..utils import JSONValue, normalise_enums_for_json
 from .models import (
@@ -84,15 +85,18 @@ def _normalise_overrides(raw: Mapping[str, JSONValue]) -> list[dict[str, JSONVal
     return normalised
 
 
-def _normalise_category_mapping(raw: Mapping[str, JSONValue]) -> dict[str, list[str]]:
+def _normalise_category_mapping(raw: Mapping[str, JSONValue]) -> dict[CategoryKey, list[str]]:
     category_mapping = raw.get("categoryMapping")
     if not isinstance(category_mapping, Mapping):
         return {}
-    mapping_out: dict[str, list[str]] = {}
+    mapping_out: dict[CategoryKey, list[str]] = {}
     category_map = coerce_mapping(category_mapping)
-    for key in sorted(category_map):
+    for key in sorted(category_map, key=lambda item: str(item).strip()):
+        category_key = coerce_category_key(key)
+        if category_key is None:
+            continue
         values = coerce_object_list(category_map[key])
-        mapping_out[str(key)] = [str(item) for item in values] if values else []
+        mapping_out[category_key] = [str(item) for item in values] if values else []
     return mapping_out
 
 

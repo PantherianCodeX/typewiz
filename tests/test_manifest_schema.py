@@ -216,7 +216,7 @@ def test_manifest_schema_cli_round_trip(tmp_path: Path) -> None:
 
 def test_manifest_schema_includes_metadata() -> None:
     schema = manifest_json_schema()
-    assert schema.get("$schema") == "https://json-schema.org/draft/2020-12/schema"
+    assert schema.get("$schema") == "https://json-schema.org/draft-07/schema#"
     assert "$id" in schema
     assert schema.get("additionalProperties") is False
 

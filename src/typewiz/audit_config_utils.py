@@ -13,10 +13,11 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import cast
 
+from .category_utils import coerce_category_key
 from .collection_utils import dedupe_preserve, merge_preserve
 from .config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from .data_validation import coerce_object_list
-from .type_aliases import EngineName
+from .type_aliases import CategoryKey, EngineName
 
 
 def clone_profile(profile: EngineProfile) -> EngineProfile:
@@ -161,14 +162,16 @@ def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> Audi
     return merged
 
 
-def prepare_category_mapping(value: object) -> Mapping[str, Sequence[str]] | None:
+def prepare_category_mapping(value: object) -> Mapping[CategoryKey, Sequence[str]] | None:
     """Normalise raw engine category mappings into a predictable structure."""
     if value is None or not isinstance(value, Mapping):
         return None
-    prepared: dict[str, list[str]] = {}
+    prepared: dict[CategoryKey, list[str]] = {}
     mapping_value = cast("Mapping[object, object]", value)
     for key_obj, raw_values in mapping_value.items():
-        key = str(key_obj)
+        key = coerce_category_key(key_obj)
+        if key is None:
+            continue
         raw_list = coerce_object_list(raw_values)
         values = [item.strip() for item in raw_list if isinstance(item, str) and item.strip()]
         if values:
@@ -176,15 +179,14 @@ def prepare_category_mapping(value: object) -> Mapping[str, Sequence[str]] | Non
     return prepared
 
 
-def normalise_category_mapping(mapping: Mapping[str, Sequence[str]] | None) -> dict[str, list[str]]:
+def normalise_category_mapping(
+    mapping: Mapping[CategoryKey, Sequence[str]] | None,
+) -> dict[CategoryKey, list[str]]:
     """Provide a deterministic ordering for category mappings."""
     if mapping is None:
         return {}
-    normalised: dict[str, list[str]] = {}
-    for key_obj, raw_values in mapping.items():
-        key_str = str(key_obj).strip()
-        if not key_str:
-            continue
+    normalised: dict[CategoryKey, list[str]] = {}
+    for category_key, raw_values in mapping.items():
         deduped: list[str] = []
         seen: set[str] = set()
         for item in raw_values:
@@ -196,5 +198,5 @@ def normalise_category_mapping(mapping: Mapping[str, Sequence[str]] | None) -> d
                 continue
             seen.add(lowered)
             deduped.append(candidate)
-        normalised[key_str] = deduped
+        normalised[category_key] = deduped
     return normalised

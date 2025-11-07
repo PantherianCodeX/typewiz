@@ -1,19 +1,8 @@
 {
   "$defs": {
     "EngineErrorModel": {
+      "additionalProperties": false,
       "properties": {
-        "exitCode": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Exitcode"
-        },
         "message": {
           "anyOf": [
             {
@@ -25,6 +14,18 @@
           ],
           "default": null,
           "title": "Message"
+        },
+        "exitCode": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exitcode"
         },
         "stderr": {
           "anyOf": [
@@ -43,24 +44,19 @@
       "type": "object"
     },
     "EngineOptionsModel": {
+      "additionalProperties": false,
       "properties": {
-        "categoryMapping": {
+        "profile": {
           "anyOf": [
             {
-              "additionalProperties": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              "type": "object"
+              "type": "string"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "title": "Categorymapping"
+          "title": "Profile"
         },
         "configFile": {
           "anyOf": [
@@ -74,11 +70,11 @@
           "default": null,
           "title": "Configfile"
         },
-        "exclude": {
+        "pluginArgs": {
           "items": {
             "type": "string"
           },
-          "title": "Exclude",
+          "title": "Pluginargs",
           "type": "array"
         },
         "include": {
@@ -88,6 +84,13 @@
           "title": "Include",
           "type": "array"
         },
+        "exclude": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Exclude",
+          "type": "array"
+        },
         "overrides": {
           "items": {
             "$ref": "#/$defs/OverrideEntryModel"
@@ -95,58 +98,50 @@
           "title": "Overrides",
           "type": "array"
         },
-        "pluginArgs": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Pluginargs",
-          "type": "array"
-        },
-        "profile": {
+        "categoryMapping": {
           "anyOf": [
             {
-              "type": "string"
+              "additionalProperties": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "propertyNames": {
+                "enum": [
+                  "unknownChecks",
+                  "optionalChecks",
+                  "unusedSymbols",
+                  "general"
+                ]
+              },
+              "type": "object"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "title": "Profile"
+          "title": "Categorymapping"
         }
       },
       "title": "EngineOptionsModel",
       "type": "object"
     },
-    "ModeEnum": {
-      "enum": [
-        "current",
-        "full"
-      ],
-      "title": "Mode",
-      "type": "string"
-    },
-    "SeverityLevelEnum": {
-      "enum": [
-        "error",
-        "warning",
-        "information"
-      ],
-      "title": "SeverityLevel",
-      "type": "string"
-    },
-    "CategoryKeyEnum": {
-      "enum": [
-        "unknownChecks",
-        "optionalChecks",
-        "unusedSymbols",
-        "general"
-      ],
-      "title": "CategoryKey",
-      "type": "string"
-    },
     "FileDiagnosticModel": {
+      "additionalProperties": false,
       "properties": {
+        "line": {
+          "title": "Line",
+          "type": "integer"
+        },
+        "column": {
+          "title": "Column",
+          "type": "integer"
+        },
+        "severity": {
+          "$ref": "#/$defs/SeverityLevel"
+        },
         "code": {
           "anyOf": [
             {
@@ -159,20 +154,9 @@
           "default": null,
           "title": "Code"
         },
-        "column": {
-          "title": "Column",
-          "type": "integer"
-        },
-        "line": {
-          "title": "Line",
-          "type": "integer"
-        },
         "message": {
           "title": "Message",
           "type": "string"
-        },
-        "severity": {
-          "$ref": "#/$defs/SeverityLevelEnum"
         }
       },
       "required": [
@@ -185,29 +169,30 @@
       "type": "object"
     },
     "FileEntryModel": {
+      "additionalProperties": false,
       "properties": {
-        "diagnostics": {
-          "items": {
-            "$ref": "#/$defs/FileDiagnosticModel"
-          },
-          "title": "Diagnostics",
-          "type": "array"
+        "path": {
+          "title": "Path",
+          "type": "string"
         },
         "errors": {
           "title": "Errors",
+          "type": "integer"
+        },
+        "warnings": {
+          "title": "Warnings",
           "type": "integer"
         },
         "information": {
           "title": "Information",
           "type": "integer"
         },
-        "path": {
-          "title": "Path",
-          "type": "string"
-        },
-        "warnings": {
-          "title": "Warnings",
-          "type": "integer"
+        "diagnostics": {
+          "items": {
+            "$ref": "#/$defs/FileDiagnosticModel"
+          },
+          "title": "Diagnostics",
+          "type": "array"
         }
       },
       "required": [
@@ -221,31 +206,11 @@
       "type": "object"
     },
     "FolderEntryModel": {
+      "additionalProperties": false,
       "properties": {
-        "categoryCounts": {
-          "anyOf": [
-            {
-              "additionalProperties": {
-                "type": "integer"
-              },
-              "propertyNames": {
-                "$ref": "#/$defs/CategoryKeyEnum"
-              },
-              "type": "object"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Categorycounts"
-        },
-        "codeCounts": {
-          "additionalProperties": {
-            "type": "integer"
-          },
-          "title": "Codecounts",
-          "type": "object"
+        "path": {
+          "title": "Path",
+          "type": "string"
         },
         "depth": {
           "title": "Depth",
@@ -255,13 +220,20 @@
           "title": "Errors",
           "type": "integer"
         },
+        "warnings": {
+          "title": "Warnings",
+          "type": "integer"
+        },
         "information": {
           "title": "Information",
           "type": "integer"
         },
-        "path": {
-          "title": "Path",
-          "type": "string"
+        "codeCounts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Codecounts",
+          "type": "object"
         },
         "recommendations": {
           "items": {
@@ -270,9 +242,28 @@
           "title": "Recommendations",
           "type": "array"
         },
-        "warnings": {
-          "title": "Warnings",
-          "type": "integer"
+        "categoryCounts": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "propertyNames": {
+                "enum": [
+                  "unknownChecks",
+                  "optionalChecks",
+                  "unusedSymbols",
+                  "general"
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Categorycounts"
         }
       },
       "required": [
@@ -287,22 +278,17 @@
       "title": "FolderEntryModel",
       "type": "object"
     },
+    "Mode": {
+      "enum": [
+        "current",
+        "full"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
     "OverrideEntryModel": {
+      "additionalProperties": false,
       "properties": {
-        "exclude": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Exclude",
-          "type": "array"
-        },
-        "include": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Include",
-          "type": "array"
-        },
         "path": {
           "anyOf": [
             {
@@ -315,13 +301,6 @@
           "default": null,
           "title": "Path"
         },
-        "pluginArgs": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Pluginargs",
-          "type": "array"
-        },
         "profile": {
           "anyOf": [
             {
@@ -333,13 +312,42 @@
           ],
           "default": null,
           "title": "Profile"
+        },
+        "pluginArgs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Pluginargs",
+          "type": "array"
+        },
+        "include": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Include",
+          "type": "array"
+        },
+        "exclude": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Exclude",
+          "type": "array"
         }
       },
       "title": "OverrideEntryModel",
       "type": "object"
     },
     "RunPayloadModel": {
+      "additionalProperties": false,
       "properties": {
+        "tool": {
+          "title": "Tool",
+          "type": "string"
+        },
+        "mode": {
+          "$ref": "#/$defs/Mode"
+        },
         "command": {
           "items": {
             "type": "string"
@@ -347,9 +355,44 @@
           "title": "Command",
           "type": "array"
         },
+        "exitCode": {
+          "title": "Exitcode",
+          "type": "integer"
+        },
         "durationMs": {
           "title": "Durationms",
           "type": "number"
+        },
+        "summary": {
+          "$ref": "#/$defs/RunSummaryModel"
+        },
+        "perFile": {
+          "items": {
+            "$ref": "#/$defs/FileEntryModel"
+          },
+          "title": "Perfile",
+          "type": "array"
+        },
+        "perFolder": {
+          "items": {
+            "$ref": "#/$defs/FolderEntryModel"
+          },
+          "title": "Perfolder",
+          "type": "array"
+        },
+        "engineOptions": {
+          "$ref": "#/$defs/EngineOptionsModel"
+        },
+        "toolSummary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ToolSummaryModel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "engineArgsEffective": {
           "anyOf": [
@@ -366,41 +409,6 @@
           "default": null,
           "title": "Engineargseffective"
         },
-        "engineError": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/EngineErrorModel"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "engineOptions": {
-          "$ref": "#/$defs/EngineOptionsModel"
-        },
-        "exitCode": {
-          "title": "Exitcode",
-          "type": "integer"
-        },
-        "mode": {
-          "$ref": "#/$defs/ModeEnum"
-        },
-        "perFile": {
-          "items": {
-            "$ref": "#/$defs/FileEntryModel"
-          },
-          "title": "Perfile",
-          "type": "array"
-        },
-        "perFolder": {
-          "items": {
-            "$ref": "#/$defs/FolderEntryModel"
-          },
-          "title": "Perfolder",
-          "type": "array"
-        },
         "scannedPathsResolved": {
           "anyOf": [
             {
@@ -416,17 +424,10 @@
           "default": null,
           "title": "Scannedpathsresolved"
         },
-        "summary": {
-          "$ref": "#/$defs/RunSummaryModel"
-        },
-        "tool": {
-          "title": "Tool",
-          "type": "string"
-        },
-        "toolSummary": {
+        "engineError": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ToolSummaryModel"
+              "$ref": "#/$defs/EngineErrorModel"
             },
             {
               "type": "null"
@@ -450,25 +451,8 @@
       "type": "object"
     },
     "RunSummaryModel": {
+      "additionalProperties": false,
       "properties": {
-        "categoryCounts": {
-          "anyOf": [
-            {
-              "additionalProperties": {
-                "type": "integer"
-              },
-              "propertyNames": {
-                "$ref": "#/$defs/CategoryKeyEnum"
-              },
-              "type": "object"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Categorycounts"
-        },
         "errors": {
           "anyOf": [
             {
@@ -481,6 +465,18 @@
           "default": null,
           "title": "Errors"
         },
+        "warnings": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Warnings"
+        },
         "information": {
           "anyOf": [
             {
@@ -492,6 +488,36 @@
           ],
           "default": null,
           "title": "Information"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total"
+        },
+        "severityBreakdown": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "propertyNames": {
+                "$ref": "#/$defs/SeverityLevel"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Severitybreakdown"
         },
         "ruleCounts": {
           "anyOf": [
@@ -508,14 +534,19 @@
           "default": null,
           "title": "Rulecounts"
         },
-        "severityBreakdown": {
+        "categoryCounts": {
           "anyOf": [
             {
               "additionalProperties": {
                 "type": "integer"
               },
               "propertyNames": {
-                "$ref": "#/$defs/SeverityLevelEnum"
+                "enum": [
+                  "unknownChecks",
+                  "optionalChecks",
+                  "unusedSymbols",
+                  "general"
+                ]
               },
               "type": "object"
             },
@@ -524,37 +555,23 @@
             }
           ],
           "default": null,
-          "title": "Severitybreakdown"
-        },
-        "total": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Total"
-        },
-        "warnings": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Warnings"
+          "title": "Categorycounts"
         }
       },
       "title": "RunSummaryModel",
       "type": "object"
     },
+    "SeverityLevel": {
+      "enum": [
+        "error",
+        "warning",
+        "information"
+      ],
+      "title": "SeverityLevel",
+      "type": "string"
+    },
     "ToolSummaryModel": {
+      "additionalProperties": false,
       "properties": {
         "errors": {
           "anyOf": [
@@ -567,6 +584,18 @@
           ],
           "default": null,
           "title": "Errors"
+        },
+        "warnings": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Warnings"
         },
         "information": {
           "anyOf": [
@@ -591,37 +620,14 @@
           ],
           "default": null,
           "title": "Total"
-        },
-        "warnings": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Warnings"
         }
       },
       "title": "ToolSummaryModel",
       "type": "object"
     }
   },
+  "additionalProperties": false,
   "properties": {
-    "fingerprintTruncated": {
-      "anyOf": [
-        {
-          "type": "boolean"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Fingerprinttruncated"
-    },
     "generatedAt": {
       "anyOf": [
         {
@@ -646,24 +652,22 @@
       "default": null,
       "title": "Projectroot"
     },
-    "runs": {
-      "items": {
-        "$ref": "#/$defs/RunPayloadModel"
-      },
-      "title": "Runs",
-      "type": "array"
-    },
     "schemaVersion": {
+      "default": "1",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "fingerprintTruncated": {
       "anyOf": [
         {
-          "type": "string"
+          "type": "boolean"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Schemaversion"
+      "title": "Fingerprinttruncated"
     },
     "toolVersions": {
       "anyOf": [
@@ -679,8 +683,17 @@
       ],
       "default": null,
       "title": "Toolversions"
+    },
+    "runs": {
+      "items": {
+        "$ref": "#/$defs/RunPayloadModel"
+      },
+      "title": "Runs",
+      "type": "array"
     }
   },
   "title": "ManifestModel",
-  "type": "object"
+  "type": "object",
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://typewiz.dev/schema/manifest.json"
 }

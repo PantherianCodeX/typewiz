@@ -13,9 +13,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, TypedDict, cast
 
+from .category_utils import coerce_category_key
 from .data_validation import coerce_int, coerce_object_list, coerce_str_list
 from .model_types import SeverityLevel, clone_override_entries
-from .type_aliases import CacheKey, PathKey, ToolName
+from .type_aliases import CacheKey, CategoryKey, CategoryName, PathKey, ToolName
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
 from .utils import consume, normalise_enums_for_json
@@ -117,15 +118,18 @@ def _compute_hashes(
 
 
 def _normalise_category_mapping(
-    mapping: Mapping[str, Sequence[str]] | None,
+    mapping: Mapping[CategoryKey, Sequence[str]]
+    | Mapping[CategoryName, Sequence[str]]
+    | Mapping[str, Sequence[str]]
+    | None,
 ) -> CategoryMapping:
     if not mapping:
         return {}
     normalised: CategoryMapping = {}
-    for key in sorted(mapping):
-        raw_values = mapping[key]
-        key_str = key.strip()
-        if not key_str:
+    sorted_items = sorted(mapping.items(), key=lambda item: str(item[0]).strip())
+    for raw_key, raw_values in sorted_items:
+        category_key = coerce_category_key(raw_key)
+        if category_key is None:
             continue
         seen: set[str] = set()
         values: list[str] = []
@@ -138,7 +142,7 @@ def _normalise_category_mapping(
                 continue
             seen.add(lowered)
             values.append(candidate)
-        normalised[key_str] = values
+        normalised[category_key] = values
     return normalised
 
 
@@ -265,8 +269,6 @@ class EngineCache:
             overrides_any = entry.get("overrides", []) or []
             category_mapping_any = entry.get("category_mapping", {}) or {}
             tool_summary_any = entry.get("tool_summary")
-            # Defensive normalization and typing for JSON-loaded structures
-            category_mapping_input: Mapping[str, Sequence[str]] = category_mapping_any
 
             command_list: list[str] = [str(a) for a in command_any]
             plugin_args_list: list[str] = [str(a) for a in plugin_args_any]
@@ -304,7 +306,7 @@ class EngineCache:
                 include=include_list,
                 exclude=exclude_list,
                 overrides=overrides_list,
-                category_mapping=_normalise_category_mapping(category_mapping_input),
+                category_mapping=_normalise_category_mapping(category_mapping_any),
                 tool_summary=(
                     {
                         "errors": int(tool_summary_any.get("errors", 0)),
@@ -446,7 +448,7 @@ class EngineCache:
         include: Sequence[str],
         exclude: Sequence[str],
         overrides: Sequence[OverrideEntry],
-        category_mapping: Mapping[str, Sequence[str]] | None,
+        category_mapping: Mapping[CategoryKey, Sequence[str]] | None,
         tool_summary: ToolSummary | None,
     ) -> None:
         canonical_diags = sorted(

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import override
 
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
-from typewiz.model_types import Mode
+from typewiz.model_types import CategoryMapping, Mode
 from typewiz.runner import run_mypy
 from typewiz.utils import python_executable
 
@@ -50,7 +50,7 @@ class MypyEngine(BaseEngine):
         return run_mypy(context.project_root, mode=context.mode, command=command)
 
     @override
-    def category_mapping(self) -> dict[str, list[str]]:
+    def category_mapping(self) -> CategoryMapping:
         return {
             "unknownChecks": [
                 # Common mypy error codes indicating unknown/typing issues

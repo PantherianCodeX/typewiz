@@ -4,6 +4,8 @@ from collections.abc import Sequence
 from enum import StrEnum
 from typing import TypedDict, cast
 
+from .type_aliases import CategoryKey
+
 
 class Mode(StrEnum):
     CURRENT = "current"
@@ -287,7 +289,7 @@ class RecommendationCode(StrEnum):
     CANDIDATE_ENABLE_OPTIONAL_CHECKS = "candidate-enable-optional-checks"
 
 
-type CategoryMapping = dict[str, list[str]]
+type CategoryMapping = dict[CategoryKey, list[str]]
 
 
 class OverrideEntry(TypedDict, total=False):

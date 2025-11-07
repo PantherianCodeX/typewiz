@@ -106,7 +106,7 @@ class EngineOptionsModel(BaseModel):
     include: list[str] = Field(default_factory=list)
     exclude: list[str] = Field(default_factory=list)
     overrides: list[OverrideEntryModel] = Field(default_factory=_empty_override_list)
-    categoryMapping: dict[str, list[str]] | None = None
+    categoryMapping: dict[CategoryKey, list[str]] | None = None
 
 
 class EngineErrorModel(BaseModel):
@@ -228,7 +228,7 @@ def validate_manifest_payload(payload: Any) -> ManifestData:
 def manifest_json_schema() -> dict[str, Any]:
     """Return the canonical JSON Schema for typing audit manifests."""
     schema = ManifestModel.model_json_schema()
-    schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+    schema["$schema"] = "https://json-schema.org/draft-07/schema#"
     schema.setdefault("$id", "https://typewiz.dev/schema/manifest.json")
     schema.setdefault("additionalProperties", False)
     return schema

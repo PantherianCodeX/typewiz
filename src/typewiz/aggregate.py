@@ -8,9 +8,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, cast
 
+from .category_utils import coerce_category_key
 from .model_types import RecommendationCode, SeverityLevel
 from .readiness import CATEGORY_PATTERNS
-from .type_aliases import CategoryKey, RuleName
+from .type_aliases import CategoryKey, CategoryName, RuleName
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -99,12 +100,14 @@ class FolderSummary:
 
 
 def _canonical_category_mapping(
-    mapping: Mapping[str, Iterable[str]],
+    mapping: Mapping[CategoryKey, Iterable[str]]
+    | Mapping[CategoryName, Iterable[str]]
+    | Mapping[str, Iterable[str]],
 ) -> dict[CategoryKey, tuple[str, ...]]:
     canonical: dict[CategoryKey, tuple[str, ...]] = {}
     for key, raw_values in mapping.items():
-        key_str = key.strip()
-        if not key_str:
+        category_key = coerce_category_key(key)
+        if category_key is None:
             continue
         seen: set[str] = set()
         cleaned: list[str] = []
@@ -118,7 +121,7 @@ def _canonical_category_mapping(
             seen.add(lowered)
             cleaned.append(lowered)
         if cleaned:
-            canonical[cast(CategoryKey, key_str)] = tuple(cleaned)
+            canonical[category_key] = tuple(cleaned)
     return canonical
 
 

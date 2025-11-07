@@ -43,6 +43,9 @@ def _run_payloads() -> st.SearchStrategy[dict[str, Any]]:
             "recommendations": st.just([]),
         },
     )
+    category_keys = st.sampled_from(
+        ["unknownChecks", "optionalChecks", "unusedSymbols", "general"],
+    )
     engine_opts: st.SearchStrategy[dict[str, Any]] = st.fixed_dictionaries(
         {
             "pluginArgs": st.lists(st.text(min_size=1, max_size=10), max_size=3),
@@ -50,7 +53,7 @@ def _run_payloads() -> st.SearchStrategy[dict[str, Any]]:
             "exclude": st.lists(st.text(min_size=1, max_size=10), max_size=3),
             "overrides": st.just([]),
             "categoryMapping": st.dictionaries(
-                keys=st.text(min_size=1, max_size=10),
+                keys=category_keys,
                 values=st.lists(st.text(min_size=1, max_size=10), max_size=3),
                 max_size=3,
             ),

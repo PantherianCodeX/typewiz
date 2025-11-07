@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Final, TypedDict, cast
 
+from .category_utils import CATEGORY_NAMES
 from .model_types import ReadinessStatus
 from .summary_types import ReadinessOptionEntry, ReadinessOptionsPayload, ReadinessStrictEntry
 from .type_aliases import CategoryKey, CategoryName
@@ -13,13 +14,6 @@ from .type_aliases import CategoryKey, CategoryName
 DEFAULT_CLOSE_THRESHOLD: Final[int] = 3
 STRICT_CLOSE_THRESHOLD: Final[int] = 3
 GENERAL_CATEGORY: Final[CategoryName] = CategoryName("general")
-CATEGORY_DISPLAY_ORDER: Final[tuple[CategoryKey, ...]] = (
-    "unknownChecks",
-    "optionalChecks",
-    "unusedSymbols",
-    "general",
-)
-
 # Category patterns and thresholds can be tuned here without touching renderers
 CATEGORY_PATTERNS: Final[dict[CategoryKey, tuple[str, ...]]] = {
     "unknownChecks": (
@@ -48,8 +42,6 @@ CATEGORY_LABELS: Final[dict[CategoryKey, str]] = {
     "general": "General diagnostics",
 }
 
-CATEGORY_KEYS: Final[tuple[CategoryKey, ...]] = CATEGORY_DISPLAY_ORDER
-CATEGORY_NAMES: Final[tuple[CategoryName, ...]] = tuple(CategoryName(key) for key in CATEGORY_KEYS)
 _CATEGORY_PATTERN_LOOKUPS: Final[tuple[tuple[CategoryName, tuple[str, ...]], ...]] = tuple(
     (
         CategoryName(category),

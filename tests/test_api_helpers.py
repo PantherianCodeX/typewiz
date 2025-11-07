@@ -16,6 +16,7 @@ from typewiz.audit_paths import (
 )
 from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from typewiz.model_types import CategoryMapping
 from typewiz.type_aliases import EngineName, ProfileName
 from typewiz.utils import consume
 
@@ -113,7 +114,7 @@ class MinimalEngine(BaseEngine):
         return []
 
     @override
-    def category_mapping(self) -> dict[str, list[str]]:
+    def category_mapping(self) -> CategoryMapping:
         return {"unknownChecks": ["reportGeneralTypeIssues"]}
 
 

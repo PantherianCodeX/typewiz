@@ -7,8 +7,9 @@ import logging
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Final, cast
+from typing import cast
 
+from .category_utils import coerce_category_key
 from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
 from .exceptions import TypewizTypeError
 from .manifest_loader import load_manifest_data
@@ -22,7 +23,6 @@ from .model_types import (
 )
 from .override_utils import format_overrides_block
 from .readiness import (
-    CATEGORY_KEYS,
     CATEGORY_LABELS,
     DEFAULT_CLOSE_THRESHOLD,
     ReadinessEntry,
@@ -48,7 +48,6 @@ from .typed_manifest import ManifestData, ToolSummary
 from .utils import JSONValue
 
 logger: logging.Logger = logging.getLogger("typewiz.dashboard")
-_CATEGORY_KEY_SET: Final[frozenset[str]] = frozenset(CATEGORY_KEYS)
 
 
 def _coerce_status_key(value: object) -> ReadinessStatus:
@@ -73,18 +72,11 @@ def _maybe_severity_level(value: object) -> SeverityLevel | None:
     return None
 
 
-def _maybe_category_key(value: object) -> CategoryKey | None:
-    token = str(value).strip()
-    if not token or token not in _CATEGORY_KEY_SET:
-        return None
-    return cast(CategoryKey, token)
-
-
-def _as_category_key(value: object) -> CategoryKey:
-    token = str(value).strip()
-    if token not in _CATEGORY_KEY_SET:
-        raise DashboardTypeError("readiness.options", "known readiness category")
-    return cast(CategoryKey, token)
+def _require_category_key(value: object, context: str) -> CategoryKey:
+    category = coerce_category_key(value)
+    if category is None:
+        raise DashboardTypeError(context, "known readiness category")
+    return category
 
 
 class DashboardTypeError(TypewizTypeError):
@@ -172,7 +164,10 @@ def _validate_readiness_tab(raw: Mapping[object, object]) -> ReadinessTab:
             )
             for entry in cast("list[ReadinessOptionEntry]", parsed_entries):
                 options_bucket.add_entry(status, entry)
-        category_key = _as_category_key(category_key_raw)
+        category_key = _require_category_key(
+            category_key_raw,
+            f"readiness.options[{category_key_raw!r}]",
+        )
         options_section[category_key] = options_bucket.to_payload()
 
     return cast(
@@ -265,8 +260,8 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 cast(Mapping[object, object], category_mapping_raw),
             )
             for key, values in category_mapping_source.items():
-                key_str = str(key).strip()
-                if not key_str:
+                category_key = coerce_category_key(key)
+                if category_key is None:
                     continue
                 value_list = [
                     str(item).strip()
@@ -275,7 +270,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 ]
                 cleaned = [item for item in value_list if item]
                 if cleaned:
-                    category_mapping[key_str] = cleaned
+                    category_mapping[category_key] = cleaned
 
         run_id = RunId(f"{tool_obj}:{mode_obj}")
         run_entry: SummaryRunEntry = {
@@ -308,7 +303,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
         category_counts_map = coerce_mapping(summary_map.get("categoryCounts"))
         category_counts: CountsByCategory = {}
         for cat_key, value in category_counts_map.items():
-            category = _maybe_category_key(cat_key)
+            category = coerce_category_key(cat_key)
             if category is None:
                 continue
             category_counts[category] = coerce_int(value)
@@ -359,7 +354,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 folder_code_totals[path][code] += coerce_int(count)
             category_counts_map = coerce_mapping(folder.get("categoryCounts"))
             for raw_category, count in category_counts_map.items():
-                category_key = _maybe_category_key(raw_category)
+                category_key = coerce_category_key(raw_category)
                 if category_key is None:
                     continue
                 folder_category_totals[path][category_key] += coerce_int(count)

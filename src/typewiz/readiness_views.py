@@ -8,6 +8,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TypedDict, cast
 
+from .category_utils import CATEGORY_DISPLAY_ORDER, coerce_category_key
 from .data_validation import (
     coerce_int,
     coerce_mapping,
@@ -16,7 +17,7 @@ from .data_validation import (
     coerce_str,
 )
 from .model_types import ReadinessLevel, ReadinessStatus
-from .readiness import CATEGORY_DISPLAY_ORDER, DEFAULT_CLOSE_THRESHOLD, ReadinessOptions
+from .readiness import DEFAULT_CLOSE_THRESHOLD, ReadinessOptions
 from .summary_types import (
     ReadinessOptionEntry,
     ReadinessStrictEntry,
@@ -203,10 +204,9 @@ def _coerce_options_map(raw: object) -> dict[CategoryKey, ReadinessOptions]:
     mapping_value = cast(Mapping[object, object], raw)
     result: dict[CategoryKey, ReadinessOptions] = {}
     for key, value in mapping_value.items():
-        key_str = str(key).strip()
-        if key_str not in CATEGORY_DISPLAY_ORDER:
+        category_key = coerce_category_key(key)
+        if category_key is None:
             continue
-        category_key = _category_key_from_str(key_str)
         result[category_key] = _coerce_options_bucket(value)
     return result
 
@@ -308,10 +308,6 @@ def _normalise_status_filters(
         if status not in normalised:
             normalised.append(status)
     return normalised or [ReadinessStatus.BLOCKED]
-
-
-def _category_key_from_str(value: str) -> CategoryKey:
-    return cast("CategoryKey", value)
 
 
 def _folder_payload_for_status(
