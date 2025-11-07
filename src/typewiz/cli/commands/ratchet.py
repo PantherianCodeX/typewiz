@@ -48,7 +48,7 @@ from typewiz.ratchet.io import current_timestamp
 from typewiz.ratchet.io import load_manifest as load_ratchet_manifest
 from typewiz.type_aliases import RunId
 from typewiz.typed_manifest import ManifestData
-from typewiz.utils import resolve_project_root
+from typewiz.utils import normalise_enums_for_json, resolve_project_root
 
 
 @dataclass(slots=True)
@@ -492,7 +492,7 @@ def handle_check(context: RatchetContext, args: argparse.Namespace) -> int:
     output_format = DataFormat.from_str(getattr(args, "format", DataFormat.TABLE.value))
 
     if output_format is DataFormat.JSON:
-        echo(json.dumps(report.to_payload(), indent=2))
+        echo(json.dumps(normalise_enums_for_json(report.to_payload()), indent=2))
     else:
         for line in report.format_lines(
             ignore_signature=ignore_signature,

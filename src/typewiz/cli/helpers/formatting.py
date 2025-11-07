@@ -22,6 +22,7 @@ from typewiz.model_types import (
     HotspotKind,
     ReadinessLevel,
     ReadinessStatus,
+    SeverityLevel,
     SummaryField,
     SummaryStyle,
     clone_override_entries,
@@ -139,9 +140,9 @@ def _print_run_summary(
 ) -> None:
     counts = run.severity_counts()
     summary = (
-        f"errors={counts.get('error', 0)} "
-        f"warnings={counts.get('warning', 0)} "
-        f"info={counts.get('information', 0)}"
+        f"errors={counts.get(SeverityLevel.ERROR, 0)} "
+        f"warnings={counts.get(SeverityLevel.WARNING, 0)} "
+        f"info={counts.get(SeverityLevel.INFORMATION, 0)}"
     )
     command = " ".join(run.command)
     header = f"[typewiz] {run.tool}:{run.mode} exit={run.exit_code} {summary} ({command})"
@@ -234,12 +235,12 @@ def print_readiness_summary(
     """Print a readiness summary in the same shape as historic CLI output."""
     view = collect_readiness_view(summary, level=level, statuses=statuses, limit=limit)
     if level is ReadinessLevel.FOLDER:
-        folder_view: dict[str, list[FolderReadinessPayload]] = cast(
-            dict[str, list[FolderReadinessPayload]],
+        folder_view: dict[ReadinessStatus, list[FolderReadinessPayload]] = cast(
+            dict[ReadinessStatus, list[FolderReadinessPayload]],
             view,
         )
         for status, folder_entries in folder_view.items():
-            echo(f"[typewiz] readiness {level.value} status={status} (top {limit})")
+            echo(f"[typewiz] readiness {level.value} status={status.value} (top {limit})")
             if not folder_entries:
                 echo("  <none>")
                 continue
@@ -247,12 +248,12 @@ def print_readiness_summary(
                 echo(f"  {folder_entry['path']}: {folder_entry['count']}")
         return
 
-    file_view: dict[str, list[FileReadinessPayload]] = cast(
-        dict[str, list[FileReadinessPayload]],
+    file_view: dict[ReadinessStatus, list[FileReadinessPayload]] = cast(
+        dict[ReadinessStatus, list[FileReadinessPayload]],
         view,
     )
     for status, file_entries in file_view.items():
-        echo(f"[typewiz] readiness {level.value} status={status} (top {limit})")
+        echo(f"[typewiz] readiness {level.value} status={status.value} (top {limit})")
         if not file_entries:
             echo("  <none>")
             continue

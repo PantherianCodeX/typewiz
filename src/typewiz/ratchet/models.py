@@ -9,8 +9,8 @@ from typing import Any, ClassVar, Final, TypedDict, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from ..model_types import SeverityLevel
-from ..typed_manifest import ModeStr
+from ..model_types import Mode, SeverityLevel
+from ..type_aliases import RunId
 from ..utils import JSONValue
 
 RATCHET_SCHEMA_VERSION: Final[int] = 1
@@ -22,6 +22,10 @@ def _new_severity_map() -> dict[SeverityLevel, int]:
 
 def _sorted_severity_list(values: Iterable[SeverityLevel]) -> list[SeverityLevel]:
     return sorted(values, key=lambda severity: severity.value)
+
+
+def _default_run_budget_map() -> dict[RunId, RatchetRunBudgetModel]:
+    return {}
 
 
 def _parse_budget_value(raw: object) -> int:
@@ -126,13 +130,13 @@ class RatchetModel(BaseModel):
     generated_at: str = Field(alias="generatedAt")
     manifest_path: Path | None = Field(default=None, alias="manifestPath")
     project_root: Path | None = Field(default=None, alias="projectRoot")
-    runs: dict[str, RatchetRunBudgetModel] = Field(default_factory=dict)
+    runs: dict[RunId, RatchetRunBudgetModel] = Field(default_factory=_default_run_budget_map)
 
     @model_validator(mode="after")
     def _normalise(self) -> RatchetModel:
         original_runs = cast(Mapping[str, object], self.runs)
         self.runs = {
-            key: budget
+            RunId(str(key)): budget
             if isinstance(budget, RatchetRunBudgetModel)
             else RatchetRunBudgetModel.model_validate(budget)
             for key, budget in sorted(original_runs.items())
@@ -142,7 +146,7 @@ class RatchetModel(BaseModel):
 
 class EngineSignaturePayload(TypedDict):
     tool: str | None
-    mode: ModeStr | None
+    mode: Mode | None
     engineOptions: dict[str, JSONValue]
 
 

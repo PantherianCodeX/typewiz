@@ -52,9 +52,9 @@ def test_run_result_severity_counts() -> None:
         diagnostics=diagnostics,
     )
     counts = result.severity_counts()
-    assert counts["error"] == 1
-    assert counts["warning"] == 2
-    assert counts["information"] == 1
+    assert counts[SeverityLevel.ERROR] == 1
+    assert counts[SeverityLevel.WARNING] == 2
+    assert counts[SeverityLevel.INFORMATION] == 1
 
 
 def test_model_type_from_str_helpers() -> None:

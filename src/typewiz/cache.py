@@ -18,7 +18,7 @@ from .model_types import SeverityLevel, clone_override_entries
 from .type_aliases import CacheKey, PathKey, ToolName
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
-from .utils import consume
+from .utils import consume, normalise_enums_for_json
 
 if TYPE_CHECKING:
     from .model_types import (
@@ -343,7 +343,8 @@ class EngineCache:
                 for key, entry in sorted(self._entries.items())
             },
         }
-        consume(self.path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8"))
+        payload_json = normalise_enums_for_json(payload)
+        consume(self.path.write_text(json.dumps(payload_json, indent=2) + "\n", encoding="utf-8"))
         self._dirty = False
 
     def peek_file_hashes(self, key: CacheKey) -> dict[PathKey, FileHashPayload] | None:

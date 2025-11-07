@@ -5,7 +5,13 @@ from __future__ import annotations
 from html import escape
 from typing import Final, cast
 
-from .model_types import DashboardView, OverrideEntry, ReadinessStatus, SummaryTabName
+from .model_types import (
+    DashboardView,
+    OverrideEntry,
+    ReadinessStatus,
+    SeverityLevel,
+    SummaryTabName,
+)
 from .override_utils import get_override_components
 from .readiness import CATEGORY_LABELS
 from .summary_types import HotspotsTab, OverviewTab, ReadinessTab, SummaryData, SummaryTabs
@@ -74,9 +80,9 @@ def render_html(
             "    <section>",
             "      <h2>Severity Totals</h2>",
             '      <div class="metrics">',
-            f'        <div class="metric"><strong>{severity.get("error", 0)}</strong>Errors</div>',
-            f'        <div class="metric"><strong>{severity.get("warning", 0)}</strong>Warnings</div>',
-            f'        <div class="metric"><strong>{severity.get("information", 0)}</strong>Information</div>',
+            f'        <div class="metric"><strong>{severity.get(SeverityLevel.ERROR, 0)}</strong>Errors</div>',
+            f'        <div class="metric"><strong>{severity.get(SeverityLevel.WARNING, 0)}</strong>Warnings</div>',
+            f'        <div class="metric"><strong>{severity.get(SeverityLevel.INFORMATION, 0)}</strong>Information</div>',
             "      </div>",
             "    </section>",
             "    <section>",
@@ -258,10 +264,10 @@ def render_html(
     # Readiness tab
     parts.append('  <section class="tab-pane" data-tab-pane="readiness">')
     parts.append("    <h2>Strict Typing Readiness</h2>")
-    strict = cast(dict[str, list[dict[str, object]]], readiness.get("strict", {}))
-    ready_list = strict.get(ReadinessStatus.READY.value, [])
-    close_list = strict.get(ReadinessStatus.CLOSE.value, [])
-    blocked_list = strict.get(ReadinessStatus.BLOCKED.value, [])
+    strict = cast(dict[ReadinessStatus, list[dict[str, object]]], readiness.get("strict", {}))
+    ready_list = strict.get(ReadinessStatus.READY, [])
+    close_list = strict.get(ReadinessStatus.CLOSE, [])
+    blocked_list = strict.get(ReadinessStatus.BLOCKED, [])
     parts.extend(
         [
             '    <div class="metrics">',

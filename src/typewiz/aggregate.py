@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Final, cast
 
 from .model_types import RecommendationCode, SeverityLevel
 from .readiness import CATEGORY_PATTERNS
-from .type_aliases import CategoryKey, CategoryName, RuleName
+from .type_aliases import CategoryKey, RuleName
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -36,6 +36,10 @@ def _default_counter_str() -> Counter[str]:
     return Counter()
 
 
+def _default_counter_category() -> Counter[CategoryKey]:
+    return Counter()
+
+
 @dataclass(slots=True)
 class FolderSummary:
     path: str
@@ -44,7 +48,7 @@ class FolderSummary:
     warnings: int = 0
     information: int = 0
     code_counts: Counter[str] = field(default_factory=_default_counter_str)
-    category_counts: Counter[str] = field(default_factory=_default_counter_str)
+    category_counts: Counter[CategoryKey] = field(default_factory=_default_counter_category)
 
     def _unknown_count(self) -> int:
         if self.category_counts:
@@ -94,8 +98,10 @@ class FolderSummary:
         )
 
 
-def _canonical_category_mapping(mapping: Mapping[str, Iterable[str]]) -> dict[str, tuple[str, ...]]:
-    canonical: dict[str, tuple[str, ...]] = {}
+def _canonical_category_mapping(
+    mapping: Mapping[str, Iterable[str]],
+) -> dict[CategoryKey, tuple[str, ...]]:
+    canonical: dict[CategoryKey, tuple[str, ...]] = {}
     for key, raw_values in mapping.items():
         key_str = key.strip()
         if not key_str:
@@ -112,7 +118,7 @@ def _canonical_category_mapping(mapping: Mapping[str, Iterable[str]]) -> dict[st
             seen.add(lowered)
             cleaned.append(lowered)
         if cleaned:
-            canonical[key_str] = tuple(cleaned)
+            canonical[cast(CategoryKey, key_str)] = tuple(cleaned)
     return canonical
 
 
@@ -128,9 +134,9 @@ _FALLBACK_CATEGORY_LOOKUPS: Final[tuple[tuple[CategoryKey, tuple[str, ...]], ...
 
 
 def _build_category_lookup(
-    mapping: Mapping[str, Iterable[str]],
-) -> tuple[tuple[str, tuple[str, ...]], ...]:
-    lookups: list[tuple[str, tuple[str, ...]]] = []
+    mapping: Mapping[CategoryKey, Iterable[str]],
+) -> tuple[tuple[CategoryKey, tuple[str, ...]], ...]:
+    lookups: list[tuple[CategoryKey, tuple[str, ...]]] = []
     for category, patterns in mapping.items():
         cleaned = tuple(pattern for pattern in patterns if pattern)
         if cleaned:
@@ -141,12 +147,12 @@ def _build_category_lookup(
 class _Categoriser:
     __slots__ = ("_cache", "_custom_lookup")
 
-    def __init__(self, mapping: Mapping[str, Iterable[str]]) -> None:
+    def __init__(self, mapping: Mapping[CategoryKey, Iterable[str]]) -> None:
         super().__init__()
         self._custom_lookup = _build_category_lookup(mapping)
-        self._cache: dict[str, str] = {}
+        self._cache: dict[str, CategoryKey] = {}
 
-    def categorise(self, code: str | None) -> str:
+    def categorise(self, code: str | None) -> CategoryKey:
         if not code:
             return _GENERAL_CATEGORY
         cached = self._cache.get(code)
@@ -198,11 +204,11 @@ def _update_file_summary(
     severity: SeverityLevel,
     code: str | None,
     diagnostic: FileDiagnostic,
-    severity_totals: Counter[str],
+    severity_totals: Counter[SeverityLevel],
     rule_totals: Counter[RuleName],
-    category_totals: Counter[CategoryName],
+    category_totals: Counter[CategoryKey],
     categoriser: _Categoriser,
-) -> str:
+) -> CategoryKey:
     if severity is SeverityLevel.ERROR:
         summary.errors += 1
     elif severity is SeverityLevel.WARNING:
@@ -210,11 +216,11 @@ def _update_file_summary(
     else:
         summary.information += 1
     summary.diagnostics.append(diagnostic)
-    severity_totals[severity.value] += 1
+    severity_totals[severity] += 1
     if code:
         rule_totals[RuleName(code)] += 1
     category = categoriser.categorise(code)
-    category_totals[CategoryName(category)] += 1
+    category_totals[category] += 1
     return category
 
 
@@ -239,7 +245,7 @@ def _update_folder_summary(
     *,
     severity: SeverityLevel,
     code: str | None,
-    category: str,
+    category: CategoryKey,
 ) -> None:
     if severity is SeverityLevel.ERROR:
         bucket.errors += 1
@@ -284,9 +290,9 @@ def _finalise_folder_entries(
 def _build_summary_counts(
     run: RunResult,
     *,
-    severity_totals: Counter[str],
+    severity_totals: Counter[SeverityLevel],
     rule_totals: Counter[RuleName],
-    category_totals: Counter[CategoryName],
+    category_totals: Counter[CategoryKey],
 ) -> dict[str, object]:
     return {
         "errors": sum(1 for diag in run.diagnostics if diag.severity is SeverityLevel.ERROR),
@@ -295,10 +301,13 @@ def _build_summary_counts(
             1 for diag in run.diagnostics if diag.severity is SeverityLevel.INFORMATION
         ),
         "total": len(run.diagnostics),
-        "severityBreakdown": {key: severity_totals[key] for key in sorted(severity_totals)},
+        "severityBreakdown": {
+            severity: severity_totals[severity]
+            for severity in sorted(severity_totals, key=lambda item: item.value)
+        },
         "ruleCounts": {str(key): rule_totals[key] for key in sorted(rule_totals, key=str)},
         "categoryCounts": {
-            str(key): category_totals[key] for key in sorted(category_totals, key=str)
+            category: category_totals[category] for category in sorted(category_totals, key=str)
         },
     }
 
@@ -309,9 +318,9 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
         depth: {} for depth in range(1, max_depth + 1)
     }
 
-    severity_totals: Counter[str] = Counter()
+    severity_totals: Counter[SeverityLevel] = Counter()
     rule_totals: Counter[RuleName] = Counter()
-    category_totals: Counter[CategoryName] = Counter()
+    category_totals: Counter[CategoryKey] = Counter()
     category_mapping = _canonical_category_mapping(run.category_mapping)
     categoriser = _Categoriser(category_mapping)
 
@@ -321,7 +330,7 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
         file_diag: FileDiagnostic = {
             "line": diag.line,
             "column": diag.column,
-            "severity": diag.severity.value,
+            "severity": diag.severity,
             "code": diag.code,
             "message": diag.message,
         }

@@ -81,7 +81,7 @@ def run_pyright(
         col_num = as_int(start.get("character", 0), 0) + 1
         rule_obj = d.get("rule")
         rule = rule_obj if isinstance(rule_obj, str) else None
-        severity = SeverityLevel.coerce(d.get("severity") or "error")
+        severity = SeverityLevel.coerce(d.get("severity") or SeverityLevel.ERROR)
         diagnostics.append(
             Diagnostic(
                 tool=PYRIGHT_TOOL,
@@ -192,7 +192,7 @@ def run_mypy(
             continue
         data = match.groupdict()
         diag_path = _make_diag_path(project_root, data["path"])
-        severity = SeverityLevel.coerce(data.get("severity") or "error")
+        severity = SeverityLevel.coerce(data.get("severity") or SeverityLevel.ERROR)
         diagnostics.append(
             Diagnostic(
                 tool=MYPY_TOOL,

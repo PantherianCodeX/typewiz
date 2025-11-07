@@ -15,7 +15,7 @@ from typewiz.dashboard import build_summary, render_markdown
 from typewiz.html_report import render_html
 from typewiz.summary_types import SummaryData
 from typewiz.type_aliases import EngineName, ProfileName
-from typewiz.utils import default_full_paths, resolve_project_root
+from typewiz.utils import default_full_paths, normalise_enums_for_json, resolve_project_root
 
 from ...cli_helpers import collect_plugin_args, collect_profile_args, normalise_modes
 from ...model_types import (
@@ -24,6 +24,7 @@ from ...model_types import (
     Mode,
     ReadinessLevel,
     ReadinessStatus,
+    SeverityLevel,
     SummaryField,
     SummaryStyle,
 )
@@ -319,9 +320,9 @@ def _build_delta_line(
         prev_manifest = load_manifest_for_delta(args.compare_to)
         prev_summary = build_summary(prev_manifest)
         prev_totals = prev_summary["tabs"]["overview"]["severityTotals"]
-        de = error_count - int(prev_totals.get("error", 0))
-        dw = warning_count - int(prev_totals.get("warning", 0))
-        di = info_count - int(prev_totals.get("information", 0))
+        de = error_count - int(prev_totals.get(SeverityLevel.ERROR, 0))
+        dw = warning_count - int(prev_totals.get(SeverityLevel.WARNING, 0))
+        di = info_count - int(prev_totals.get(SeverityLevel.INFORMATION, 0))
 
         def _fmt(value: int) -> str:
             return f"+{value}" if value > 0 else (f"{value}" if value < 0 else "0")
@@ -335,7 +336,8 @@ def _emit_dashboard_outputs(args: argparse.Namespace, summary: SummaryData) -> N
     view_choice = DashboardView.from_str(args.dashboard_view)
     if args.dashboard_json:
         args.dashboard_json.parent.mkdir(parents=True, exist_ok=True)
-        args.dashboard_json.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+        payload = normalise_enums_for_json(summary)
+        args.dashboard_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     if args.dashboard_markdown:
         args.dashboard_markdown.parent.mkdir(parents=True, exist_ok=True)
         args.dashboard_markdown.write_text(render_markdown(summary), encoding="utf-8")
@@ -399,9 +401,9 @@ def execute_audit(args: argparse.Namespace) -> int:
     fail_on_policy = cli_fail_on or config.audit.fail_on or FailOnPolicy.NEVER
     if fail_on_policy is FailOnPolicy.NONE:
         fail_on_policy = FailOnPolicy.NEVER
-    error_count = sum(run.severity_counts().get("error", 0) for run in result.runs)
-    warning_count = sum(run.severity_counts().get("warning", 0) for run in result.runs)
-    info_count = sum(run.severity_counts().get("information", 0) for run in result.runs)
+    error_count = sum(run.severity_counts().get(SeverityLevel.ERROR, 0) for run in result.runs)
+    warning_count = sum(run.severity_counts().get(SeverityLevel.WARNING, 0) for run in result.runs)
+    info_count = sum(run.severity_counts().get(SeverityLevel.INFORMATION, 0) for run in result.runs)
 
     delta_segment = _build_delta_line(args, error_count, warning_count, info_count)
 

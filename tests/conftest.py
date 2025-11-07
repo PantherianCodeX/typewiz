@@ -11,8 +11,9 @@ if str(SRC) not in sys.path:
 
 import pytest
 
-from typewiz.model_types import OverrideEntry, ReadinessStatus
+from typewiz.model_types import OverrideEntry, ReadinessStatus, SeverityLevel
 from typewiz.summary_types import (
+    CountsByCategory,
     CountsBySeverity,
     ReadinessOptionEntry,
     ReadinessOptionsBucket,
@@ -24,6 +25,7 @@ from typewiz.summary_types import (
     SummaryRunEntry,
     SummaryTabs,
 )
+from typewiz.type_aliases import CategoryName, RunId
 
 
 class SnapshotMissingError(AssertionError):
@@ -86,12 +88,16 @@ def sample_summary() -> SummaryData:
             "overrides": [mypy_override],
         },
     }
-    run_summary: dict[str, SummaryRunEntry] = {
-        "pyright:current": pyright_run,
-        "mypy:full": mypy_run,
+    run_summary: dict[RunId, SummaryRunEntry] = {
+        RunId("pyright:current"): pyright_run,
+        RunId("mypy:full"): mypy_run,
     }
 
-    severity_totals: CountsBySeverity = {"error": 1, "warning": 1, "information": 0}
+    severity_totals: CountsBySeverity = {
+        SeverityLevel.ERROR: 1,
+        SeverityLevel.WARNING: 1,
+        SeverityLevel.INFORMATION: 0,
+    }
     top_rules: dict[str, int] = {
         "reportUnknownMemberType": 1,
         "reportGeneralTypeIssues": 1,
@@ -123,17 +129,17 @@ def sample_summary() -> SummaryData:
         {"path": "packages/core/agents.py", "errors": 1, "warnings": 1},
     ]
 
-    readiness_ready_categories: dict[str, int] = {
-        "unknownChecks": 0,
-        "optionalChecks": 0,
-        "unusedSymbols": 0,
-        "general": 0,
+    readiness_ready_categories: dict[CategoryName, int] = {
+        CategoryName("unknownChecks"): 0,
+        CategoryName("optionalChecks"): 0,
+        CategoryName("unusedSymbols"): 0,
+        CategoryName("general"): 0,
     }
-    readiness_ready_status: dict[str, ReadinessStatus] = {
-        "unknownChecks": ReadinessStatus.READY,
-        "optionalChecks": ReadinessStatus.READY,
-        "unusedSymbols": ReadinessStatus.READY,
-        "general": ReadinessStatus.READY,
+    readiness_ready_status: dict[CategoryName, ReadinessStatus] = {
+        CategoryName("unknownChecks"): ReadinessStatus.READY,
+        CategoryName("optionalChecks"): ReadinessStatus.READY,
+        CategoryName("unusedSymbols"): ReadinessStatus.READY,
+        CategoryName("general"): ReadinessStatus.READY,
     }
     readiness_ready: list[ReadinessStrictEntry] = [
         {
@@ -147,17 +153,17 @@ def sample_summary() -> SummaryData:
             "recommendations": ["strict-ready"],
         },
     ]
-    readiness_close_categories: dict[str, int] = {
-        "unknownChecks": 1,
-        "optionalChecks": 0,
-        "unusedSymbols": 0,
-        "general": 0,
+    readiness_close_categories: dict[CategoryName, int] = {
+        CategoryName("unknownChecks"): 1,
+        CategoryName("optionalChecks"): 0,
+        CategoryName("unusedSymbols"): 0,
+        CategoryName("general"): 0,
     }
-    readiness_close_status: dict[str, ReadinessStatus] = {
-        "unknownChecks": ReadinessStatus.CLOSE,
-        "optionalChecks": ReadinessStatus.READY,
-        "unusedSymbols": ReadinessStatus.READY,
-        "general": ReadinessStatus.READY,
+    readiness_close_status: dict[CategoryName, ReadinessStatus] = {
+        CategoryName("unknownChecks"): ReadinessStatus.CLOSE,
+        CategoryName("optionalChecks"): ReadinessStatus.READY,
+        CategoryName("unusedSymbols"): ReadinessStatus.READY,
+        CategoryName("general"): ReadinessStatus.READY,
     }
     readiness_close: list[ReadinessStrictEntry] = [
         {
@@ -190,9 +196,9 @@ def sample_summary() -> SummaryData:
 
     readiness_tab: ReadinessTab = {
         "strict": {
-            "ready": readiness_ready,
-            "close": readiness_close,
-            "blocked": [],
+            ReadinessStatus.READY: readiness_ready,
+            ReadinessStatus.CLOSE: readiness_close,
+            ReadinessStatus.BLOCKED: [],
         },
         "options": {
             "unknownChecks": _bucket(
@@ -226,7 +232,7 @@ def sample_summary() -> SummaryData:
         },
     }
 
-    category_totals: dict[str, int] = {}
+    category_totals: CountsByCategory = {}
     tabs: SummaryTabs = {
         "overview": {
             "severityTotals": severity_totals,

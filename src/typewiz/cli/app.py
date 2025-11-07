@@ -33,7 +33,7 @@ from typewiz.model_types import (
     ReadinessStatus,
 )
 from typewiz.summary_types import SummaryData
-from typewiz.utils import consume
+from typewiz.utils import consume, normalise_enums_for_json
 
 SUMMARY_FIELD_CHOICES = _SUMMARY_FIELD_CHOICES
 logger: logging.Logger = logging.getLogger("typewiz.cli")
@@ -241,7 +241,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         summary = build_summary(manifest)
         dashboard_format = DashboardFormat.from_str(args.format)
         if dashboard_format is DashboardFormat.JSON:
-            rendered = json.dumps(summary, indent=2) + "\n"
+            rendered = json.dumps(normalise_enums_for_json(summary), indent=2) + "\n"
         elif dashboard_format is DashboardFormat.MARKDOWN:
             rendered = render_markdown(summary)
         else:

@@ -11,7 +11,7 @@ from typing import Literal, cast
 from .data_validation import coerce_mapping
 from .formatting import render_table_rows, stringify
 from .model_types import DataFormat, Mode, SummaryField
-from .utils import JSONValue
+from .utils import JSONValue, normalise_enums_for_json
 
 __all__ = [
     "collect_plugin_args",
@@ -112,7 +112,7 @@ def render_data_structure(data: object, fmt: FormatInput) -> list[str]:
     """Render a Python object for CLI output in the requested format."""
     fmt_value = _normalise_format(fmt)
     if fmt_value == "json":
-        return [json.dumps(data, indent=2, ensure_ascii=False)]
+        return [json.dumps(normalise_enums_for_json(data), indent=2, ensure_ascii=False)]
     if isinstance(data, list):
         table_rows: list[Mapping[str, JSONValue]] = []
         for item_obj in cast("list[object]", data):

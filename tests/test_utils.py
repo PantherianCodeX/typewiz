@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import pytest
 
-from typewiz.utils import consume, resolve_project_root
+from typewiz.model_types import ReadinessStatus, SeverityLevel
+from typewiz.utils import consume, normalise_enums_for_json, resolve_project_root
 
 
 def test_resolve_project_root_prefers_local_markers(tmp_path: Path) -> None:
@@ -31,3 +33,27 @@ def test_resolve_project_root_defaults_to_cwd_when_no_markers(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     assert resolve_project_root() == tmp_path.resolve()
+
+
+def test_normalise_enums_for_json_converts_keys_and_nested_values() -> None:
+    payload = {
+        ReadinessStatus.READY: {
+            "status": ReadinessStatus.CLOSE,
+            "counts": (ReadinessStatus.BLOCKED,),
+        },
+        "nested": [{"severity": SeverityLevel.ERROR}],
+    }
+    normalised = normalise_enums_for_json(payload)
+    assert isinstance(normalised, dict)
+    normalised_dict = cast(dict[str, object], normalised)
+    ready_raw = normalised_dict.get("ready")
+    assert isinstance(ready_raw, dict)
+    ready_bucket = cast(dict[str, object], ready_raw)
+    assert ready_bucket.get("status") == "close"
+    counts_value = ready_bucket.get("counts")
+    assert isinstance(counts_value, list) and counts_value
+    assert counts_value[0] == "blocked"
+    nested_raw = normalised_dict.get("nested")
+    assert isinstance(nested_raw, list) and nested_raw
+    first_nested = cast(dict[str, object], nested_raw[0])
+    assert first_nested.get("severity") == "error"

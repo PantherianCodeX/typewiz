@@ -9,6 +9,7 @@ import sys
 import time
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Final, cast
 
@@ -189,6 +190,37 @@ def resolve_project_root(start: Path | None = None) -> Path:
         ", ".join(str(path) for path in checked),
     )
     return base
+
+
+def normalise_enums_for_json(value: object) -> JSONValue:
+    """Recursively convert Enum keys/values to their string payloads for JSON serialisation."""
+
+    def _convert(obj: object) -> JSONValue:
+        if isinstance(obj, Enum):
+            return cast(JSONValue, obj.value)
+        if isinstance(obj, dict):
+            mapping_obj = cast(dict[object, object], obj)
+            result: dict[str, JSONValue] = {}
+            for key, raw_val in mapping_obj.items():
+                if isinstance(key, Enum):
+                    norm_key: str = str(key.value)
+                elif isinstance(key, str):
+                    norm_key = key
+                else:
+                    norm_key = str(key)
+                result[norm_key] = _convert(raw_val)
+            return cast(JSONValue, result)
+        if isinstance(obj, list):
+            list_obj = cast(list[object], obj)
+            return cast(JSONValue, [_convert(item) for item in list_obj])
+        if isinstance(obj, tuple):
+            tuple_obj = cast(tuple[object, ...], obj)
+            return cast(JSONValue, [_convert(item) for item in tuple_obj])
+        if isinstance(obj, (str, int, float, bool)) or obj is None:
+            return cast(JSONValue, obj)
+        return cast(JSONValue, str(obj))
+
+    return _convert(value)
 
 
 def _contains_python(path: Path) -> bool:

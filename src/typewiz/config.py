@@ -156,10 +156,6 @@ def _default_ratchet_runs() -> list[str]:
     return []
 
 
-def _default_ratchet_severity_values() -> list[str]:
-    return [SeverityLevel.ERROR.value, SeverityLevel.WARNING.value]
-
-
 def _default_ratchet_severity_levels() -> list[SeverityLevel]:
     return [SeverityLevel.ERROR, SeverityLevel.WARNING]
 
@@ -436,7 +432,7 @@ class RatchetConfigModel(BaseModel):
     manifest_path: Path | None = None
     output_path: Path | None = None
     runs: list[str] = Field(default_factory=list)
-    severities: list[str] = Field(default_factory=_default_ratchet_severity_values)
+    severities: list[SeverityLevel] = Field(default_factory=_default_ratchet_severity_levels)
     targets: dict[str, int] = Field(default_factory=dict)
     signature: SignaturePolicy = Field(default=SignaturePolicy.FAIL)
     limit: int | None = None
@@ -449,11 +445,12 @@ class RatchetConfigModel(BaseModel):
 
     @field_validator("severities", mode="before")
     @classmethod
-    def _coerce_severities(cls, value: object) -> list[str]:
+    def _coerce_severities(cls, value: object) -> list[SeverityLevel]:
         severities = ensure_list(value)
         if not severities:
-            return _default_ratchet_severity_values()
-        return [SeverityLevel.from_str(token).value for token in severities]
+            return _default_ratchet_severity_levels()
+        result = [SeverityLevel.from_str(token) for token in severities]
+        return result or _default_ratchet_severity_levels()
 
     @field_validator("targets", mode="before")
     @classmethod

@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypedDict
+from typing import TypedDict
 
-from .model_types import CategoryMapping, OverrideEntry
-
-SeverityStr = Literal["error", "warning", "information"]
-ModeStr = Literal["current", "full"]
+from .model_types import CategoryMapping, Mode, OverrideEntry, SeverityLevel
+from .type_aliases import CategoryKey
 
 
 class FileDiagnostic(TypedDict):
     line: int
     column: int
-    severity: SeverityStr
+    severity: SeverityLevel
     code: str | None
     message: str
 
@@ -37,7 +35,7 @@ class FolderEntryRequired(TypedDict):
 
 
 class FolderEntry(FolderEntryRequired, total=False):
-    categoryCounts: dict[str, int]
+    categoryCounts: dict[CategoryKey, int]
 
 
 class RunSummary(TypedDict, total=False):
@@ -45,9 +43,9 @@ class RunSummary(TypedDict, total=False):
     warnings: int
     information: int
     total: int
-    severityBreakdown: dict[SeverityStr, int]
+    severityBreakdown: dict[SeverityLevel, int]
     ruleCounts: dict[str, int]
-    categoryCounts: dict[str, int]
+    categoryCounts: dict[CategoryKey, int]
 
 
 class EngineOptionsEntry(TypedDict, total=False):
@@ -69,7 +67,7 @@ class ToolSummary(TypedDict, total=False):
 
 class RunPayloadRequired(TypedDict):
     tool: str
-    mode: ModeStr
+    mode: Mode
     command: list[str]
     exitCode: int
     durationMs: float

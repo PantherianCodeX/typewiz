@@ -8,6 +8,7 @@ from typing import Any, TypeGuard, cast
 
 from .data_validation import coerce_mapping
 from .manifest_models import ManifestValidationError, validate_manifest_payload
+from .model_types import Mode
 from .typed_manifest import ManifestData, RunPayload
 
 logger: logging.Logger = logging.getLogger("typewiz.manifest_loader")
@@ -20,7 +21,9 @@ def _is_run_payload(obj: object) -> TypeGuard[RunPayload]:
     required_keys = {"tool", "mode", "summary", "perFile", "perFolder", "engineOptions"}
     if not required_keys.issubset({str(key) for key in typed_obj}):
         return False
-    if not isinstance(typed_obj.get("tool"), str) or not isinstance(typed_obj.get("mode"), str):
+    tool_value = typed_obj.get("tool")
+    mode_value = typed_obj.get("mode")
+    if not isinstance(tool_value, str) or not isinstance(mode_value, (str, Mode)):
         return False
     if not isinstance(typed_obj.get("command"), list):
         return False

@@ -16,8 +16,14 @@ from .dashboard import build_summary, render_markdown
 from .engines import EngineContext, resolve_engines
 from .html_report import render_html
 from .manifest import ManifestBuilder
-from .model_types import Mode
-from .utils import consume, default_full_paths, detect_tool_versions, resolve_project_root
+from .model_types import Mode, SeverityLevel
+from .utils import (
+    consume,
+    default_full_paths,
+    detect_tool_versions,
+    normalise_enums_for_json,
+    resolve_project_root,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -173,7 +179,8 @@ def _write_dashboard_files(inputs: _AuditInputs, summary: SummaryData) -> None:
             else (root / audit_config.dashboard_json)
         )
         target.parent.mkdir(parents=True, exist_ok=True)
-        consume(target.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8"))
+        payload = normalise_enums_for_json(summary)
+        consume(target.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8"))
     if audit_config.dashboard_markdown:
         target = (
             audit_config.dashboard_markdown
@@ -193,8 +200,8 @@ def _write_dashboard_files(inputs: _AuditInputs, summary: SummaryData) -> None:
 
 
 def _compute_run_totals(runs: list[RunResult]) -> tuple[int, int]:
-    error_count = sum(run.severity_counts().get("error", 0) for run in runs)
-    warning_count = sum(run.severity_counts().get("warning", 0) for run in runs)
+    error_count = sum(run.severity_counts().get(SeverityLevel.ERROR, 0) for run in runs)
+    warning_count = sum(run.severity_counts().get(SeverityLevel.WARNING, 0) for run in runs)
     return error_count, warning_count
 
 

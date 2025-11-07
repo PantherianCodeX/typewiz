@@ -28,6 +28,10 @@ MANIFEST_CANDIDATE_NAMES: Final[tuple[str, ...]] = (
 DEFAULT_RATCHET_FILENAME: Final[Path] = Path(".typewiz/ratchet.json")
 
 
+def _coerce_severity_value(value: str | SeverityLevel) -> SeverityLevel:
+    return value if isinstance(value, SeverityLevel) else SeverityLevel.from_str(value)
+
+
 def parse_target_entries(entries: Sequence[str]) -> dict[str, int]:
     mapping: dict[str, int] = {}
     if not entries:
@@ -94,22 +98,19 @@ def resolve_runs(
 
 
 def resolve_severities(
-    cli_value: str | None, config_values: Sequence[str | SeverityLevel]
+    cli_value: str | None, config_values: Sequence[SeverityLevel]
 ) -> list[SeverityLevel]:
+    raw_values: Sequence[str | SeverityLevel]
     if cli_value:
-        values = parse_comma_separated(cli_value)
+        raw_values = parse_comma_separated(cli_value)
     else:
-        values = list(config_values)
+        raw_values = list(config_values)
     normalised: list[SeverityLevel] = [
-        value if isinstance(value, SeverityLevel) else SeverityLevel.from_str(value)
-        for value in values
-        if value
+        _coerce_severity_value(value) for value in raw_values if value
     ]
     if not normalised:
         config_normalised: list[SeverityLevel] = [
-            value if isinstance(value, SeverityLevel) else SeverityLevel.from_str(value)
-            for value in config_values
-            if value
+            _coerce_severity_value(value) for value in config_values if value
         ]
         default_severities: list[SeverityLevel] = list(DEFAULT_SEVERITIES)
         normalised = config_normalised or default_severities

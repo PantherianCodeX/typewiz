@@ -7,13 +7,15 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any, TypedDict, cast
 
-from typewiz.model_types import SeverityLevel
+from typewiz.model_types import SeverityLevel, SignaturePolicy
 from typewiz.ratchet import (
     apply_auto_update,
     build_ratchet_from_manifest,
     compare_manifest_to_ratchet,
     refresh_signatures,
 )
+from typewiz.ratchet.policies import compare_signatures
+from typewiz.type_aliases import RunId
 from typewiz.typed_manifest import (
     EngineOptionsEntry,
     FileEntry,
@@ -121,17 +123,18 @@ def test_build_ratchet_uses_manifest_counts() -> None:
     ratchet = build_ratchet_from_manifest(
         manifest=manifest,
         runs=None,
-        severities=["error", "warning"],
+        severities=[SeverityLevel.ERROR, SeverityLevel.WARNING],
         targets=None,
         manifest_path="baseline.json",
     )
-    run_budget = ratchet.runs["pyright:current"]
+    run_budget = ratchet.runs[RunId("pyright:current")]
     foo_budget = run_budget.paths["src/foo.py"]
     expected_counts = per_file_counts["src/foo.py"]
     assert foo_budget.severities[SeverityLevel.ERROR] == expected_counts["error"]
     assert foo_budget.severities[SeverityLevel.WARNING] == expected_counts["warning"]
-    assert run_budget.engine_signature is not None
-    hash_value = run_budget.engine_signature.get("hash")
+    engine_signature = run_budget.engine_signature
+    assert engine_signature is not None
+    hash_value = engine_signature.get("hash")
     assert hash_value
 
 
@@ -141,7 +144,7 @@ def test_compare_detects_regressions_and_signature_changes() -> None:
     ratchet = build_ratchet_from_manifest(
         manifest=baseline_manifest,
         runs=None,
-        severities=["error"],
+        severities=[SeverityLevel.ERROR],
         targets=None,
         manifest_path="baseline.json",
     )
@@ -161,7 +164,7 @@ def test_auto_update_reduces_budgets_but_respects_targets() -> None:
     ratchet = build_ratchet_from_manifest(
         manifest=manifest,
         runs=None,
-        severities=["error"],
+        severities=[SeverityLevel.ERROR],
         targets={"error": 1},
         manifest_path="baseline.json",
     )
@@ -172,7 +175,7 @@ def test_auto_update_reduces_budgets_but_respects_targets() -> None:
         runs=None,
         generated_at=improved_manifest.get("generatedAt") or "2025-01-01T00:00:00Z",
     )
-    updated_budget = updated.runs["pyright:current"].paths["src/foo.py"]
+    updated_budget = updated.runs[RunId("pyright:current")].paths["src/foo.py"]
     # decreased from 3 to 2 but not below target 1
     assert updated_budget.severities[SeverityLevel.ERROR] == EXPECTED_ERROR_AFTER_UPDATE
 
@@ -183,7 +186,7 @@ def test_report_payload_and_formatting() -> None:
     ratchet = build_ratchet_from_manifest(
         manifest=baseline,
         runs=None,
-        severities=["error"],
+        severities=[SeverityLevel.ERROR],
         targets=None,
         manifest_path="baseline.json",
     )
@@ -208,7 +211,7 @@ def test_compare_manifest_run_filter() -> None:
     ratchet = build_ratchet_from_manifest(
         manifest=manifest,
         runs=None,
-        severities=["error"],
+        severities=[SeverityLevel.ERROR],
         targets=None,
         manifest_path="baseline.json",
     )
@@ -225,7 +228,7 @@ def test_refresh_signatures_updates_hash() -> None:
     ratchet = build_ratchet_from_manifest(
         manifest=manifest,
         runs=None,
-        severities=["error"],
+        severities=[SeverityLevel.ERROR],
         targets=None,
         manifest_path="baseline.json",
     )
@@ -239,8 +242,22 @@ def test_refresh_signatures_updates_hash() -> None:
         runs=None,
         generated_at="2025-01-02T00:00:00Z",
     )
-    assert ratchet.runs["pyright:current"].engine_signature is not None
-    assert refreshed.runs["pyright:current"].engine_signature is not None
-    original_hash = ratchet.runs["pyright:current"].engine_signature.get("hash")
-    new_hash = refreshed.runs["pyright:current"].engine_signature.get("hash")
+    run_key = RunId("pyright:current")
+    original_signature = ratchet.runs[run_key].engine_signature
+    refreshed_signature = refreshed.runs[run_key].engine_signature
+    assert original_signature is not None
+    assert refreshed_signature is not None
+    original_hash = original_signature.get("hash")
+    new_hash = refreshed_signature.get("hash")
     assert original_hash and new_hash and original_hash != new_hash
+
+
+def test_compare_signatures_respects_policy() -> None:
+    matching = compare_signatures({"hash": "abc"}, {"hash": "abc"}, SignaturePolicy.FAIL)
+    assert matching.matches
+    assert not matching.should_fail()
+    warn_check = compare_signatures({"hash": "abc"}, {"hash": "def"}, SignaturePolicy.WARN)
+    assert not warn_check.matches
+    assert warn_check.should_warn()
+    fail_check = compare_signatures({"hash": "abc"}, {"hash": "xyz"}, SignaturePolicy.FAIL)
+    assert fail_check.should_fail()

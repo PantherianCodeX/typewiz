@@ -21,7 +21,7 @@ from typewiz.manifest_models import (
     validate_manifest_payload,
 )
 from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION, upgrade_manifest
-from typewiz.model_types import CategoryMapping
+from typewiz.model_types import CategoryMapping, Mode
 from typewiz.type_aliases import EngineName, RunnerName, ToolName
 from typewiz.typed_manifest import ManifestData
 from typewiz.utils import consume
@@ -63,7 +63,7 @@ def _sample_manifest() -> ManifestData:
         "runs": [
             {
                 "tool": "pyright",
-                "mode": "current",
+                "mode": Mode.CURRENT,
                 "command": ["pyright", "--project"],
                 "exitCode": 0,
                 "durationMs": 0.25,

@@ -118,6 +118,23 @@
       "title": "EngineOptionsModel",
       "type": "object"
     },
+    "ModeEnum": {
+      "enum": [
+        "current",
+        "full"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "SeverityLevelEnum": {
+      "enum": [
+        "error",
+        "warning",
+        "information"
+      ],
+      "title": "SeverityLevel",
+      "type": "string"
+    },
     "FileDiagnosticModel": {
       "properties": {
         "code": {
@@ -145,13 +162,7 @@
           "type": "string"
         },
         "severity": {
-          "title": "Severity",
-          "type": "string",
-          "enum": [
-            "error",
-            "warning",
-            "information"
-          ]
+          "$ref": "#/$defs/SeverityLevelEnum"
         }
       },
       "required": [
@@ -361,12 +372,7 @@
           "type": "integer"
         },
         "mode": {
-          "title": "Mode",
-          "type": "string",
-          "enum": [
-            "current",
-            "full"
-          ]
+          "$ref": "#/$defs/ModeEnum"
         },
         "perFile": {
           "items": {

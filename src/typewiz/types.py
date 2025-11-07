@@ -66,8 +66,8 @@ class RunResult:
     scanned_paths: list[str] = field(default_factory=_default_str_list)
     engine_error: EngineError | None = None
 
-    def severity_counts(self) -> Counter[str]:
-        counts: Counter[str] = Counter()
+    def severity_counts(self) -> Counter[SeverityLevel]:
+        counts: Counter[SeverityLevel] = Counter()
         for diag in self.diagnostics:
-            counts[diag.severity.value] += 1
+            counts[diag.severity] += 1
         return counts

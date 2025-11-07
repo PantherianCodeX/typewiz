@@ -152,7 +152,7 @@ def test_handle_update_dry_run_skips_write(
             SeverityLevel.from_str(key): value for key, value in targets.items()
         }
         model.runs.setdefault(
-            "pyright:current",
+            RunId("pyright:current"),
             RatchetRunBudgetModel(severities=[SeverityLevel.ERROR]),
         ).targets.update(normalised)
 

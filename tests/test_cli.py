@@ -49,14 +49,13 @@ from typewiz.summary_types import (
     ReadinessStrictEntry,
     ReadinessTab,
     RunsTab,
-    StatusKey,
     SummaryData,
     SummaryFileEntry,
     SummaryFolderEntry,
     SummaryRunEntry,
     SummaryTabs,
 )
-from typewiz.type_aliases import CategoryKey, EngineName, RunnerName, ToolName
+from typewiz.type_aliases import CategoryKey, EngineName, RunId, RunnerName, ToolName
 from typewiz.types import Diagnostic, RunResult
 from typewiz.utils import consume
 
@@ -163,7 +162,7 @@ def _write_manifest(tmp_path: Path) -> Path:
 
 
 def _empty_summary() -> SummaryData:
-    run_summary: dict[str, SummaryRunEntry] = {}
+    run_summary: dict[RunId, SummaryRunEntry] = {}
     severity_totals: CountsBySeverity = {}
     category_totals: CountsByCategory = {}
     top_rules: CountsByRule = {}
@@ -180,10 +179,14 @@ def _empty_summary() -> SummaryData:
         "topFolders": top_folders,
         "topFiles": top_files,
     }
-    readiness: ReadinessTab = cast(
-        ReadinessTab,
-        {"strict": {"ready": [], "close": [], "blocked": []}, "options": {}},
-    )
+    readiness: ReadinessTab = {
+        "strict": {
+            ReadinessStatus.READY: [],
+            ReadinessStatus.CLOSE: [],
+            ReadinessStatus.BLOCKED: [],
+        },
+        "options": {},
+    }
     runs: RunsTab = {"runSummary": run_summary}
     tabs: SummaryTabs = {
         "overview": overview,
@@ -620,15 +623,15 @@ def test_cli_audit_full_outputs(
 
     summary = _empty_summary()
     summary["tabs"]["overview"]["severityTotals"] = {
-        "error": 0,
-        "warning": 0,
-        "information": 1,
+        SeverityLevel.ERROR: 0,
+        SeverityLevel.WARNING: 0,
+        SeverityLevel.INFORMATION: 1,
     }
     prev_summary = _empty_summary()
     prev_summary["tabs"]["overview"]["severityTotals"] = {
-        "error": 0,
-        "warning": 0,
-        "information": 0,
+        SeverityLevel.ERROR: 0,
+        SeverityLevel.WARNING: 0,
+        SeverityLevel.INFORMATION: 0,
     }
 
     diag = Diagnostic(
@@ -1119,11 +1122,11 @@ def test_print_readiness_summary_variants(capsys: pytest.CaptureFixture[str]) ->
         },
     )
     readiness_tab["strict"] = cast(
-        dict[StatusKey, list[ReadinessStrictEntry]],
+        dict[ReadinessStatus, list[ReadinessStrictEntry]],
         {
-            "ready": [{"path": "pkg/module.py", "diagnostics": 0}],
-            "close": [],
-            "blocked": [{"path": "pkg/other.py", "diagnostics": "3"}],
+            ReadinessStatus.READY: [{"path": "pkg/module.py", "diagnostics": 0}],
+            ReadinessStatus.CLOSE: [],
+            ReadinessStatus.BLOCKED: [{"path": "pkg/other.py", "diagnostics": "3"}],
         },
     )
 
@@ -1162,7 +1165,7 @@ def test_query_readiness_invalid_data_raises() -> None:
     summary = _empty_summary()
     readiness_tab = summary["tabs"]["readiness"]
     readiness_tab["strict"] = {
-        "blocked": [
+        ReadinessStatus.BLOCKED: [
             {
                 "path": "pkg/module",
                 "diagnostics": -1,

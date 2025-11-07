@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..manifest_loader import load_manifest_data
+from ..utils import normalise_enums_for_json
 from .models import RatchetModel
 
 if TYPE_CHECKING:
@@ -33,7 +34,8 @@ def write_ratchet(path: Path, model: RatchetModel) -> None:
 
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = model.model_dump(by_alias=True, exclude_none=True)
-    _ = path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    payload_json = normalise_enums_for_json(payload)
+    _ = path.write_text(json.dumps(payload_json, indent=2) + "\n", encoding="utf-8")
 
 
 def load_manifest(path: Path) -> ManifestData:

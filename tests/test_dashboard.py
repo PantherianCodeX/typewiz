@@ -11,6 +11,7 @@ from typing import cast
 from typewiz.dashboard import build_summary, load_manifest, render_markdown
 from typewiz.html_report import render_html
 from typewiz.summary_types import SummaryData
+from typewiz.type_aliases import RunId
 from typewiz.typed_manifest import FileEntry, FolderEntry, ManifestData, RunPayload
 from typewiz.utils import consume
 
@@ -103,8 +104,9 @@ def test_render_markdown_handles_empty_runs(snapshot_text: Callable[[str], str])
 def test_render_markdown_tool_totals_mismatch(sample_summary: SummaryData) -> None:
     summary = copy.deepcopy(sample_summary)
     run_summary = summary["tabs"]["overview"]["runSummary"]
-    assert "mypy:full" in run_summary
-    target = run_summary["mypy:full"]
+    run_id = RunId("mypy:full")
+    assert run_id in run_summary
+    target = run_summary[run_id]
     target["toolSummary"] = {"errors": 2, "warnings": 0, "information": 0, "total": 2}
     output = render_markdown(summary)
     assert "mismatch vs parsed" in output

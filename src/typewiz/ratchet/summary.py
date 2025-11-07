@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import cast
 
-from ..model_types import SeverityLevel
+from ..model_types import Mode, SeverityLevel
 from ..type_aliases import RunId
 from .models import EngineSignaturePayloadWithHash
 
@@ -68,6 +69,17 @@ class RatchetRunReport:
         return not self.signature_matches
 
     def to_payload(self) -> dict[str, object]:
+        def _signature_payload(
+            entry: EngineSignaturePayloadWithHash | None,
+        ) -> EngineSignaturePayloadWithHash | None:
+            if entry is None:
+                return None
+            payload = dict(entry)
+            mode_value = payload.get("mode")
+            if isinstance(mode_value, Mode):
+                payload["mode"] = mode_value.value
+            return cast(EngineSignaturePayloadWithHash, payload)
+
         return {
             "run": self.run_id,
             "severities": [severity.value for severity in self.severities],
@@ -76,8 +88,8 @@ class RatchetRunReport:
                 finding.to_payload(rename_allowed="previous") for finding in self.improvements
             ],
             "signature_matches": self.signature_matches,
-            "expected_signature": self.expected_signature,
-            "actual_signature": self.actual_signature,
+            "expected_signature": _signature_payload(self.expected_signature),
+            "actual_signature": _signature_payload(self.actual_signature),
         }
 
     def format_lines(

@@ -16,15 +16,14 @@ from .data_validation import (
     coerce_str,
 )
 from .model_types import ReadinessLevel, ReadinessStatus
-from .readiness import CATEGORY_DISPLAY_ORDER, STATUS_VALUES, StatusKey
+from .readiness import CATEGORY_DISPLAY_ORDER, DEFAULT_CLOSE_THRESHOLD, ReadinessOptions
 from .summary_types import (
     ReadinessOptionEntry,
-    ReadinessOptionsBucket,
     ReadinessStrictEntry,
     SummaryData,
     SummaryTabs,
 )
-from .type_aliases import CategoryKey
+from .type_aliases import CategoryKey, CategoryName
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,8 +60,8 @@ class FileReadinessPayloadBase(TypedDict):
 class FileReadinessPayload(FileReadinessPayloadBase, total=False):
     notes: list[str]
     recommendations: list[str]
-    categories: dict[str, int]
-    categoryStatus: dict[str, ReadinessStatus]
+    categories: dict[CategoryName, int]
+    categoryStatus: dict[CategoryName, ReadinessStatus]
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,8 +73,8 @@ class FileReadinessRecord:
     information: int
     notes: tuple[str, ...] = ()
     recommendations: tuple[str, ...] = ()
-    categories: Mapping[str, int] | None = None
-    category_status: Mapping[str, ReadinessStatus] | None = None
+    categories: Mapping[CategoryName, int] | None = None
+    category_status: Mapping[CategoryName, ReadinessStatus] | None = None
 
     def to_payload(self) -> FileReadinessPayload:
         payload: FileReadinessPayload = {
@@ -167,11 +166,13 @@ def _build_strict_entry(raw: Mapping[str, object]) -> ReadinessStrictEntry:
     categories_raw = raw.get("categories")
     if isinstance(categories_raw, Mapping):
         categories_map = coerce_mapping(cast(Mapping[object, object], categories_raw))
-        entry["categories"] = {key: coerce_int(value) for key, value in categories_map.items()}
+        entry["categories"] = {
+            CategoryName(str(key)): coerce_int(value) for key, value in categories_map.items()
+        }
     category_status_raw = raw.get("categoryStatus")
     if isinstance(category_status_raw, Mapping):
-        status_map: dict[str, ReadinessStatus] = {
-            str(key): _coerce_status(value)
+        status_map: dict[CategoryName, ReadinessStatus] = {
+            CategoryName(str(key)): _coerce_status(value)
             for key, value in cast(Mapping[object, object], category_status_raw).items()
         }
         if status_map:
@@ -179,27 +180,27 @@ def _build_strict_entry(raw: Mapping[str, object]) -> ReadinessStrictEntry:
     return entry
 
 
-def _coerce_options_bucket(value: object) -> ReadinessOptionsBucket:
-    bucket: ReadinessOptionsBucket = {}
+def _coerce_options_bucket(value: object) -> ReadinessOptions:
     if not isinstance(value, Mapping):
-        return bucket
+        return ReadinessOptions(threshold=DEFAULT_CLOSE_THRESHOLD)
     mapping_value = coerce_mapping(cast(Mapping[object, object], value))
+    threshold_val = mapping_value.get("threshold")
+    threshold = threshold_val if isinstance(threshold_val, int) else DEFAULT_CLOSE_THRESHOLD
+    bucket = ReadinessOptions(threshold=threshold)
     for status in ReadinessStatus:
         entries = _coerce_option_entries(mapping_value, status.value)
         if not entries:
             continue
-        bucket[status.value] = entries
-    threshold_val = mapping_value.get("threshold")
-    if isinstance(threshold_val, int):
-        bucket["threshold"] = threshold_val
+        for entry in entries:
+            bucket.add_entry(status, entry)
     return bucket
 
 
-def _coerce_options_map(raw: object) -> dict[CategoryKey, ReadinessOptionsBucket]:
+def _coerce_options_map(raw: object) -> dict[CategoryKey, ReadinessOptions]:
     if not isinstance(raw, Mapping):
         return {}
     mapping_value = cast(Mapping[object, object], raw)
-    result: dict[CategoryKey, ReadinessOptionsBucket] = {}
+    result: dict[CategoryKey, ReadinessOptions] = {}
     for key, value in mapping_value.items():
         key_str = str(key).strip()
         if key_str not in CATEGORY_DISPLAY_ORDER:
@@ -209,16 +210,14 @@ def _coerce_options_map(raw: object) -> dict[CategoryKey, ReadinessOptionsBucket
     return result
 
 
-def _coerce_strict_map(raw: object) -> dict[StatusKey, list[ReadinessStrictEntry]]:
+def _coerce_strict_map(raw: object) -> dict[ReadinessStatus, list[ReadinessStrictEntry]]:
     if not isinstance(raw, Mapping):
         return {}
     mapping_value = cast(Mapping[object, object], raw)
-    result: dict[StatusKey, list[ReadinessStrictEntry]] = {}
+    result: dict[ReadinessStatus, list[ReadinessStrictEntry]] = {}
     for key, value in mapping_value.items():
-        key_str = str(key).strip()
-        if key_str not in STATUS_VALUES:
-            continue
-        result[cast("StatusKey", key_str)] = _coerce_strict_entries(value)
+        status = _coerce_status(key)
+        result[status] = _coerce_strict_entries(value)
     return result
 
 
@@ -262,14 +261,16 @@ def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
     notes_items = coerce_optional_str_list(entry.get("notes"))
     recommendations_items = coerce_optional_str_list(entry.get("recommendations"))
     categories_map = coerce_mapping(entry.get("categories"))
-    categories: Mapping[str, int] | None = None
+    categories: Mapping[CategoryName, int] | None = None
     if categories_map:
-        categories = {key: coerce_int(value) for key, value in categories_map.items()}
+        categories = {
+            CategoryName(str(key)): coerce_int(value) for key, value in categories_map.items()
+        }
     status_source = entry.get("categoryStatus")
-    category_status: Mapping[str, ReadinessStatus] | None = None
+    category_status: Mapping[CategoryName, ReadinessStatus] | None = None
     if isinstance(status_source, Mapping) and status_source:
-        converted = {
-            key: _coerce_status(value)
+        converted: dict[CategoryName, ReadinessStatus] = {
+            CategoryName(str(key)): _coerce_status(value)
             for key, value in cast(Mapping[str, object], status_source).items()
         }
         category_status = converted or None
@@ -286,22 +287,11 @@ def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
     )
 
 
-def _extract_folder_entries(
-    bucket: ReadinessOptionsBucket,
-    status: StatusKey,
-) -> list[ReadinessOptionEntry]:
-    bucket_view = cast("Mapping[StatusKey, list[ReadinessOptionEntry]]", bucket)
-    entries = bucket_view.get(status)
-    if isinstance(entries, list):
-        return entries
-    return []
-
-
 def _extract_file_entries(
-    strict_map: Mapping[StatusKey, Sequence[ReadinessStrictEntry]],
+    strict_map: Mapping[ReadinessStatus, Sequence[ReadinessStrictEntry]],
     status: ReadinessStatus,
 ) -> list[ReadinessStrictEntry]:
-    entries = strict_map.get(_status_key_from_status(status))
+    entries = strict_map.get(status)
     if isinstance(entries, list):
         return entries
     return []
@@ -319,24 +309,24 @@ def _normalise_status_filters(
     return normalised or [ReadinessStatus.BLOCKED]
 
 
-def _status_key_from_status(status: ReadinessStatus) -> StatusKey:
-    return status.value  # ReadinessStatus values align to StatusKey literals
-
-
 def _category_key_from_str(value: str) -> CategoryKey:
     return cast("CategoryKey", value)
 
 
 def _folder_payload_for_status(
-    options_tab: Mapping[CategoryKey, ReadinessOptionsBucket],
+    options_tab: Mapping[CategoryKey, ReadinessOptions],
     status: ReadinessStatus,
     limit: int,
 ) -> list[FolderReadinessPayload]:
     entries: list[ReadinessOptionEntry] = []
-    status_key = _status_key_from_status(status)
     for category in CATEGORY_DISPLAY_ORDER:
-        bucket = options_tab.get(category, {})
-        entries = _extract_folder_entries(bucket, status_key)
+        bucket = options_tab.get(category)
+        if bucket is None:
+            continue
+        bucket_entries = bucket.buckets.get(status, ())
+        if not bucket_entries:
+            continue
+        entries = list(bucket_entries)
         if entries:
             break
     records: list[FolderReadinessRecord] = []
@@ -351,7 +341,7 @@ def _folder_payload_for_status(
 
 
 def _file_payload_for_status(
-    strict_map: Mapping[StatusKey, list[ReadinessStrictEntry]],
+    strict_map: Mapping[ReadinessStatus, list[ReadinessStrictEntry]],
     status: ReadinessStatus,
     limit: int,
 ) -> list[FileReadinessPayload]:
@@ -367,8 +357,8 @@ def _file_payload_for_status(
     return [record.to_payload() for record in records]
 
 
-FolderReadinessView = dict[StatusKey, list[FolderReadinessPayload]]
-FileReadinessView = dict[StatusKey, list[FileReadinessPayload]]
+FolderReadinessView = dict[ReadinessStatus, list[FolderReadinessPayload]]
+FileReadinessView = dict[ReadinessStatus, list[FileReadinessPayload]]
 ReadinessViewResult = FolderReadinessView | FileReadinessView
 
 
@@ -388,11 +378,9 @@ def collect_readiness_view(
     if level is ReadinessLevel.FOLDER:
         view: FolderReadinessView = {}
         for status in statuses_normalised:
-            status_key = _status_key_from_status(status)
-            view[status_key] = _folder_payload_for_status(options_tab, status, limit)
+            view[status] = _folder_payload_for_status(options_tab, status, limit)
         return view
     file_view: FileReadinessView = {}
     for status in statuses_normalised:
-        status_key = _status_key_from_status(status)
-        file_view[status_key] = _file_payload_for_status(strict_map, status, limit)
+        file_view[status] = _file_payload_for_status(strict_map, status, limit)
     return file_view

@@ -16,9 +16,10 @@ from typewiz.config import (
     EngineSettings,
     EngineSettingsModel,
     PathOverride,
+    RatchetConfigModel,
     load_config,
 )
-from typewiz.model_types import FailOnPolicy, SignaturePolicy
+from typewiz.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
 from typewiz.type_aliases import EngineName, ProfileName, RunnerName
 from typewiz.utils import consume
 
@@ -328,3 +329,13 @@ def test_resolve_path_fields_resolves_relative_paths(tmp_path: Path) -> None:
     assert override.path.is_absolute()
     override_settings = override.engine_settings[STUB]
     assert override_settings.config_file and override_settings.config_file.is_absolute()
+
+
+def test_ratchet_config_model_converts_severity_strings() -> None:
+    model = RatchetConfigModel.model_validate({"severities": ["error", "information"]})
+    assert model.severities == [SeverityLevel.ERROR, SeverityLevel.INFORMATION]
+
+
+def test_ratchet_config_model_defaults_when_empty() -> None:
+    model = RatchetConfigModel.model_validate({"severities": []})
+    assert model.severities == [SeverityLevel.ERROR, SeverityLevel.WARNING]

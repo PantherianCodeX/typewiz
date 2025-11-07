@@ -7,6 +7,7 @@ from typing import TypedDict, cast
 
 import pytest
 
+from typewiz.model_types import SeverityLevel
 from typewiz.ratchet.core import build_ratchet_from_manifest
 from typewiz.typed_manifest import (
     EngineOptionsEntry,
@@ -112,7 +113,7 @@ def test_ratchet_schema_validates_sample(validator_name: str) -> None:
     ratchet_model = build_ratchet_from_manifest(
         manifest=_manifest(),
         runs=None,
-        severities=["error", "warning"],
+        severities=[SeverityLevel.ERROR, SeverityLevel.WARNING],
         targets={"error": 0},
         manifest_path="typing_audit.json",
     )

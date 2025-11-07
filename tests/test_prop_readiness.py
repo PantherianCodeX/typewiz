@@ -18,13 +18,10 @@ from typewiz.summary_types import (
     ReadinessOptionsBucket,
     ReadinessStrictEntry,
     ReadinessTab,
-    StatusKey,
     SummaryData,
     SummaryTabs,
 )
 from typewiz.type_aliases import CategoryKey
-
-STATUS_VALUES = tuple(status.value for status in ReadinessStatus)
 
 
 def _status() -> st.SearchStrategy[ReadinessStatus]:
@@ -60,29 +57,51 @@ def _readiness_tab() -> st.SearchStrategy[ReadinessTab]:
         blocked=st.lists(_folder_entry(), max_size=3),
         threshold=st.integers(min_value=0, max_value=10),
     )
-    strict_map: st.SearchStrategy[dict[str, list[ReadinessStrictEntry]]] = st.fixed_dictionaries(
-        {status: st.lists(_strict_entry(), max_size=3) for status in STATUS_VALUES},
+
+    def _build_strict_map(
+        ready_entries: list[ReadinessStrictEntry],
+        close_entries: list[ReadinessStrictEntry],
+        blocked_entries: list[ReadinessStrictEntry],
+    ) -> dict[ReadinessStatus, list[ReadinessStrictEntry]]:
+        return {
+            ReadinessStatus.READY: ready_entries,
+            ReadinessStatus.CLOSE: close_entries,
+            ReadinessStatus.BLOCKED: blocked_entries,
+        }
+
+    strict_map: st.SearchStrategy[dict[ReadinessStatus, list[ReadinessStrictEntry]]] = st.builds(
+        _build_strict_map,
+        st.lists(_strict_entry(), max_size=3),
+        st.lists(_strict_entry(), max_size=3),
+        st.lists(_strict_entry(), max_size=3),
     )
-    options_map: st.SearchStrategy[dict[str, ReadinessOptionsBucket]] = st.fixed_dictionaries(
-        {
-            "unknownChecks": bucket,
-            "optionalChecks": bucket,
-            "unusedSymbols": bucket,
-            "general": bucket,
-        },
+
+    def _build_options_map(
+        unknown: ReadinessOptionsBucket,
+        optional: ReadinessOptionsBucket,
+        unused: ReadinessOptionsBucket,
+        general: ReadinessOptionsBucket,
+    ) -> dict[CategoryKey, ReadinessOptionsBucket]:
+        return {
+            "unknownChecks": unknown,
+            "optionalChecks": optional,
+            "unusedSymbols": unused,
+            "general": general,
+        }
+
+    options_map: st.SearchStrategy[dict[CategoryKey, ReadinessOptionsBucket]] = st.builds(
+        _build_options_map,
+        bucket,
+        bucket,
+        bucket,
+        bucket,
     )
 
     def _build_tab(
-        strict: dict[str, list[ReadinessStrictEntry]],
-        options: dict[str, ReadinessOptionsBucket],
+        strict: dict[ReadinessStatus, list[ReadinessStrictEntry]],
+        options: dict[CategoryKey, ReadinessOptionsBucket],
     ) -> ReadinessTab:
-        strict_typed: dict[StatusKey, list[ReadinessStrictEntry]] = {
-            cast(StatusKey, key): value for key, value in strict.items()
-        }
-        options_typed: dict[CategoryKey, ReadinessOptionsBucket] = {
-            cast(CategoryKey, key): value for key, value in options.items()
-        }
-        return {"strict": strict_typed, "options": options_typed}
+        return {"strict": strict, "options": options}
 
     return st.builds(_build_tab, strict_map, options_map)
 
@@ -117,8 +136,8 @@ def test_h_collect_readiness_view_shapes(
     }
 
     # Folder view
-    folder_view: dict[str, list[FolderReadinessPayload]] = cast(
-        dict[str, list[FolderReadinessPayload]],
+    folder_view: dict[ReadinessStatus, list[FolderReadinessPayload]] = cast(
+        dict[ReadinessStatus, list[FolderReadinessPayload]],
         collect_readiness_view(
             summary,
             level=ReadinessLevel.FOLDER,
@@ -127,7 +146,7 @@ def test_h_collect_readiness_view_shapes(
         ),
     )
     for stat, folder_entries in folder_view.items():
-        assert stat in STATUS_VALUES
+        assert isinstance(stat, ReadinessStatus)
         assert isinstance(folder_entries, list)
         if limit > 0:
             assert len(folder_entries) <= limit
@@ -138,8 +157,8 @@ def test_h_collect_readiness_view_shapes(
             assert isinstance(folder_entry["warnings"], int)
 
     # File view
-    file_view: dict[str, list[FileReadinessPayload]] = cast(
-        dict[str, list[FileReadinessPayload]],
+    file_view: dict[ReadinessStatus, list[FileReadinessPayload]] = cast(
+        dict[ReadinessStatus, list[FileReadinessPayload]],
         collect_readiness_view(
             summary,
             level=ReadinessLevel.FILE,
@@ -148,7 +167,7 @@ def test_h_collect_readiness_view_shapes(
         ),
     )
     for stat, file_entries in file_view.items():
-        assert stat in STATUS_VALUES
+        assert isinstance(stat, ReadinessStatus)
         if limit > 0:
             assert len(file_entries) <= limit
         for file_entry in file_entries:

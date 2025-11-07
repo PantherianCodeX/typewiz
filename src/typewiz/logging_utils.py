@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Final, TypedDict, override
 
 from .model_types import LogFormat, Mode
+from .utils import normalise_enums_for_json
 
 LOG_FORMATS: Final[tuple[str, ...]] = tuple(format_.value for format_ in LogFormat)
 
@@ -28,7 +29,7 @@ class JSONLogFormatter(logging.Formatter):
                 payload[field] = getattr(record, field)
         if record.exc_info:
             payload["exc_info"] = self.formatException(record.exc_info)
-        return json.dumps(payload, ensure_ascii=False)
+        return json.dumps(normalise_enums_for_json(payload), ensure_ascii=False)
 
 
 class TextLogFormatter(logging.Formatter):

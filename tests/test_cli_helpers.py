@@ -28,6 +28,7 @@ from typewiz.model_types import (
     HotspotKind,
     ReadinessLevel,
     ReadinessStatus,
+    SeverityLevel,
 )
 from typewiz.readiness_views import FolderReadinessPayload
 from typewiz.summary_types import (
@@ -37,9 +38,9 @@ from typewiz.summary_types import (
     ReadinessOptionEntry,
     ReadinessOptionsBucket,
     ReadinessTab,
-    StatusKey,
     SummaryData,
 )
+from typewiz.type_aliases import RunId
 
 
 def test_parse_comma_separated_strips_entries() -> None:
@@ -107,7 +108,7 @@ def test_query_runs_and_engines_payloads() -> None:
 def test_query_readiness_payload() -> None:
     summary = _sample_summary()
     view = cast(
-        dict[str, list[FolderReadinessPayload]],
+        dict[ReadinessStatus, list[FolderReadinessPayload]],
         query_readiness(
             summary,
             level=ReadinessLevel.FOLDER,
@@ -115,17 +116,14 @@ def test_query_readiness_payload() -> None:
             limit=5,
         ),
     )
-    assert "blocked" in view
-    assert view["blocked"][0]["path"] == "src"
+    assert ReadinessStatus.BLOCKED in view
+    assert view[ReadinessStatus.BLOCKED][0]["path"] == "src"
 
 
 def _sample_summary() -> SummaryData:
-    blocked = ReadinessStatus.BLOCKED.value
-    ready = ReadinessStatus.READY.value
-    close = ReadinessStatus.CLOSE.value
     readiness_tab: ReadinessTab = {
         "strict": {
-            cast(StatusKey, blocked): [
+            ReadinessStatus.BLOCKED: [
                 {
                     "path": "src/app.py",
                     "diagnostics": 2,
@@ -134,8 +132,8 @@ def _sample_summary() -> SummaryData:
                     "information": 0,
                 }
             ],
-            cast(StatusKey, ready): [],
-            cast(StatusKey, close): [],
+            ReadinessStatus.READY: [],
+            ReadinessStatus.CLOSE: [],
         },
         "options": {
             "unknownChecks": ReadinessOptionsBucket(
@@ -148,7 +146,7 @@ def _sample_summary() -> SummaryData:
             ),
         },
     }
-    severity_totals: CountsBySeverity = {"error": 2}
+    severity_totals: CountsBySeverity = {SeverityLevel.ERROR: 2}
     category_totals: CountsByCategory = {"unknownChecks": 2}
     top_rules: CountsByRule = {}
     summary: SummaryData = {
@@ -165,7 +163,7 @@ def _sample_summary() -> SummaryData:
                 "severityTotals": severity_totals,
                 "categoryTotals": category_totals,
                 "runSummary": {
-                    "pyright:current": {
+                    RunId("pyright:current"): {
                         "errors": 1,
                         "warnings": 0,
                         "information": 1,
@@ -191,7 +189,7 @@ def _sample_summary() -> SummaryData:
             "readiness": readiness_tab,
             "runs": {
                 "runSummary": {
-                    "pyright:current": {
+                    RunId("pyright:current"): {
                         "errors": 1,
                         "warnings": 0,
                         "information": 1,
@@ -201,7 +199,7 @@ def _sample_summary() -> SummaryData:
             },
             "engines": {
                 "runSummary": {
-                    "pyright:current": {
+                    RunId("pyright:current"): {
                         "engineOptions": {
                             "profile": "strict",
                             "configFile": "pyrightconfig.json",

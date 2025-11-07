@@ -16,6 +16,7 @@ from .model_types import (
     CategoryMapping,
     OverrideEntry,
     ReadinessStatus,
+    SeverityLevel,
     SummaryTabName,
     clone_override_entries,
 )
@@ -23,9 +24,9 @@ from .override_utils import format_overrides_block
 from .readiness import (
     CATEGORY_KEYS,
     CATEGORY_LABELS,
-    STATUS_VALUES,
-    STATUSES,
+    DEFAULT_CLOSE_THRESHOLD,
     ReadinessEntry,
+    ReadinessOptions,
     ReadinessPayload,
     compute_readiness,
 )
@@ -36,32 +37,54 @@ from .summary_types import (
     ReadinessOptionEntry,
     ReadinessOptionsBucket,
     ReadinessTab,
-    StatusKey,
     SummaryData,
     SummaryFileEntry,
     SummaryFolderEntry,
     SummaryRunEntry,
     SummaryTabs,
 )
-from .type_aliases import CategoryKey
-from .typed_manifest import ManifestData, SeverityStr, ToolSummary
+from .type_aliases import CategoryKey, RunId
+from .typed_manifest import ManifestData, ToolSummary
 from .utils import JSONValue
 
 logger: logging.Logger = logging.getLogger("typewiz.dashboard")
-_STATUS_KEY_SET: Final[frozenset[str]] = frozenset(STATUS_VALUES)
 _CATEGORY_KEY_SET: Final[frozenset[str]] = frozenset(CATEGORY_KEYS)
 
 
-def _as_status_key(value: str) -> StatusKey:
-    if value not in _STATUS_KEY_SET:
-        raise DashboardTypeError("readiness.strict", "known readiness status")
-    return cast(StatusKey, value)
+def _coerce_status_key(value: object) -> ReadinessStatus:
+    if isinstance(value, ReadinessStatus):
+        return value
+    if isinstance(value, str):
+        try:
+            return ReadinessStatus.from_str(value)
+        except ValueError as exc:
+            raise DashboardTypeError("readiness.strict", "a known readiness status") from exc
+    raise DashboardTypeError("readiness.strict", "a known readiness status")
 
 
-def _as_category_key(value: str) -> CategoryKey:
-    if value not in _CATEGORY_KEY_SET:
+def _maybe_severity_level(value: object) -> SeverityLevel | None:
+    if isinstance(value, SeverityLevel):
+        return value
+    if isinstance(value, str):
+        try:
+            return SeverityLevel.from_str(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _maybe_category_key(value: object) -> CategoryKey | None:
+    token = str(value).strip()
+    if not token or token not in _CATEGORY_KEY_SET:
+        return None
+    return cast(CategoryKey, token)
+
+
+def _as_category_key(value: object) -> CategoryKey:
+    token = str(value).strip()
+    if token not in _CATEGORY_KEY_SET:
         raise DashboardTypeError("readiness.options", "known readiness category")
-    return cast(CategoryKey, value)
+    return cast(CategoryKey, token)
 
 
 class DashboardTypeError(TypewizTypeError):
@@ -83,16 +106,10 @@ def _collect_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPay
 
 
 def _empty_readiness_tab() -> ReadinessTab:
-    strict_defaults: dict[StatusKey, list[dict[str, JSONValue]]] = {
-        _as_status_key(status_value): [] for status_value in STATUS_VALUES
+    strict_defaults: dict[ReadinessStatus, list[dict[str, JSONValue]]] = {
+        status: [] for status in ReadinessStatus
     }
-    return cast(
-        "ReadinessTab",
-        {
-            "strict": strict_defaults,
-            "options": {},
-        },
-    )
+    return cast("ReadinessTab", {"strict": strict_defaults, "options": {}})
 
 
 def _coerce_readiness_entries(value: object, context: str) -> list[dict[str, JSONValue]]:
@@ -108,17 +125,19 @@ def _coerce_readiness_entries(value: object, context: str) -> list[dict[str, JSO
     return entries
 
 
-def _validate_readiness_tab(raw: Mapping[str, object]) -> ReadinessTab:
+def _validate_readiness_tab(raw: Mapping[object, object]) -> ReadinessTab:
     strict_raw = raw.get("strict")
     if not isinstance(strict_raw, Mapping):
         raise DashboardTypeError("readiness.strict", "a mapping")
     strict_map = coerce_mapping(cast("Mapping[object, object]", strict_raw))
-    strict_section: dict[StatusKey, list[dict[str, JSONValue]]] = {}
-    for status in STATUSES:
-        key = _as_status_key(status.value)
-        strict_section[key] = _coerce_readiness_entries(
-            strict_map.get(key),
-            f"readiness.strict.{key}",
+    strict_section: dict[ReadinessStatus, list[dict[str, JSONValue]]] = {
+        status: [] for status in ReadinessStatus
+    }
+    for key, value in strict_map.items():
+        status = _coerce_status_key(key)
+        strict_section[status] = _coerce_readiness_entries(
+            value,
+            f"readiness.strict.{status.value}",
         )
 
     options_raw = raw.get("options")
@@ -126,30 +145,30 @@ def _validate_readiness_tab(raw: Mapping[str, object]) -> ReadinessTab:
         raise DashboardTypeError("readiness.options", "a mapping")
     options_map = coerce_mapping(cast("Mapping[object, object]", options_raw))
     options_section: dict[CategoryKey, ReadinessOptionsBucket] = {}
-    for category, bucket_obj in options_map.items():
+    for category_key_raw, bucket_obj in options_map.items():
         if not isinstance(bucket_obj, Mapping):
-            raise DashboardTypeError(f"readiness.options[{category!r}]", "a mapping")
+            raise DashboardTypeError(f"readiness.options[{category_key_raw!r}]", "a mapping")
         bucket_map = coerce_mapping(cast("Mapping[object, object]", bucket_obj))
-        status_entries: dict[StatusKey, list[dict[str, JSONValue]]] = {}
-        for status in STATUSES:
-            key = _as_status_key(status.value)
-            if key in bucket_map:
-                status_entries[key] = _coerce_readiness_entries(
-                    bucket_map.get(key),
-                    f"readiness.options[{category!r}].{key}",
-                )
-        bucket_payload: ReadinessOptionsBucket = {}
-        for key, entries in status_entries.items():
-            if entries:
-                bucket_payload[key] = cast("list[ReadinessOptionEntry]", entries)
         threshold_value = bucket_map.get("threshold")
-        if threshold_value is not None:
-            if isinstance(threshold_value, int):
-                bucket_payload["threshold"] = threshold_value
-            else:
-                raise DashboardTypeError(f"readiness.options[{category!r}].threshold", "an integer")
-        category_key = _as_category_key(str(category))
-        options_section[category_key] = bucket_payload
+        if threshold_value is not None and not isinstance(threshold_value, int):
+            raise DashboardTypeError(
+                f"readiness.options[{category_key_raw!r}].threshold",
+                "an integer",
+            )
+        threshold = threshold_value if isinstance(threshold_value, int) else DEFAULT_CLOSE_THRESHOLD
+        options_bucket = ReadinessOptions(threshold=threshold)
+        for status in ReadinessStatus:
+            entries = bucket_map.get(status.value)
+            if entries is None:
+                continue
+            parsed_entries = _coerce_readiness_entries(
+                entries,
+                f"readiness.options[{category_key_raw!r}].{status.value}",
+            )
+            for entry in cast("list[ReadinessOptionEntry]", parsed_entries):
+                options_bucket.add_entry(status, entry)
+        category_key = _as_category_key(category_key_raw)
+        options_section[category_key] = options_bucket.to_payload()
 
     return cast(
         "ReadinessTab",
@@ -171,16 +190,16 @@ def build_summary(manifest: ManifestData) -> SummaryData:
         if isinstance(runs_raw, Sequence)
         else []
     )
-    run_summary: dict[str, SummaryRunEntry] = {}
+    run_summary: dict[RunId, SummaryRunEntry] = {}
     folder_totals: dict[str, Counter[str]] = defaultdict(Counter)
     folder_counts: dict[str, int] = defaultdict(int)
     folder_code_totals: dict[str, Counter[str]] = defaultdict(Counter)
     folder_recommendations: dict[str, set[str]] = defaultdict(set)
     file_entries: list[tuple[str, int, int]] = []
-    severity_totals: Counter[SeverityStr] = Counter()
+    severity_totals: Counter[SeverityLevel] = Counter()
     rule_totals: Counter[str] = Counter()
-    category_totals: Counter[str] = Counter()
-    folder_category_totals: dict[str, Counter[str]] = defaultdict(Counter)
+    category_totals: Counter[CategoryKey] = Counter()
+    folder_category_totals: dict[str, Counter[CategoryKey]] = defaultdict(Counter)
 
     for run in run_entries:
         tool_obj = run.get("tool")
@@ -253,7 +272,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 if cleaned:
                     category_mapping[key_str] = cleaned
 
-        key = f"{tool_obj}:{mode_obj}"
+        run_id = RunId(f"{tool_obj}:{mode_obj}")
         run_entry: SummaryRunEntry = {
             "command": command_list,
             "errors": coerce_int(summary_map.get("errors")),
@@ -271,18 +290,23 @@ def build_summary(manifest: ManifestData) -> SummaryData:
             },
         }
         severity_breakdown_map = coerce_mapping(summary_map.get("severityBreakdown"))
-        severity_breakdown: CountsBySeverity = {
-            cast(SeverityStr, key): coerce_int(value)
-            for key, value in severity_breakdown_map.items()
-        }
+        severity_breakdown: CountsBySeverity = {}
+        for sev_key, value in severity_breakdown_map.items():
+            severity = _maybe_severity_level(sev_key)
+            if severity is None:
+                continue
+            severity_breakdown[severity] = coerce_int(value)
         rule_counts: CountsByRule = {
             key: coerce_int(value)
             for key, value in coerce_mapping(summary_map.get("ruleCounts")).items()
         }
-        category_counts: CountsByCategory = {
-            key: coerce_int(value)
-            for key, value in coerce_mapping(summary_map.get("categoryCounts")).items()
-        }
+        category_counts_map = coerce_mapping(summary_map.get("categoryCounts"))
+        category_counts: CountsByCategory = {}
+        for cat_key, value in category_counts_map.items():
+            category = _maybe_category_key(cat_key)
+            if category is None:
+                continue
+            category_counts[category] = coerce_int(value)
         if severity_breakdown:
             run_entry["severityBreakdown"] = severity_breakdown
         if rule_counts:
@@ -302,7 +326,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 },
             )
             run_entry["toolSummary"] = raw_tool_summary
-        run_summary[key] = run_entry
+        run_summary[run_id] = run_entry
         severity_totals.update(severity_breakdown)
         rule_totals.update(rule_counts)
         category_totals.update(category_counts)
@@ -329,8 +353,11 @@ def build_summary(manifest: ManifestData) -> SummaryData:
             for code, count in code_counts_map.items():
                 folder_code_totals[path][code] += coerce_int(count)
             category_counts_map = coerce_mapping(folder.get("categoryCounts"))
-            for category, count in category_counts_map.items():
-                folder_category_totals[path][category] += coerce_int(count)
+            for raw_category, count in category_counts_map.items():
+                category_key = _maybe_category_key(raw_category)
+                if category_key is None:
+                    continue
+                folder_category_totals[path][category_key] += coerce_int(count)
             rec_values = coerce_object_list(folder.get("recommendations"))
             for rec in rec_values:
                 rec_text = rec.strip() if isinstance(rec, str) else str(rec).strip()
@@ -376,7 +403,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
     )[:25]
     readiness_raw = _collect_readiness(folder_entries_full)
     try:
-        readiness_tab = _validate_readiness_tab(cast(Mapping[str, object], readiness_raw))
+        readiness_tab = _validate_readiness_tab(cast("Mapping[object, object]", readiness_raw))
     except ValueError as exc:
         logger.warning("Discarding invalid readiness payload: %s", exc)
         readiness_tab = _empty_readiness_tab()
@@ -467,9 +494,9 @@ def render_markdown(summary: SummaryData) -> str:
                 "",
                 "## Overview",
                 "",
-                f"- Errors: {severity.get('error', 0)}",
-                f"- Warnings: {severity.get('warning', 0)}",
-                f"- Information: {severity.get('information', 0)}",
+                f"- Errors: {severity.get(SeverityLevel.ERROR, 0)}",
+                f"- Warnings: {severity.get(SeverityLevel.WARNING, 0)}",
+                f"- Information: {severity.get(SeverityLevel.INFORMATION, 0)}",
             ],
         )
 
@@ -614,10 +641,12 @@ def render_markdown(summary: SummaryData) -> str:
     lines.extend(["", "### Readiness snapshot"])
     empty_readiness = _empty_readiness_tab()
     readiness_section = tabs.get("readiness") or empty_readiness
-    strict_section_raw = readiness_section.get("strict", {})
-    strict_ready_raw = strict_section_raw.get(ReadinessStatus.READY.value, [])
-    strict_close_raw = strict_section_raw.get(ReadinessStatus.CLOSE.value, [])
-    strict_blocked_raw = strict_section_raw.get(ReadinessStatus.BLOCKED.value, [])
+    strict_section_raw = cast(
+        dict[ReadinessStatus, list[dict[str, object]]], readiness_section.get("strict", {})
+    )
+    strict_ready_raw = strict_section_raw.get(ReadinessStatus.READY, [])
+    strict_close_raw = strict_section_raw.get(ReadinessStatus.CLOSE, [])
+    strict_blocked_raw = strict_section_raw.get(ReadinessStatus.BLOCKED, [])
 
     def _materialise_dict_list(values: object) -> list[dict[str, object]]:
         result: list[dict[str, object]] = []
@@ -650,15 +679,13 @@ def render_markdown(summary: SummaryData) -> str:
         lines.extend(["", "#### Per-option readiness"])
         label_lookup = cast(dict[str, str], CATEGORY_LABELS)
         for category, buckets_obj in readiness_options_raw.items():
-            buckets_dict = {status.value: buckets_obj.get(status.value) for status in STATUSES}
-            buckets_dict["threshold"] = buckets_obj.get("threshold")
             label_key: str = str(category)
             label = label_lookup.get(label_key, label_key)
-            threshold = buckets_dict.get("threshold")
+            threshold = buckets_obj.get("threshold")
             threshold_value = threshold if isinstance(threshold, int) else 0
             lines.append(f"- **{label}** (≤{threshold_value} to be close):")
-            for status in STATUSES:
-                entries = _materialise_dict_list(buckets_dict.get(status.value))
+            for status in ReadinessStatus:
+                entries = _materialise_dict_list(buckets_obj.get(status.value))
                 lines.append(f"  - {status.value.title()}: {_format_entry_list(entries)}")
 
     lines.append("")

@@ -20,15 +20,11 @@ from typewiz.summary_types import (
     ReadinessOptionsBucket,
     ReadinessStrictEntry,
     ReadinessTab,
-    StatusKey,
     SummaryData,
     SummaryTabs,
 )
+from typewiz.type_aliases import CategoryName
 from typewiz.utils import consume
-
-READY = ReadinessStatus.READY.value
-CLOSE = ReadinessStatus.CLOSE.value
-BLOCKED = ReadinessStatus.BLOCKED.value
 
 
 def _make_summary() -> SummaryData:
@@ -39,10 +35,13 @@ def _make_summary() -> SummaryData:
             "errors": 3,
             "warnings": 1,
             "information": 0,
-            "categories": {"unknownChecks": 3, "general": 1},
+            "categories": {
+                CategoryName("unknownChecks"): 3,
+                CategoryName("general"): 1,
+            },
             "categoryStatus": {
-                "unknownChecks": ReadinessStatus.BLOCKED,
-                "general": ReadinessStatus.CLOSE,
+                CategoryName("unknownChecks"): ReadinessStatus.BLOCKED,
+                CategoryName("general"): ReadinessStatus.CLOSE,
             },
         },
     ]
@@ -52,9 +51,9 @@ def _make_summary() -> SummaryData:
     readiness_close_options: list[ReadinessOptionEntry] = []
     readiness_tab: ReadinessTab = {
         "strict": {
-            cast(StatusKey, BLOCKED): strict_blocked,
-            cast(StatusKey, READY): strict_ready,
-            cast(StatusKey, CLOSE): strict_close,
+            ReadinessStatus.BLOCKED: strict_blocked,
+            ReadinessStatus.READY: strict_ready,
+            ReadinessStatus.CLOSE: strict_close,
         },
         "options": {
             "unknownChecks": ReadinessOptionsBucket(
@@ -94,9 +93,9 @@ def test_collect_readiness_view_folder() -> None:
         statuses=[ReadinessStatus.BLOCKED],
         limit=5,
     )
-    folder_view = cast(dict[str, list[FolderReadinessPayload]], view)
-    assert BLOCKED in folder_view
-    blocked_entries = folder_view[BLOCKED]
+    folder_view = cast(dict[ReadinessStatus, list[FolderReadinessPayload]], view)
+    assert ReadinessStatus.BLOCKED in folder_view
+    blocked_entries = folder_view[ReadinessStatus.BLOCKED]
     assert blocked_entries
     first_entry = blocked_entries[0]
     assert first_entry["path"] == "src/app"
@@ -111,26 +110,26 @@ def test_collect_readiness_view_file() -> None:
         statuses=[ReadinessStatus.BLOCKED],
         limit=5,
     )
-    file_view = cast(dict[str, list[FileReadinessPayload]], view)
-    assert BLOCKED in file_view
-    blocked_entries = file_view[BLOCKED]
+    file_view = cast(dict[ReadinessStatus, list[FileReadinessPayload]], view)
+    assert ReadinessStatus.BLOCKED in file_view
+    blocked_entries = file_view[ReadinessStatus.BLOCKED]
     assert blocked_entries
     entry = blocked_entries[0]
     assert entry["path"] == "src/app"
     assert entry["diagnostics"] == 4
     categories = entry.get("categories")
     assert isinstance(categories, dict)
-    categories_dict = cast(dict[str, object], categories)
-    assert categories_dict.get("unknownChecks") == 3
+    categories_dict = cast(dict[CategoryName, object], categories)
+    assert categories_dict.get(CategoryName("unknownChecks")) == 3
 
 
 def test_collect_readiness_view_folder_fallback_category() -> None:
     # unknownChecks bucket intentionally empty; optionalChecks contains entries
     readiness_tab: ReadinessTab = {
         "strict": {
-            cast(StatusKey, BLOCKED): [],
-            cast(StatusKey, READY): [],
-            cast(StatusKey, CLOSE): [],
+            ReadinessStatus.BLOCKED: [],
+            ReadinessStatus.READY: [],
+            ReadinessStatus.CLOSE: [],
         },
         "options": {
             "unknownChecks": ReadinessOptionsBucket(blocked=[], ready=[], close=[], threshold=2),
@@ -166,8 +165,8 @@ def test_collect_readiness_view_folder_fallback_category() -> None:
         statuses=[ReadinessStatus.BLOCKED],
         limit=5,
     )
-    folder_view = cast(dict[str, list[FolderReadinessPayload]], view)
-    assert folder_view[BLOCKED][0]["path"] == "src/opt"
+    folder_view = cast(dict[ReadinessStatus, list[FolderReadinessPayload]], view)
+    assert folder_view[ReadinessStatus.BLOCKED][0]["path"] == "src/opt"
 
 
 def test_collect_readiness_view_rejects_invalid() -> None:
@@ -176,7 +175,7 @@ def test_collect_readiness_view_rejects_invalid() -> None:
     readiness = summary["tabs"]["readiness"]
     assert "strict" in readiness
     strict_map = readiness["strict"]
-    blocked_key = cast(StatusKey, BLOCKED)
+    blocked_key = ReadinessStatus.BLOCKED
     assert blocked_key in strict_map
     blocked_entries = strict_map[blocked_key]
     assert blocked_entries
@@ -209,12 +208,13 @@ def test_file_record_to_payload_roundtrip() -> None:
         information=0,
         notes=("note",),
         recommendations=("action",),
-        categories={"unknown": 2},
-        category_status={"unknown": ReadinessStatus.BLOCKED},
+        categories={CategoryName("unknown"): 2},
+        category_status={CategoryName("unknown"): ReadinessStatus.BLOCKED},
     )
     payload = record.to_payload()
     assert payload["path"] == "pkg"
     assert payload.get("notes") == ["note"]
     categories_payload = payload.get("categories")
+    assert categories_payload is not None
     assert isinstance(categories_payload, dict)
-    assert categories_payload["unknown"] == 2
+    assert categories_payload[CategoryName("unknown")] == 2

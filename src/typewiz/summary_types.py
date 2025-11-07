@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypedDict
+from typing import TypedDict
 
-from .model_types import ReadinessStatus
-from .type_aliases import CategoryKey
-from .typed_manifest import EngineOptionsEntry, SeverityStr, ToolSummary
+from .model_types import ReadinessStatus, SeverityLevel
+from .type_aliases import CategoryKey, CategoryName, RunId
+from .typed_manifest import EngineOptionsEntry, ToolSummary
 
-StatusKey = Literal["ready", "close", "blocked"]
-CountsBySeverity = dict[SeverityStr, int]
+CountsBySeverity = dict[SeverityLevel, int]
 CountsByRule = dict[str, int]
-CountsByCategory = dict[str, int]
+CountsByCategory = dict[CategoryKey, int]
 
 
 class SummaryRunEntry(TypedDict, total=False):
@@ -46,11 +45,11 @@ class SummaryFileEntry(TypedDict):
 class OverviewTab(TypedDict):
     severityTotals: CountsBySeverity
     categoryTotals: CountsByCategory
-    runSummary: dict[str, SummaryRunEntry]
+    runSummary: dict[RunId, SummaryRunEntry]
 
 
 class EnginesTab(TypedDict):
-    runSummary: dict[str, SummaryRunEntry]
+    runSummary: dict[RunId, SummaryRunEntry]
 
 
 class HotspotsTab(TypedDict):
@@ -67,8 +66,8 @@ class ReadinessStrictEntry(TypedDict, total=False):
     errors: int
     warnings: int
     information: int
-    categories: dict[str, int]
-    categoryStatus: dict[str, ReadinessStatus]
+    categories: dict[CategoryName, int]
+    categoryStatus: dict[CategoryName, ReadinessStatus]
 
 
 class ReadinessOptionsBucket(TypedDict, total=False):
@@ -79,7 +78,7 @@ class ReadinessOptionsBucket(TypedDict, total=False):
 
 
 class ReadinessTab(TypedDict, total=False):
-    strict: dict[StatusKey, list[ReadinessStrictEntry]]
+    strict: dict[ReadinessStatus, list[ReadinessStrictEntry]]
     options: dict[CategoryKey, ReadinessOptionsBucket]
 
 
@@ -91,7 +90,7 @@ class ReadinessOptionEntry(TypedDict, total=False):
 
 
 class RunsTab(TypedDict):
-    runSummary: dict[str, SummaryRunEntry]
+    runSummary: dict[RunId, SummaryRunEntry]
 
 
 class SummaryTabs(TypedDict):
@@ -105,7 +104,7 @@ class SummaryTabs(TypedDict):
 class SummaryData(TypedDict):
     generatedAt: str
     projectRoot: str
-    runSummary: dict[str, SummaryRunEntry]
+    runSummary: dict[RunId, SummaryRunEntry]
     severityTotals: CountsBySeverity
     categoryTotals: CountsByCategory
     topRules: dict[str, int]
