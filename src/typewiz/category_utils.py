@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Final, cast
+from typing import Final, TypeGuard
 
 from .type_aliases import CategoryKey, CategoryName
 
@@ -14,15 +14,19 @@ CATEGORY_DISPLAY_ORDER: Final[tuple[CategoryKey, ...]] = (
 )
 
 CATEGORY_KEYS: Final[tuple[CategoryKey, ...]] = CATEGORY_DISPLAY_ORDER
-CATEGORY_KEY_SET: Final[frozenset[str]] = frozenset(CATEGORY_KEYS)
+CATEGORY_KEY_SET: Final[frozenset[CategoryKey]] = frozenset(CATEGORY_KEYS)
 CATEGORY_NAMES: Final[tuple[CategoryName, ...]] = tuple(CategoryName(key) for key in CATEGORY_KEYS)
+
+
+def _is_category_key(value: str) -> TypeGuard[CategoryKey]:
+    return value in CATEGORY_KEY_SET
 
 
 def coerce_category_key(value: object) -> CategoryKey | None:
     token = str(value).strip()
-    if not token or token not in CATEGORY_KEY_SET:
+    if not token or not _is_category_key(token):
         return None
-    return cast(CategoryKey, token)
+    return token
 
 
 __all__ = [

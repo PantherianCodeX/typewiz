@@ -5,12 +5,15 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
-from typing import Final, TypedDict, override
+from typing import Final, Literal, TypedDict, cast, override
 
 from .model_types import LogFormat, Mode
 from .utils import normalise_enums_for_json
 
-LOG_FORMATS: Final[tuple[str, ...]] = tuple(format_.value for format_ in LogFormat)
+LOG_FORMATS: Final[tuple[Literal["text", "json"], ...]] = cast(
+    tuple[Literal["text", "json"], ...],
+    tuple(format_.value for format_ in LogFormat),
+)
 
 
 class JSONLogFormatter(logging.Formatter):
@@ -75,7 +78,7 @@ def configure_logging(log_format: LogFormat | str) -> None:
 class StructuredLogExtra(TypedDict, total=False):
     component: str
     tool: str
-    mode: Mode | str
+    mode: Mode
     duration_ms: float
     counts: dict[str, int]
     cached: bool

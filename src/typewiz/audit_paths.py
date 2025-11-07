@@ -7,6 +7,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from typewiz.utils import ROOT_MARKERS
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -37,7 +39,7 @@ def global_fingerprint_paths(project_root: Path) -> list[str]:
     """Return repository-level files that should influence fingerprinting."""
 
     extras: list[str] = []
-    for filename in ("typewiz.toml", ".typewiz.toml", "pyproject.toml"):
+    for filename in ROOT_MARKERS:
         candidate = project_root / filename
         if candidate.exists():
             extras.append(filename)
