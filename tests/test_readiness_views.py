@@ -39,7 +39,10 @@ def _make_summary() -> SummaryData:
             "warnings": 1,
             "information": 0,
             "categories": {"unknownChecks": 3, "general": 1},
-            "categoryStatus": {"unknownChecks": "blocked", "general": "close"},
+            "categoryStatus": {
+                "unknownChecks": ReadinessStatus.BLOCKED,
+                "general": ReadinessStatus.CLOSE,
+            },
         },
     ]
     strict_ready: list[ReadinessStrictEntry] = []
@@ -199,7 +202,7 @@ def test_file_record_to_payload_roundtrip() -> None:
         notes=("note",),
         recommendations=("action",),
         categories={"unknown": 2},
-        category_status={"unknown": "blocked"},
+        category_status={"unknown": ReadinessStatus.BLOCKED},
     )
     payload = record.to_payload()
     assert payload["path"] == "pkg"

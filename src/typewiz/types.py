@@ -31,16 +31,6 @@ class Diagnostic:
     message: str
     raw: Mapping[str, object] = field(default_factory=_default_raw_mapping)
 
-    def category(self) -> str:
-        code = (self.code or "").lower()
-        if "unknown" in code:
-            return "unknown"
-        if "optional" in code:
-            return "optional"
-        if "warnunused" in code:
-            return "unused"
-        return "general"
-
 
 def _default_str_list() -> list[str]:
     return []

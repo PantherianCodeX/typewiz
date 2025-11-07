@@ -33,20 +33,6 @@ def _make_diag(code: str | None, severity: SeverityLevel) -> Diagnostic:
     )
 
 
-def test_diagnostic_category_branches() -> None:
-    unknown = _make_diag("reportUnknownMemberType", SeverityLevel.ERROR)
-    optional = _make_diag("OptionalMemberAccess", SeverityLevel.WARNING)
-    unused = _make_diag("warnUnusedCallResult", SeverityLevel.WARNING)
-    general = _make_diag("attr-defined", SeverityLevel.ERROR)
-    none_code = _make_diag(None, SeverityLevel.INFORMATION)
-
-    assert unknown.category() == "unknown"
-    assert optional.category() == "optional"
-    assert unused.category() == "unused"
-    assert general.category() == "general"
-    assert none_code.category() == "general"
-
-
 def test_run_result_severity_counts() -> None:
     diagnostics = [
         _make_diag("code", SeverityLevel.ERROR),

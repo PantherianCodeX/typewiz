@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TypedDict
 
+from .model_types import ReadinessStatus
 from .typed_manifest import EngineOptionsEntry, ToolSummary
 
 
@@ -61,7 +62,7 @@ class ReadinessStrictEntry(TypedDict, total=False):
     warnings: int
     information: int
     categories: dict[str, int]
-    categoryStatus: dict[str, str]
+    categoryStatus: dict[str, ReadinessStatus]
 
 
 class ReadinessOptionsBucket(TypedDict, total=False):

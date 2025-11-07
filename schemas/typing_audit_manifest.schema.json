@@ -146,7 +146,12 @@
         },
         "severity": {
           "title": "Severity",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "information"
+          ]
         }
       },
       "required": [
@@ -357,7 +362,11 @@
         },
         "mode": {
           "title": "Mode",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "current",
+            "full"
+          ]
         },
         "perFile": {
           "items": {

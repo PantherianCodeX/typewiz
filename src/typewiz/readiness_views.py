@@ -12,7 +12,6 @@ from .data_validation import (
     coerce_int,
     coerce_mapping,
     coerce_object_list,
-    coerce_optional_str,
     coerce_optional_str_list,
     coerce_str,
 )
@@ -62,7 +61,7 @@ class FileReadinessPayload(FileReadinessPayloadBase, total=False):
     notes: list[str]
     recommendations: list[str]
     categories: dict[str, int]
-    categoryStatus: dict[str, str]
+    categoryStatus: dict[str, ReadinessStatus]
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,7 +74,7 @@ class FileReadinessRecord:
     notes: tuple[str, ...] = ()
     recommendations: tuple[str, ...] = ()
     categories: Mapping[str, int] | None = None
-    category_status: Mapping[str, str] | None = None
+    category_status: Mapping[str, ReadinessStatus] | None = None
 
     def to_payload(self) -> FileReadinessPayload:
         payload: FileReadinessPayload = {
@@ -116,6 +115,17 @@ def _build_option_entry(raw: Mapping[str, object]) -> ReadinessOptionEntry:
     if warnings is not None:
         entry["warnings"] = coerce_int(warnings)
     return entry
+
+
+def _coerce_status(value: object) -> ReadinessStatus:
+    if isinstance(value, ReadinessStatus):
+        return value
+    if isinstance(value, str):
+        try:
+            return ReadinessStatus.from_str(value)
+        except ValueError:
+            return ReadinessStatus.BLOCKED
+    return ReadinessStatus.BLOCKED
 
 
 def _coerce_option_entries(
@@ -159,8 +169,12 @@ def _build_strict_entry(raw: Mapping[str, object]) -> ReadinessStrictEntry:
         entry["categories"] = {key: coerce_int(value) for key, value in categories_map.items()}
     category_status_raw = raw.get("categoryStatus")
     if isinstance(category_status_raw, Mapping):
-        status_map = coerce_mapping(cast(Mapping[object, object], category_status_raw))
-        entry["categoryStatus"] = {key: coerce_str(value) for key, value in status_map.items()}
+        status_map: dict[str, ReadinessStatus] = {
+            str(key): _coerce_status(value)
+            for key, value in cast(Mapping[object, object], category_status_raw).items()
+        }
+        if status_map:
+            entry["categoryStatus"] = status_map
     return entry
 
 
@@ -237,12 +251,14 @@ def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
     categories: Mapping[str, int] | None = None
     if categories_map:
         categories = {key: coerce_int(value) for key, value in categories_map.items()}
-    status_map = coerce_mapping(entry.get("categoryStatus"))
-    category_status: Mapping[str, str] | None = None
-    if status_map:
-        category_status = {
-            key: coerce_optional_str(value) or "unknown" for key, value in status_map.items()
+    status_source = entry.get("categoryStatus")
+    category_status: Mapping[str, ReadinessStatus] | None = None
+    if isinstance(status_source, Mapping) and status_source:
+        converted = {
+            key: _coerce_status(value)
+            for key, value in cast(Mapping[str, object], status_source).items()
         }
+        category_status = converted or None
     return FileReadinessRecord(
         path=path,
         diagnostics=diagnostics,

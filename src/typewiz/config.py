@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from .collection_utils import dedupe_preserve
 from .exceptions import TypewizValidationError
 from .model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
+from .type_aliases import EngineName
 
 CONFIG_VERSION: Final[int] = 0
 FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)
@@ -120,15 +121,15 @@ class EngineSettings:
     profiles: dict[str, EngineProfile] = field(default_factory=_default_dict_str_engineprofile)
 
 
-def _default_dict_str_liststr() -> dict[str, list[str]]:
+def _default_dict_str_liststr() -> dict[EngineName, list[str]]:
     return {}
 
 
-def _default_dict_str_enginesettings() -> dict[str, EngineSettings]:
+def _default_dict_str_enginesettings() -> dict[EngineName, EngineSettings]:
     return {}
 
 
-def _default_dict_str_str() -> dict[str, str]:
+def _default_dict_str_str() -> dict[EngineName, str]:
     return {}
 
 
@@ -167,12 +168,23 @@ class AuditConfig:
     dashboard_html: Path | None = None
     respect_gitignore: bool | None = None
     runners: list[str] | None = None
-    plugin_args: dict[str, list[str]] = field(default_factory=_default_dict_str_liststr)
-    engine_settings: dict[str, EngineSettings] = field(
+    plugin_args: dict[EngineName, list[str]] = field(default_factory=_default_dict_str_liststr)
+    engine_settings: dict[EngineName, EngineSettings] = field(
         default_factory=_default_dict_str_enginesettings,
     )
-    active_profiles: dict[str, str] = field(default_factory=_default_dict_str_str)
+    active_profiles: dict[EngineName, str] = field(default_factory=_default_dict_str_str)
     path_overrides: list[PathOverride] = field(default_factory=_default_list_path_override)
+
+    def __post_init__(self) -> None:
+        self.plugin_args = {
+            EngineName(name): list(values) for name, values in self.plugin_args.items()
+        }
+        self.engine_settings = {
+            EngineName(name): value for name, value in self.engine_settings.items()
+        }
+        self.active_profiles = {
+            EngineName(name): profile for name, profile in self.active_profiles.items()
+        }
 
 
 @dataclass(slots=True)
@@ -184,10 +196,18 @@ class Config:
 @dataclass(slots=True)
 class PathOverride:
     path: Path
-    engine_settings: dict[str, EngineSettings] = field(
+    engine_settings: dict[EngineName, EngineSettings] = field(
         default_factory=_default_dict_str_enginesettings,
     )
-    active_profiles: dict[str, str] = field(default_factory=_default_dict_str_str)
+    active_profiles: dict[EngineName, str] = field(default_factory=_default_dict_str_str)
+
+    def __post_init__(self) -> None:
+        self.engine_settings = {
+            EngineName(name): value for name, value in self.engine_settings.items()
+        }
+        self.active_profiles = {
+            EngineName(name): profile for name, profile in self.active_profiles.items()
+        }
 
 
 @dataclass(slots=True)
@@ -495,22 +515,30 @@ def _engine_settings_from_model(model: EngineSettingsModel) -> EngineSettings:
 def _path_override_from_model(path: Path, model: PathOverrideModel) -> PathOverride:
     override = PathOverride(path=path)
     override.engine_settings = {
-        name: _engine_settings_from_model(settings_model)
+        EngineName(name): _engine_settings_from_model(settings_model)
         for name, settings_model in model.engines.items()
     }
-    override.active_profiles = dict(model.active_profiles)
+    override.active_profiles = {
+        EngineName(name): profile for name, profile in model.active_profiles.items() if profile
+    }
     return override
 
 
 def _model_to_dataclass(model: AuditConfigModel) -> AuditConfig:
     data = model.model_dump(mode="python")
     engine_settings_models = model.engine_settings
-    active_profiles = dict(model.active_profiles)
+    plugin_args_raw: dict[str, list[str]] = data.get("plugin_args", {}) or {}
+    data["plugin_args"] = {
+        EngineName(name): list(values) for name, values in plugin_args_raw.items()
+    }
+    active_profiles = {
+        EngineName(name): profile for name, profile in model.active_profiles.items() if profile
+    }
     data.pop("engine_settings", None)
     data.pop("active_profiles", None)
     audit = AuditConfig(**data)
     audit.engine_settings = {
-        name: _engine_settings_from_model(settings_model)
+        EngineName(name): _engine_settings_from_model(settings_model)
         for name, settings_model in engine_settings_models.items()
     }
     audit.active_profiles = active_profiles

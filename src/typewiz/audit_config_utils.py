@@ -16,6 +16,7 @@ from typing import cast
 from .collection_utils import dedupe_preserve, merge_preserve
 from .config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from .data_validation import coerce_object_list
+from .type_aliases import EngineName
 
 
 def clone_profile(profile: EngineProfile) -> EngineProfile:
@@ -29,9 +30,11 @@ def clone_profile(profile: EngineProfile) -> EngineProfile:
     )
 
 
-def clone_engine_settings_map(settings: Mapping[str, EngineSettings]) -> dict[str, EngineSettings]:
+def clone_engine_settings_map(
+    settings: Mapping[EngineName, EngineSettings],
+) -> dict[EngineName, EngineSettings]:
     """Return a mutable copy of an engine-settings mapping."""
-    cloned: dict[str, EngineSettings] = {}
+    cloned: dict[EngineName, EngineSettings] = {}
     for name, value in settings.items():
         cloned[name] = EngineSettings(
             plugin_args=list(value.plugin_args),
@@ -45,9 +48,9 @@ def clone_engine_settings_map(settings: Mapping[str, EngineSettings]) -> dict[st
 
 
 def merge_engine_settings_map(
-    base: Mapping[str, EngineSettings],
-    override: Mapping[str, EngineSettings],
-) -> dict[str, EngineSettings]:
+    base: Mapping[EngineName, EngineSettings],
+    override: Mapping[EngineName, EngineSettings],
+) -> dict[EngineName, EngineSettings]:
     """Merge engine settings, cloning results to avoid mutating inputs."""
     result = clone_engine_settings_map(base)
     for name, override_settings in override.items():

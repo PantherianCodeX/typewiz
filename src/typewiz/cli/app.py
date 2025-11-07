@@ -25,7 +25,13 @@ from typewiz.dashboard import build_summary, load_manifest, render_markdown
 from typewiz.html_report import render_html
 from typewiz.license import maybe_emit_evaluation_notice
 from typewiz.logging_utils import LOG_FORMATS, configure_logging
-from typewiz.model_types import DashboardView, LogFormat, ReadinessLevel, ReadinessStatus
+from typewiz.model_types import (
+    DashboardFormat,
+    DashboardView,
+    LogFormat,
+    ReadinessLevel,
+    ReadinessStatus,
+)
 from typewiz.summary_types import SummaryData
 from typewiz.utils import consume
 
@@ -141,8 +147,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     _register_argument(
         dashboard,
         "--format",
-        choices=["json", "markdown", "html"],
-        default="json",
+        choices=[fmt.value for fmt in DashboardFormat],
+        default=DashboardFormat.JSON.value,
         help="Output format.",
     )
     _register_argument(
@@ -233,9 +239,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "dashboard":
         manifest = load_manifest(args.manifest)
         summary = build_summary(manifest)
-        if args.format == "json":
+        dashboard_format = DashboardFormat.from_str(args.format)
+        if dashboard_format is DashboardFormat.JSON:
             rendered = json.dumps(summary, indent=2) + "\n"
-        elif args.format == "markdown":
+        elif dashboard_format is DashboardFormat.MARKDOWN:
             rendered = render_markdown(summary)
         else:
             view_choice = DashboardView.from_str(args.view)
@@ -244,7 +251,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             consume(args.output.write_text(rendered, encoding="utf-8"))
-        elif args.format == "json":
+        elif dashboard_format is DashboardFormat.JSON:
             _echo(rendered, newline=False)
         else:
             _echo(rendered)

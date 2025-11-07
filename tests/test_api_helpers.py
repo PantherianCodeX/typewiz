@@ -16,12 +16,15 @@ from typewiz.audit_paths import (
 )
 from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from typewiz.type_aliases import EngineName
 from typewiz.utils import consume
 
 
 def test_merge_engine_settings_map_merges_profiles(tmp_path: Path) -> None:
+    stub = EngineName("stub")
+    aux = EngineName("aux")
     base_settings = {
-        "stub": EngineSettings(
+        stub: EngineSettings(
             plugin_args=["--base"],
             include=["src"],
             exclude=["legacy"],
@@ -29,7 +32,7 @@ def test_merge_engine_settings_map_merges_profiles(tmp_path: Path) -> None:
         ),
     }
     override_settings = {
-        "stub": EngineSettings(
+        stub: EngineSettings(
             plugin_args=["--override"],
             include=["extras"],
             exclude=[],
@@ -39,16 +42,16 @@ def test_merge_engine_settings_map_merges_profiles(tmp_path: Path) -> None:
                 "lenient": EngineProfile(plugin_args=["--lenient"]),
             },
         ),
-        "aux": EngineSettings(plugin_args=["--aux"]),
+        aux: EngineSettings(plugin_args=["--aux"]),
     }
 
     merged = merge_engine_settings_map(base_settings, override_settings)
-    assert merged["stub"].plugin_args == ["--base", "--override"]
-    assert merged["stub"].include == ["src", "extras"]
-    assert merged["stub"].default_profile == "strict"
-    assert merged["stub"].profiles["strict"].plugin_args == ["--strict", "--stricter"]
-    assert "lenient" in merged["stub"].profiles
-    assert merged["aux"].plugin_args == ["--aux"]
+    assert merged[stub].plugin_args == ["--base", "--override"]
+    assert merged[stub].include == ["src", "extras"]
+    assert merged[stub].default_profile == "strict"
+    assert merged[stub].profiles["strict"].plugin_args == ["--strict", "--stricter"]
+    assert "lenient" in merged[stub].profiles
+    assert merged[aux].plugin_args == ["--aux"]
 
 
 def test_normalise_paths_handles_duplicates(tmp_path: Path) -> None:
@@ -136,18 +139,18 @@ def test_resolve_engine_options_with_overrides(tmp_path: Path) -> None:
     )
     override = PathOverride(
         path=tmp_path / "pkg",
-        engine_settings={"stub": override_settings},
-        active_profiles={"stub": "lenient"},
+        engine_settings={EngineName("stub"): override_settings},
+        active_profiles={EngineName("stub"): "lenient"},
     )
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "pkg/override/strict").mkdir(parents=True, exist_ok=True)
     (tmp_path / "pkg/strict").mkdir(parents=True, exist_ok=True)
     (tmp_path / "src").mkdir(exist_ok=True)
     audit_config = AuditConfig(
-        plugin_args={"stub": ["--base"]},
-        engine_settings={"stub": engine_config},
+        plugin_args={EngineName("stub"): ["--base"]},
+        engine_settings={EngineName("stub"): engine_config},
         path_overrides=[override],
-        active_profiles={"stub": "lenient"},
+        active_profiles={EngineName("stub"): "lenient"},
         full_paths=["src"],
     )
 

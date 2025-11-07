@@ -14,6 +14,7 @@ from typewiz.config import AuditConfig, Config, load_config
 from typewiz.dashboard import build_summary, render_markdown
 from typewiz.html_report import render_html
 from typewiz.summary_types import SummaryData
+from typewiz.type_aliases import EngineName
 from typewiz.utils import default_full_paths, resolve_project_root
 
 from ...cli_helpers import collect_plugin_args, collect_profile_args, normalise_modes
@@ -253,7 +254,7 @@ def normalise_modes_tuple(modes: Sequence[str] | None) -> tuple[bool, bool, bool
 def _update_override_with_plugin_args(override: AuditConfig, entries: Sequence[str]) -> None:
     plugin_arg_map = collect_plugin_args(entries)
     for name, values in plugin_arg_map.items():
-        override.plugin_args.setdefault(name, []).extend(values)
+        override.plugin_args.setdefault(EngineName(name), []).extend(values)
 
 
 def _update_override_with_profiles(
@@ -270,7 +271,8 @@ def _update_override_with_profiles(
         if not runner_clean or not profile_clean:
             raise SystemExit("--profile entries must specify both runner and profile")
         flattened.append(f"{runner_clean}={profile_clean}")
-    override.active_profiles.update(collect_profile_args(flattened))
+    for runner, profile in collect_profile_args(flattened).items():
+        override.active_profiles[EngineName(runner)] = profile
 
 
 def _resolve_summary_fields(args: argparse.Namespace) -> tuple[list[SummaryField], SummaryStyle]:

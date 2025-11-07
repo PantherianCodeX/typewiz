@@ -11,7 +11,7 @@ if str(SRC) not in sys.path:
 
 import pytest
 
-from typewiz.model_types import OverrideEntry
+from typewiz.model_types import OverrideEntry, ReadinessStatus
 from typewiz.summary_types import (
     ReadinessOptionEntry,
     ReadinessOptionsBucket,
@@ -128,11 +128,11 @@ def sample_summary() -> SummaryData:
         "unusedSymbols": 0,
         "general": 0,
     }
-    readiness_ready_status: dict[str, str] = {
-        "unknownChecks": "ready",
-        "optionalChecks": "ready",
-        "unusedSymbols": "ready",
-        "general": "ready",
+    readiness_ready_status: dict[str, ReadinessStatus] = {
+        "unknownChecks": ReadinessStatus.READY,
+        "optionalChecks": ReadinessStatus.READY,
+        "unusedSymbols": ReadinessStatus.READY,
+        "general": ReadinessStatus.READY,
     }
     readiness_ready: list[ReadinessStrictEntry] = [
         {
@@ -152,11 +152,11 @@ def sample_summary() -> SummaryData:
         "unusedSymbols": 0,
         "general": 0,
     }
-    readiness_close_status: dict[str, str] = {
-        "unknownChecks": "close",
-        "optionalChecks": "ready",
-        "unusedSymbols": "ready",
-        "general": "ready",
+    readiness_close_status: dict[str, ReadinessStatus] = {
+        "unknownChecks": ReadinessStatus.CLOSE,
+        "optionalChecks": ReadinessStatus.READY,
+        "unusedSymbols": ReadinessStatus.READY,
+        "general": ReadinessStatus.READY,
     }
     readiness_close: list[ReadinessStrictEntry] = [
         {

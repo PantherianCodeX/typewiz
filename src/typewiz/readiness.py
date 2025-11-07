@@ -85,7 +85,7 @@ class ReadinessStrictEntry(TypedDict, total=False):
     information: int
     diagnostics: int
     categories: dict[str, int]
-    categoryStatus: dict[str, str]
+    categoryStatus: dict[str, ReadinessStatus]
     recommendations: list[str]
     notes: list[str]
 
@@ -197,9 +197,7 @@ def _build_strict_entry_payload(
         "categories": {
             category: categories.get(CategoryName(category), 0) for category in CATEGORY_PATTERNS
         },
-        "categoryStatus": {
-            str(category): status.value for category, status in category_status.items()
-        },
+        "categoryStatus": {str(category): status for category, status in category_status.items()},
         "recommendations": entry.get("recommendations", []),
     }
     if notes:

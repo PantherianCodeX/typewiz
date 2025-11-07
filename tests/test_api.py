@@ -12,6 +12,7 @@ from typewiz import AuditConfig, Config, run_audit
 from typewiz.config import EngineProfile, EngineSettings
 from typewiz.engines.base import EngineContext, EngineResult
 from typewiz.model_types import Mode, SeverityLevel
+from typewiz.type_aliases import EngineName
 from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic, RunResult
 from typewiz.utils import consume
@@ -195,9 +196,9 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     config = Config(
         audit=AuditConfig(
             full_paths=["src"],
-            plugin_args={"stub": ["--base"]},
-            engine_settings={"stub": settings},
-            active_profiles={"stub": "strict"},
+            plugin_args={EngineName("stub"): ["--base"]},
+            engine_settings={EngineName("stub"): settings},
+            active_profiles={EngineName("stub"): "strict"},
             runners=["stub"],
         ),
     )

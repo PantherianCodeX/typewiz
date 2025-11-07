@@ -9,6 +9,7 @@ from functools import lru_cache
 from importlib import metadata
 from typing import Final, cast
 
+from ..type_aliases import EngineName
 from .base import BaseEngine
 from .mypy import MypyEngine
 from .pyright import PyrightEngine
@@ -30,10 +31,14 @@ def _is_engine_like(value: object) -> bool:
 ENTRY_POINT_GROUP: Final[str] = "typewiz.engines"
 
 
+def _engine_name(value: str) -> EngineName:
+    return EngineName(value)
+
+
 @lru_cache
-def builtin_engines() -> dict[str, BaseEngine]:
+def builtin_engines() -> dict[EngineName, BaseEngine]:
     engines: list[BaseEngine] = [PyrightEngine(), MypyEngine()]
-    return {engine.name: engine for engine in engines}
+    return {_engine_name(engine.name): engine for engine in engines}
 
 
 def _instantiate_engine(obj: object, *, source: str) -> BaseEngine:
@@ -53,8 +58,8 @@ def _instantiate_engine(obj: object, *, source: str) -> BaseEngine:
 
 
 @lru_cache
-def entrypoint_engines() -> dict[str, BaseEngine]:
-    engines: dict[str, BaseEngine] = {}
+def entrypoint_engines() -> dict[EngineName, BaseEngine]:
+    engines: dict[EngineName, BaseEngine] = {}
     try:
         eps = metadata.entry_points()
     except Exception:  # pragma: no cover - guarded importlib behaviour
@@ -69,11 +74,11 @@ def entrypoint_engines() -> dict[str, BaseEngine]:
         name = getattr(engine, "name", None)
         if not isinstance(name, str) or not name:
             continue
-        engines[name] = engine
+        engines[_engine_name(name)] = engine
     return dict(sorted(engines.items()))
 
 
-def engine_map() -> dict[str, BaseEngine]:
+def engine_map() -> dict[EngineName, BaseEngine]:
     mapping = dict(builtin_engines())
     mapping.update(entrypoint_engines())
     return mapping
@@ -85,8 +90,9 @@ def resolve_engines(names: Iterable[str] | None) -> list[BaseEngine]:
         return list(mapping.values())
     resolved: list[BaseEngine] = []
     for name in names:
-        if name not in mapping:
+        engine_name = _engine_name(str(name))
+        if engine_name not in mapping:
             message = f"Unknown engine '{name}'"
             raise ValueError(message)
-        resolved.append(mapping[name])
+        resolved.append(mapping[engine_name])
     return resolved

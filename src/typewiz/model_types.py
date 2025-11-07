@@ -103,6 +103,20 @@ class DataFormat(StrEnum):
             raise ValueError(f"Unknown data format '{raw}'") from exc
 
 
+class DashboardFormat(StrEnum):
+    JSON = "json"
+    MARKDOWN = "markdown"
+    HTML = "html"
+
+    @classmethod
+    def from_str(cls, raw: str) -> DashboardFormat:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown dashboard format '{raw}'") from exc
+
+
 class DashboardView(StrEnum):
     OVERVIEW = "overview"
     ENGINES = "engines"

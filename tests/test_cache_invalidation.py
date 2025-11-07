@@ -11,6 +11,7 @@ from typewiz.api import run_audit
 from typewiz.config import AuditConfig, Config, EngineSettings
 from typewiz.engines.base import EngineContext, EngineResult
 from typewiz.model_types import Mode
+from typewiz.type_aliases import EngineName
 from typewiz.utils import consume
 
 
@@ -91,7 +92,11 @@ def test_cache_invalidation_on_config_change(
 
     settings = EngineSettings(config_file=cfg_file)
     config = Config(
-        audit=AuditConfig(full_paths=["src"], runners=["stub"], engine_settings={"stub": settings}),
+        audit=AuditConfig(
+            full_paths=["src"],
+            runners=["stub"],
+            engine_settings={EngineName("stub"): settings},
+        ),
     )
 
     consume(run_audit(project_root=tmp_path, config=config))
@@ -116,6 +121,10 @@ def test_cache_invalidation_on_plugin_args_change(
     assert engine.invocations.count(Mode.FULL) == 1
 
     # Add a plugin arg which participates in the cache key; expect a miss
-    override = AuditConfig(full_paths=["src"], runners=["stub"], plugin_args={"stub": ["--flag"]})
+    override = AuditConfig(
+        full_paths=["src"],
+        runners=["stub"],
+        plugin_args={EngineName("stub"): ["--flag"]},
+    )
     consume(run_audit(project_root=tmp_path, override=override))
     assert engine.invocations.count(Mode.FULL) == 2

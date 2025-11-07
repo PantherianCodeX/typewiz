@@ -19,7 +19,7 @@ from .config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from .engines import EngineContext, EngineOptions
 from .engines.base import BaseEngine, EngineResult
 from .model_types import FileHashPayload, Mode, OverrideEntry
-from .type_aliases import CacheKey, PathKey
+from .type_aliases import CacheKey, EngineName, PathKey
 from .typed_manifest import ToolSummary
 from .types import RunResult
 
@@ -44,7 +44,7 @@ class _EngineOptionState:
 
 def _resolve_base_profile(
     audit_config: AuditConfig,
-    engine_name: str,
+    engine_name: EngineName,
 ) -> tuple[EngineSettings | None, str | None, EngineProfile | None]:
     settings = audit_config.engine_settings.get(engine_name)
     profile_name = audit_config.active_profiles.get(engine_name)
@@ -56,7 +56,7 @@ def _resolve_base_profile(
 
 def _merge_base_plugin_args(
     audit_config: AuditConfig,
-    engine_name: str,
+    engine_name: EngineName,
     settings: EngineSettings | None,
     profile: EngineProfile | None,
 ) -> list[str]:
@@ -86,7 +86,7 @@ def _merge_base_paths(
 def _initial_option_state(
     project_root: Path,
     audit_config: AuditConfig,
-    engine_name: str,
+    engine_name: EngineName,
     settings: EngineSettings | None,
     profile_name: str | None,
     profile: EngineProfile | None,
@@ -127,7 +127,7 @@ def _diff_override_entry(
     after: _EngineOptionState,
     project_root: Path,
     override_path: Path,
-    engine_name: str,
+    engine_name: EngineName,
 ) -> OverrideEntry | None:
     after_args = [arg for arg in after.plugin_args if arg not in before.plugin_args]
     after_include = [item for item in after.include if item not in before.include]
@@ -158,7 +158,7 @@ def _diff_override_entry(
 def _apply_path_override(
     project_root: Path,
     override: PathOverride,
-    engine_name: str,
+    engine_name: EngineName,
     state: _EngineOptionState,
 ) -> OverrideEntry | None:
     before = state.copy()
@@ -410,7 +410,7 @@ def resolve_engine_options(
     engine: BaseEngine,
 ) -> EngineOptions:
     """Compute engine options including overrides and category mappings."""
-    engine_name = engine.name
+    engine_name = EngineName(engine.name)
     settings, profile_name, profile = _resolve_base_profile(audit_config, engine_name)
     state = _initial_option_state(
         project_root,
