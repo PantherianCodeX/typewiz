@@ -84,7 +84,7 @@ def engine_map() -> dict[EngineName, BaseEngine]:
     return mapping
 
 
-def resolve_engines(names: Iterable[str] | None) -> list[BaseEngine]:
+def resolve_engines(names: Iterable[str | EngineName] | None) -> list[BaseEngine]:
     mapping = engine_map()
     if not names:
         return list(mapping.values())

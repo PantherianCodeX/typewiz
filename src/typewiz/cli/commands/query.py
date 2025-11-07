@@ -8,7 +8,13 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from typewiz.dashboard import build_summary, load_manifest
-from typewiz.model_types import DataFormat, HotspotKind, ReadinessLevel, ReadinessStatus
+from typewiz.model_types import (
+    DataFormat,
+    HotspotKind,
+    QuerySection,
+    ReadinessLevel,
+    ReadinessStatus,
+)
 from typewiz.summary_types import SummaryData
 
 from ..helpers import (
@@ -40,7 +46,7 @@ def register_query_command(subparsers: SubparserRegistry) -> None:
     query_sub = query.add_subparsers(dest="query_section", required=True)
 
     query_overview_parser = query_sub.add_parser(
-        "overview",
+        QuerySection.OVERVIEW.value,
         help="Show severity totals, with optional category and run breakdowns",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -66,7 +72,7 @@ def register_query_command(subparsers: SubparserRegistry) -> None:
     )
 
     query_hotspots_parser = query_sub.add_parser(
-        "hotspots",
+        QuerySection.HOTSPOTS.value,
         help="List top offending files or folders",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -94,7 +100,7 @@ def register_query_command(subparsers: SubparserRegistry) -> None:
     )
 
     query_readiness_parser = query_sub.add_parser(
-        "readiness",
+        QuerySection.READINESS.value,
         help="Show readiness candidates for strict typing",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -131,7 +137,7 @@ def register_query_command(subparsers: SubparserRegistry) -> None:
     )
 
     query_runs_parser = query_sub.add_parser(
-        "runs",
+        QuerySection.RUNS.value,
         help="Inspect individual typing runs",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -168,7 +174,7 @@ def register_query_command(subparsers: SubparserRegistry) -> None:
     )
 
     query_engines_parser = query_sub.add_parser(
-        "engines",
+        QuerySection.ENGINES.value,
         help="Display engine configuration used for runs",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -189,7 +195,7 @@ def register_query_command(subparsers: SubparserRegistry) -> None:
     )
 
     query_rules_parser = query_sub.add_parser(
-        "rules",
+        QuerySection.RULES.value,
         help="Show the most common rule diagnostics",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -233,22 +239,30 @@ def _render_payload(data: object, fmt: DataFormat) -> None:
 def execute_query(args: argparse.Namespace) -> int:
     """Execute the ``typewiz query`` command."""
     summary = _load_summary(args.manifest)
-    section = args.query_section
+    section_value = args.query_section
+    try:
+        section = (
+            section_value
+            if isinstance(section_value, QuerySection)
+            else QuerySection.from_str(section_value)
+        )
+    except ValueError as exc:  # pragma: no cover - argparse prevents invalid choices
+        raise SystemExit(str(exc)) from exc
 
     format_choice = DataFormat.from_str(args.format)
 
     payload: object
     match section:
-        case "overview":
+        case QuerySection.OVERVIEW:
             payload = query_overview(
                 summary,
                 include_categories=args.include_categories,
                 include_runs=args.include_runs,
             )
-        case "hotspots":
+        case QuerySection.HOTSPOTS:
             kind = HotspotKind.from_str(args.kind)
             payload = query_hotspots(summary, kind=kind, limit=args.limit)
-        case "readiness":
+        case QuerySection.READINESS:
             level_choice = ReadinessLevel.from_str(args.level)
             statuses = (
                 [ReadinessStatus.from_str(status) for status in args.statuses]
@@ -261,14 +275,12 @@ def execute_query(args: argparse.Namespace) -> int:
                 statuses=statuses,
                 limit=args.limit,
             )
-        case "runs":
+        case QuerySection.RUNS:
             payload = query_runs(summary, tools=args.tools, modes=args.modes, limit=args.limit)
-        case "engines":
+        case QuerySection.ENGINES:
             payload = query_engines(summary, limit=args.limit)
-        case "rules":
+        case QuerySection.RULES:
             payload = query_rules(summary, limit=args.limit)
-        case _:
-            raise SystemExit(f"Unknown query section: {section}")
 
     _render_payload(payload, format_choice)
     return 0

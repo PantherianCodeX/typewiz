@@ -22,7 +22,7 @@ def _make_context(
     *,
     manifest_payload: ManifestData | None = None,
     ratchet_path: Path | None = None,
-    runs: list[str] | None = None,
+    runs: list[RunId] | None = None,
     signature_policy: SignaturePolicy = SignaturePolicy.FAIL,
     limit: int | None = None,
     summary_only: bool = False,
@@ -208,7 +208,7 @@ def test_handle_info_reports_configuration(
         tmp_path,
         config=config,
         ratchet_path=tmp_path / "ratchet.json",
-        runs=["pyright:current"],
+        runs=[RunId("pyright:current")],
         limit=5,
         summary_only=True,
     )
@@ -258,9 +258,12 @@ def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) 
         return cast(ManifestData, {"generatedAt": "2024-01-01", "runs": []})
 
     def fake_resolve_runs(
-        cli: Sequence[str] | None, config_runs: Sequence[str]
-    ) -> list[str] | None:
-        return list(cli or config_runs)
+        cli: Sequence[str | RunId] | None, config_runs: Sequence[str | RunId]
+    ) -> list[RunId] | None:
+        values = cli or config_runs
+        if not values:
+            return None
+        return [RunId(str(value)) for value in values]
 
     def passthrough_policy(arg: Any, default: SignaturePolicy) -> SignaturePolicy:
         if arg is None:

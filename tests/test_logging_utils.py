@@ -25,10 +25,14 @@ def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str
             "exit_code": 0,
         },
     )
-    captured = capsys.readouterr().err or capsys.readouterr().out
-    # Handler prints a single JSON line
-    line = captured.strip().splitlines()[-1]
-    payload = json.loads(line)
+    try:
+        raise RuntimeError("boom")
+    except RuntimeError:
+        logger.exception("broken")
+    captured = capsys.readouterr()
+    stream = captured.err or captured.out
+    lines = [line for line in stream.strip().splitlines() if line]
+    payload = json.loads(lines[-2])
     assert payload["message"] == "hello"
     assert payload["level"] == "info"
     assert payload["logger"] == "typewiz"
@@ -38,3 +42,7 @@ def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str
     assert payload["duration_ms"] == 1.2
     assert payload["cached"] is False
     assert payload["exit_code"] == 0
+
+    exception_payload = json.loads(lines[-1])
+    assert exception_payload["message"] == "broken"
+    assert "exc_info" in exception_payload

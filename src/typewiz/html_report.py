@@ -5,18 +5,18 @@ from __future__ import annotations
 from html import escape
 from typing import Final, cast
 
-from .model_types import DashboardView, OverrideEntry, ReadinessStatus
+from .model_types import DashboardView, OverrideEntry, ReadinessStatus, SummaryTabName
 from .override_utils import get_override_components
 from .readiness import CATEGORY_LABELS
 from .summary_types import HotspotsTab, OverviewTab, ReadinessTab, SummaryData, SummaryTabs
 
-_TAB_ORDER: Final[tuple[str, ...]] = tuple(view.value for view in DashboardView)
-_TAB_LABELS: Final[dict[str, str]] = {
-    "overview": "Overview",
-    "engines": "Engine Details",
-    "hotspots": "Hotspots",
-    "readiness": "Readiness",
-    "runs": "Run Logs",
+_TAB_ORDER: Final[tuple[SummaryTabName, ...]] = tuple(SummaryTabName)
+_TAB_LABELS: Final[dict[SummaryTabName, str]] = {
+    SummaryTabName.OVERVIEW: "Overview",
+    SummaryTabName.ENGINES: "Engine Details",
+    SummaryTabName.HOTSPOTS: "Hotspots",
+    SummaryTabName.READINESS: "Readiness",
+    SummaryTabName.RUNS: "Run Logs",
 }
 
 
@@ -36,11 +36,11 @@ def render_html(
         return escape(text, quote=True)
 
     tabs: SummaryTabs = summary["tabs"]
-    overview: OverviewTab = tabs["overview"]
+    overview: OverviewTab = tabs[SummaryTabName.OVERVIEW.value]
     run_summary = overview["runSummary"]
     severity = overview["severityTotals"]
-    hotspots: HotspotsTab = tabs["hotspots"]
-    readiness: ReadinessTab = tabs["readiness"]
+    hotspots: HotspotsTab = tabs[SummaryTabName.HOTSPOTS.value]
+    readiness: ReadinessTab = tabs[SummaryTabName.READINESS.value]
 
     top_rules = hotspots["topRules"]
     top_folders = hotspots["topFolders"]
@@ -62,7 +62,7 @@ def render_html(
     ]
 
     parts.extend(
-        f'    <button type="button" data-tab-target="{tab}" role="tab" aria-selected="false">{_TAB_LABELS[tab]}</button>'
+        f'    <button type="button" data-tab-target="{tab.value}" role="tab" aria-selected="false">{_TAB_LABELS[tab]}</button>'
         for tab in _TAB_ORDER
     )
     parts.append("  </nav>")
@@ -323,7 +323,7 @@ def render_html(
     # Runs tab
     parts.append('  <section class="tab-pane" data-tab-pane="runs">')
     parts.append("    <h2>Run Logs</h2>")
-    runs_tab = tabs["runs"]
+    runs_tab = tabs[SummaryTabName.RUNS.value]
     run_details = runs_tab.get("runSummary", run_summary)
     if run_details:
         for key, data in run_details.items():

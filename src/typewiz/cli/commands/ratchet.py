@@ -27,7 +27,7 @@ from typewiz.cli.helpers import (
     resolve_summary_only,
 )
 from typewiz.config import RatchetConfig, load_config
-from typewiz.model_types import DataFormat, SignaturePolicy
+from typewiz.model_types import DataFormat, RatchetAction, SignaturePolicy
 from typewiz.ratchet import (
     apply_auto_update as ratchet_apply_auto_update,
 )
@@ -46,6 +46,7 @@ from typewiz.ratchet import (
 )
 from typewiz.ratchet.io import current_timestamp
 from typewiz.ratchet.io import load_manifest as load_ratchet_manifest
+from typewiz.type_aliases import RunId
 from typewiz.typed_manifest import ManifestData
 from typewiz.utils import resolve_project_root
 
@@ -57,7 +58,7 @@ class RatchetContext:
     manifest_path: Path
     ratchet_path: Path | None
     manifest_payload: ManifestData
-    runs: Sequence[str] | None
+    runs: Sequence[RunId] | None
     signature_policy: SignaturePolicy
     limit: int | None
     summary_only: bool
@@ -107,7 +108,15 @@ def execute_ratchet(args: argparse.Namespace) -> int:
     project_root = resolve_project_root(None)
     ratchet_cfg = config.ratchet
 
-    action = args.action
+    action_value = args.action
+    try:
+        action = (
+            action_value
+            if isinstance(action_value, RatchetAction)
+            else RatchetAction.from_str(action_value)
+        )
+    except ValueError as exc:  # pragma: no cover - argparse prevents invalid choices
+        raise SystemExit(str(exc)) from exc
     explicit_manifest: Path | None = getattr(args, "manifest", None)
     explicit_ratchet: Path | None = getattr(args, "ratchet", None)
 
@@ -120,7 +129,8 @@ def execute_ratchet(args: argparse.Namespace) -> int:
         project_root,
         explicit=explicit_ratchet,
         configured=ratchet_cfg.output_path,
-        require_exists=action in {"check", "update", "rebaseline-signature"},
+        require_exists=action
+        in {RatchetAction.CHECK, RatchetAction.UPDATE, RatchetAction.REBASELINE_SIGNATURE},
     )
 
     manifest_payload = load_ratchet_manifest(manifest_path)
@@ -151,23 +161,22 @@ def execute_ratchet(args: argparse.Namespace) -> int:
     if context.ratchet_path:
         echo(f"[typewiz] Using ratchet: {context.ratchet_path}")
 
-    if action == "init":
+    if action is RatchetAction.INIT:
         return handle_init(context, args)
-    if action == "check":
+    if action is RatchetAction.CHECK:
         return handle_check(context, args)
-    if action == "update":
+    if action is RatchetAction.UPDATE:
         return handle_update(context, args)
-    if action == "rebaseline-signature":
+    if action is RatchetAction.REBASELINE_SIGNATURE:
         return handle_rebaseline(context, args)
-    if action == "info":
+    if action is RatchetAction.INFO:
         return handle_info(context)
-    message = f"Unknown ratchet action: {action}"
-    raise SystemExit(message)
+    raise SystemExit(f"Unknown ratchet action: {action}")
 
 
 def _register_init_parser(subparsers: SubparserRegistry) -> None:
     ratchet_init = subparsers.add_parser(
-        "init",
+        RatchetAction.INIT.value,
         help="Create a ratchet budget from a manifest",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -221,7 +230,7 @@ def _register_init_parser(subparsers: SubparserRegistry) -> None:
 
 def _register_check_parser(subparsers: SubparserRegistry) -> None:
     ratchet_check = subparsers.add_parser(
-        "check",
+        RatchetAction.CHECK.value,
         help="Compare a manifest against a ratchet budget",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -282,7 +291,7 @@ def _register_check_parser(subparsers: SubparserRegistry) -> None:
 
 def _register_update_parser(subparsers: SubparserRegistry) -> None:
     ratchet_update = subparsers.add_parser(
-        "update",
+        RatchetAction.UPDATE.value,
         help="Update ratchet budgets using a manifest",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -357,7 +366,7 @@ def _register_update_parser(subparsers: SubparserRegistry) -> None:
 
 def _register_rebaseline_parser(subparsers: SubparserRegistry) -> None:
     ratchet_rebaseline = subparsers.add_parser(
-        "rebaseline-signature",
+        RatchetAction.REBASELINE_SIGNATURE.value,
         help="Refresh engine signature data without changing budgets",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -403,7 +412,7 @@ def _register_rebaseline_parser(subparsers: SubparserRegistry) -> None:
 
 def _register_info_parser(subparsers: SubparserRegistry) -> None:
     ratchet_info = subparsers.add_parser(
-        "info",
+        RatchetAction.INFO.value,
         help="Show resolved ratchet configuration",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )

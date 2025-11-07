@@ -56,7 +56,7 @@ from typewiz.summary_types import (
     SummaryRunEntry,
     SummaryTabs,
 )
-from typewiz.type_aliases import EngineName, RunnerName, ToolName
+from typewiz.type_aliases import CategoryKey, EngineName, RunnerName, ToolName
 from typewiz.types import Diagnostic, RunResult
 from typewiz.utils import consume
 
@@ -1102,7 +1102,7 @@ def test_print_readiness_summary_variants(capsys: pytest.CaptureFixture[str]) ->
     summary = _empty_summary()
     readiness_tab = summary["tabs"]["readiness"]
     readiness_tab["options"] = cast(
-        dict[str, ReadinessOptionsBucket],
+        dict[CategoryKey, ReadinessOptionsBucket],
         {
             "unknownChecks": {
                 "ready": cast(

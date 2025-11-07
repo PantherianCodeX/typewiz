@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Literal, TypedDict
 
 from .model_types import ReadinessStatus
+from .type_aliases import CategoryKey
 from .typed_manifest import EngineOptionsEntry, SeverityStr, ToolSummary
 
 StatusKey = Literal["ready", "close", "blocked"]
@@ -79,7 +80,7 @@ class ReadinessOptionsBucket(TypedDict, total=False):
 
 class ReadinessTab(TypedDict, total=False):
     strict: dict[StatusKey, list[ReadinessStrictEntry]]
-    options: dict[str, ReadinessOptionsBucket]
+    options: dict[CategoryKey, ReadinessOptionsBucket]
 
 
 class ReadinessOptionEntry(TypedDict, total=False):

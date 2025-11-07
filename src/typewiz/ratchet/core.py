@@ -221,7 +221,21 @@ def _collect_manifest_runs(manifest: ManifestData) -> list[Mapping[str, JSONValu
     return [coerce_mapping(run_obj) for run_obj in runs_raw]
 
 
-def _select_run_ids(manifest: ManifestData, requested: Sequence[str] | None) -> list[RunId]:
+def _normalise_run_id_values(values: Sequence[str | RunId]) -> list[RunId]:
+    normalised: list[RunId] = []
+    for value in values:
+        token = str(value).strip()
+        if not token:
+            continue
+        normalised.append(RunId(token))
+    return normalised
+
+
+def _normalise_run_id_set(values: Sequence[str | RunId]) -> set[RunId]:
+    return set(_normalise_run_id_values(values))
+
+
+def _select_run_ids(manifest: ManifestData, requested: Sequence[str | RunId] | None) -> list[RunId]:
     runs = _collect_manifest_runs(manifest)
     all_ids: list[RunId] = []
     for run in runs:
@@ -232,7 +246,7 @@ def _select_run_ids(manifest: ManifestData, requested: Sequence[str] | None) -> 
         tool = ToolName(tool_raw)
         all_ids.append(RunId(f"{tool}:{mode}"))
     if requested:
-        requested_norm = {item.strip() for item in requested if item and item.strip()}
+        requested_norm = _normalise_run_id_set(requested)
         return [run_id for run_id in all_ids if run_id in requested_norm]
     return all_ids
 
@@ -252,7 +266,7 @@ def _run_by_id(manifest: ManifestData) -> dict[RunId, Mapping[str, JSONValue]]:
 def build_ratchet_from_manifest(
     *,
     manifest: ManifestData,
-    runs: Sequence[str] | None = None,
+    runs: Sequence[str | RunId] | None = None,
     severities: Sequence[str] | None = None,
     targets: Mapping[str, int] | None = None,
     manifest_path: str | Path | None = None,
@@ -401,7 +415,7 @@ def compare_manifest_to_ratchet(
     *,
     manifest: ManifestData,
     ratchet: RatchetModel,
-    runs: Sequence[str] | None = None,
+    runs: Sequence[str | RunId] | None = None,
 ) -> RatchetReport:
     """Compare a manifest payload against a ratchet budget."""
 
@@ -409,7 +423,7 @@ def compare_manifest_to_ratchet(
     if runs is None:
         selected_runs: list[RunId] = [RunId(run_id) for run_id in ratchet.runs.keys()]
     else:
-        selected_runs = [RunId(item.strip()) for item in runs if item and item.strip()]
+        selected_runs = _normalise_run_id_values(runs)
     reports: list[RatchetRunReport] = []
     for run_id in selected_runs:
         run_budget = ratchet.runs.get(str(run_id))
@@ -424,7 +438,7 @@ def apply_auto_update(
     *,
     manifest: ManifestData,
     ratchet: RatchetModel,
-    runs: Sequence[str] | None = None,
+    runs: Sequence[str | RunId] | None = None,
     generated_at: str,
 ) -> RatchetModel:
     """Return a new ratchet model with budgets reduced to current manifest counts."""
@@ -463,16 +477,20 @@ def refresh_signatures(
     *,
     manifest: ManifestData,
     ratchet: RatchetModel,
-    runs: Sequence[str] | None = None,
+    runs: Sequence[str | RunId] | None = None,
     generated_at: str,
 ) -> RatchetModel:
     """Return a ratchet model with refreshed engine signature metadata."""
 
     run_lookup = _run_by_id(manifest)
-    selected_runs = set(runs or ratchet.runs.keys())
+    selected_run_ids = (
+        {str(run_id) for run_id in _normalise_run_id_values(runs)}
+        if runs
+        else set(ratchet.runs.keys())
+    )
     refreshed_runs: dict[str, RatchetRunBudgetModel] = {}
     for run_id, budget in ratchet.runs.items():
-        if runs and run_id not in selected_runs:
+        if runs and run_id not in selected_run_ids:
             refreshed_runs[run_id] = budget
             continue
         manifest_run = run_lookup.get(RunId(run_id))

@@ -7,10 +7,12 @@ import logging
 import subprocess
 import sys
 import time
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, cast
+
+from .type_aliases import ToolName
 
 logger: logging.Logger = logging.getLogger("typewiz")
 
@@ -95,7 +97,7 @@ def _safe_version_from_output(output: str) -> str | None:
     return text.splitlines()[0].strip() if text else None
 
 
-def detect_tool_versions(tools: list[str]) -> dict[str, str]:
+def detect_tool_versions(tools: Sequence[str | ToolName]) -> dict[str, str]:
     """Return a mapping of tool -> version by invoking their version commands.
 
     Supports built-ins: pyright, mypy. Ignores unknown tools.
@@ -104,7 +106,7 @@ def detect_tool_versions(tools: list[str]) -> dict[str, str]:
     versions: dict[str, str] = {}
     seen: set[str] = set()
     for tool in tools:
-        name = tool.strip().lower()
+        name = str(tool).strip().lower()
         if not name or name in seen:
             continue
         seen.add(name)

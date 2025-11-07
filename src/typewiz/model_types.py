@@ -219,6 +219,68 @@ class FailOnPolicy(StrEnum):
             raise ValueError(f"Unknown fail-on policy '{raw}'") from exc
 
 
+class RatchetAction(StrEnum):
+    INIT = "init"
+    CHECK = "check"
+    UPDATE = "update"
+    REBASELINE_SIGNATURE = "rebaseline-signature"
+    INFO = "info"
+
+    @classmethod
+    def from_str(cls, raw: str) -> RatchetAction:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown ratchet action '{raw}'") from exc
+
+
+class ManifestAction(StrEnum):
+    VALIDATE = "validate"
+    SCHEMA = "schema"
+
+    @classmethod
+    def from_str(cls, raw: str) -> ManifestAction:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown manifest action '{raw}'") from exc
+
+
+class QuerySection(StrEnum):
+    OVERVIEW = "overview"
+    HOTSPOTS = "hotspots"
+    READINESS = "readiness"
+    RUNS = "runs"
+    ENGINES = "engines"
+    RULES = "rules"
+
+    @classmethod
+    def from_str(cls, raw: str) -> QuerySection:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown query section '{raw}'") from exc
+
+
+class SummaryTabName(StrEnum):
+    OVERVIEW = "overview"
+    ENGINES = "engines"
+    HOTSPOTS = "hotspots"
+    READINESS = "readiness"
+    RUNS = "runs"
+
+    @classmethod
+    def from_str(cls, raw: str) -> SummaryTabName:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown summary tab '{raw}'") from exc
+
+
 class RecommendationCode(StrEnum):
     STRICT_READY = "strict-ready"
     CANDIDATE_ENABLE_UNKNOWN_CHECKS = "candidate-enable-unknown-checks"

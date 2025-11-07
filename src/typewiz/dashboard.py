@@ -12,9 +12,16 @@ from typing import Final, cast
 from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
 from .exceptions import TypewizTypeError
 from .manifest_loader import load_manifest_data
-from .model_types import CategoryMapping, OverrideEntry, ReadinessStatus, clone_override_entries
+from .model_types import (
+    CategoryMapping,
+    OverrideEntry,
+    ReadinessStatus,
+    SummaryTabName,
+    clone_override_entries,
+)
 from .override_utils import format_overrides_block
 from .readiness import (
+    CATEGORY_KEYS,
     CATEGORY_LABELS,
     STATUS_VALUES,
     STATUSES,
@@ -26,6 +33,8 @@ from .summary_types import (
     CountsByCategory,
     CountsByRule,
     CountsBySeverity,
+    ReadinessOptionEntry,
+    ReadinessOptionsBucket,
     ReadinessTab,
     StatusKey,
     SummaryData,
@@ -34,17 +43,25 @@ from .summary_types import (
     SummaryRunEntry,
     SummaryTabs,
 )
+from .type_aliases import CategoryKey
 from .typed_manifest import ManifestData, SeverityStr, ToolSummary
 from .utils import JSONValue
 
 logger: logging.Logger = logging.getLogger("typewiz.dashboard")
 _STATUS_KEY_SET: Final[frozenset[str]] = frozenset(STATUS_VALUES)
+_CATEGORY_KEY_SET: Final[frozenset[str]] = frozenset(CATEGORY_KEYS)
 
 
 def _as_status_key(value: str) -> StatusKey:
     if value not in _STATUS_KEY_SET:
         raise DashboardTypeError("readiness.strict", "known readiness status")
     return cast(StatusKey, value)
+
+
+def _as_category_key(value: str) -> CategoryKey:
+    if value not in _CATEGORY_KEY_SET:
+        raise DashboardTypeError("readiness.options", "known readiness category")
+    return cast(CategoryKey, value)
 
 
 class DashboardTypeError(TypewizTypeError):
@@ -108,7 +125,7 @@ def _validate_readiness_tab(raw: Mapping[str, object]) -> ReadinessTab:
     if not isinstance(options_raw, Mapping):
         raise DashboardTypeError("readiness.options", "a mapping")
     options_map = coerce_mapping(cast("Mapping[object, object]", options_raw))
-    options_section: dict[str, dict[str, object]] = {}
+    options_section: dict[CategoryKey, ReadinessOptionsBucket] = {}
     for category, bucket_obj in options_map.items():
         if not isinstance(bucket_obj, Mapping):
             raise DashboardTypeError(f"readiness.options[{category!r}]", "a mapping")
@@ -121,16 +138,18 @@ def _validate_readiness_tab(raw: Mapping[str, object]) -> ReadinessTab:
                     bucket_map.get(key),
                     f"readiness.options[{category!r}].{key}",
                 )
-        validated_bucket: dict[str, object] = {}
+        bucket_payload: ReadinessOptionsBucket = {}
         for key, entries in status_entries.items():
-            validated_bucket[key] = entries
+            if entries:
+                bucket_payload[key] = cast("list[ReadinessOptionEntry]", entries)
         threshold_value = bucket_map.get("threshold")
         if threshold_value is not None:
             if isinstance(threshold_value, int):
-                validated_bucket["threshold"] = threshold_value
+                bucket_payload["threshold"] = threshold_value
             else:
                 raise DashboardTypeError(f"readiness.options[{category!r}].threshold", "an integer")
-        options_section[str(category)] = validated_bucket
+        category_key = _as_category_key(str(category))
+        options_section[category_key] = bucket_payload
 
     return cast(
         "ReadinessTab",
@@ -388,21 +407,21 @@ def build_summary(manifest: ManifestData) -> SummaryData:
     ]
 
     tabs_payload: SummaryTabs = {
-        "overview": {
+        SummaryTabName.OVERVIEW.value: {
             "severityTotals": dict(severity_totals),
             "categoryTotals": dict(category_totals),
             "runSummary": run_summary,
         },
-        "engines": {
+        SummaryTabName.ENGINES.value: {
             "runSummary": run_summary,
         },
-        "hotspots": {
+        SummaryTabName.HOTSPOTS.value: {
             "topRules": top_rules_dict,
             "topFolders": top_folders_list,
             "topFiles": top_files_list,
         },
-        "readiness": readiness_tab,
-        "runs": {
+        SummaryTabName.READINESS.value: readiness_tab,
+        SummaryTabName.RUNS.value: {
             "runSummary": run_summary,
         },
     }
@@ -430,10 +449,10 @@ def build_summary(manifest: ManifestData) -> SummaryData:
 
 def render_markdown(summary: SummaryData) -> str:
     tabs = summary["tabs"]
-    overview = tabs["overview"]
+    overview = tabs[SummaryTabName.OVERVIEW.value]
     run_summary = overview["runSummary"]
     severity = overview["severityTotals"]
-    hotspots = tabs["hotspots"]
+    hotspots = tabs[SummaryTabName.HOTSPOTS.value]
 
     lines: list[str] = [
         "# typewiz Dashboard",
@@ -573,7 +592,7 @@ def render_markdown(summary: SummaryData) -> str:
         lines.append("| _No file hotspots_ | 0 | 0 |")
 
     lines.extend(["", "### Run logs"])
-    runs_tab = tabs["runs"]
+    runs_tab = tabs[SummaryTabName.RUNS.value]
     run_details = runs_tab.get("runSummary", run_summary)
     if run_details:
         for key, data in run_details.items():

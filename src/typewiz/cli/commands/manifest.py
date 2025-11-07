@@ -15,6 +15,7 @@ from typewiz.manifest_models import (
     manifest_json_schema,
     validate_manifest_payload,
 )
+from typewiz.model_types import ManifestAction
 from typewiz.utils import consume
 
 from ..helpers import echo, register_argument
@@ -36,7 +37,7 @@ def register_manifest_command(subparsers: SubparserRegistry) -> None:
     manifest_sub = manifest_cmd.add_subparsers(dest="action", required=True)
 
     manifest_validate = manifest_sub.add_parser(
-        "validate",
+        ManifestAction.VALIDATE.value,
         help="Validate a manifest against the JSON schema",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -55,7 +56,7 @@ def register_manifest_command(subparsers: SubparserRegistry) -> None:
     )
 
     manifest_schema = manifest_sub.add_parser(
-        "schema",
+        ManifestAction.SCHEMA.value,
         help="Emit the manifest JSON schema",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -134,10 +135,18 @@ def _handle_schema(args: argparse.Namespace) -> int:
 
 def execute_manifest(args: argparse.Namespace) -> int:
     """Execute the ``typewiz manifest`` command."""
-    action = args.action
-    if action == "validate":
+    action_value = args.action
+    try:
+        action = (
+            action_value
+            if isinstance(action_value, ManifestAction)
+            else ManifestAction.from_str(action_value)
+        )
+    except ValueError as exc:  # pragma: no cover - argparse prevents invalid choices
+        raise SystemExit(str(exc)) from exc
+    if action is ManifestAction.VALIDATE:
         return _handle_validate(args)
-    if action == "schema":
+    if action is ManifestAction.SCHEMA:
         return _handle_schema(args)
     raise SystemExit("Unknown manifest action")
 

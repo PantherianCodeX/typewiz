@@ -13,6 +13,7 @@ from typewiz.cli_helpers import (
 )
 from typewiz.model_types import SeverityLevel, SignaturePolicy
 from typewiz.ratchet.models import RatchetModel
+from typewiz.type_aliases import RunId
 
 DEFAULT_SEVERITIES: Final[tuple[SeverityLevel, SeverityLevel]] = (
     SeverityLevel.ERROR,
@@ -73,13 +74,21 @@ def apply_target_overrides(model: RatchetModel, overrides: Mapping[str, int]) ->
             run_budget.targets.update(per_run[run_id])
 
 
-def normalise_runs(runs: Sequence[str] | None) -> list[str]:
+def normalise_runs(runs: Sequence[str | RunId] | None) -> list[RunId]:
     if not runs:
         return []
-    return [item.strip() for item in runs if item and item.strip()]
+    normalised: list[RunId] = []
+    for value in runs:
+        token = str(value).strip()
+        if not token:
+            continue
+        normalised.append(RunId(token))
+    return normalised
 
 
-def resolve_runs(cli_runs: Sequence[str] | None, config_runs: Sequence[str]) -> list[str] | None:
+def resolve_runs(
+    cli_runs: Sequence[str | RunId] | None, config_runs: Sequence[str | RunId]
+) -> list[RunId] | None:
     runs = normalise_runs(cli_runs) or normalise_runs(config_runs)
     return runs or None
 
