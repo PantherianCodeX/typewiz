@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from ..model_types import SeverityLevel
 from ..utils import JSONValue
 
 
@@ -18,7 +19,7 @@ class RatchetFinding:
     """Single severity finding for a path compared against its budget."""
 
     path: str
-    severity: str
+    severity: SeverityLevel
     allowed: int
     actual: int
 
@@ -38,7 +39,7 @@ class RatchetFinding:
 
         payload: dict[str, object] = {
             "path": self.path,
-            "severity": self.severity,
+            "severity": self.severity.value,
             "actual": self.actual,
         }
         allowed_key = rename_allowed or "allowed"
@@ -118,7 +119,7 @@ class RatchetRunReport:
             lines.extend([
                 (
                     "    "
-                    + f"{finding.path} [{finding.severity}] "
+                    + f"{finding.path} [{finding.severity.value}] "
                     + f"actual={finding.actual} allowed={finding.allowed} delta=+{finding.delta}"
                 )
                 for finding in _slice(self.violations)
@@ -131,7 +132,7 @@ class RatchetRunReport:
             lines.extend([
                 (
                     "    "
-                    + f"{finding.path} [{finding.severity}] "
+                    + f"{finding.path} [{finding.severity.value}] "
                     + f"previous={finding.allowed} current={finding.actual} delta={finding.delta}"
                 )
                 for finding in _slice(self.improvements)

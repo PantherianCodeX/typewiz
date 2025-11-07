@@ -10,7 +10,7 @@ import pytest
 from typewiz.cli.commands import ratchet as ratchet_cmd
 from typewiz.cli.commands.ratchet import RatchetContext, handle_info, handle_init, handle_update
 from typewiz.config import RatchetConfig
-from typewiz.model_types import SignaturePolicy
+from typewiz.model_types import SeverityLevel, SignaturePolicy
 from typewiz.ratchet.models import RatchetModel, RatchetRunBudgetModel
 from typewiz.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
 from typewiz.typed_manifest import ManifestData
@@ -153,7 +153,7 @@ def test_handle_update_dry_run_skips_write(
         ).targets.update(targets)
 
     def fake_compare_manifest(**_: Any) -> RatchetReport:
-        finding = RatchetFinding(path="pkg", severity="error", allowed=1, actual=2)
+        finding = RatchetFinding(path="pkg", severity=SeverityLevel.ERROR, allowed=1, actual=2)
         run_report = RatchetRunReport(
             run_id="pyright:current",
             severities=["error"],

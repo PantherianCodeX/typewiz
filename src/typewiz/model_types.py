@@ -36,8 +36,15 @@ class SeverityLevel(StrEnum):
         if isinstance(raw, SeverityLevel):
             return raw
         if isinstance(raw, str):
+            token = raw.strip().lower()
+            if token.endswith("s"):
+                singular = token[:-1]
+                if singular in cls._value2member_map_:
+                    token = singular
+            if token == "info":
+                token = "information"
             try:
-                return cls.from_str(raw)
+                return cls.from_str(token)
             except ValueError:
                 return cls.INFORMATION
         return cls.INFORMATION

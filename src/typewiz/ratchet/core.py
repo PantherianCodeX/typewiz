@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from ..data_validation import coerce_int, coerce_mapping, coerce_object_list
+from ..model_types import SeverityLevel
 from ..typed_manifest import ManifestData
 from ..utils import JSONValue
 from .models import (
@@ -295,10 +296,21 @@ def _compare_severity_budget(
     allowed: int,
     actual: int,
 ) -> tuple[RatchetFinding | None, RatchetFinding | None]:
+    severity_level = SeverityLevel.coerce(severity)
     if actual > allowed:
-        return RatchetFinding(path=path, severity=severity, allowed=allowed, actual=actual), None
+        return RatchetFinding(
+            path=path,
+            severity=severity_level,
+            allowed=allowed,
+            actual=actual,
+        ), None
     if actual < allowed:
-        return None, RatchetFinding(path=path, severity=severity, allowed=allowed, actual=actual)
+        return None, RatchetFinding(
+            path=path,
+            severity=severity_level,
+            allowed=allowed,
+            actual=actual,
+        )
     return None, None
 
 
