@@ -3,47 +3,74 @@
   "$id": "https://typewiz.dev/schemas/ratchet.schema.json",
   "title": "RatchetModel",
   "type": "object",
-  "required": ["schemaVersion", "generatedAt", "runs"],
+  "required": [
+    "schemaVersion",
+    "generatedAt",
+    "runs"
+  ],
   "properties": {
     "schemaVersion": {
       "type": "integer",
-      "enum": [1]
+      "enum": [
+        1
+      ]
     },
     "generatedAt": {
       "type": "string"
     },
     "manifestPath": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "projectRoot": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "runs": {
       "type": "object",
       "minProperties": 1,
       "additionalProperties": false,
       "patternProperties": {
-        ".+": { "$ref": "#/definitions/runBudget" }
+        ".+": {
+          "$ref": "#/$defs/runBudget"
+        }
       }
     }
   },
   "additionalProperties": false,
-  "definitions": {
+  "$defs": {
     "severity": {
       "type": "string",
-      "enum": ["error", "warning", "information"]
+      "enum": [
+        "error",
+        "warning",
+        "information"
+      ]
     },
     "mode": {
       "type": "string",
-      "enum": ["current", "full"]
+      "enum": [
+        "current",
+        "full"
+      ]
     },
     "runBudget": {
       "type": "object",
-      "required": ["severities", "paths", "targets"],
+      "required": [
+        "severities",
+        "paths",
+        "targets"
+      ],
       "properties": {
         "severities": {
           "type": "array",
-          "items": { "$ref": "#/definitions/severity" },
+          "items": {
+            "$ref": "#/$defs/severity"
+          },
           "minItems": 1,
           "uniqueItems": true
         },
@@ -51,12 +78,16 @@
           "type": "object",
           "additionalProperties": false,
           "patternProperties": {
-            ".+": { "$ref": "#/definitions/pathBudget" }
+            ".+": {
+              "$ref": "#/$defs/pathBudget"
+            }
           }
         },
         "targets": {
           "type": "object",
-          "propertyNames": { "$ref": "#/definitions/severity" },
+          "propertyNames": {
+            "$ref": "#/$defs/severity"
+          },
           "additionalProperties": {
             "type": "integer",
             "minimum": 0
@@ -64,8 +95,12 @@
         },
         "engine_signature": {
           "oneOf": [
-            { "$ref": "#/definitions/engineSignature" },
-            { "type": "null" }
+            {
+              "$ref": "#/$defs/engineSignature"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
@@ -73,11 +108,15 @@
     },
     "pathBudget": {
       "type": "object",
-      "required": ["severities"],
+      "required": [
+        "severities"
+      ],
       "properties": {
         "severities": {
           "type": "object",
-          "propertyNames": { "$ref": "#/definitions/severity" },
+          "propertyNames": {
+            "$ref": "#/$defs/severity"
+          },
           "additionalProperties": {
             "type": "integer",
             "minimum": 0
@@ -88,17 +127,32 @@
     },
     "engineSignature": {
       "type": "object",
-      "required": ["engineOptions"],
+      "required": [
+        "engineOptions"
+      ],
       "properties": {
-        "tool": { "type": ["string", "null"] },
-        "mode": {
-          "oneOf": [
-            { "$ref": "#/definitions/mode" },
-            { "type": "null" }
+        "tool": {
+          "type": [
+            "string",
+            "null"
           ]
         },
-        "engineOptions": { "type": "object" },
-        "hash": { "type": "string" }
+        "mode": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/mode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "engineOptions": {
+          "type": "object"
+        },
+        "hash": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     }
