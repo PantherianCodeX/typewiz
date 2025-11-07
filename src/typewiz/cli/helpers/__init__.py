@@ -3,7 +3,16 @@
 
 from __future__ import annotations
 
-from .args import ArgumentRegistrar, register_argument
+from .args import (
+    ArgumentRegistrar,
+    collect_plugin_args,
+    collect_profile_args,
+    normalise_modes,
+    parse_comma_separated,
+    parse_int_mapping,
+    parse_key_value_entries,
+    register_argument,
+)
 from .formatting import (
     SUMMARY_FIELD_CHOICES,
     format_list,
@@ -40,6 +49,8 @@ from .ratchet import (
 
 __all__ = [
     "ArgumentRegistrar",
+    "collect_plugin_args",
+    "collect_profile_args",
     "DEFAULT_RATCHET_FILENAME",
     "DEFAULT_SEVERITIES",
     "MANIFEST_CANDIDATE_NAMES",
@@ -50,6 +61,10 @@ __all__ = [
     "ensure_parent",
     "format_list",
     "normalise_runs",
+    "normalise_modes",
+    "parse_comma_separated",
+    "parse_int_mapping",
+    "parse_key_value_entries",
     "parse_target_entries",
     "parse_summary_fields",
     "print_readiness_summary",

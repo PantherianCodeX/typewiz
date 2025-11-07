@@ -17,7 +17,6 @@ from typewiz.summary_types import SummaryData
 from typewiz.type_aliases import EngineName, ProfileName
 from typewiz.utils import default_full_paths, normalise_enums_for_json, resolve_project_root
 
-from ...cli_helpers import collect_plugin_args, collect_profile_args, normalise_modes
 from ...model_types import (
     DashboardView,
     FailOnPolicy,
@@ -30,6 +29,9 @@ from ...model_types import (
 )
 from ..helpers import (
     SUMMARY_FIELD_CHOICES,
+    collect_plugin_args,
+    collect_profile_args,
+    normalise_modes,
     parse_summary_fields,
     print_readiness_summary,
     print_summary,

@@ -10,7 +10,7 @@ from typing import Final, cast
 
 from .engines.base import EngineResult
 from .logging_utils import StructuredLogExtra
-from .model_types import Mode, SeverityLevel
+from .model_types import LogComponent, Mode, SeverityLevel
 from .type_aliases import BuiltinEngineName, ToolName
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
@@ -45,7 +45,7 @@ def run_pyright(
     mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
-    start_extra: StructuredLogExtra = {"component": "engine", "tool": "pyright"}
+    start_extra: StructuredLogExtra = {"component": LogComponent.ENGINE, "tool": "pyright"}
     logger.info(
         "Running pyright (%s)",
         " ".join(command),
@@ -126,7 +126,7 @@ def run_pyright(
         tool_summary=tool_summary,
     )
     debug_extra: StructuredLogExtra = {
-        "component": "engine",
+        "component": LogComponent.ENGINE,
         "tool": "pyright",
         "duration_ms": engine_result.duration_ms,
     }
@@ -150,7 +150,7 @@ def run_mypy(
     mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
-    start_extra: StructuredLogExtra = {"component": "engine", "tool": "mypy"}
+    start_extra: StructuredLogExtra = {"component": LogComponent.ENGINE, "tool": "mypy"}
     logger.info(
         "Running mypy (%s)",
         " ".join(command),
@@ -217,7 +217,7 @@ def run_mypy(
         diagnostics=diagnostics,
     )
     debug_extra: StructuredLogExtra = {
-        "component": "engine",
+        "component": LogComponent.ENGINE,
         "tool": "mypy",
         "duration_ms": engine_result.duration_ms,
     }

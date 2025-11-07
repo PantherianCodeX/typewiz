@@ -8,7 +8,7 @@ import logging
 from pytest import CaptureFixture
 
 from typewiz.logging_utils import configure_logging
-from typewiz.model_types import Mode
+from typewiz.model_types import LogComponent, Mode
 
 
 def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str]) -> None:
@@ -17,9 +17,9 @@ def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str
     logger.info(
         "hello",
         extra={
-            "component": "engine",
+            "component": LogComponent.ENGINE,
             "tool": "pyright",
-            "mode": Mode.CURRENT.value,
+            "mode": Mode.CURRENT,
             "duration_ms": 1.2,
             "cached": False,
             "exit_code": 0,

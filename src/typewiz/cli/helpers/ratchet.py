@@ -7,13 +7,11 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Final, cast
 
-from typewiz.cli_helpers import (
-    parse_comma_separated,
-    parse_key_value_entries,
-)
 from typewiz.model_types import DEFAULT_SEVERITIES, SeverityLevel, SignaturePolicy
 from typewiz.ratchet.models import RatchetModel
 from typewiz.type_aliases import RunId
+
+from .args import parse_comma_separated, parse_key_value_entries
 
 MANIFEST_CANDIDATE_NAMES: Final[tuple[str, ...]] = (
     "typing_audit.json",

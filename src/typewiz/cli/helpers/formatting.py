@@ -3,20 +3,13 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
-from typing import TypedDict, cast
+from typing import Literal, TypedDict, cast
 
-from typewiz.cli_helpers import (
-    format_list as _legacy_format_list,
-)
-from typewiz.cli_helpers import (
-    parse_summary_fields as _legacy_parse_summary_fields,
-)
-from typewiz.cli_helpers import (
-    render_data_structure as _legacy_render_data_structure,
-)
 from typewiz.data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
 from typewiz.error_codes import error_code_for
+from typewiz.formatting import render_table_rows, stringify
 from typewiz.model_types import (
     DataFormat,
     HotspotKind,
@@ -39,6 +32,7 @@ from typewiz.readiness_views import collect_readiness_view as _collect_readiness
 from typewiz.summary_types import SummaryData
 from typewiz.type_aliases import RunId
 from typewiz.types import RunResult
+from typewiz.utils import JSONValue, normalise_enums_for_json
 
 from .io import echo
 
@@ -111,6 +105,15 @@ class RuleEntry(TypedDict):
 type ReadinessQueryPayload = ReadinessViewResult
 
 
+FormatInput = Literal["json", "table"] | DataFormat
+
+
+def _normalise_format(fmt: FormatInput) -> Literal["json", "table"]:
+    if isinstance(fmt, DataFormat):
+        return fmt.value
+    return fmt
+
+
 def _parse_run_identifier(raw: str) -> tuple[RunId, str, str]:
     """Parse ``tool:mode`` identifiers into typed components."""
     tool, sep, remainder = raw.partition(":")
@@ -119,8 +122,8 @@ def _parse_run_identifier(raw: str) -> tuple[RunId, str, str]:
 
 
 def format_list(values: Sequence[str]) -> str:
-    """Delegate to the historic ``typewiz.cli_helpers.format_list`` helper."""
-    return _legacy_format_list(values)
+    """Return a comma-separated string for CLI presentation."""
+    return ", ".join(values) if values else "—"
 
 
 def parse_summary_fields(
@@ -130,7 +133,23 @@ def parse_summary_fields(
 ) -> list[SummaryField]:
     """Parse ``--summary-fields`` input, validating against allowable field names."""
     field_set = valid_fields if valid_fields is not None else SUMMARY_FIELD_CHOICES
-    return _legacy_parse_summary_fields(raw, valid_fields=field_set)
+    if not raw:
+        return []
+    name_map = {field.value: field for field in field_set}
+    fields: list[SummaryField] = []
+    for part in raw.split(","):
+        item = part.strip().lower()
+        if not item:
+            continue
+        if item == "all":
+            return sorted(field_set, key=lambda field: field.value)
+        field = name_map.get(item)
+        if field is None:
+            readable = ", ".join(sorted({*name_map, "all"}))
+            raise SystemExit(f"Unknown summary field '{item}'. Valid values: {readable}")
+        if field not in fields:
+            fields.append(field)
+    return fields
 
 
 def _print_run_summary(
@@ -262,9 +281,25 @@ def print_readiness_summary(
             echo(f"  {file_entry['path']}: {file_entry['diagnostics']}")
 
 
-def render_data(data: object, fmt: DataFormat) -> list[str]:
+def render_data(data: object, fmt: FormatInput) -> list[str]:
     """Render Python data for CLI output."""
-    return _legacy_render_data_structure(data, fmt)
+    fmt_value = _normalise_format(fmt)
+    if fmt_value == "json":
+        return [json.dumps(normalise_enums_for_json(data), indent=2, ensure_ascii=False)]
+    if isinstance(data, list):
+        table_rows: list[Mapping[str, JSONValue]] = []
+        for item in cast("Sequence[object]", data):
+            if isinstance(item, Mapping):
+                mapping_item = cast(Mapping[object, object], item)
+                table_rows.append(coerce_mapping(mapping_item))
+        return render_table_rows(table_rows)
+    if isinstance(data, Mapping):
+        mapping_data = coerce_mapping(cast(Mapping[object, object], data))
+        dict_rows: list[Mapping[str, JSONValue]] = [
+            {"key": str(key), "value": value} for key, value in mapping_data.items()
+        ]
+        return render_table_rows(dict_rows)
+    return [stringify(data)]
 
 
 def query_overview(

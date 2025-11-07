@@ -8,6 +8,13 @@ from typing import cast
 
 import pytest
 
+from typewiz.cli.helpers import (
+    collect_profile_args,
+    parse_comma_separated,
+    parse_int_mapping,
+    parse_key_value_entries,
+    render_data,
+)
 from typewiz.cli.helpers.formatting import (
     FolderHotspotEntry,
     query_engines,
@@ -15,13 +22,6 @@ from typewiz.cli.helpers.formatting import (
     query_overview,
     query_readiness,
     query_runs,
-)
-from typewiz.cli_helpers import (
-    collect_profile_args,
-    parse_comma_separated,
-    parse_int_mapping,
-    parse_key_value_entries,
-    render_data_structure,
 )
 from typewiz.model_types import (
     DataFormat,
@@ -73,8 +73,8 @@ def test_collect_profile_args_uses_helper() -> None:
     assert result == {"pyright": "baseline"}
 
 
-def test_render_data_structure_accepts_enum() -> None:
-    rows = render_data_structure({"key": "value"}, DataFormat.TABLE)
+def test_render_data_accepts_enum() -> None:
+    rows = render_data({"key": "value"}, DataFormat.TABLE)
     assert rows[0].startswith("key")
 
 

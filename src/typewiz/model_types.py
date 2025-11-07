@@ -86,6 +86,21 @@ class LogFormat(StrEnum):
             raise ValueError(f"Unknown log format '{raw}'") from exc
 
 
+class LogComponent(StrEnum):
+    ENGINE = "engine"
+    CLI = "cli"
+    DASHBOARD = "dashboard"
+    CACHE = "cache"
+
+    @classmethod
+    def from_str(cls, raw: str) -> LogComponent:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown log component '{raw}'") from exc
+
+
 class LicenseMode(StrEnum):
     COMMERCIAL = "commercial"
     EVALUATION = "evaluation"

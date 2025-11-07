@@ -19,7 +19,7 @@ from .config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from .engines import EngineContext, EngineOptions
 from .engines.base import BaseEngine, EngineResult
 from .logging_utils import StructuredLogExtra
-from .model_types import FileHashPayload, Mode, OverrideEntry
+from .model_types import FileHashPayload, LogComponent, Mode, OverrideEntry
 from .type_aliases import CacheKey, EngineName, PathKey, ProfileName, ToolName
 from .typed_manifest import ToolSummary
 from .types import RunResult
@@ -468,7 +468,7 @@ def execute_engine_mode(
     cached_run = cache.get(cache_key, file_hashes)
     if cached_run:
         cache_hit_extra: StructuredLogExtra = {
-            "component": "audit",
+            "component": LogComponent.CACHE,
             "tool": engine.name,
             "mode": mode,
             "cached": True,
@@ -511,7 +511,7 @@ def execute_engine_mode(
         return run_result, truncated
 
     run_extra: StructuredLogExtra = {
-        "component": "audit",
+        "component": LogComponent.CLI,
         "tool": engine.name,
         "mode": mode,
         "cached": False,

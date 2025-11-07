@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 from typing import Final, Literal, TypedDict, cast, override
 
-from .model_types import LogFormat, Mode
+from .model_types import LogComponent, LogFormat, Mode
 from .utils import normalise_enums_for_json
 
 LOG_FORMATS: Final[tuple[Literal["text", "json"], ...]] = cast(
@@ -76,7 +76,7 @@ def configure_logging(log_format: LogFormat | str) -> None:
 
 
 class StructuredLogExtra(TypedDict, total=False):
-    component: str
+    component: LogComponent
     tool: str
     mode: Mode
     duration_ms: float
