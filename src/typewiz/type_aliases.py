@@ -12,17 +12,21 @@ CategoryName = NewType("CategoryName", str)
 RuleName = NewType("RuleName", str)
 ToolName = NewType("ToolName", str)
 EngineName = NewType("EngineName", str)
+ProfileName = NewType("ProfileName", str)
 
 CategoryKey = Literal["unknownChecks", "optionalChecks", "unusedSymbols", "general"]
 RunId = NewType("RunId", str)
+RunnerName = EngineName
 
 __all__ = [
     "CacheKey",
     "CategoryKey",
     "CategoryName",
     "EngineName",
+    "ProfileName",
     "PathKey",
     "RuleName",
-    "ToolName",
+    "RunnerName",
     "RunId",
+    "ToolName",
 ]

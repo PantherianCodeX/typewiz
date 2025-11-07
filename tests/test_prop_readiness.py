@@ -18,9 +18,9 @@ from typewiz.summary_types import (
     ReadinessOptionsBucket,
     ReadinessStrictEntry,
     ReadinessTab,
+    StatusKey,
     SummaryData,
     SummaryTabs,
-    StatusKey,
 )
 
 STATUS_VALUES = tuple(status.value for status in ReadinessStatus)

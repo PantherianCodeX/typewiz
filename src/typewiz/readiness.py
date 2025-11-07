@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Final, TypedDict
+from typing import Final, Literal, TypedDict, cast
 
 from .model_types import ReadinessStatus
 from .type_aliases import CategoryKey, CategoryName
@@ -13,6 +13,13 @@ STATUS_VALUES: Final[tuple[str, ...]] = tuple(status.value for status in STATUSE
 DEFAULT_CLOSE_THRESHOLD: Final[int] = 3
 STRICT_CLOSE_THRESHOLD: Final[int] = 3
 GENERAL_CATEGORY: Final[CategoryName] = CategoryName("general")
+StatusKey = Literal["ready", "close", "blocked"]
+CATEGORY_DISPLAY_ORDER: Final[tuple[CategoryKey, ...]] = (
+    "unknownChecks",
+    "optionalChecks",
+    "unusedSymbols",
+    "general",
+)
 
 # Category patterns and thresholds can be tuned here without touching renderers
 CATEGORY_PATTERNS: Final[dict[CategoryKey, tuple[str, ...]]] = {
@@ -42,7 +49,7 @@ CATEGORY_LABELS: Final[dict[CategoryKey, str]] = {
     "general": "General diagnostics",
 }
 
-CATEGORY_KEYS: Final[tuple[CategoryKey, ...]] = tuple(CATEGORY_PATTERNS.keys())
+CATEGORY_KEYS: Final[tuple[CategoryKey, ...]] = CATEGORY_DISPLAY_ORDER
 CATEGORY_NAMES: Final[tuple[CategoryName, ...]] = tuple(CategoryName(key) for key in CATEGORY_KEYS)
 _CATEGORY_PATTERN_LOOKUPS: Final[tuple[tuple[CategoryName, tuple[str, ...]], ...]] = tuple(
     (
@@ -92,8 +99,8 @@ class ReadinessStrictEntry(TypedDict, total=False):
 
 CategoryCountMap = dict[CategoryName, int]
 CategoryStatusMap = dict[CategoryName, ReadinessStatus]
-StrictBuckets = dict[str, list[ReadinessStrictEntry]]
-OptionsBuckets = dict[str, ReadinessOptionBucket]
+StrictBuckets = dict[StatusKey, list[ReadinessStrictEntry]]
+OptionsBuckets = dict[CategoryKey, ReadinessOptionBucket]
 
 
 class ReadinessPayload(TypedDict):
@@ -144,7 +151,8 @@ def _append_option_buckets(
     warnings: int,
 ) -> None:
     for category, status in category_status.items():
-        bucket = options[str(category)]
+        category_key = cast(CategoryKey, str(category))
+        bucket = options[category_key]
         entry_payload: ReadinessOptionEntry = {
             "path": entry_path,
             "count": categories.get(category, 0),
@@ -242,9 +250,15 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPayl
     Input folder_entries should contain keys: path, errors, warnings, information,
     and optionally codeCounts, recommendations.
     """
+    strict_buckets: StrictBuckets = {
+        cast("StatusKey", status_value): [] for status_value in STATUS_VALUES
+    }
+    option_buckets: OptionsBuckets = {}
+    for category in CATEGORY_PATTERNS:
+        option_buckets[category] = _empty_option_bucket(category)
     readiness: ReadinessPayload = {
-        "strict": {status_value: [] for status_value in STATUS_VALUES},
-        "options": {category: _empty_option_bucket(category) for category in CATEGORY_PATTERNS},
+        "strict": strict_buckets,
+        "options": option_buckets,
     }
 
     for entry in folder_entries:

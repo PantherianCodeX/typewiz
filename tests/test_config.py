@@ -19,15 +19,18 @@ from typewiz.config import (
     load_config,
 )
 from typewiz.model_types import FailOnPolicy, SignaturePolicy
-from typewiz.type_aliases import EngineName
+from typewiz.type_aliases import EngineName, ProfileName, RunnerName
 from typewiz.utils import consume
 
 ensure_list = config_module.ensure_list
 resolve_path_fields = config_module.resolve_path_fields
 
 PYRIGHT = EngineName("pyright")
+MYPY = EngineName("mypy")
 STUB = EngineName("stub")
 CUSTOM = EngineName("custom")
+STRICT = ProfileName("strict")
+LENIENT = ProfileName("lenient")
 
 
 def test_load_config_from_toml(tmp_path: Path) -> None:
@@ -52,7 +55,7 @@ dashboard_html = "reports/dashboard.html"
     assert cfg.audit.max_depth == 5
     assert cfg.audit.dashboard_html == (config_path.parent / "reports" / "dashboard.html")
     assert cfg.audit.plugin_args[PYRIGHT] == ["--pythonversion", "3.12"]
-    assert cfg.audit.runners == ["pyright"]
+    assert cfg.audit.runners == [RunnerName(PYRIGHT)]
 
 
 def test_load_config_engine_profiles(tmp_path: Path) -> None:
@@ -89,11 +92,11 @@ config_file = "configs/strict.json"
     assert settings.include == ["extras"]
     assert settings.exclude == []
     assert settings.default_profile is None
-    assert "strict" in settings.profiles
-    strict = settings.profiles["strict"]
+    assert STRICT in settings.profiles
+    strict = settings.profiles[STRICT]
     assert strict.plugin_args == ["--strict"]
     assert strict.config_file == (config_path.parent / "configs" / "strict.json")
-    assert cfg.audit.active_profiles == {STUB: "strict"}
+    assert cfg.audit.active_profiles == {STUB: STRICT}
     assert cfg.audit.plugin_args[STUB] == ["--base"]
 
 
@@ -111,34 +114,34 @@ def test_merge_config_merges_engine_settings() -> None:
         engine_settings={
             STUB: EngineSettings(
                 plugin_args=["--engine"],
-                profiles={"strict": EngineProfile(plugin_args=["--strict"])},
+                profiles={STRICT: EngineProfile(plugin_args=["--strict"])},
             ),
         },
-        active_profiles={STUB: "strict"},
+        active_profiles={STUB: STRICT},
     )
     override = AuditConfig(
         plugin_args={STUB: ["--override"]},
         engine_settings={
             STUB: EngineSettings(
                 plugin_args=["--engine-override"],
-                default_profile="strict",
+                default_profile=STRICT,
                 profiles={
-                    "strict": EngineProfile(plugin_args=["--stricter"]),
-                    "lenient": EngineProfile(plugin_args=["--lenient"]),
+                    STRICT: EngineProfile(plugin_args=["--stricter"]),
+                    LENIENT: EngineProfile(plugin_args=["--lenient"]),
                 },
             ),
         },
-        active_profiles={STUB: "lenient"},
+        active_profiles={STUB: LENIENT},
     )
 
     merged = merge_audit_configs(base, override)
     assert merged.plugin_args[STUB] == ["--global", "--override"]
     settings = merged.engine_settings[STUB]
     assert settings.plugin_args == ["--engine", "--engine-override"]
-    assert settings.default_profile == "strict"
-    assert settings.profiles["strict"].plugin_args == ["--strict", "--stricter"]
-    assert settings.profiles["lenient"].plugin_args == ["--lenient"]
-    assert merged.active_profiles[STUB] == "lenient"
+    assert settings.default_profile == STRICT
+    assert settings.profiles[STRICT].plugin_args == ["--strict", "--stricter"]
+    assert settings.profiles[LENIENT].plugin_args == ["--lenient"]
+    assert merged.active_profiles[STUB] == LENIENT
 
 
 def test_load_config_discovers_folder_overrides(tmp_path: Path) -> None:
@@ -176,7 +179,7 @@ exclude = ["legacy"]
     assert cfg.audit.path_overrides
     first = cfg.audit.path_overrides[0]
     assert first.path == package_dir
-    assert first.active_profiles == {PYRIGHT: "strict"}
+    assert first.active_profiles == {PYRIGHT: STRICT}
     settings = first.engine_settings[PYRIGHT]
     assert settings.plugin_args == ["--project", "pyrightconfig.billing.json"]
     # Include defaults to folder when "." used
@@ -186,7 +189,8 @@ exclude = ["legacy"]
 def test_load_config_defaults_without_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.chdir(tmp_path)
     cfg = load_config()
-    assert sorted(cfg.audit.runners or []) == ["mypy", "pyright"]
+    expected = sorted([RunnerName(MYPY), RunnerName(PYRIGHT)])
+    assert sorted(cfg.audit.runners or []) == expected
     assert cfg.audit.full_paths is None
 
 
@@ -301,7 +305,7 @@ def test_resolve_path_fields_resolves_relative_paths(tmp_path: Path) -> None:
         engine_settings={
             STUB: EngineSettings(
                 config_file=config_file,
-                profiles={"strict": EngineProfile(config_file=config_file)},
+                profiles={STRICT: EngineProfile(config_file=config_file)},
             ),
         },
         path_overrides=[
@@ -310,7 +314,7 @@ def test_resolve_path_fields_resolves_relative_paths(tmp_path: Path) -> None:
                 engine_settings={
                     STUB: EngineSettings(
                         config_file=override_config,
-                        profiles={"strict": EngineProfile(config_file=override_config)},
+                        profiles={STRICT: EngineProfile(config_file=override_config)},
                     ),
                 },
             ),

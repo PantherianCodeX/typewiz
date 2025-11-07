@@ -18,8 +18,9 @@ from .collection_utils import merge_preserve
 from .config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from .engines import EngineContext, EngineOptions
 from .engines.base import BaseEngine, EngineResult
+from .logging_utils import StructuredLogExtra
 from .model_types import FileHashPayload, Mode, OverrideEntry
-from .type_aliases import CacheKey, EngineName, PathKey, ToolName
+from .type_aliases import CacheKey, EngineName, PathKey, ProfileName, ToolName
 from .typed_manifest import ToolSummary
 from .types import RunResult
 
@@ -29,7 +30,7 @@ class _EngineOptionState:
     plugin_args: list[str]
     include: list[str]
     exclude: list[str]
-    profile: str | None
+    profile: ProfileName | None
     config_file: Path | None
 
     def copy(self) -> _EngineOptionState:
@@ -45,7 +46,7 @@ class _EngineOptionState:
 def _resolve_base_profile(
     audit_config: AuditConfig,
     engine_name: EngineName,
-) -> tuple[EngineSettings | None, str | None, EngineProfile | None]:
+) -> tuple[EngineSettings | None, ProfileName | None, EngineProfile | None]:
     settings = audit_config.engine_settings.get(engine_name)
     profile_name = audit_config.active_profiles.get(engine_name)
     if not profile_name and settings:
@@ -88,7 +89,7 @@ def _initial_option_state(
     audit_config: AuditConfig,
     engine_name: EngineName,
     settings: EngineSettings | None,
-    profile_name: str | None,
+    profile_name: ProfileName | None,
     profile: EngineProfile | None,
 ) -> _EngineOptionState:
     plugin_args = _merge_base_plugin_args(audit_config, engine_name, settings, profile)
@@ -466,11 +467,17 @@ def execute_engine_mode(
 
     cached_run = cache.get(cache_key, file_hashes)
     if cached_run:
+        cache_hit_extra: StructuredLogExtra = {
+            "component": "audit",
+            "tool": engine.name,
+            "mode": mode,
+            "cached": True,
+        }
         logger.info(
             "Cache hit for %s:%s",
             engine.name,
             mode,
-            extra={"component": "audit", "tool": engine.name, "mode": mode, "cached": True},
+            extra=cache_hit_extra,
         )
         return _build_cached_run_result(
             engine_name=ToolName(engine.name),
@@ -503,19 +510,20 @@ def execute_engine_mode(
         )
         return run_result, truncated
 
+    run_extra: StructuredLogExtra = {
+        "component": "audit",
+        "tool": engine.name,
+        "mode": mode,
+        "cached": False,
+        "duration_ms": result.duration_ms,
+        "exit_code": result.exit_code,
+    }
     logger.info(
         "Running %s:%s (%s)",
         engine.name,
         mode,
         " ".join(result.command),
-        extra={
-            "component": "audit",
-            "tool": engine.name,
-            "mode": mode,
-            "cached": False,
-            "duration_ms": result.duration_ms,
-            "exit_code": result.exit_code,
-        },
+        extra=run_extra,
     )
 
     cache.update(

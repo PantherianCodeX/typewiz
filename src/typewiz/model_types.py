@@ -219,6 +219,12 @@ class FailOnPolicy(StrEnum):
             raise ValueError(f"Unknown fail-on policy '{raw}'") from exc
 
 
+class RecommendationCode(StrEnum):
+    STRICT_READY = "strict-ready"
+    CANDIDATE_ENABLE_UNKNOWN_CHECKS = "candidate-enable-unknown-checks"
+    CANDIDATE_ENABLE_OPTIONAL_CHECKS = "candidate-enable-optional-checks"
+
+
 type CategoryMapping = dict[str, list[str]]
 
 

@@ -31,9 +31,11 @@ from typewiz.readiness_views import (
     FileReadinessPayload,
     FolderReadinessPayload,
     ReadinessValidationError,
+    ReadinessViewResult,
 )
 from typewiz.readiness_views import collect_readiness_view as _collect_readiness_view
 from typewiz.summary_types import SummaryData
+from typewiz.type_aliases import RunId
 from typewiz.types import RunResult
 
 from .io import echo
@@ -104,13 +106,14 @@ class RuleEntry(TypedDict):
     count: int
 
 
-type ReadinessQueryPayload = (
-    dict[str, list[FolderReadinessPayload]]
-    | dict[
-        str,
-        list[FileReadinessPayload],
-    ]
-)
+type ReadinessQueryPayload = ReadinessViewResult
+
+
+def _parse_run_identifier(raw: str) -> tuple[RunId, str, str]:
+    """Parse ``tool:mode`` identifiers into typed components."""
+    tool, sep, remainder = raw.partition(":")
+    mode = remainder if sep else ""
+    return RunId(raw), tool, mode
 
 
 def format_list(values: Sequence[str]) -> str:
@@ -371,16 +374,14 @@ def query_runs(
     mode_filter = {mode for mode in modes or [] if mode}
     records: list[RunSummaryEntry] = []
     for name, entry in sorted(runs.items()):
-        parts = name.split(":", 1)
-        tool = parts[0]
-        mode = parts[1] if len(parts) == 2 else ""
+        run_id, tool, mode = _parse_run_identifier(name)
         if tool_filter and tool not in tool_filter:
             continue
         if mode_filter and mode not in mode_filter:
             continue
         records.append(
             RunSummaryEntry(
-                run=name,
+                run=run_id,
                 tool=tool,
                 mode=mode,
                 errors=coerce_int(entry.get("errors")),
@@ -399,6 +400,7 @@ def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:
     runs = summary["tabs"]["engines"]["runSummary"]
     records: list[EngineEntry] = []
     for name, entry in sorted(runs.items()):
+        run_id, _, _ = _parse_run_identifier(name)
         options = entry.get("engineOptions", {})
         overrides_raw = coerce_object_list(options.get("overrides", []))
         overrides: list[dict[str, object]] = []
@@ -408,7 +410,7 @@ def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:
                 overrides.append({str(key): value for key, value in override_map.items()})
         records.append(
             EngineEntry(
-                run=name,
+                run=run_id,
                 profile=options.get("profile"),
                 config_file=options.get("configFile"),
                 plugin_args=coerce_str_list(options.get("pluginArgs", [])),

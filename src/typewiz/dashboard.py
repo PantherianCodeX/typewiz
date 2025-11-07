@@ -113,14 +113,17 @@ def _validate_readiness_tab(raw: Mapping[str, object]) -> ReadinessTab:
         if not isinstance(bucket_obj, Mapping):
             raise DashboardTypeError(f"readiness.options[{category!r}]", "a mapping")
         bucket_map = coerce_mapping(cast("Mapping[object, object]", bucket_obj))
-        validated_bucket: dict[str, object] = {}
+        status_entries: dict[StatusKey, list[dict[str, JSONValue]]] = {}
         for status in STATUSES:
-            key = status.value
+            key = _as_status_key(status.value)
             if key in bucket_map:
-                validated_bucket[key] = _coerce_readiness_entries(
+                status_entries[key] = _coerce_readiness_entries(
                     bucket_map.get(key),
                     f"readiness.options[{category!r}].{key}",
                 )
+        validated_bucket: dict[str, object] = {}
+        for key, entries in status_entries.items():
+            validated_bucket[key] = entries
         threshold_value = bucket_map.get("threshold")
         if threshold_value is not None:
             if isinstance(threshold_value, int):

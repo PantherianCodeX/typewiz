@@ -37,8 +37,8 @@ from typewiz.summary_types import (
     ReadinessOptionEntry,
     ReadinessOptionsBucket,
     ReadinessTab,
-    SummaryData,
     StatusKey,
+    SummaryData,
 )
 
 

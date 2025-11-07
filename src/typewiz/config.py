@@ -8,12 +8,21 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar, Final, cast
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 from .collection_utils import dedupe_preserve
+from .data_validation import require_non_negative_int
 from .exceptions import TypewizValidationError
 from .model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
-from .type_aliases import EngineName
+from .type_aliases import EngineName, ProfileName, RunnerName
 
 CONFIG_VERSION: Final[int] = 0
 FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)
@@ -100,14 +109,14 @@ def _default_list_str() -> list[str]:
 
 @dataclass(slots=True)
 class EngineProfile:
-    inherit: str | None = None
+    inherit: ProfileName | None = None
     plugin_args: list[str] = field(default_factory=_default_list_str)
     config_file: Path | None = None
     include: list[str] = field(default_factory=_default_list_str)
     exclude: list[str] = field(default_factory=_default_list_str)
 
 
-def _default_dict_str_engineprofile() -> dict[str, EngineProfile]:
+def _default_dict_profile_engineprofile() -> dict[ProfileName, EngineProfile]:
     return {}
 
 
@@ -117,8 +126,10 @@ class EngineSettings:
     config_file: Path | None = None
     include: list[str] = field(default_factory=_default_list_str)
     exclude: list[str] = field(default_factory=_default_list_str)
-    default_profile: str | None = None
-    profiles: dict[str, EngineProfile] = field(default_factory=_default_dict_str_engineprofile)
+    default_profile: ProfileName | None = None
+    profiles: dict[ProfileName, EngineProfile] = field(
+        default_factory=_default_dict_profile_engineprofile,
+    )
 
 
 def _default_dict_str_liststr() -> dict[EngineName, list[str]]:
@@ -129,7 +140,7 @@ def _default_dict_str_enginesettings() -> dict[EngineName, EngineSettings]:
     return {}
 
 
-def _default_dict_str_str() -> dict[EngineName, str]:
+def _default_dict_engine_profile() -> dict[EngineName, ProfileName]:
     return {}
 
 
@@ -167,12 +178,14 @@ class AuditConfig:
     dashboard_markdown: Path | None = None
     dashboard_html: Path | None = None
     respect_gitignore: bool | None = None
-    runners: list[str] | None = None
+    runners: list[RunnerName] | None = None
     plugin_args: dict[EngineName, list[str]] = field(default_factory=_default_dict_str_liststr)
     engine_settings: dict[EngineName, EngineSettings] = field(
         default_factory=_default_dict_str_enginesettings,
     )
-    active_profiles: dict[EngineName, str] = field(default_factory=_default_dict_str_str)
+    active_profiles: dict[EngineName, ProfileName] = field(
+        default_factory=_default_dict_engine_profile,
+    )
     path_overrides: list[PathOverride] = field(default_factory=_default_list_path_override)
 
     def __post_init__(self) -> None:
@@ -183,8 +196,10 @@ class AuditConfig:
             EngineName(name): value for name, value in self.engine_settings.items()
         }
         self.active_profiles = {
-            EngineName(name): profile for name, profile in self.active_profiles.items()
+            EngineName(name): ProfileName(profile) for name, profile in self.active_profiles.items()
         }
+        if self.runners is not None:
+            self.runners = [RunnerName(EngineName(name)) for name in self.runners]
 
 
 @dataclass(slots=True)
@@ -199,14 +214,16 @@ class PathOverride:
     engine_settings: dict[EngineName, EngineSettings] = field(
         default_factory=_default_dict_str_enginesettings,
     )
-    active_profiles: dict[EngineName, str] = field(default_factory=_default_dict_str_str)
+    active_profiles: dict[EngineName, ProfileName] = field(
+        default_factory=_default_dict_engine_profile,
+    )
 
     def __post_init__(self) -> None:
         self.engine_settings = {
             EngineName(name): value for name, value in self.engine_settings.items()
         }
         self.active_profiles = {
-            EngineName(name): profile for name, profile in self.active_profiles.items()
+            EngineName(name): ProfileName(profile) for name, profile in self.active_profiles.items()
         }
 
 
@@ -354,6 +371,14 @@ class AuditConfigModel(BaseModel):
     def _coerce_list(cls, value: object) -> list[str] | None:
         return ensure_list(value)
 
+    @field_validator("max_depth", "max_files", "max_bytes", mode="before")
+    @classmethod
+    def _validate_limits(cls, value: object, info: ValidationInfo) -> int | None:
+        if value is None:
+            return None
+        context = info.field_name or "value"
+        return require_non_negative_int(value, context=context)
+
     @field_validator("fail_on", mode="before")
     @classmethod
     def _normalise_fail_on(cls, value: object) -> FailOnPolicy | None:
@@ -402,6 +427,8 @@ class AuditConfigModel(BaseModel):
             settings = self.engine_settings.get(engine)
             if settings and profile not in settings.profiles:
                 raise UnknownEngineProfileError(engine, profile)
+        if self.runners:
+            object.__setattr__(self, "runners", dedupe_preserve(self.runners))
         return self
 
 
@@ -485,10 +512,16 @@ class ConfigModel(BaseModel):
         return self
 
 
+def _profile_name_or_none(value: str | ProfileName | None) -> ProfileName | None:
+    if value is None:
+        return None
+    return ProfileName(value)
+
+
 def _profile_from_model(model: EngineProfileModel) -> EngineProfile:
     payload = model.model_dump(mode="python")
     return EngineProfile(
-        inherit=payload.get("inherit"),
+        inherit=_profile_name_or_none(payload.get("inherit")),
         plugin_args=list(payload.get("plugin_args", [])),
         config_file=payload.get("config_file"),
         include=list(payload.get("include", [])),
@@ -503,11 +536,11 @@ def _engine_settings_from_model(model: EngineSettingsModel) -> EngineSettings:
         config_file=payload.get("config_file"),
         include=list(payload.get("include", [])),
         exclude=list(payload.get("exclude", [])),
-        default_profile=payload.get("default_profile"),
+        default_profile=_profile_name_or_none(payload.get("default_profile")),
     )
-    profile_map: dict[str, EngineProfile] = {}
+    profile_map: dict[ProfileName, EngineProfile] = {}
     for name, profile_model in model.profiles.items():
-        profile_map[name] = _profile_from_model(profile_model)
+        profile_map[ProfileName(name)] = _profile_from_model(profile_model)
     settings.profiles = profile_map
     return settings
 
@@ -519,7 +552,9 @@ def _path_override_from_model(path: Path, model: PathOverrideModel) -> PathOverr
         for name, settings_model in model.engines.items()
     }
     override.active_profiles = {
-        EngineName(name): profile for name, profile in model.active_profiles.items() if profile
+        EngineName(name): ProfileName(profile)
+        for name, profile in model.active_profiles.items()
+        if profile
     }
     return override
 
@@ -532,7 +567,9 @@ def _model_to_dataclass(model: AuditConfigModel) -> AuditConfig:
         EngineName(name): list(values) for name, values in plugin_args_raw.items()
     }
     active_profiles = {
-        EngineName(name): profile for name, profile in model.active_profiles.items() if profile
+        EngineName(name): ProfileName(profile)
+        for name, profile in model.active_profiles.items()
+        if profile
     }
     data.pop("engine_settings", None)
     data.pop("active_profiles", None)
@@ -639,7 +676,10 @@ def load_config(explicit_path: Path | None = None) -> Config:
 
     root = Path.cwd().resolve()
     cfg = Config()
-    cfg.audit.runners = ["pyright", "mypy"]
+    cfg.audit.runners = [
+        RunnerName(EngineName("pyright")),
+        RunnerName(EngineName("mypy")),
+    ]
     cfg.audit.path_overrides = _discover_path_overrides(root)
     resolve_path_fields(root, cfg.audit)
     _resolve_ratchet_paths(root, cfg.ratchet)

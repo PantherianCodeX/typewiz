@@ -11,7 +11,7 @@ from typewiz.api import run_audit
 from typewiz.config import AuditConfig, Config, EngineSettings
 from typewiz.engines.base import EngineContext, EngineResult
 from typewiz.model_types import Mode
-from typewiz.type_aliases import EngineName, ToolName
+from typewiz.type_aliases import EngineName, RunnerName, ToolName
 from typewiz.utils import consume
 
 
@@ -66,7 +66,7 @@ def test_cache_invalidation_on_tool_version_change(
         return {"stub": "1.0"}
 
     monkeypatch.setattr("typewiz.api.detect_tool_versions", _versions_v1)
-    override = AuditConfig(full_paths=["src"], runners=["stub"])
+    override = AuditConfig(full_paths=["src"], runners=[STUB_RUNNER])
     consume(run_audit(project_root=tmp_path, override=override))
     assert engine.invocations.count(Mode.FULL) == 1
 
@@ -94,8 +94,8 @@ def test_cache_invalidation_on_config_change(
     config = Config(
         audit=AuditConfig(
             full_paths=["src"],
-            runners=["stub"],
-            engine_settings={EngineName("stub"): settings},
+            runners=[STUB_RUNNER],
+            engine_settings={STUB: settings},
         ),
     )
 
@@ -116,15 +116,19 @@ def test_cache_invalidation_on_plugin_args_change(
     _patch_engine_resolution(monkeypatch, engine)
     _prepare_workspace(tmp_path)
 
-    base = AuditConfig(full_paths=["src"], runners=["stub"])
+    base = AuditConfig(full_paths=["src"], runners=[STUB_RUNNER])
     consume(run_audit(project_root=tmp_path, override=base))
     assert engine.invocations.count(Mode.FULL) == 1
 
     # Add a plugin arg which participates in the cache key; expect a miss
     override = AuditConfig(
         full_paths=["src"],
-        runners=["stub"],
-        plugin_args={EngineName("stub"): ["--flag"]},
+        runners=[STUB_RUNNER],
+        plugin_args={STUB: ["--flag"]},
     )
     consume(run_audit(project_root=tmp_path, override=override))
     assert engine.invocations.count(Mode.FULL) == 2
+
+
+STUB = EngineName("stub")
+STUB_RUNNER = RunnerName(STUB)

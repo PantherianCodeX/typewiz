@@ -12,7 +12,7 @@ from typewiz import AuditConfig, Config, run_audit
 from typewiz.config import EngineProfile, EngineSettings
 from typewiz.engines.base import EngineContext, EngineResult
 from typewiz.model_types import Mode, SeverityLevel
-from typewiz.type_aliases import EngineName, ToolName
+from typewiz.type_aliases import EngineName, ProfileName, RunnerName, ToolName
 from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic, RunResult
 from typewiz.utils import consume
@@ -99,7 +99,7 @@ def test_run_audit_programmatic(
     override = AuditConfig(
         full_paths=["src"],
         dashboard_json=tmp_path / "summary.json",
-        runners=["stub"],
+        runners=[STUB_RUNNER],
     )
 
     result = run_audit(
@@ -194,14 +194,14 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     consume((tmp_path / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8"))
 
     profile = EngineProfile(plugin_args=["--strict"], include=["extra"], exclude=[])
-    settings = EngineSettings(plugin_args=["--engine"], profiles={"strict": profile})
+    settings = EngineSettings(plugin_args=["--engine"], profiles={STRICT_PROFILE: profile})
     config = Config(
         audit=AuditConfig(
             full_paths=["src"],
-            plugin_args={EngineName("stub"): ["--base"]},
-            engine_settings={EngineName("stub"): settings},
-            active_profiles={EngineName("stub"): "strict"},
-            runners=["stub"],
+            plugin_args={STUB: ["--base"]},
+            engine_settings={STUB: settings},
+            active_profiles={STUB: STRICT_PROFILE},
+            runners=[STUB_RUNNER],
         ),
     )
 
@@ -214,9 +214,9 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     _, args, paths, profile_name = full_invocation
     assert args == ["--base", "--engine", "--strict"]
     assert sorted(paths) == ["extra", "src"]
-    assert profile_name == "strict"
+    assert profile_name == STRICT_PROFILE
 
-    assert {run.profile for run in result.runs} == {"strict"}
+    assert {run.profile for run in result.runs} == {STRICT_PROFILE}
     assert all(run.plugin_args == ["--base", "--engine", "--strict"] for run in result.runs)
     assert all(run.include == ["extra"] for run in result.runs)
     manifest = result.manifest
@@ -387,7 +387,7 @@ def test_run_audit_cache_preserves_tool_summary(
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     consume((tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8"))
 
-    override = AuditConfig(full_paths=["pkg"], runners=["stub"])
+    override = AuditConfig(full_paths=["pkg"], runners=[STUB_RUNNER])
 
     first = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
     assert engine.invocations.count(Mode.FULL) == 1
@@ -418,3 +418,8 @@ def test_run_audit_cache_preserves_tool_summary(
     assert "toolSummary" in cached_manifest_full
     cached_tool_summary = cached_manifest_full["toolSummary"]
     assert "errors" in cached_tool_summary and cached_tool_summary["errors"] == 1
+
+
+STUB = EngineName("stub")
+STUB_RUNNER = RunnerName(STUB)
+STRICT_PROFILE = ProfileName("strict")

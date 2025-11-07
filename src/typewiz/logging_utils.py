@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
-from typing import Final, override
+from typing import Final, TypedDict, override
 
-from .model_types import LogFormat
+from .model_types import LogFormat, Mode
 
 LOG_FORMATS: Final[tuple[str, ...]] = tuple(format_.value for format_ in LogFormat)
 
@@ -71,4 +71,14 @@ def configure_logging(log_format: LogFormat | str) -> None:
         logging.getLogger(child).setLevel(logging.INFO)
 
 
-__all__ = ["LOG_FORMATS", "configure_logging"]
+class StructuredLogExtra(TypedDict, total=False):
+    component: str
+    tool: str
+    mode: Mode | str
+    duration_ms: float
+    counts: dict[str, int]
+    cached: bool
+    exit_code: int
+
+
+__all__ = ["LOG_FORMATS", "StructuredLogExtra", "configure_logging"]

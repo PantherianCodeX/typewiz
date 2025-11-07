@@ -45,7 +45,7 @@ class RunSummary(TypedDict, total=False):
     warnings: int
     information: int
     total: int
-    severityBreakdown: dict[str, int]
+    severityBreakdown: dict[SeverityStr, int]
     ruleCounts: dict[str, int]
     categoryCounts: dict[str, int]
 

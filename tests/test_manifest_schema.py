@@ -22,7 +22,7 @@ from typewiz.manifest_models import (
 )
 from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION, upgrade_manifest
 from typewiz.model_types import CategoryMapping
-from typewiz.type_aliases import ToolName
+from typewiz.type_aliases import EngineName, RunnerName, ToolName
 from typewiz.typed_manifest import ManifestData
 from typewiz.utils import consume
 
@@ -100,7 +100,7 @@ def test_manifest_validates_against_schema(monkeypatch: pytest.MonkeyPatch, tmp_
     consume((tmp_path / "src" / "mod.py").write_text("x=1\n", encoding="utf-8"))
     manifest_path = tmp_path / "manifest.json"
 
-    override = AuditConfig(full_paths=["src"], runners=["stub"])
+    override = AuditConfig(full_paths=["src"], runners=[STUB_RUNNER])
     consume(run_audit(project_root=tmp_path, override=override, write_manifest_to=manifest_path))
 
     # Use the CLI validator to exercise both the jsonschema and fallback paths
@@ -219,3 +219,7 @@ def test_manifest_schema_includes_metadata() -> None:
     assert schema.get("$schema") == "https://json-schema.org/draft/2020-12/schema"
     assert "$id" in schema
     assert schema.get("additionalProperties") is False
+
+
+STUB = EngineName("stub")
+STUB_RUNNER = RunnerName(STUB)

@@ -10,6 +10,7 @@ from typing import Any, ClassVar, Final, TypedDict, cast
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..model_types import SeverityLevel
+from ..typed_manifest import ModeStr
 from ..utils import JSONValue
 
 RATCHET_SCHEMA_VERSION: Final[int] = 1
@@ -141,7 +142,7 @@ class RatchetModel(BaseModel):
 
 class EngineSignaturePayload(TypedDict):
     tool: str | None
-    mode: str | None
+    mode: ModeStr | None
     engineOptions: dict[str, JSONValue]
 
 

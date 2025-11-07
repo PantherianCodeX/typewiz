@@ -10,7 +10,7 @@ from typing import Protocol
 
 from typewiz.config import AuditConfig
 from typewiz.model_types import CategoryMapping, Mode, OverrideEntry
-from typewiz.type_aliases import ToolName
+from typewiz.type_aliases import ProfileName, ToolName
 from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic
 
@@ -31,7 +31,7 @@ class EngineOptions:
     config_file: Path | None
     include: list[str]
     exclude: list[str]
-    profile: str | None
+    profile: ProfileName | None
     overrides: list[OverrideEntry] = field(default_factory=_default_overrides)
     category_mapping: CategoryMapping = field(default_factory=_default_category_mapping)
 

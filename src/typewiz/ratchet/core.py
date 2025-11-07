@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import Final, cast
 
 from ..data_validation import coerce_int, coerce_mapping, coerce_object_list
-from ..model_types import SeverityLevel
+from ..model_types import Mode, SeverityLevel
 from ..type_aliases import RunId, ToolName
-from ..typed_manifest import ManifestData
+from ..typed_manifest import ManifestData, ModeStr
 from ..utils import JSONValue
 from .models import (
     RATCHET_SCHEMA_VERSION,
@@ -29,6 +29,21 @@ DEFAULT_SEVERITIES: Final[tuple[SeverityLevel, SeverityLevel]] = (
     SeverityLevel.ERROR,
     SeverityLevel.WARNING,
 )
+MODE_MAP: Final[dict[str, ModeStr]] = {
+    "current": "current",
+    "full": "full",
+}
+
+
+def _coerce_mode_str(value: object) -> ModeStr | None:
+    if not isinstance(value, str):
+        return None
+    token = value.strip()
+    try:
+        mode_value = Mode.from_str(token).value
+    except ValueError:
+        return None
+    return MODE_MAP.get(mode_value)
 
 
 def _severity_counts_from_file(entry: Mapping[str, JSONValue]) -> Counter[SeverityLevel]:
@@ -175,9 +190,10 @@ def _engine_signature_payload(run: Mapping[str, JSONValue]) -> EngineSignaturePa
         else None,
     )
     engine_options_dict: dict[str, JSONValue] = dict(engine_options)
+    mode = _coerce_mode_str(run.get("mode"))
     return EngineSignaturePayload(
         tool=str(run.get("tool")) if run.get("tool") is not None else None,
-        mode=str(run.get("mode")) if run.get("mode") is not None else None,
+        mode=mode,
         engineOptions=engine_options_dict,
     )
 

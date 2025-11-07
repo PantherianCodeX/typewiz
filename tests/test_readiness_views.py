@@ -20,9 +20,9 @@ from typewiz.summary_types import (
     ReadinessOptionsBucket,
     ReadinessStrictEntry,
     ReadinessTab,
+    StatusKey,
     SummaryData,
     SummaryTabs,
-    StatusKey,
 )
 from typewiz.utils import consume
 

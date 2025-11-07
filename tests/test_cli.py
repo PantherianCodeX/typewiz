@@ -49,14 +49,14 @@ from typewiz.summary_types import (
     ReadinessStrictEntry,
     ReadinessTab,
     RunsTab,
+    StatusKey,
     SummaryData,
     SummaryFileEntry,
     SummaryFolderEntry,
     SummaryRunEntry,
     SummaryTabs,
-    StatusKey,
 )
-from typewiz.type_aliases import ToolName
+from typewiz.type_aliases import EngineName, RunnerName, ToolName
 from typewiz.types import Diagnostic, RunResult
 from typewiz.utils import consume
 
@@ -66,6 +66,8 @@ _query_readiness = query_readiness
 _write_config_template = write_config_template
 _normalise_modes_cli = normalise_modes_tuple
 STUB_TOOL = ToolName("stub")
+PYRIGHT_ENGINE = EngineName("pyright")
+PYRIGHT_RUNNER = RunnerName(PYRIGHT_ENGINE)
 PYRIGHT_TOOL = ToolName("pyright")
 
 
@@ -614,7 +616,7 @@ def test_cli_audit_full_outputs(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     cfg = Config()
-    cfg.audit.runners = ["pyright"]
+    cfg.audit.runners = [PYRIGHT_RUNNER]
 
     summary = _empty_summary()
     summary["tabs"]["overview"]["severityTotals"] = {

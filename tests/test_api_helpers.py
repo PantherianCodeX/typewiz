@@ -16,19 +16,21 @@ from typewiz.audit_paths import (
 )
 from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
-from typewiz.type_aliases import EngineName
+from typewiz.type_aliases import EngineName, ProfileName
 from typewiz.utils import consume
 
 
 def test_merge_engine_settings_map_merges_profiles(tmp_path: Path) -> None:
     stub = EngineName("stub")
     aux = EngineName("aux")
+    strict_profile = ProfileName("strict")
+    lenient_profile = ProfileName("lenient")
     base_settings = {
         stub: EngineSettings(
             plugin_args=["--base"],
             include=["src"],
             exclude=["legacy"],
-            profiles={"strict": EngineProfile(plugin_args=["--strict"])},
+            profiles={strict_profile: EngineProfile(plugin_args=["--strict"])},
         ),
     }
     override_settings = {
@@ -36,10 +38,10 @@ def test_merge_engine_settings_map_merges_profiles(tmp_path: Path) -> None:
             plugin_args=["--override"],
             include=["extras"],
             exclude=[],
-            default_profile="strict",
+            default_profile=strict_profile,
             profiles={
-                "strict": EngineProfile(plugin_args=["--stricter"], exclude=["legacy"]),
-                "lenient": EngineProfile(plugin_args=["--lenient"]),
+                strict_profile: EngineProfile(plugin_args=["--stricter"], exclude=["legacy"]),
+                lenient_profile: EngineProfile(plugin_args=["--lenient"]),
             },
         ),
         aux: EngineSettings(plugin_args=["--aux"]),
@@ -48,9 +50,9 @@ def test_merge_engine_settings_map_merges_profiles(tmp_path: Path) -> None:
     merged = merge_engine_settings_map(base_settings, override_settings)
     assert merged[stub].plugin_args == ["--base", "--override"]
     assert merged[stub].include == ["src", "extras"]
-    assert merged[stub].default_profile == "strict"
-    assert merged[stub].profiles["strict"].plugin_args == ["--strict", "--stricter"]
-    assert "lenient" in merged[stub].profiles
+    assert merged[stub].default_profile == strict_profile
+    assert merged[stub].profiles[strict_profile].plugin_args == ["--strict", "--stricter"]
+    assert lenient_profile in merged[stub].profiles
     assert merged[aux].plugin_args == ["--aux"]
 
 
@@ -116,31 +118,37 @@ class MinimalEngine(BaseEngine):
 
 
 def test_resolve_engine_options_with_overrides(tmp_path: Path) -> None:
+    strict_profile = ProfileName("strict")
+    lenient_profile = ProfileName("lenient")
     engine_config = EngineSettings(
         plugin_args=["--engine"],
         include=["pkg"],
         exclude=["legacy"],
-        default_profile="strict",
+        default_profile=strict_profile,
         profiles={
-            "strict": EngineProfile(plugin_args=["--strict"], include=["pkg/strict"], exclude=[]),
-            "lenient": EngineProfile(plugin_args=["--lenient"]),
+            strict_profile: EngineProfile(
+                plugin_args=["--strict"],
+                include=["pkg/strict"],
+                exclude=[],
+            ),
+            lenient_profile: EngineProfile(plugin_args=["--lenient"]),
         },
     )
     override_settings = EngineSettings(
         plugin_args=["--override"],
         include=["pkg/override"],
         profiles={
-            "strict": EngineProfile(
+            strict_profile: EngineProfile(
                 plugin_args=["--override-strict"],
                 include=["pkg/override/strict"],
             ),
         },
-        default_profile="strict",
+        default_profile=strict_profile,
     )
     override = PathOverride(
         path=tmp_path / "pkg",
         engine_settings={EngineName("stub"): override_settings},
-        active_profiles={EngineName("stub"): "lenient"},
+        active_profiles={EngineName("stub"): lenient_profile},
     )
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "pkg/override/strict").mkdir(parents=True, exist_ok=True)
@@ -150,13 +158,13 @@ def test_resolve_engine_options_with_overrides(tmp_path: Path) -> None:
         plugin_args={EngineName("stub"): ["--base"]},
         engine_settings={EngineName("stub"): engine_config},
         path_overrides=[override],
-        active_profiles={EngineName("stub"): "lenient"},
+        active_profiles={EngineName("stub"): lenient_profile},
         full_paths=["src"],
     )
 
     engine_options = resolve_engine_options(tmp_path, audit_config, MinimalEngine())
     assert engine_options.plugin_args[:2] == ["--base", "--engine"]
     assert any(arg == "--override" for arg in engine_options.plugin_args)
-    assert engine_options.profile == "strict"
+    assert engine_options.profile == strict_profile
     assert engine_options.category_mapping["unknownChecks"] == ["reportGeneralTypeIssues"]
     assert engine_options.overrides

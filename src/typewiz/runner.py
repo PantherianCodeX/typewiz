@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Final, cast
 
 from .engines.base import EngineResult
+from .logging_utils import StructuredLogExtra
 from .model_types import Mode, SeverityLevel
 from .type_aliases import ToolName
 from .typed_manifest import ToolSummary
@@ -42,10 +43,11 @@ def run_pyright(
     mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
+    start_extra: StructuredLogExtra = {"component": "engine", "tool": "pyright"}
     logger.info(
         "Running pyright (%s)",
         " ".join(command),
-        extra={"component": "engine", "tool": "pyright"},
+        extra=start_extra,
     )
     result = run_command(command, cwd=project_root)
     payload_str = result.stdout or result.stderr
@@ -121,15 +123,16 @@ def run_pyright(
         diagnostics=diagnostics,
         tool_summary=tool_summary,
     )
+    debug_extra: StructuredLogExtra = {
+        "component": "engine",
+        "tool": "pyright",
+        "duration_ms": engine_result.duration_ms,
+    }
     logger.debug(
         "pyright run completed: exit=%s diagnostics=%s",
         engine_result.exit_code,
         len(engine_result.diagnostics),
-        extra={
-            "component": "engine",
-            "tool": "pyright",
-            "duration_ms": engine_result.duration_ms,
-        },
+        extra=debug_extra,
     )
     return engine_result
 
@@ -145,10 +148,11 @@ def run_mypy(
     mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
+    start_extra: StructuredLogExtra = {"component": "engine", "tool": "mypy"}
     logger.info(
         "Running mypy (%s)",
         " ".join(command),
-        extra={"component": "engine", "tool": "mypy"},
+        extra=start_extra,
     )
     result = run_command(command, cwd=project_root)
     diagnostics: list[Diagnostic] = []
@@ -210,14 +214,15 @@ def run_mypy(
         duration_ms=result.duration_ms,
         diagnostics=diagnostics,
     )
+    debug_extra: StructuredLogExtra = {
+        "component": "engine",
+        "tool": "mypy",
+        "duration_ms": engine_result.duration_ms,
+    }
     logger.debug(
         "mypy run completed: exit=%s diagnostics=%s",
         engine_result.exit_code,
         len(engine_result.diagnostics),
-        extra={
-            "component": "engine",
-            "tool": "mypy",
-            "duration_ms": engine_result.duration_ms,
-        },
+        extra=debug_extra,
     )
     return engine_result

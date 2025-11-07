@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, cast
 
-from .model_types import SeverityLevel
+from .model_types import RecommendationCode, SeverityLevel
 from .readiness import CATEGORY_PATTERNS
 from .type_aliases import CategoryKey, CategoryName, RuleName
 
@@ -62,14 +62,18 @@ class FolderSummary:
         optional = self._optional_count()
         recommendations: list[str] = []
         if total == 0:
-            recommendations.append("strict-ready")
+            recommendations.append(RecommendationCode.STRICT_READY.value)
         else:
             if unknown == 0:
-                recommendations.append("candidate-enable-unknown-checks")
+                recommendations.append(
+                    RecommendationCode.CANDIDATE_ENABLE_UNKNOWN_CHECKS.value,
+                )
             else:
                 recommendations.append(f"resolve {unknown} unknown-type issues")
             if optional == 0:
-                recommendations.append("candidate-enable-optional-checks")
+                recommendations.append(
+                    RecommendationCode.CANDIDATE_ENABLE_OPTIONAL_CHECKS.value,
+                )
             else:
                 recommendations.append(f"resolve {optional} optional-check issues")
             top_rules = Counter(self.code_counts).most_common(3)
