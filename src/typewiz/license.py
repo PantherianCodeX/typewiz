@@ -7,11 +7,12 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 from functools import lru_cache
+from typing import Final
 
 from .model_types import LicenseMode
 
-LICENSE_KEY_ENV = "TYPEWIZ_LICENSE_KEY"
-SUPPORT_EMAIL = "licensing@pantheriancodeX.com"
+LICENSE_KEY_ENV: Final[str] = "TYPEWIZ_LICENSE_KEY"
+SUPPORT_EMAIL: Final[str] = "licensing@pantheriancodeX.com"
 
 _notice_emitted = False
 

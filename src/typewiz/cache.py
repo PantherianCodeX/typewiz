@@ -31,8 +31,8 @@ if TYPE_CHECKING:
 
 
 logger: logging.Logger = logging.getLogger("typewiz.cache")
-CACHE_DIRNAME = ".typewiz_cache"
-CACHE_FILENAME = "cache.json"
+CACHE_DIRNAME: Final[str] = ".typewiz_cache"
+CACHE_FILENAME: Final[str] = "cache.json"
 _HASH_WORKER_ENV: Final[str] = "TYPEWIZ_HASH_WORKERS"
 
 

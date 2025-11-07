@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
-from typing import override
+from typing import Final, override
 
 from .model_types import LogFormat
 
-LOG_FORMATS: tuple[str, ...] = tuple(format_.value for format_ in LogFormat)
+LOG_FORMATS: Final[tuple[str, ...]] = tuple(format_.value for format_ in LogFormat)
 
 
 class JSONLogFormatter(logging.Formatter):

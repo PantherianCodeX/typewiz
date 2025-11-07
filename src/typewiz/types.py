@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .model_types import SeverityLevel
-from .typed_manifest import ToolSummary
+from .typed_manifest import EngineError, ToolSummary
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -73,7 +73,7 @@ class RunResult:
     # Optional: raw tool-provided summary counts (normalised to errors/warnings/information/total)
     tool_summary: ToolSummary | None = None
     scanned_paths: list[str] = field(default_factory=_default_str_list)
-    engine_error: dict[str, object] | None = None
+    engine_error: EngineError | None = None
 
     def severity_counts(self) -> Counter[str]:
         counts: Counter[str] = Counter()

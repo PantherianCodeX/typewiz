@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from html import escape
-from typing import cast
+from typing import Final, cast
 
 from .model_types import DashboardView, OverrideEntry, ReadinessStatus
 from .override_utils import get_override_components
 from .readiness import CATEGORY_LABELS
 from .summary_types import HotspotsTab, OverviewTab, ReadinessTab, SummaryData, SummaryTabs
 
-_TAB_ORDER = tuple(view.value for view in DashboardView)
-_TAB_LABELS = {
+_TAB_ORDER: Final[tuple[str, ...]] = tuple(view.value for view in DashboardView)
+_TAB_LABELS: Final[dict[str, str]] = {
     "overview": "Overview",
     "engines": "Engine Details",
     "hotspots": "Hotspots",

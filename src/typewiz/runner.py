@@ -6,7 +6,7 @@ import logging
 import re
 from collections.abc import Sequence
 from pathlib import Path
-from typing import cast
+from typing import Final, cast
 
 from .engines.base import EngineResult
 from .model_types import Mode, SeverityLevel
@@ -131,7 +131,7 @@ def run_pyright(
     return engine_result
 
 
-_MYPY_LINE = re.compile(
+_MYPY_LINE: Final[re.Pattern[str]] = re.compile(
     r"^(?P<path>.+?):(?P<line>\d+):(?:(?P<column>\d+):)? (?P<severity>error|note|warning): (?P<message>.*?)(?: \[(?P<code>[^\]]+)\])?$",
 )
 

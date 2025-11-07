@@ -5,14 +5,14 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, ClassVar, TypedDict, cast
+from typing import Any, ClassVar, Final, TypedDict, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from ..model_types import SeverityLevel
 from ..utils import JSONValue
 
-RATCHET_SCHEMA_VERSION = 1
+RATCHET_SCHEMA_VERSION: Final[int] = 1
 
 
 def _new_severity_map() -> dict[SeverityLevel, int]:

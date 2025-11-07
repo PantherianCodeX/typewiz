@@ -7,7 +7,7 @@ import logging
 from collections.abc import Callable, Iterable
 from functools import lru_cache
 from importlib import metadata
-from typing import cast
+from typing import Final, cast
 
 from .base import BaseEngine
 from .mypy import MypyEngine
@@ -27,7 +27,7 @@ def _is_engine_like(value: object) -> bool:
     return isinstance(name, str) and callable(run) and callable(fingerprint)
 
 
-ENTRY_POINT_GROUP = "typewiz.engines"
+ENTRY_POINT_GROUP: Final[str] = "typewiz.engines"
 
 
 @lru_cache

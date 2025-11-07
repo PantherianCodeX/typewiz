@@ -10,6 +10,7 @@ import logging
 import pathlib
 from collections.abc import Sequence
 from textwrap import dedent
+from typing import Final
 
 from typewiz.cli.commands import audit as audit_command
 from typewiz.cli.commands import help as help_command
@@ -35,7 +36,7 @@ logger: logging.Logger = logging.getLogger("typewiz.cli")
 """CLI helpers and command definitions for Typewiz."""
 
 
-CONFIG_TEMPLATE = dedent(
+CONFIG_TEMPLATE: Final[str] = dedent(
     """\
     # typewiz configuration template
     # Save this file as typewiz.toml in the root of your project.

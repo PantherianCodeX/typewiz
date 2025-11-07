@@ -10,7 +10,7 @@ import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import Final, cast
 
 logger: logging.Logger = logging.getLogger("typewiz")
 
@@ -20,7 +20,7 @@ type JSONValue = str | int | float | bool | None | dict[str, "JSONValue"] | list
 type JSONMapping = dict[str, JSONValue]
 type JSONList = list[JSONValue]
 
-ROOT_MARKERS: tuple[str, ...] = (
+ROOT_MARKERS: Final[tuple[str, ...]] = (
     "typewiz.toml",
     ".typewiz.toml",
     "pyproject.toml",
