@@ -5,15 +5,16 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import cast
 
 from typewiz.cli_helpers import (
     parse_comma_separated,
     parse_key_value_entries,
 )
 from typewiz.model_types import SignaturePolicy
-from typewiz.ratchet.models import RatchetModel, normalise_severity
+from typewiz.ratchet.models import RatchetModel, SeverityToken, normalise_severity
 
-DEFAULT_SEVERITIES = ("error", "warning")
+DEFAULT_SEVERITIES: tuple[SeverityToken, SeverityToken] = ("error", "warning")
 MANIFEST_CANDIDATE_NAMES: tuple[str, ...] = (
     "typing_audit.json",
     "typing_audit_manifest.json",
@@ -38,9 +39,9 @@ def parse_target_entries(entries: Sequence[str]) -> dict[str, int]:
 
 def split_target_mapping(
     mapping: Mapping[str, int],
-) -> tuple[dict[str, int], dict[str, dict[str, int]]]:
-    global_targets: dict[str, int] = {}
-    per_run: dict[str, dict[str, int]] = {}
+) -> tuple[dict[SeverityToken, int], dict[str, dict[SeverityToken, int]]]:
+    global_targets: dict[SeverityToken, int] = {}
+    per_run: dict[str, dict[SeverityToken, int]] = {}
     for raw_key, value in mapping.items():
         key = raw_key.strip()
         if not key:
@@ -49,7 +50,9 @@ def split_target_mapping(
         if "." in key:
             run_id, severity_token = key.rsplit(".", 1)
             severity = normalise_severity(severity_token)
-            per_run.setdefault(run_id.strip(), {})[severity] = budget
+            run_key = run_id.strip()
+            entry = per_run.setdefault(run_key, cast(dict[SeverityToken, int], {}))
+            entry[severity] = budget
         else:
             severity = normalise_severity(key)
             global_targets[severity] = budget
@@ -78,17 +81,20 @@ def resolve_runs(cli_runs: Sequence[str] | None, config_runs: Sequence[str]) -> 
     return runs or None
 
 
-def resolve_severities(cli_value: str | None, config_values: Sequence[str]) -> list[str]:
+def resolve_severities(cli_value: str | None, config_values: Sequence[str]) -> list[SeverityToken]:
     if cli_value:
         values = parse_comma_separated(cli_value)
     else:
         values = list(config_values)
-    normalised = [normalise_severity(value) for value in values if value]
+    normalised: list[SeverityToken] = [normalise_severity(value) for value in values if value]
     if not normalised:
-        config_normalised = [normalise_severity(value) for value in config_values if value]
-        normalised = config_normalised or list(DEFAULT_SEVERITIES)
-    seen: set[str] = set()
-    ordered: list[str] = []
+        config_normalised: list[SeverityToken] = [
+            normalise_severity(value) for value in config_values if value
+        ]
+        default_severities: list[SeverityToken] = list(DEFAULT_SEVERITIES)
+        normalised = config_normalised or default_severities
+    seen: set[SeverityToken] = set()
+    ordered: list[SeverityToken] = []
     for severity in normalised:
         if severity not in seen:
             seen.add(severity)

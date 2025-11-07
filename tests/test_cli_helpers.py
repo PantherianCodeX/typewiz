@@ -11,7 +11,9 @@ from typewiz.cli_helpers import (
     parse_comma_separated,
     parse_int_mapping,
     parse_key_value_entries,
+    render_data_structure,
 )
+from typewiz.model_types import DataFormat
 
 
 def test_parse_comma_separated_strips_entries() -> None:
@@ -42,3 +44,8 @@ def test_parse_int_mapping_rejects_non_int() -> None:
 def test_collect_profile_args_uses_helper() -> None:
     result = collect_profile_args(["pyright=baseline"])
     assert result == {"pyright": "baseline"}
+
+
+def test_render_data_structure_accepts_enum() -> None:
+    rows = render_data_structure({"key": "value"}, DataFormat.TABLE)
+    assert rows[0].startswith("key")

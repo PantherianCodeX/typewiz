@@ -11,8 +11,14 @@ from typewiz.cli.commands import ratchet as ratchet_cmd
 from typewiz.cli.commands.ratchet import RatchetContext, handle_info, handle_init, handle_update
 from typewiz.config import RatchetConfig
 from typewiz.model_types import SeverityLevel, SignaturePolicy
-from typewiz.ratchet.models import RatchetModel, RatchetRunBudgetModel
+from typewiz.ratchet.models import (
+    RatchetModel,
+    RatchetRunBudgetModel,
+    SeverityToken,
+    normalise_severity,
+)
 from typewiz.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
+from typewiz.type_aliases import RunId
 from typewiz.typed_manifest import ManifestData
 
 
@@ -147,16 +153,19 @@ def test_handle_update_dry_run_skips_write(
     def fake_apply_target_overrides(model: RatchetModel, targets: dict[str, int]) -> None:
         nonlocal applied_targets
         applied_targets = targets
+        normalised: dict[SeverityToken, int] = {
+            normalise_severity(key): value for key, value in targets.items()
+        }
         model.runs.setdefault(
             "pyright:current",
-            RatchetRunBudgetModel(severities=["error"], paths={}, targets={}),
-        ).targets.update(targets)
+            RatchetRunBudgetModel(severities=[normalise_severity("error")]),
+        ).targets.update(normalised)
 
     def fake_compare_manifest(**_: Any) -> RatchetReport:
         finding = RatchetFinding(path="pkg", severity=SeverityLevel.ERROR, allowed=1, actual=2)
         run_report = RatchetRunReport(
-            run_id="pyright:current",
-            severities=["error"],
+            run_id=RunId("pyright:current"),
+            severities=[normalise_severity("error")],
             violations=[finding],
         )
         return RatchetReport(runs=[run_report])
@@ -171,7 +180,7 @@ def test_handle_update_dry_run_skips_write(
                     "pyright:current": {
                         "severities": ["error"],
                         "paths": {"pkg": {"severities": {"error": 2}}},
-                        "targets": {"errors": 5},
+                        "targets": {"error": 5},
                     },
                 },
             },

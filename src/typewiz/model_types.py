@@ -159,6 +159,22 @@ class SummaryStyle(StrEnum):
             raise ValueError(f"Unknown summary style '{raw}'") from exc
 
 
+class SummaryField(StrEnum):
+    PROFILE = "profile"
+    CONFIG = "config"
+    PLUGIN_ARGS = "plugin-args"
+    PATHS = "paths"
+    OVERRIDES = "overrides"
+
+    @classmethod
+    def from_str(cls, raw: str) -> SummaryField:
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValueError(f"Unknown summary field '{raw}'") from exc
+
+
 class SignaturePolicy(StrEnum):
     FAIL = "fail"
     WARN = "warn"

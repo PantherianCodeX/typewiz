@@ -34,6 +34,7 @@ from typewiz.model_types import (
     ReadinessLevel,
     ReadinessStatus,
     SeverityLevel,
+    SummaryField,
     SummaryStyle,
 )
 from typewiz.summary_types import (
@@ -1024,10 +1025,10 @@ def test_cli_query_rules_limit(tmp_path: Path, capsys: pytest.CaptureFixture[str
 
 def test_parse_summary_fields_variants() -> None:
     fields = parse_summary_fields(" profile , , plugin-args ", valid_fields=SUMMARY_FIELD_CHOICES)
-    assert fields == ["profile", "plugin-args"]
+    assert fields == [SummaryField.PROFILE, SummaryField.PLUGIN_ARGS]
 
     all_fields = parse_summary_fields("all", valid_fields=SUMMARY_FIELD_CHOICES)
-    assert all_fields == sorted(SUMMARY_FIELD_CHOICES)
+    assert all_fields == sorted(SUMMARY_FIELD_CHOICES, key=lambda field: field.value)
 
     with pytest.raises(SystemExit):
         consume(parse_summary_fields("profile,unknown", valid_fields=SUMMARY_FIELD_CHOICES))
@@ -1217,7 +1218,13 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
 
     _print_summary(
         [run_expanded, run_present],
-        ["profile", "config", "plugin-args", "paths", "overrides"],
+        [
+            SummaryField.PROFILE,
+            SummaryField.CONFIG,
+            SummaryField.PLUGIN_ARGS,
+            SummaryField.PATHS,
+            SummaryField.OVERRIDES,
+        ],
         SummaryStyle.EXPANDED,
     )
     expanded_out = capsys.readouterr().out
@@ -1225,7 +1232,7 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     assert "profile: —" in expanded_out
     assert "config: —" in expanded_out
 
-    _print_summary([run_present], ["overrides"], SummaryStyle.COMPACT)
+    _print_summary([run_present], [SummaryField.OVERRIDES], SummaryStyle.COMPACT)
     compact_out = capsys.readouterr().out
     assert "overrides" in compact_out
     assert "pyright:full exit=0" in compact_out

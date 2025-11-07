@@ -23,6 +23,7 @@ from ...model_types import (
     Mode,
     ReadinessLevel,
     ReadinessStatus,
+    SummaryField,
     SummaryStyle,
 )
 from ..helpers import (
@@ -272,14 +273,17 @@ def _update_override_with_profiles(
     override.active_profiles.update(collect_profile_args(flattened))
 
 
-def _resolve_summary_fields(args: argparse.Namespace) -> tuple[list[str], SummaryStyle]:
+def _resolve_summary_fields(args: argparse.Namespace) -> tuple[list[SummaryField], SummaryStyle]:
     style_choice = SummaryStyle.from_str(args.summary)
     if style_choice is SummaryStyle.FULL:
-        return (sorted(SUMMARY_FIELD_CHOICES), SummaryStyle.EXPANDED)
+        return (sorted(SUMMARY_FIELD_CHOICES, key=lambda field: field.value), SummaryStyle.EXPANDED)
     render_style = (
         SummaryStyle.EXPANDED if style_choice is SummaryStyle.EXPANDED else SummaryStyle.COMPACT
     )
-    return (parse_summary_fields(args.summary_fields), render_style)
+    return (
+        parse_summary_fields(args.summary_fields, valid_fields=SUMMARY_FIELD_CHOICES),
+        render_style,
+    )
 
 
 def _maybe_print_readiness(args: argparse.Namespace, summary: SummaryData) -> None:

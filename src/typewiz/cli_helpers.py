@@ -10,7 +10,7 @@ from typing import Literal, cast
 
 from .data_validation import coerce_mapping
 from .formatting import render_table_rows, stringify
-from .model_types import Mode
+from .model_types import DataFormat, Mode, SummaryField
 from .utils import JSONValue
 
 __all__ = [
@@ -31,25 +31,27 @@ def format_list(values: Sequence[str]) -> str:
     return ", ".join(values) if values else "—"
 
 
-def parse_summary_fields(raw: str | None, *, valid_fields: set[str]) -> list[str]:
+def parse_summary_fields(raw: str | None, *, valid_fields: set[SummaryField]) -> list[SummaryField]:
     """Parse ``--summary-fields`` input, validating against ``valid_fields``."""
     if not raw:
         return []
-    fields: list[str] = []
+    name_map = {field.value: field for field in valid_fields}
+    fields: list[SummaryField] = []
     for part in raw.split(","):
         item = part.strip().lower()
         if not item:
             continue
         if item == "all":
-            return sorted(valid_fields)
-        if item not in valid_fields:
+            return sorted(valid_fields, key=lambda field: field.value)
+        field = name_map.get(item)
+        if field is None:
             message = (
                 f"Unknown summary field '{item}'. "
-                f"Valid values: {', '.join(sorted(valid_fields | {'all'}))}"
+                f"Valid values: {', '.join(sorted({*name_map, 'all'}))}"
             )
             raise SystemExit(message)
-        if item not in fields:
-            fields.append(item)
+        if field not in fields:
+            fields.append(field)
     return fields
 
 
@@ -97,9 +99,19 @@ def parse_int_mapping(
     return mapping
 
 
-def render_data_structure(data: object, fmt: Literal["json", "table"]) -> list[str]:
+FormatInput = Literal["json", "table"] | DataFormat
+
+
+def _normalise_format(fmt: FormatInput) -> Literal["json", "table"]:
+    if isinstance(fmt, DataFormat):
+        return "json" if fmt is DataFormat.JSON else "table"
+    return fmt
+
+
+def render_data_structure(data: object, fmt: FormatInput) -> list[str]:
     """Render a Python object for CLI output in the requested format."""
-    if fmt == "json":
+    fmt_value = _normalise_format(fmt)
+    if fmt_value == "json":
         return [json.dumps(data, indent=2, ensure_ascii=False)]
     if isinstance(data, list):
         table_rows: list[Mapping[str, JSONValue]] = []

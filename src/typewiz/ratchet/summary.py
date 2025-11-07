@@ -7,7 +7,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from ..model_types import SeverityLevel
-from ..utils import JSONValue
+from ..type_aliases import RunId
+from .models import EngineSignaturePayloadWithHash, SeverityToken
 
 
 def _new_finding_list() -> list[RatchetFinding]:
@@ -53,13 +54,13 @@ class RatchetFinding:
 class RatchetRunReport:
     """Aggregated findings for a single tool/mode run."""
 
-    run_id: str
-    severities: list[str]
+    run_id: RunId
+    severities: list[SeverityToken]
     violations: list[RatchetFinding] = field(default_factory=_new_finding_list)
     improvements: list[RatchetFinding] = field(default_factory=_new_finding_list)
     signature_matches: bool = True
-    expected_signature: Mapping[str, JSONValue] | None = None
-    actual_signature: Mapping[str, JSONValue] | None = None
+    expected_signature: EngineSignaturePayloadWithHash | None = None
+    actual_signature: EngineSignaturePayloadWithHash | None = None
 
     def has_violations(self) -> bool:
         return bool(self.violations)

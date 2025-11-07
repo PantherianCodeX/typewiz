@@ -12,22 +12,26 @@ from typing import Any, cast
 
 from ..data_validation import coerce_int, coerce_mapping, coerce_object_list
 from ..model_types import SeverityLevel
+from ..type_aliases import RunId
 from ..typed_manifest import ManifestData
 from ..utils import JSONValue
 from .models import (
     RATCHET_SCHEMA_VERSION,
+    EngineSignaturePayload,
+    EngineSignaturePayloadWithHash,
     RatchetModel,
     RatchetPathBudgetModel,
     RatchetRunBudgetModel,
+    SeverityToken,
     normalise_severity,
 )
 from .summary import RatchetFinding, RatchetReport, RatchetRunReport
 
-DEFAULT_SEVERITIES: tuple[str, str] = ("error", "warning")
+DEFAULT_SEVERITIES: tuple[SeverityToken, SeverityToken] = ("error", "warning")
 
 
-def _severity_counts_from_file(entry: Mapping[str, JSONValue]) -> Counter[str]:
-    counts: Counter[str] = Counter()
+def _severity_counts_from_file(entry: Mapping[str, JSONValue]) -> Counter[SeverityToken]:
+    counts: Counter[SeverityToken] = Counter()
     diagnostics = coerce_object_list(entry.get("diagnostics"))
     if diagnostics:
         for diag_obj in diagnostics:
@@ -104,10 +108,10 @@ def _canonicalise_engine_options(
     return result
 
 
-def _normalise_severity_list(severities: Sequence[str] | None) -> list[str]:
+def _normalise_severity_list(severities: Sequence[str] | None) -> list[SeverityToken]:
     if not severities:
         return list(DEFAULT_SEVERITIES)
-    severity_set = {normalise_severity(item) for item in severities if item}
+    severity_set: set[SeverityToken] = {normalise_severity(item) for item in severities if item}
     if not severity_set:
         severity_set = set(DEFAULT_SEVERITIES)
     return sorted(severity_set)
@@ -115,11 +119,11 @@ def _normalise_severity_list(severities: Sequence[str] | None) -> list[str]:
 
 def _split_targets(
     targets: Mapping[str, int] | None,
-) -> tuple[dict[str, int], dict[str, dict[str, int]]]:
+) -> tuple[dict[SeverityToken, int], dict[str, dict[SeverityToken, int]]]:
     if not targets:
         return {}, {}
-    global_map: dict[str, int] = {}
-    per_run: dict[str, dict[str, int]] = {}
+    global_map: dict[SeverityToken, int] = {}
+    per_run: dict[str, dict[SeverityToken, int]] = {}
     for raw_key, value in targets.items():
         key = str(raw_key).strip()
         if not key:
@@ -128,7 +132,9 @@ def _split_targets(
         if "." in key:
             run_id, severity_token = key.rsplit(".", 1)
             severity = normalise_severity(severity_token)
-            per_run.setdefault(run_id.strip(), {})[severity] = budget
+            run_key = run_id.strip()
+            entry = per_run.setdefault(run_key, cast(dict[SeverityToken, int], {}))
+            entry[severity] = budget
         else:
             severity = normalise_severity(key)
             global_map[severity] = budget
@@ -137,7 +143,7 @@ def _split_targets(
 
 def _build_path_budgets(
     per_file_entries: Sequence[object],
-    severities: Sequence[str],
+    severities: Sequence[SeverityToken],
 ) -> dict[str, RatchetPathBudgetModel]:
     path_budgets: dict[str, RatchetPathBudgetModel] = {}
     for entry in per_file_entries:
@@ -145,36 +151,44 @@ def _build_path_budgets(
         path = entry_map.get("path")
         if not isinstance(path, str) or not path:
             continue
-        counts = _severity_counts_from_file(entry_map) or Counter(dict.fromkeys(severities, 0))
-        budgets = {severity: max(0, counts.get(severity, 0)) for severity in severities}
+        counts = _severity_counts_from_file(entry_map)
+        if not counts:
+            counts = Counter({severity: 0 for severity in severities})
+        budgets: dict[SeverityToken, int] = {
+            severity: max(0, counts.get(severity, 0)) for severity in severities
+        }
         path_budgets[path] = RatchetPathBudgetModel(severities=budgets)
     return path_budgets
 
 
-def _engine_signature_payload(run: Mapping[str, JSONValue]) -> dict[str, JSONValue]:
+def _engine_signature_payload(run: Mapping[str, JSONValue]) -> EngineSignaturePayload:
     engine_options = _canonicalise_engine_options(
         coerce_mapping(run.get("engineOptions"))
         if isinstance(run.get("engineOptions"), Mapping)
         else None,
     )
-    engine_options_dict = dict(engine_options)
-    return {
-        "tool": run.get("tool"),
-        "mode": run.get("mode"),
-        "engineOptions": cast(JSONValue, engine_options_dict),
-    }
+    engine_options_dict: dict[str, JSONValue] = dict(engine_options)
+    return EngineSignaturePayload(
+        tool=str(run.get("tool")) if run.get("tool") is not None else None,
+        mode=str(run.get("mode")) if run.get("mode") is not None else None,
+        engineOptions=engine_options_dict,
+    )
 
 
-def _engine_signature_hash(payload: Mapping[str, JSONValue]) -> str:
+def _engine_signature_hash(payload: EngineSignaturePayload) -> str:
     text = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _signature_payload_with_hash(run: Mapping[str, JSONValue]) -> dict[str, JSONValue]:
+def _signature_payload_with_hash(run: Mapping[str, JSONValue]) -> EngineSignaturePayloadWithHash:
     signature_payload = _engine_signature_payload(run)
-    signature_payload_with_hash = dict(signature_payload)
-    signature_payload_with_hash["hash"] = _engine_signature_hash(signature_payload)
-    return signature_payload_with_hash
+    payload_with_hash: EngineSignaturePayloadWithHash = {
+        "tool": signature_payload["tool"],
+        "mode": signature_payload["mode"],
+        "engineOptions": signature_payload["engineOptions"],
+        "hash": _engine_signature_hash(signature_payload),
+    }
+    return payload_with_hash
 
 
 def _collect_manifest_runs(manifest: ManifestData) -> list[Mapping[str, JSONValue]]:
@@ -184,29 +198,29 @@ def _collect_manifest_runs(manifest: ManifestData) -> list[Mapping[str, JSONValu
     return [coerce_mapping(run_obj) for run_obj in runs_raw]
 
 
-def _select_run_ids(manifest: ManifestData, requested: Sequence[str] | None) -> list[str]:
+def _select_run_ids(manifest: ManifestData, requested: Sequence[str] | None) -> list[RunId]:
     runs = _collect_manifest_runs(manifest)
-    all_ids: list[str] = []
+    all_ids: list[RunId] = []
     for run in runs:
         tool = str(run.get("tool", "")).strip()
         mode = str(run.get("mode", "")).strip()
         if not tool or not mode:
             continue
-        all_ids.append(f"{tool}:{mode}")
+        all_ids.append(RunId(f"{tool}:{mode}"))
     if requested:
         requested_norm = {item.strip() for item in requested if item and item.strip()}
         return [run_id for run_id in all_ids if run_id in requested_norm]
     return all_ids
 
 
-def _run_by_id(manifest: ManifestData) -> dict[str, Mapping[str, JSONValue]]:
-    lookup: dict[str, Mapping[str, JSONValue]] = {}
+def _run_by_id(manifest: ManifestData) -> dict[RunId, Mapping[str, JSONValue]]:
+    lookup: dict[RunId, Mapping[str, JSONValue]] = {}
     for run in _collect_manifest_runs(manifest):
         tool = str(run.get("tool", "")).strip()
         mode = str(run.get("mode", "")).strip()
         if not tool or not mode:
             continue
-        lookup[f"{tool}:{mode}"] = run
+        lookup[RunId(f"{tool}:{mode}")] = run
     return lookup
 
 
@@ -231,11 +245,12 @@ def build_ratchet_from_manifest(
         run = run_lookup.get(run_id)
         if not run:
             continue
+        run_id_str = str(run_id)
         per_file_entries = coerce_object_list(run.get("perFile"))
         path_budgets = _build_path_budgets(per_file_entries, severity_list)
         run_specific = dict(global_targets)
-        run_specific.update(per_run_targets.get(run_id, {}))
-        runs_budget[run_id] = RatchetRunBudgetModel(
+        run_specific.update(per_run_targets.get(run_id_str, {}))
+        runs_budget[run_id_str] = RatchetRunBudgetModel(
             severities=severity_list,
             paths=path_budgets,
             targets=run_specific,
@@ -260,8 +275,8 @@ def build_ratchet_from_manifest(
     )
 
 
-def _collect_path_counts(per_file_entries: Sequence[object]) -> dict[str, Counter[str]]:
-    counts_by_path: dict[str, Counter[str]] = {}
+def _collect_path_counts(per_file_entries: Sequence[object]) -> dict[str, Counter[SeverityToken]]:
+    counts_by_path: dict[str, Counter[SeverityToken]] = {}
     for entry in per_file_entries:
         entry_map = coerce_mapping(entry)
         path = entry_map.get("path")
@@ -273,12 +288,12 @@ def _collect_path_counts(per_file_entries: Sequence[object]) -> dict[str, Counte
 
 def _updated_path_budgets(
     run_budget: RatchetRunBudgetModel,
-    path_counts: Mapping[str, Counter[str]],
+    path_counts: Mapping[str, Counter[SeverityToken]],
 ) -> dict[str, RatchetPathBudgetModel]:
     new_paths: dict[str, RatchetPathBudgetModel] = {}
     for path, budget in run_budget.paths.items():
-        current_counts = path_counts.get(path, Counter())
-        severity_budgets: dict[str, int] = {}
+        current_counts = path_counts.get(path, Counter[SeverityToken]())
+        severity_budgets: dict[SeverityToken, int] = {}
         for severity in run_budget.severities:
             allowed = budget.severities.get(severity, 0)
             actual = current_counts.get(severity, 0)
@@ -315,7 +330,7 @@ def _compare_severity_budget(
 
 
 def _evaluate_run_report(
-    run_id: str,
+    run_id: RunId,
     run_budget: RatchetRunBudgetModel,
     manifest_run: Mapping[str, JSONValue],
 ) -> RatchetRunReport:
@@ -329,7 +344,9 @@ def _evaluate_run_report(
     improvements: list[RatchetFinding] = []
     for path in sorted(set(run_budget.paths) | set(by_path)):
         path_budget = run_budget.paths.get(path, RatchetPathBudgetModel(severities={}))
-        actual_counts = by_path.get(path, Counter())
+        actual_counts = by_path.get(path)
+        if actual_counts is None:
+            actual_counts = Counter[SeverityToken]()
         for severity in run_budget.severities:
             allowed = path_budget.severities.get(severity, 0)
             actual = actual_counts.get(severity, 0)
@@ -350,7 +367,10 @@ def _evaluate_run_report(
         violations=violations,
         improvements=improvements,
         signature_matches=signature_matches,
-        expected_signature=run_budget.engine_signature,
+        expected_signature=cast(
+            EngineSignaturePayloadWithHash | None,
+            run_budget.engine_signature if run_budget.engine_signature else None,
+        ),
         actual_signature=signature_payload_with_hash,
     )
 
@@ -364,10 +384,13 @@ def compare_manifest_to_ratchet(
     """Compare a manifest payload against a ratchet budget."""
 
     run_lookup = _run_by_id(manifest)
-    selected_runs = runs or tuple(ratchet.runs.keys())
+    if runs is None:
+        selected_runs: list[RunId] = [RunId(run_id) for run_id in ratchet.runs.keys()]
+    else:
+        selected_runs = [RunId(item.strip()) for item in runs if item and item.strip()]
     reports: list[RatchetRunReport] = []
     for run_id in selected_runs:
-        run_budget = ratchet.runs.get(run_id)
+        run_budget = ratchet.runs.get(str(run_id))
         manifest_run = run_lookup.get(run_id)
         if not run_budget or not manifest_run:
             continue
@@ -389,7 +412,8 @@ def apply_auto_update(
     run_lookup = _run_by_id(manifest)
 
     for run_report in report.runs:
-        run_budget = ratchet.runs.get(run_report.run_id)
+        run_id_str = str(run_report.run_id)
+        run_budget = ratchet.runs.get(run_id_str)
         manifest_run = run_lookup.get(run_report.run_id)
         if not run_budget or not manifest_run:
             continue
@@ -397,11 +421,11 @@ def apply_auto_update(
         path_counts = _collect_path_counts(per_file_entries)
         new_paths = _updated_path_budgets(run_budget, path_counts)
         actual_signature_payload_with_hash = _signature_payload_with_hash(manifest_run)
-        updated_runs[run_report.run_id] = RatchetRunBudgetModel(
+        updated_runs[run_id_str] = RatchetRunBudgetModel(
             severities=list(run_budget.severities),
             paths=new_paths,
             targets=dict(run_budget.targets),
-            engine_signature=cast(dict[str, Any], dict(actual_signature_payload_with_hash)),
+            engine_signature=dict(actual_signature_payload_with_hash),
         )
 
     return RatchetModel(
@@ -429,7 +453,7 @@ def refresh_signatures(
         if runs and run_id not in selected_runs:
             refreshed_runs[run_id] = budget
             continue
-        manifest_run = run_lookup.get(run_id)
+        manifest_run = run_lookup.get(RunId(run_id))
         if manifest_run is None:
             refreshed_runs[run_id] = budget
             continue

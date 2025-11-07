@@ -11,6 +11,7 @@ from typewiz.ratchet import (
     apply_auto_update,
     build_ratchet_from_manifest,
     compare_manifest_to_ratchet,
+    refresh_signatures,
 )
 from typewiz.typed_manifest import (
     EngineOptionsEntry,
@@ -197,3 +198,44 @@ def test_report_payload_and_formatting() -> None:
     lines = report.format_lines(ignore_signature=True)
     assert any("Violations" in line for line in lines)
     assert report.exit_code(ignore_signature=True) == 1
+
+
+def test_compare_manifest_run_filter() -> None:
+    manifest = _make_manifest({"src/foo.py": Counter({"error": 1})})
+    ratchet = build_ratchet_from_manifest(
+        manifest=manifest,
+        runs=None,
+        severities=["error"],
+        targets=None,
+        manifest_path="baseline.json",
+    )
+    report = compare_manifest_to_ratchet(
+        manifest=manifest,
+        ratchet=ratchet,
+        runs=["pyright:current"],
+    )
+    assert len(report.runs) == 1
+
+
+def test_refresh_signatures_updates_hash() -> None:
+    manifest = _make_manifest({"src/foo.py": Counter({"error": 1})})
+    ratchet = build_ratchet_from_manifest(
+        manifest=manifest,
+        runs=None,
+        severities=["error"],
+        targets=None,
+        manifest_path="baseline.json",
+    )
+    altered_manifest = _make_manifest(
+        {"src/foo.py": Counter({"error": 1})},
+        plugin_args=["--strict", "--experimental"],
+    )
+    refreshed = refresh_signatures(
+        manifest=altered_manifest,
+        ratchet=ratchet,
+        runs=None,
+        generated_at="2025-01-02T00:00:00Z",
+    )
+    original_hash = ratchet.runs["pyright:current"].engine_signature["hash"]
+    new_hash = refreshed.runs["pyright:current"].engine_signature["hash"]
+    assert original_hash != new_hash

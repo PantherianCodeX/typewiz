@@ -19,8 +19,8 @@ from typewiz.summary_types import (
 STATUS_VALUES = tuple(status.value for status in ReadinessStatus)
 
 
-def _status() -> st.SearchStrategy[str]:
-    return st.sampled_from(STATUS_VALUES)
+def _status() -> st.SearchStrategy[ReadinessStatus]:
+    return st.sampled_from(tuple(ReadinessStatus))
 
 
 def _folder_entry() -> st.SearchStrategy[ReadinessOptionEntry]:
@@ -80,7 +80,7 @@ def _readiness_tab() -> st.SearchStrategy[ReadinessTab]:
 )
 def test_h_collect_readiness_view_shapes(
     readiness_tab: ReadinessTab,
-    statuses: list[str],
+    statuses: list[ReadinessStatus],
     limit: int,
 ) -> None:
     tabs: SummaryTabs = {

@@ -83,7 +83,7 @@ def test_collect_readiness_view_folder() -> None:
     view = collect_readiness_view(
         summary,
         level="folder",
-        statuses=[BLOCKED],
+        statuses=[ReadinessStatus.BLOCKED],
         limit=5,
     )
     assert BLOCKED in view
@@ -99,7 +99,7 @@ def test_collect_readiness_view_file() -> None:
     view = collect_readiness_view(
         summary,
         level="file",
-        statuses=[BLOCKED],
+        statuses=[ReadinessStatus.BLOCKED],
         limit=5,
     )
     assert BLOCKED in view
@@ -146,7 +146,12 @@ def test_collect_readiness_view_folder_fallback_category() -> None:
         "topFiles": [],
         "tabs": tabs,
     }
-    view = collect_readiness_view(summary, level="folder", statuses=[BLOCKED], limit=5)
+    view = collect_readiness_view(
+        summary,
+        level="folder",
+        statuses=[ReadinessStatus.BLOCKED],
+        limit=5,
+    )
     assert view[BLOCKED][0]["path"] == "src/opt"
 
 
@@ -165,7 +170,7 @@ def test_collect_readiness_view_rejects_invalid() -> None:
             collect_readiness_view(
                 summary,
                 level="file",
-                statuses=[BLOCKED],
+                statuses=[ReadinessStatus.BLOCKED],
                 limit=5,
             ),
         )

@@ -246,31 +246,36 @@ def _extract_folder_entries(
 
 def _extract_file_entries(
     strict_map: Mapping[str, Sequence[ReadinessStrictEntry]],
-    status: str,
+    status: ReadinessStatus,
 ) -> list[ReadinessStrictEntry]:
-    entries = strict_map.get(status)
+    entries = strict_map.get(status.value)
     if isinstance(entries, list):
         return entries
     return []
 
 
-def _normalise_status_filters(statuses: Sequence[str] | None) -> list[str]:
+def _normalise_status_filters(
+    statuses: Sequence[ReadinessStatus | str] | None,
+) -> list[ReadinessStatus]:
     if statuses is None:
-        return [ReadinessStatus.BLOCKED.value]
-    result: list[str] = []
+        return [ReadinessStatus.BLOCKED]
+    normalised: list[ReadinessStatus] = []
     for status in statuses:
-        try:
-            parsed = ReadinessStatus.from_str(status)
-        except ValueError:
-            continue
-        if parsed.value not in result:
-            result.append(parsed.value)
-    return result or [ReadinessStatus.BLOCKED.value]
+        if isinstance(status, ReadinessStatus):
+            parsed = status
+        else:
+            try:
+                parsed = ReadinessStatus.from_str(status)
+            except ValueError:
+                continue
+        if parsed not in normalised:
+            normalised.append(parsed)
+    return normalised or [ReadinessStatus.BLOCKED]
 
 
 def _folder_payload_for_status(
     options_tab: Mapping[str, ReadinessOptionsBucket],
-    status: str,
+    status: ReadinessStatus,
     limit: int,
 ) -> list[dict[str, object]]:
     # Prefer unknownChecks, then optionalChecks, then unusedSymbols, then general
@@ -283,7 +288,7 @@ def _folder_payload_for_status(
     entries: list[ReadinessOptionEntry] = []
     for category in category_order:
         bucket = options_tab.get(category, {})
-        entries = _extract_folder_entries(bucket, status)
+        entries = _extract_folder_entries(bucket, status.value)
         if entries:
             break
     records: list[FolderReadinessRecord] = []
@@ -299,7 +304,7 @@ def _folder_payload_for_status(
 
 def _file_payload_for_status(
     strict_map: Mapping[str, list[ReadinessStrictEntry]],
-    status: str,
+    status: ReadinessStatus,
     limit: int,
 ) -> list[dict[str, object]]:
     entries = _extract_file_entries(strict_map, status)
@@ -318,7 +323,7 @@ def collect_readiness_view(
     summary: SummaryData,
     *,
     level: str,
-    statuses: Sequence[str] | None,
+    statuses: Sequence[ReadinessStatus] | None,
     limit: int,
 ) -> dict[str, list[dict[str, object]]]:
     tabs: SummaryTabs = summary["tabs"]
@@ -330,7 +335,7 @@ def collect_readiness_view(
     result: dict[str, list[dict[str, object]]] = {}
     for status in statuses_normalised:
         if level == "folder":
-            result[status] = _folder_payload_for_status(options_tab, status, limit)
+            result[status.value] = _folder_payload_for_status(options_tab, status, limit)
         else:
-            result[status] = _file_payload_for_status(strict_map, status, limit)
+            result[status.value] = _file_payload_for_status(strict_map, status, limit)
     return result

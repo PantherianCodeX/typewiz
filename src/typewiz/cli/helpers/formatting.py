@@ -21,6 +21,7 @@ from typewiz.model_types import (
     HotspotKind,
     ReadinessLevel,
     ReadinessStatus,
+    SummaryField,
     SummaryStyle,
     clone_override_entries,
 )
@@ -32,7 +33,7 @@ from typewiz.types import RunResult
 
 from .io import echo
 
-SUMMARY_FIELD_CHOICES: set[str] = {"profile", "config", "plugin-args", "paths", "overrides"}
+SUMMARY_FIELD_CHOICES: set[SummaryField] = set(SummaryField)
 
 
 def format_list(values: Sequence[str]) -> str:
@@ -40,7 +41,11 @@ def format_list(values: Sequence[str]) -> str:
     return _legacy_format_list(values)
 
 
-def parse_summary_fields(raw: str | None, *, valid_fields: set[str] | None = None) -> list[str]:
+def parse_summary_fields(
+    raw: str | None,
+    *,
+    valid_fields: set[SummaryField] | None = None,
+) -> list[SummaryField]:
     """Parse ``--summary-fields`` input, validating against allowable field names."""
     field_set = valid_fields if valid_fields is not None else SUMMARY_FIELD_CHOICES
     return _legacy_parse_summary_fields(raw, valid_fields=field_set)
@@ -49,7 +54,7 @@ def parse_summary_fields(raw: str | None, *, valid_fields: set[str] | None = Non
 def _print_run_summary(
     run: RunResult,
     *,
-    fields: set[str],
+    fields: set[SummaryField],
     style: SummaryStyle,
 ) -> None:
     counts = run.severity_counts()
@@ -64,28 +69,28 @@ def _print_run_summary(
     detail_items: list[tuple[str, str]] = []
 
     expanded = style is not SummaryStyle.COMPACT
-    if "profile" in fields:
+    if SummaryField.PROFILE in fields:
         if run.profile:
             detail_items.append(("profile", run.profile))
         elif expanded:
             detail_items.append(("profile", "—"))
-    if "config" in fields:
+    if SummaryField.CONFIG in fields:
         if run.config_file:
             detail_items.append(("config", str(run.config_file)))
         elif expanded:
             detail_items.append(("config", "—"))
-    if "plugin-args" in fields:
+    if SummaryField.PLUGIN_ARGS in fields:
         plugin_args = format_list(list(run.plugin_args))
         if plugin_args != "—" or expanded:
             detail_items.append(("plugin args", plugin_args))
-    if "paths" in fields:
+    if SummaryField.PATHS in fields:
         include_paths = format_list(list(run.include))
         exclude_paths = format_list(list(run.exclude))
         if include_paths != "—" or expanded:
             detail_items.append(("include", include_paths))
         if exclude_paths != "—" or expanded:
             detail_items.append(("exclude", exclude_paths))
-    if "overrides" in fields:
+    if SummaryField.OVERRIDES in fields:
         overrides_data = clone_override_entries(run.overrides)
         if overrides_data:
             if expanded:
@@ -109,7 +114,7 @@ def _print_run_summary(
 
 def print_summary(
     runs: Sequence[RunResult],
-    fields: Sequence[str],
+    fields: Sequence[SummaryField],
     style: SummaryStyle,
 ) -> None:
     """Render a human-friendly summary line for each run."""
@@ -127,11 +132,10 @@ def collect_readiness_view(
 ) -> dict[str, list[dict[str, object]]]:
     """Collect readiness data with consistent error handling."""
     try:
-        status_values = [status.value for status in statuses] if statuses else None
         return _collect_readiness_view(
             summary,
             level=level.value,
-            statuses=status_values,
+            statuses=statuses,
             limit=limit,
         )
     except ReadinessValidationError as exc:  # pragma: no cover - exercised via CLI tests
@@ -163,7 +167,7 @@ def print_readiness_summary(
 
 def render_data(data: object, fmt: DataFormat) -> list[str]:
     """Render Python data for CLI output."""
-    return _legacy_render_data_structure(data, fmt.value)
+    return _legacy_render_data_structure(data, fmt)
 
 
 def query_overview(
