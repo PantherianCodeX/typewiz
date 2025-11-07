@@ -91,7 +91,7 @@ def normalise_runs(runs: Sequence[str | RunId] | None) -> list[RunId]:
 
 
 def resolve_runs(
-    cli_runs: Sequence[str | RunId] | None, config_runs: Sequence[str | RunId]
+    cli_runs: Sequence[str | RunId] | None, config_runs: Sequence[RunId]
 ) -> list[RunId] | None:
     runs = normalise_runs(cli_runs) or normalise_runs(config_runs)
     return runs or None

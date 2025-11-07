@@ -22,7 +22,7 @@ from .collection_utils import dedupe_preserve
 from .data_validation import require_non_negative_int
 from .exceptions import TypewizValidationError
 from .model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
-from .type_aliases import EngineName, ProfileName, RunnerName
+from .type_aliases import EngineName, ProfileName, RunId, RunnerName
 
 CONFIG_VERSION: Final[int] = 0
 FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)
@@ -152,8 +152,8 @@ def _default_dict_str_int() -> dict[str, int]:
     return {}
 
 
-def _default_ratchet_runs() -> list[str]:
-    return []
+def _default_ratchet_runs() -> list[RunId]:
+    return cast(list[RunId], [])
 
 
 def _default_ratchet_severity_levels() -> list[SeverityLevel]:
@@ -227,12 +227,15 @@ class PathOverride:
 class RatchetConfig:
     manifest_path: Path | None = None
     output_path: Path | None = None
-    runs: list[str] = field(default_factory=_default_ratchet_runs)
+    runs: list[RunId] = field(default_factory=_default_ratchet_runs)
     severities: list[SeverityLevel] = field(default_factory=_default_ratchet_severity_levels)
     targets: dict[str, int] = field(default_factory=_default_dict_str_int)
     signature: SignaturePolicy = SignaturePolicy.FAIL
     limit: int | None = None
     summary_only: bool = False
+
+    def __post_init__(self) -> None:
+        self.runs = [RunId(str(value).strip()) for value in self.runs if str(value).strip()]
 
 
 def ensure_list(value: object | None) -> list[str] | None:
@@ -431,7 +434,8 @@ class AuditConfigModel(BaseModel):
 class RatchetConfigModel(BaseModel):
     manifest_path: Path | None = None
     output_path: Path | None = None
-    runs: list[str] = Field(default_factory=list)
+
+    runs: list[RunId] = Field(default_factory=_default_ratchet_runs)
     severities: list[SeverityLevel] = Field(default_factory=_default_ratchet_severity_levels)
     targets: dict[str, int] = Field(default_factory=dict)
     signature: SignaturePolicy = Field(default=SignaturePolicy.FAIL)
@@ -440,8 +444,9 @@ class RatchetConfigModel(BaseModel):
 
     @field_validator("runs", mode="before")
     @classmethod
-    def _coerce_runs(cls, value: object) -> list[str]:
-        return ensure_list(value) or []
+    def _coerce_runs(cls, value: object) -> list[RunId]:
+        runs = ensure_list(value) or []
+        return [RunId(token) for token in runs]
 
     @field_validator("severities", mode="before")
     @classmethod
@@ -581,6 +586,7 @@ def _model_to_dataclass(model: AuditConfigModel) -> AuditConfig:
 
 def _ratchet_from_model(model: RatchetConfigModel) -> RatchetConfig:
     payload = model.model_dump(mode="python")
+    payload["runs"] = [RunId(item) for item in cast("Sequence[str]", payload.get("runs", []))]
     payload["severities"] = [
         SeverityLevel.from_str(item)
         for item in cast("Sequence[str]", payload.get("severities", []))

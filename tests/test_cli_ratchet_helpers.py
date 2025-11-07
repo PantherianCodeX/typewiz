@@ -59,8 +59,8 @@ def test_discover_ratchet_path_defaults(tmp_path: Path) -> None:
 
 
 def test_resolve_runs_prefers_cli_values() -> None:
-    assert resolve_runs(["pyright:current"], ["mypy:current"]) == [RunId("pyright:current")]
-    assert resolve_runs(None, ["mypy:current"]) == [RunId("mypy:current")]
+    assert resolve_runs(["pyright:current"], [RunId("mypy:current")]) == [RunId("pyright:current")]
+    assert resolve_runs(None, [RunId("mypy:current")]) == [RunId("mypy:current")]
 
 
 def test_resolve_severities_handles_defaults() -> None:

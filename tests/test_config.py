@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -16,11 +17,12 @@ from typewiz.config import (
     EngineSettings,
     EngineSettingsModel,
     PathOverride,
+    RatchetConfig,
     RatchetConfigModel,
     load_config,
 )
 from typewiz.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
-from typewiz.type_aliases import EngineName, ProfileName, RunnerName
+from typewiz.type_aliases import EngineName, ProfileName, RunId, RunnerName
 from typewiz.utils import consume
 
 ensure_list = config_module.ensure_list
@@ -339,3 +341,12 @@ def test_ratchet_config_model_converts_severity_strings() -> None:
 def test_ratchet_config_model_defaults_when_empty() -> None:
     model = RatchetConfigModel.model_validate({"severities": []})
     assert model.severities == [SeverityLevel.ERROR, SeverityLevel.WARNING]
+
+
+def test_ratchet_config_runs_coerced_to_run_id() -> None:
+    model = RatchetConfigModel.model_validate({"runs": ["pyright:current", "  mypy:full  "]})
+    assert model.runs == [RunId("pyright:current"), RunId("mypy:full")]
+    config = RatchetConfig(
+        runs=cast(list[RunId], ["pyright:current ", RunId("mypy:full")]),
+    )
+    assert config.runs == [RunId("pyright:current"), RunId("mypy:full")]
