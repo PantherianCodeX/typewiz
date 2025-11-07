@@ -90,6 +90,9 @@ typewiz ratchet update --manifest typing_audit.json --ratchet .typewiz/ratchet.j
 
 Ratchet files record the merged engine options (profiles, plugin args, overrides). If the configuration for a run changes—such as adding a new plugin or flipping profiles—the signature mismatch is called out so you can intentionally rebuild the baseline. This keeps future engines like Ruff aligned with the budgets you enforce today.
 
+The on-disk format is documented in `schemas/ratchet.schema.json`, so you can validate, transform,
+or ingest ratchet budgets with your own tooling.
+
 ### Typing & CI
 
 Type checking locally:

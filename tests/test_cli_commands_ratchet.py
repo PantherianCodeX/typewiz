@@ -11,12 +11,7 @@ from typewiz.cli.commands import ratchet as ratchet_cmd
 from typewiz.cli.commands.ratchet import RatchetContext, handle_info, handle_init, handle_update
 from typewiz.config import RatchetConfig
 from typewiz.model_types import SeverityLevel, SignaturePolicy
-from typewiz.ratchet.models import (
-    RatchetModel,
-    RatchetRunBudgetModel,
-    SeverityToken,
-    normalise_severity,
-)
+from typewiz.ratchet.models import RatchetModel, RatchetRunBudgetModel
 from typewiz.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
 from typewiz.type_aliases import RunId
 from typewiz.typed_manifest import ManifestData
@@ -96,15 +91,15 @@ def test_handle_init_writes_ratchet_and_applies_targets(
     args = Namespace(
         output=output_path,
         force=True,
-        severities="errors,warnings",
-        targets=["errors=1"],
+        severities="error,warning",
+        targets=["error=1"],
     )
 
     exit_code = handle_init(context, args)
     assert exit_code == 0
     assert write_calls == [output_path]
-    assert captured_keywords["severities"] == ["error", "warning"]
-    assert captured_keywords["targets"] == {"warning": 2, "errors": 1}
+    assert captured_keywords["severities"] == [SeverityLevel.ERROR, SeverityLevel.WARNING]
+    assert captured_keywords["targets"] == {SeverityLevel.WARNING: 2, SeverityLevel.ERROR: 1}
     assert captured_keywords["manifest_path"] == str(context.manifest_path)
 
 
@@ -153,19 +148,19 @@ def test_handle_update_dry_run_skips_write(
     def fake_apply_target_overrides(model: RatchetModel, targets: dict[str, int]) -> None:
         nonlocal applied_targets
         applied_targets = targets
-        normalised: dict[SeverityToken, int] = {
-            normalise_severity(key): value for key, value in targets.items()
+        normalised: dict[SeverityLevel, int] = {
+            SeverityLevel.from_str(key): value for key, value in targets.items()
         }
         model.runs.setdefault(
             "pyright:current",
-            RatchetRunBudgetModel(severities=[normalise_severity("error")]),
+            RatchetRunBudgetModel(severities=[SeverityLevel.ERROR]),
         ).targets.update(normalised)
 
     def fake_compare_manifest(**_: Any) -> RatchetReport:
         finding = RatchetFinding(path="pkg", severity=SeverityLevel.ERROR, allowed=1, actual=2)
         run_report = RatchetRunReport(
             run_id=RunId("pyright:current"),
-            severities=[normalise_severity("error")],
+            severities=[SeverityLevel.ERROR],
             violations=[finding],
         )
         return RatchetReport(runs=[run_report])
@@ -195,13 +190,11 @@ def test_handle_update_dry_run_skips_write(
 
     monkeypatch.setattr(ratchet_cmd, "write_ratchet", fail_write)
 
-    args = Namespace(
-        targets=["errors=5"], dry_run=True, output=None, limit=None, summary_only=False
-    )
+    args = Namespace(targets=["error=5"], dry_run=True, output=None, limit=None, summary_only=False)
     exit_code = handle_update(context, args)
 
     assert exit_code == 0
-    assert applied_targets == {"errors": 5}
+    assert applied_targets == {"error": 5}
     captured = capsys.readouterr().out
     assert "[typewiz] Dry-run mode; ratchet not written." in captured
 

@@ -6,9 +6,11 @@ from typing import cast
 
 import pytest
 
-from typewiz.model_types import ReadinessStatus
+from typewiz.model_types import ReadinessLevel, ReadinessStatus
 from typewiz.readiness_views import (
+    FileReadinessPayload,
     FileReadinessRecord,
+    FolderReadinessPayload,
     FolderReadinessRecord,
     ReadinessValidationError,
     collect_readiness_view,
@@ -82,28 +84,30 @@ def test_collect_readiness_view_folder() -> None:
     summary = _make_summary()
     view = collect_readiness_view(
         summary,
-        level="folder",
+        level=ReadinessLevel.FOLDER,
         statuses=[ReadinessStatus.BLOCKED],
         limit=5,
     )
-    assert BLOCKED in view
-    blocked_entries = view[BLOCKED]
+    folder_view = cast(dict[str, list[FolderReadinessPayload]], view)
+    assert BLOCKED in folder_view
+    blocked_entries = folder_view[BLOCKED]
     assert blocked_entries
     first_entry = blocked_entries[0]
-    assert first_entry.get("path") == "src/app"
-    assert first_entry.get("count") == 3
+    assert first_entry["path"] == "src/app"
+    assert first_entry["count"] == 3
 
 
 def test_collect_readiness_view_file() -> None:
     summary = _make_summary()
     view = collect_readiness_view(
         summary,
-        level="file",
+        level=ReadinessLevel.FILE,
         statuses=[ReadinessStatus.BLOCKED],
         limit=5,
     )
-    assert BLOCKED in view
-    blocked_entries = view[BLOCKED]
+    file_view = cast(dict[str, list[FileReadinessPayload]], view)
+    assert BLOCKED in file_view
+    blocked_entries = file_view[BLOCKED]
     assert blocked_entries
     entry = blocked_entries[0]
     assert entry["path"] == "src/app"
@@ -148,11 +152,12 @@ def test_collect_readiness_view_folder_fallback_category() -> None:
     }
     view = collect_readiness_view(
         summary,
-        level="folder",
+        level=ReadinessLevel.FOLDER,
         statuses=[ReadinessStatus.BLOCKED],
         limit=5,
     )
-    assert view[BLOCKED][0]["path"] == "src/opt"
+    folder_view = cast(dict[str, list[FolderReadinessPayload]], view)
+    assert folder_view[BLOCKED][0]["path"] == "src/opt"
 
 
 def test_collect_readiness_view_rejects_invalid() -> None:
@@ -169,7 +174,7 @@ def test_collect_readiness_view_rejects_invalid() -> None:
         consume(
             collect_readiness_view(
                 summary,
-                level="file",
+                level=ReadinessLevel.FILE,
                 statuses=[ReadinessStatus.BLOCKED],
                 limit=5,
             ),
@@ -198,6 +203,7 @@ def test_file_record_to_payload_roundtrip() -> None:
     )
     payload = record.to_payload()
     assert payload["path"] == "pkg"
-    assert payload["notes"] == ["note"]
-    categories_payload = cast(dict[str, object], payload["categories"])
+    assert payload.get("notes") == ["note"]
+    categories_payload = payload.get("categories")
+    assert isinstance(categories_payload, dict)
     assert categories_payload["unknown"] == 2

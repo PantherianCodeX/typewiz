@@ -5,35 +5,27 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, ClassVar, Literal, TypedDict, cast
+from typing import Any, ClassVar, TypedDict, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from ..model_types import SeverityLevel
 from ..utils import JSONValue
 
 RATCHET_SCHEMA_VERSION = 1
-SeverityToken = Literal["error", "warning", "information"]
 
 
-def _new_severity_map() -> dict[SeverityToken, int]:
+def _new_severity_map() -> dict[SeverityLevel, int]:
     return {}
 
 
-def _sorted_severity_list(values: Iterable[SeverityToken]) -> list[SeverityToken]:
-    return sorted(values)
+def _sorted_severity_list(values: Iterable[SeverityLevel]) -> list[SeverityLevel]:
+    return sorted(values, key=lambda severity: severity.value)
 
 
-def normalise_severity(name: str) -> SeverityToken:
-    """Normalise severity names to lowercase tokens."""
-
-    token = name.strip().lower()
-    if token == "errors":
-        return "error"
-    if token == "warnings":
-        return "warning"
-    if token not in {"error", "warning", "information"}:
-        token = "information"
-    return cast(SeverityToken, token)
+def _parse_budget_value(raw: object) -> int:
+    budget = int(cast(Any, raw))
+    return max(budget, 0)
 
 
 class RatchetPathBudgetModel(BaseModel):
@@ -41,23 +33,25 @@ class RatchetPathBudgetModel(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    severities: dict[SeverityToken, int] = Field(default_factory=_new_severity_map)
+    severities: dict[SeverityLevel, int] = Field(default_factory=_new_severity_map)
 
     @field_validator("severities", mode="before")
     @classmethod
-    def _coerce_map(cls, value: object) -> dict[SeverityToken, int]:
+    def _coerce_map(cls, value: object) -> dict[SeverityLevel, int]:
         if not isinstance(value, Mapping):
-            return {}
+            raise TypeError("severities must be a mapping")
         mapping_value = cast(Mapping[object, object], value)
-        result: dict[SeverityToken, int] = {}
+        result: dict[SeverityLevel, int] = {}
         for raw_key, raw_val in mapping_value.items():
-            key = normalise_severity(str(raw_key))
-            try:
-                budget = int(cast(Any, raw_val))
-            except (TypeError, ValueError):
-                continue
-            result[key] = max(budget, 0)
+            severity = cls._parse_severity(raw_key)
+            result[severity] = _parse_budget_value(raw_val)
         return result
+
+    @staticmethod
+    def _parse_severity(raw: object) -> SeverityLevel:
+        if isinstance(raw, SeverityLevel):
+            return raw
+        return SeverityLevel.from_str(str(raw))
 
 
 class RatchetRunBudgetModel(BaseModel):
@@ -65,45 +59,52 @@ class RatchetRunBudgetModel(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    severities: list[SeverityToken]
+    severities: list[SeverityLevel]
     paths: dict[str, RatchetPathBudgetModel] = Field(default_factory=dict)
-    targets: dict[SeverityToken, int] = Field(default_factory=_new_severity_map)
-    engine_signature: dict[str, Any] = Field(default_factory=dict)
+    targets: dict[SeverityLevel, int] = Field(default_factory=_new_severity_map)
+    engine_signature: EngineSignaturePayloadWithHash | None = None
 
     @field_validator("severities", mode="before")
     @classmethod
-    def _normalise_severities(cls, value: object) -> list[SeverityToken]:
+    def _normalise_severities(cls, value: object) -> list[SeverityLevel]:
         if value is None:
             return []
         if isinstance(value, str):
-            tokens: Sequence[str] = [part.strip() for part in value.split(",") if part.strip()]
-        elif isinstance(value, Sequence):
-            sequence_value = cast(Sequence[object], value)
-            tokens = [str(item).strip() for item in sequence_value if str(item).strip()]
+            tokens_list: list[object] = [part.strip() for part in value.split(",") if part.strip()]
+        elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+            tokens_list = list(cast(Sequence[object], value))
         else:
-            tokens = ()
-        severity_set: set[SeverityToken] = {normalise_severity(token) for token in tokens if token}
-        return _sorted_severity_list(severity_set)
+            raise TypeError("severities must be a string or sequence")
+        severities: list[SeverityLevel] = []
+        for token in tokens_list:
+            severity = (
+                token if isinstance(token, SeverityLevel) else SeverityLevel.from_str(str(token))
+            )
+            if severity not in severities:
+                severities.append(severity)
+        return _sorted_severity_list(severities)
 
     @field_validator("targets", mode="before")
     @classmethod
-    def _coerce_targets(cls, value: object) -> dict[SeverityToken, int]:
-        if not isinstance(value, Mapping):
+    def _coerce_targets(cls, value: object) -> dict[SeverityLevel, int]:
+        if value is None:
             return {}
+        if not isinstance(value, Mapping):
+            raise TypeError("targets must be a mapping")
         mapping_value = cast(Mapping[object, object], value)
-        result: dict[SeverityToken, int] = {}
+        result: dict[SeverityLevel, int] = {}
         for raw_key, raw_val in mapping_value.items():
-            key = normalise_severity(str(raw_key))
-            try:
-                budget = int(cast(Any, raw_val))
-            except (TypeError, ValueError):
-                continue
-            result[key] = max(budget, 0)
+            severity = (
+                raw_key
+                if isinstance(raw_key, SeverityLevel)
+                else SeverityLevel.from_str(str(raw_key))
+            )
+            result[severity] = _parse_budget_value(raw_val)
         return result
 
     @model_validator(mode="after")
     def _apply_defaults(self) -> RatchetRunBudgetModel:
-        severity_set: set[SeverityToken] = {normalise_severity(name) for name in self.severities}
+        severity_set: set[SeverityLevel] = set(self.severities)
         self.severities = _sorted_severity_list(severity_set)
         original_paths = cast(Mapping[str, object], self.paths)
         self.paths = {
@@ -152,9 +153,7 @@ __all__ = [
     "RATCHET_SCHEMA_VERSION",
     "EngineSignaturePayload",
     "EngineSignaturePayloadWithHash",
-    "SeverityToken",
     "RatchetModel",
     "RatchetPathBudgetModel",
     "RatchetRunBudgetModel",
-    "normalise_severity",
 ]

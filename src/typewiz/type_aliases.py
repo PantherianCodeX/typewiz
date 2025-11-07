@@ -10,6 +10,7 @@ PathKey = NewType("PathKey", str)
 CacheKey = NewType("CacheKey", str)
 CategoryName = NewType("CategoryName", str)
 RuleName = NewType("RuleName", str)
+ToolName = NewType("ToolName", str)
 
 CategoryKey = Literal["unknownChecks", "optionalChecks", "unusedSymbols", "general"]
 RunId = NewType("RunId", str)
@@ -20,5 +21,6 @@ __all__ = [
     "CategoryName",
     "PathKey",
     "RuleName",
+    "ToolName",
     "RunId",
 ]

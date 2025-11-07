@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import hypothesis.strategies as st
 from hypothesis import given
 
-from typewiz.model_types import ReadinessStatus
-from typewiz.readiness_views import collect_readiness_view
+from typewiz.model_types import ReadinessLevel, ReadinessStatus
+from typewiz.readiness_views import (
+    FileReadinessPayload,
+    FolderReadinessPayload,
+    collect_readiness_view,
+)
 from typewiz.summary_types import (
     ReadinessOptionEntry,
     ReadinessOptionsBucket,
@@ -103,27 +109,43 @@ def test_h_collect_readiness_view_shapes(
     }
 
     # Folder view
-    folder_view = collect_readiness_view(summary, level="folder", statuses=statuses, limit=limit)
-    for stat, entries in folder_view.items():
+    folder_view: dict[str, list[FolderReadinessPayload]] = cast(
+        dict[str, list[FolderReadinessPayload]],
+        collect_readiness_view(
+            summary,
+            level=ReadinessLevel.FOLDER,
+            statuses=statuses,
+            limit=limit,
+        ),
+    )
+    for stat, folder_entries in folder_view.items():
         assert stat in STATUS_VALUES
-        assert isinstance(entries, list)
+        assert isinstance(folder_entries, list)
         if limit > 0:
-            assert len(entries) <= limit
-        for e in entries:
-            assert isinstance(e.get("path"), str)
-            assert isinstance(e.get("count"), int)
-            assert isinstance(e.get("errors"), int)
-            assert isinstance(e.get("warnings"), int)
+            assert len(folder_entries) <= limit
+        for folder_entry in folder_entries:
+            assert isinstance(folder_entry["path"], str)
+            assert isinstance(folder_entry["count"], int)
+            assert isinstance(folder_entry["errors"], int)
+            assert isinstance(folder_entry["warnings"], int)
 
     # File view
-    file_view = collect_readiness_view(summary, level="file", statuses=statuses, limit=limit)
-    for stat, entries in file_view.items():
+    file_view: dict[str, list[FileReadinessPayload]] = cast(
+        dict[str, list[FileReadinessPayload]],
+        collect_readiness_view(
+            summary,
+            level=ReadinessLevel.FILE,
+            statuses=statuses,
+            limit=limit,
+        ),
+    )
+    for stat, file_entries in file_view.items():
         assert stat in STATUS_VALUES
         if limit > 0:
-            assert len(entries) <= limit
-        for e in entries:
-            assert isinstance(e.get("path"), str)
-            assert isinstance(e.get("diagnostics"), int)
-            assert isinstance(e.get("errors"), int)
-            assert isinstance(e.get("warnings"), int)
-            assert isinstance(e.get("information"), int)
+            assert len(file_entries) <= limit
+        for file_entry in file_entries:
+            assert isinstance(file_entry["path"], str)
+            assert isinstance(file_entry["diagnostics"], int)
+            assert isinstance(file_entry["errors"], int)
+            assert isinstance(file_entry["warnings"], int)
+            assert isinstance(file_entry["information"], int)

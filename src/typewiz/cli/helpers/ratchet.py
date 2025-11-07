@@ -5,23 +5,26 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import cast
+from typing import Final, cast
 
 from typewiz.cli_helpers import (
     parse_comma_separated,
     parse_key_value_entries,
 )
-from typewiz.model_types import SignaturePolicy
-from typewiz.ratchet.models import RatchetModel, SeverityToken, normalise_severity
+from typewiz.model_types import SeverityLevel, SignaturePolicy
+from typewiz.ratchet.models import RatchetModel
 
-DEFAULT_SEVERITIES: tuple[SeverityToken, SeverityToken] = ("error", "warning")
-MANIFEST_CANDIDATE_NAMES: tuple[str, ...] = (
+DEFAULT_SEVERITIES: Final[tuple[SeverityLevel, SeverityLevel]] = (
+    SeverityLevel.ERROR,
+    SeverityLevel.WARNING,
+)
+MANIFEST_CANDIDATE_NAMES: Final[tuple[str, ...]] = (
     "typing_audit.json",
     "typing_audit_manifest.json",
     "reports/typing/typing_audit.json",
     "reports/typing/manifest.json",
 )
-DEFAULT_RATCHET_FILENAME = Path(".typewiz/ratchet.json")
+DEFAULT_RATCHET_FILENAME: Final[Path] = Path(".typewiz/ratchet.json")
 
 
 def parse_target_entries(entries: Sequence[str]) -> dict[str, int]:
@@ -39,9 +42,9 @@ def parse_target_entries(entries: Sequence[str]) -> dict[str, int]:
 
 def split_target_mapping(
     mapping: Mapping[str, int],
-) -> tuple[dict[SeverityToken, int], dict[str, dict[SeverityToken, int]]]:
-    global_targets: dict[SeverityToken, int] = {}
-    per_run: dict[str, dict[SeverityToken, int]] = {}
+) -> tuple[dict[SeverityLevel, int], dict[str, dict[SeverityLevel, int]]]:
+    global_targets: dict[SeverityLevel, int] = {}
+    per_run: dict[str, dict[SeverityLevel, int]] = {}
     for raw_key, value in mapping.items():
         key = raw_key.strip()
         if not key:
@@ -49,12 +52,12 @@ def split_target_mapping(
         budget = max(0, int(value))
         if "." in key:
             run_id, severity_token = key.rsplit(".", 1)
-            severity = normalise_severity(severity_token)
+            severity = SeverityLevel.from_str(severity_token)
             run_key = run_id.strip()
-            entry = per_run.setdefault(run_key, cast(dict[SeverityToken, int], {}))
+            entry = per_run.setdefault(run_key, cast(dict[SeverityLevel, int], {}))
             entry[severity] = budget
         else:
-            severity = normalise_severity(key)
+            severity = SeverityLevel.from_str(key)
             global_targets[severity] = budget
     return global_targets, per_run
 
@@ -81,20 +84,28 @@ def resolve_runs(cli_runs: Sequence[str] | None, config_runs: Sequence[str]) -> 
     return runs or None
 
 
-def resolve_severities(cli_value: str | None, config_values: Sequence[str]) -> list[SeverityToken]:
+def resolve_severities(
+    cli_value: str | None, config_values: Sequence[str | SeverityLevel]
+) -> list[SeverityLevel]:
     if cli_value:
         values = parse_comma_separated(cli_value)
     else:
         values = list(config_values)
-    normalised: list[SeverityToken] = [normalise_severity(value) for value in values if value]
+    normalised: list[SeverityLevel] = [
+        value if isinstance(value, SeverityLevel) else SeverityLevel.from_str(value)
+        for value in values
+        if value
+    ]
     if not normalised:
-        config_normalised: list[SeverityToken] = [
-            normalise_severity(value) for value in config_values if value
+        config_normalised: list[SeverityLevel] = [
+            value if isinstance(value, SeverityLevel) else SeverityLevel.from_str(value)
+            for value in config_values
+            if value
         ]
-        default_severities: list[SeverityToken] = list(DEFAULT_SEVERITIES)
+        default_severities: list[SeverityLevel] = list(DEFAULT_SEVERITIES)
         normalised = config_normalised or default_severities
-    seen: set[SeverityToken] = set()
-    ordered: list[SeverityToken] = []
+    seen: set[SeverityLevel] = set()
+    ordered: list[SeverityLevel] = []
     for severity in normalised:
         if severity not in seen:
             seen.add(severity)

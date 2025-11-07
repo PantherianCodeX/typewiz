@@ -7,6 +7,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any, TypedDict, cast
 
+from typewiz.model_types import SeverityLevel
 from typewiz.ratchet import (
     apply_auto_update,
     build_ratchet_from_manifest,
@@ -127,9 +128,11 @@ def test_build_ratchet_uses_manifest_counts() -> None:
     run_budget = ratchet.runs["pyright:current"]
     foo_budget = run_budget.paths["src/foo.py"]
     expected_counts = per_file_counts["src/foo.py"]
-    assert foo_budget.severities["error"] == expected_counts["error"]
-    assert foo_budget.severities["warning"] == expected_counts["warning"]
-    assert run_budget.engine_signature["hash"]
+    assert foo_budget.severities[SeverityLevel.ERROR] == expected_counts["error"]
+    assert foo_budget.severities[SeverityLevel.WARNING] == expected_counts["warning"]
+    assert run_budget.engine_signature is not None
+    hash_value = run_budget.engine_signature.get("hash")
+    assert hash_value
 
 
 def test_compare_detects_regressions_and_signature_changes() -> None:
@@ -171,7 +174,7 @@ def test_auto_update_reduces_budgets_but_respects_targets() -> None:
     )
     updated_budget = updated.runs["pyright:current"].paths["src/foo.py"]
     # decreased from 3 to 2 but not below target 1
-    assert updated_budget.severities["error"] == EXPECTED_ERROR_AFTER_UPDATE
+    assert updated_budget.severities[SeverityLevel.ERROR] == EXPECTED_ERROR_AFTER_UPDATE
 
 
 def test_report_payload_and_formatting() -> None:
@@ -236,6 +239,8 @@ def test_refresh_signatures_updates_hash() -> None:
         runs=None,
         generated_at="2025-01-02T00:00:00Z",
     )
-    original_hash = ratchet.runs["pyright:current"].engine_signature["hash"]
-    new_hash = refreshed.runs["pyright:current"].engine_signature["hash"]
-    assert original_hash != new_hash
+    assert ratchet.runs["pyright:current"].engine_signature is not None
+    assert refreshed.runs["pyright:current"].engine_signature is not None
+    original_hash = ratchet.runs["pyright:current"].engine_signature.get("hash")
+    new_hash = refreshed.runs["pyright:current"].engine_signature.get("hash")
+    assert original_hash and new_hash and original_hash != new_hash

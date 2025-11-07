@@ -579,7 +579,7 @@ def handle_info(context: RatchetContext) -> int:
     echo(f"  ratchet: {context.ratchet_path or '<computed>'}")
     echo(f"  runs: {', '.join(context.runs) if context.runs else '<all>'}")
     severities = resolve_severities(None, context.config.severities)
-    echo(f"  severities: {', '.join(severities)}")
+    echo(f"  severities: {', '.join(severity.value for severity in severities)}")
 
     if context.config.targets:
         for key, value in sorted(context.config.targets.items()):

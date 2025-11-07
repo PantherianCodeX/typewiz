@@ -4,12 +4,16 @@
 from __future__ import annotations
 
 import sys
-from typing import TextIO
+from typing import Protocol
 
 from typewiz.utils import consume
 
 
-def _select_stream(*, err: bool = False) -> TextIO:
+class _TextStream(Protocol):
+    def write(self, s: str, /) -> int: ...
+
+
+def _select_stream(*, err: bool = False) -> _TextStream:
     return sys.stderr if err else sys.stdout
 
 

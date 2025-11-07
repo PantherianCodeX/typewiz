@@ -14,19 +14,19 @@ from typewiz.cli.helpers.ratchet import (
     resolve_signature_policy,
     split_target_mapping,
 )
-from typewiz.model_types import SignaturePolicy
+from typewiz.model_types import SeverityLevel, SignaturePolicy
 
 
 def test_parse_target_entries_supports_global_and_scoped() -> None:
-    entries = ["errors=1", "pyright:current.warning=2"]
+    entries = ["error=1", "pyright:current.warning=2"]
     result = parse_target_entries(entries)
-    assert result == {"errors": 1, "pyright:current.warning": 2}
+    assert result == {"error": 1, "pyright:current.warning": 2}
 
 
 def test_split_target_mapping_separates_scoped_targets() -> None:
-    global_targets, per_run = split_target_mapping({"errors": 1, "tool:mode.warning": 2})
-    assert global_targets == {"error": 1}
-    assert per_run == {"tool:mode": {"warning": 2}}
+    global_targets, per_run = split_target_mapping({"error": 1, "tool:mode.warning": 2})
+    assert global_targets == {SeverityLevel.ERROR: 1}
+    assert per_run == {"tool:mode": {SeverityLevel.WARNING: 2}}
 
 
 def test_discover_manifest_path_prefers_explicit(tmp_path: Path) -> None:
@@ -63,11 +63,11 @@ def test_resolve_runs_prefers_cli_values() -> None:
 
 
 def test_resolve_severities_handles_defaults() -> None:
-    severities = resolve_severities(None, ["error"])
-    assert severities == ["error"]
+    severities = resolve_severities(None, [SeverityLevel.ERROR])
+    assert severities == [SeverityLevel.ERROR]
 
-    severities_override = resolve_severities("errors,warnings", [])
-    assert severities_override == ["error", "warning"]
+    severities_override = resolve_severities("error,warning", [])
+    assert severities_override == [SeverityLevel.ERROR, SeverityLevel.WARNING]
 
 
 @pytest.mark.parametrize(

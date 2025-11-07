@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import TypedDict, cast
 
 from typewiz.cli_helpers import (
     format_list as _legacy_format_list,
@@ -26,7 +27,11 @@ from typewiz.model_types import (
     clone_override_entries,
 )
 from typewiz.override_utils import format_override_inline, override_detail_lines
-from typewiz.readiness_views import ReadinessValidationError
+from typewiz.readiness_views import (
+    FileReadinessPayload,
+    FolderReadinessPayload,
+    ReadinessValidationError,
+)
 from typewiz.readiness_views import collect_readiness_view as _collect_readiness_view
 from typewiz.summary_types import SummaryData
 from typewiz.types import RunResult
@@ -34,6 +39,78 @@ from typewiz.types import RunResult
 from .io import echo
 
 SUMMARY_FIELD_CHOICES: set[SummaryField] = set(SummaryField)
+
+
+class OverviewRunEntry(TypedDict):
+    run: str
+    errors: int
+    warnings: int
+    information: int
+    total: int
+
+
+class OverviewQueryPayloadBase(TypedDict):
+    generated_at: str | None
+    project_root: str | None
+    severity_totals: dict[str, int]
+
+
+class OverviewQueryPayload(OverviewQueryPayloadBase, total=False):
+    category_totals: dict[str, int]
+    runs: list[OverviewRunEntry]
+
+
+class FileHotspotEntry(TypedDict):
+    path: str
+    errors: int
+    warnings: int
+
+
+class FolderHotspotEntryBase(TypedDict):
+    path: str
+    errors: int
+    warnings: int
+    information: int
+    participating_runs: int
+
+
+class FolderHotspotEntry(FolderHotspotEntryBase, total=False):
+    code_counts: dict[str, int]
+    recommendations: list[str]
+
+
+class RunSummaryEntry(TypedDict):
+    run: str
+    tool: str
+    mode: str
+    errors: int
+    warnings: int
+    information: int
+    command: str
+
+
+class EngineEntry(TypedDict):
+    run: str
+    profile: str | None
+    config_file: str | None
+    plugin_args: list[str]
+    include: list[str]
+    exclude: list[str]
+    overrides: list[dict[str, object]]
+
+
+class RuleEntry(TypedDict):
+    rule: str
+    count: int
+
+
+type ReadinessQueryPayload = (
+    dict[str, list[FolderReadinessPayload]]
+    | dict[
+        str,
+        list[FileReadinessPayload],
+    ]
+)
 
 
 def format_list(values: Sequence[str]) -> str:
@@ -129,12 +206,12 @@ def collect_readiness_view(
     level: ReadinessLevel,
     statuses: Sequence[ReadinessStatus] | None,
     limit: int,
-) -> dict[str, list[dict[str, object]]]:
+) -> ReadinessQueryPayload:
     """Collect readiness data with consistent error handling."""
     try:
         return _collect_readiness_view(
             summary,
-            level=level.value,
+            level=level,
             statuses=statuses,
             limit=limit,
         )
@@ -153,16 +230,31 @@ def print_readiness_summary(
 ) -> None:
     """Print a readiness summary in the same shape as historic CLI output."""
     view = collect_readiness_view(summary, level=level, statuses=statuses, limit=limit)
-    for status, entries in view.items():
+    if level is ReadinessLevel.FOLDER:
+        folder_view: dict[str, list[FolderReadinessPayload]] = cast(
+            dict[str, list[FolderReadinessPayload]],
+            view,
+        )
+        for status, folder_entries in folder_view.items():
+            echo(f"[typewiz] readiness {level.value} status={status} (top {limit})")
+            if not folder_entries:
+                echo("  <none>")
+                continue
+            for folder_entry in folder_entries:
+                echo(f"  {folder_entry['path']}: {folder_entry['count']}")
+        return
+
+    file_view: dict[str, list[FileReadinessPayload]] = cast(
+        dict[str, list[FileReadinessPayload]],
+        view,
+    )
+    for status, file_entries in file_view.items():
         echo(f"[typewiz] readiness {level.value} status={status} (top {limit})")
-        if not entries:
+        if not file_entries:
             echo("  <none>")
             continue
-        for entry in entries:
-            path = str(entry.get("path", "<unknown>"))
-            count_key = "count" if level is ReadinessLevel.FOLDER else "diagnostics"
-            count = coerce_int(entry.get(count_key))
-            echo(f"  {path}: {count}")
+        for file_entry in file_entries:
+            echo(f"  {file_entry['path']}: {file_entry['diagnostics']}")
 
 
 def render_data(data: object, fmt: DataFormat) -> list[str]:
@@ -175,30 +267,36 @@ def query_overview(
     *,
     include_categories: bool,
     include_runs: bool,
-) -> dict[str, object]:
+) -> OverviewQueryPayload:
     """Build the payload for ``typewiz query overview``."""
     overview = summary["tabs"]["overview"]
-    payload: dict[str, object] = {
-        "generated_at": summary.get("generatedAt"),
-        "project_root": summary.get("projectRoot"),
-        "severity_totals": dict(overview.get("severityTotals", {})),
+    severity_totals_map = coerce_mapping(overview.get("severityTotals", {}))
+    severity_totals = {str(key): coerce_int(value) for key, value in severity_totals_map.items()}
+    payload: OverviewQueryPayload = {
+        "generated_at": cast(str | None, summary.get("generatedAt")),
+        "project_root": cast(str | None, summary.get("projectRoot")),
+        "severity_totals": severity_totals,
     }
     if include_categories:
-        payload["category_totals"] = dict(overview.get("categoryTotals", {}))
+        category_totals_map = coerce_mapping(overview.get("categoryTotals", {}))
+        payload["category_totals"] = {
+            str(key): coerce_int(value) for key, value in category_totals_map.items()
+        }
     if include_runs:
-        runs: list[dict[str, object]] = []
+        runs: list[OverviewRunEntry] = []
         for name, entry in overview.get("runSummary", {}).items():
-            errors = int(entry.get("errors", 0) or 0)
-            warnings = int(entry.get("warnings", 0) or 0)
-            information = int(entry.get("information", 0) or 0)
+            errors = coerce_int(entry.get("errors"))
+            warnings = coerce_int(entry.get("warnings"))
+            information = coerce_int(entry.get("information"))
+            total = coerce_int(entry.get("total")) or errors + warnings + information
             runs.append(
-                {
-                    "run": name,
-                    "errors": errors,
-                    "warnings": warnings,
-                    "information": information,
-                    "total": int(entry.get("total", errors + warnings + information) or 0),
-                },
+                OverviewRunEntry(
+                    run=name,
+                    errors=errors,
+                    warnings=warnings,
+                    information=information,
+                    total=total,
+                )
             )
         payload["runs"] = runs
     return payload
@@ -209,37 +307,44 @@ def query_hotspots(
     *,
     kind: HotspotKind,
     limit: int,
-) -> list[dict[str, object]]:
+) -> list[FileHotspotEntry] | list[FolderHotspotEntry]:
     """Build the payload for ``typewiz query hotspots``."""
     hotspots = summary["tabs"]["hotspots"]
-    result: list[dict[str, object]] = []
     if kind is HotspotKind.FILES:
+        result: list[FileHotspotEntry] = []
         for file_entry in hotspots.get("topFiles", []):
-            record: dict[str, object] = {
-                "path": file_entry.get("path", "<unknown>"),
-                "errors": coerce_int(file_entry.get("errors")),
-                "warnings": coerce_int(file_entry.get("warnings")),
+            result.append(
+                FileHotspotEntry(
+                    path=str(file_entry.get("path", "<unknown>")),
+                    errors=coerce_int(file_entry.get("errors")),
+                    warnings=coerce_int(file_entry.get("warnings")),
+                )
+            )
+        if limit > 0:
+            return result[:limit]
+        return result
+
+    folder_result: list[FolderHotspotEntry] = []
+    for folder_entry in hotspots.get("topFolders", []):
+        folder_record: FolderHotspotEntry = {
+            "path": str(folder_entry.get("path", "<unknown>")),
+            "errors": coerce_int(folder_entry.get("errors")),
+            "warnings": coerce_int(folder_entry.get("warnings")),
+            "information": coerce_int(folder_entry.get("information")),
+            "participating_runs": coerce_int(folder_entry.get("participatingRuns")),
+        }
+        code_counts_map = coerce_mapping(folder_entry.get("codeCounts"))
+        if code_counts_map:
+            folder_record["code_counts"] = {
+                str(key): coerce_int(value) for key, value in code_counts_map.items()
             }
-            result.append(record)
-    else:
-        for folder_entry in hotspots.get("topFolders", []):
-            folder_record: dict[str, object] = {
-                "path": folder_entry.get("path", "<unknown>"),
-                "errors": coerce_int(folder_entry.get("errors")),
-                "warnings": coerce_int(folder_entry.get("warnings")),
-                "information": coerce_int(folder_entry.get("information")),
-                "participating_runs": coerce_int(folder_entry.get("participatingRuns")),
-            }
-            code_counts_map = coerce_mapping(folder_entry.get("codeCounts"))
-            if code_counts_map:
-                folder_record["code_counts"] = code_counts_map
-            recommendations_list = coerce_object_list(folder_entry.get("recommendations"))
-            if recommendations_list:
-                folder_record["recommendations"] = [str(item) for item in recommendations_list]
-            result.append(folder_record)
+        recommendations_list = coerce_object_list(folder_entry.get("recommendations"))
+        if recommendations_list:
+            folder_record["recommendations"] = [str(item) for item in recommendations_list]
+        folder_result.append(folder_record)
     if limit > 0:
-        return result[:limit]
-    return result
+        return folder_result[:limit]
+    return folder_result
 
 
 def query_readiness(
@@ -248,7 +353,7 @@ def query_readiness(
     level: ReadinessLevel,
     statuses: Sequence[ReadinessStatus] | None,
     limit: int,
-) -> dict[str, list[dict[str, object]]]:
+) -> ReadinessQueryPayload:
     """Build the payload for ``typewiz query readiness``."""
     return collect_readiness_view(summary, level=level, statuses=statuses, limit=limit)
 
@@ -259,12 +364,12 @@ def query_runs(
     tools: Sequence[str] | None,
     modes: Sequence[str] | None,
     limit: int,
-) -> list[dict[str, object]]:
+) -> list[RunSummaryEntry]:
     """Build the payload for ``typewiz query runs``."""
     runs = summary["tabs"]["runs"]["runSummary"]
     tool_filter = {tool for tool in tools or [] if tool}
     mode_filter = {mode for mode in modes or [] if mode}
-    records: list[dict[str, object]] = []
+    records: list[RunSummaryEntry] = []
     for name, entry in sorted(runs.items()):
         parts = name.split(":", 1)
         tool = parts[0]
@@ -274,50 +379,56 @@ def query_runs(
         if mode_filter and mode not in mode_filter:
             continue
         records.append(
-            {
-                "run": name,
-                "tool": tool,
-                "mode": mode,
-                "errors": coerce_int(entry.get("errors")),
-                "warnings": coerce_int(entry.get("warnings")),
-                "information": coerce_int(entry.get("information")),
-                "command": " ".join(entry.get("command", [])),
-            },
+            RunSummaryEntry(
+                run=name,
+                tool=tool,
+                mode=mode,
+                errors=coerce_int(entry.get("errors")),
+                warnings=coerce_int(entry.get("warnings")),
+                information=coerce_int(entry.get("information")),
+                command=" ".join(entry.get("command", [])),
+            )
         )
         if limit > 0 and len(records) >= limit:
             break
     return records
 
 
-def query_engines(summary: SummaryData, *, limit: int) -> list[dict[str, object]]:
+def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:
     """Build the payload for ``typewiz query engines``."""
     runs = summary["tabs"]["engines"]["runSummary"]
-    records: list[dict[str, object]] = []
+    records: list[EngineEntry] = []
     for name, entry in sorted(runs.items()):
         options = entry.get("engineOptions", {})
+        overrides_raw = coerce_object_list(options.get("overrides", []))
+        overrides: list[dict[str, object]] = []
+        for override in overrides_raw:
+            if isinstance(override, Mapping):
+                override_map = coerce_mapping(cast(Mapping[object, object], override))
+                overrides.append({str(key): value for key, value in override_map.items()})
         records.append(
-            {
-                "run": name,
-                "profile": options.get("profile"),
-                "config_file": options.get("configFile"),
-                "plugin_args": coerce_str_list(options.get("pluginArgs", [])),
-                "include": coerce_str_list(options.get("include", [])),
-                "exclude": coerce_str_list(options.get("exclude", [])),
-                "overrides": coerce_object_list(options.get("overrides", [])),
-            },
+            EngineEntry(
+                run=name,
+                profile=options.get("profile"),
+                config_file=options.get("configFile"),
+                plugin_args=coerce_str_list(options.get("pluginArgs", [])),
+                include=coerce_str_list(options.get("include", [])),
+                exclude=coerce_str_list(options.get("exclude", [])),
+                overrides=overrides,
+            )
         )
         if limit > 0 and len(records) >= limit:
             break
     return records
 
 
-def query_rules(summary: SummaryData, *, limit: int) -> list[dict[str, object]]:
+def query_rules(summary: SummaryData, *, limit: int) -> list[RuleEntry]:
     """Build the payload for ``typewiz query rules``."""
     rules = summary["tabs"]["hotspots"].get("topRules", {})
     entries = list(rules.items())
     if limit > 0:
         entries = entries[:limit]
-    return [{"rule": rule, "count": int(count)} for rule, count in entries]
+    return [RuleEntry(rule=rule, count=int(count)) for rule, count in entries]
 
 
 __all__ = [

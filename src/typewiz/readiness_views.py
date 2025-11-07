@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import cast
+from typing import TypedDict, cast
 
 from .data_validation import (
     coerce_int,
@@ -16,7 +16,7 @@ from .data_validation import (
     coerce_optional_str_list,
     coerce_str,
 )
-from .model_types import ReadinessStatus
+from .model_types import ReadinessLevel, ReadinessStatus
 from .summary_types import (
     ReadinessOptionEntry,
     ReadinessOptionsBucket,
@@ -34,13 +34,35 @@ class FolderReadinessRecord:
     errors: int
     warnings: int
 
-    def to_payload(self) -> dict[str, object]:
-        return {
-            "path": self.path,
-            "count": self.count,
-            "errors": self.errors,
-            "warnings": self.warnings,
-        }
+    def to_payload(self) -> FolderReadinessPayload:
+        return FolderReadinessPayload(
+            path=self.path,
+            count=self.count,
+            errors=self.errors,
+            warnings=self.warnings,
+        )
+
+
+class FolderReadinessPayload(TypedDict):
+    path: str
+    count: int
+    errors: int
+    warnings: int
+
+
+class FileReadinessPayloadBase(TypedDict):
+    path: str
+    diagnostics: int
+    errors: int
+    warnings: int
+    information: int
+
+
+class FileReadinessPayload(FileReadinessPayloadBase, total=False):
+    notes: list[str]
+    recommendations: list[str]
+    categories: dict[str, int]
+    categoryStatus: dict[str, str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,8 +77,8 @@ class FileReadinessRecord:
     categories: Mapping[str, int] | None = None
     category_status: Mapping[str, str] | None = None
 
-    def to_payload(self) -> dict[str, object]:
-        payload: dict[str, object] = {
+    def to_payload(self) -> FileReadinessPayload:
+        payload: FileReadinessPayload = {
             "path": self.path,
             "diagnostics": self.diagnostics,
             "errors": self.errors,
@@ -255,21 +277,14 @@ def _extract_file_entries(
 
 
 def _normalise_status_filters(
-    statuses: Sequence[ReadinessStatus | str] | None,
+    statuses: Sequence[ReadinessStatus] | None,
 ) -> list[ReadinessStatus]:
     if statuses is None:
         return [ReadinessStatus.BLOCKED]
     normalised: list[ReadinessStatus] = []
     for status in statuses:
-        if isinstance(status, ReadinessStatus):
-            parsed = status
-        else:
-            try:
-                parsed = ReadinessStatus.from_str(status)
-            except ValueError:
-                continue
-        if parsed not in normalised:
-            normalised.append(parsed)
+        if status not in normalised:
+            normalised.append(status)
     return normalised or [ReadinessStatus.BLOCKED]
 
 
@@ -277,7 +292,7 @@ def _folder_payload_for_status(
     options_tab: Mapping[str, ReadinessOptionsBucket],
     status: ReadinessStatus,
     limit: int,
-) -> list[dict[str, object]]:
+) -> list[FolderReadinessPayload]:
     # Prefer unknownChecks, then optionalChecks, then unusedSymbols, then general
     category_order: tuple[CategoryKey, ...] = (
         "unknownChecks",
@@ -306,7 +321,7 @@ def _file_payload_for_status(
     strict_map: Mapping[str, list[ReadinessStrictEntry]],
     status: ReadinessStatus,
     limit: int,
-) -> list[dict[str, object]]:
+) -> list[FileReadinessPayload]:
     entries = _extract_file_entries(strict_map, status)
     records: list[FileReadinessRecord] = []
     for strict_entry in entries:
@@ -319,23 +334,34 @@ def _file_payload_for_status(
     return [record.to_payload() for record in records]
 
 
+ReadinessViewResult = (
+    dict[str, list[FolderReadinessPayload]]
+    | dict[
+        str,
+        list[FileReadinessPayload],
+    ]
+)
+
+
 def collect_readiness_view(
     summary: SummaryData,
     *,
-    level: str,
+    level: ReadinessLevel,
     statuses: Sequence[ReadinessStatus] | None,
     limit: int,
-) -> dict[str, list[dict[str, object]]]:
+) -> ReadinessViewResult:
     tabs: SummaryTabs = summary["tabs"]
     readiness_tab = tabs.get("readiness") or {}
     options_tab = _coerce_options_map(readiness_tab.get("options"))
     strict_map = _coerce_strict_map(readiness_tab.get("strict"))
 
     statuses_normalised = _normalise_status_filters(statuses)
-    result: dict[str, list[dict[str, object]]] = {}
+    if level is ReadinessLevel.FOLDER:
+        view: dict[str, list[FolderReadinessPayload]] = {}
+        for status in statuses_normalised:
+            view[status.value] = _folder_payload_for_status(options_tab, status, limit)
+        return view
+    file_view: dict[str, list[FileReadinessPayload]] = {}
     for status in statuses_normalised:
-        if level == "folder":
-            result[status.value] = _folder_payload_for_status(options_tab, status, limit)
-        else:
-            result[status.value] = _file_payload_for_status(strict_map, status, limit)
-    return result
+        file_view[status.value] = _file_payload_for_status(strict_map, status, limit)
+    return file_view

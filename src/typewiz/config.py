@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import tomllib as toml
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar, Final, cast
@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from .collection_utils import dedupe_preserve
 from .exceptions import TypewizValidationError
-from .model_types import FailOnPolicy, SignaturePolicy
+from .model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
 
 CONFIG_VERSION: Final[int] = 0
 FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)
@@ -144,17 +144,12 @@ def _default_ratchet_runs() -> list[str]:
     return []
 
 
-def _default_ratchet_severities() -> list[str]:
-    return ["error", "warning"]
+def _default_ratchet_severity_values() -> list[str]:
+    return [SeverityLevel.ERROR.value, SeverityLevel.WARNING.value]
 
 
-def _normalise_severity_token(value: str) -> str:
-    token = value.strip().lower()
-    if token == "errors":
-        return "error"
-    if token == "warnings":
-        return "warning"
-    return token
+def _default_ratchet_severity_levels() -> list[SeverityLevel]:
+    return [SeverityLevel.ERROR, SeverityLevel.WARNING]
 
 
 @dataclass(slots=True)
@@ -200,7 +195,7 @@ class RatchetConfig:
     manifest_path: Path | None = None
     output_path: Path | None = None
     runs: list[str] = field(default_factory=_default_ratchet_runs)
-    severities: list[str] = field(default_factory=_default_ratchet_severities)
+    severities: list[SeverityLevel] = field(default_factory=_default_ratchet_severity_levels)
     targets: dict[str, int] = field(default_factory=_default_dict_str_int)
     signature: SignaturePolicy = SignaturePolicy.FAIL
     limit: int | None = None
@@ -394,7 +389,7 @@ class RatchetConfigModel(BaseModel):
     manifest_path: Path | None = None
     output_path: Path | None = None
     runs: list[str] = Field(default_factory=list)
-    severities: list[str] = Field(default_factory=_default_ratchet_severities)
+    severities: list[str] = Field(default_factory=_default_ratchet_severity_values)
     targets: dict[str, int] = Field(default_factory=dict)
     signature: SignaturePolicy = Field(default=SignaturePolicy.FAIL)
     limit: int | None = None
@@ -410,8 +405,8 @@ class RatchetConfigModel(BaseModel):
     def _coerce_severities(cls, value: object) -> list[str]:
         severities = ensure_list(value)
         if not severities:
-            return _default_ratchet_severities()
-        return [_normalise_severity_token(token) for token in severities]
+            return _default_ratchet_severity_values()
+        return [SeverityLevel.from_str(token).value for token in severities]
 
     @field_validator("targets", mode="before")
     @classmethod
@@ -524,9 +519,11 @@ def _model_to_dataclass(model: AuditConfigModel) -> AuditConfig:
 
 def _ratchet_from_model(model: RatchetConfigModel) -> RatchetConfig:
     payload = model.model_dump(mode="python")
-    config = RatchetConfig(**payload)
-    config.severities = [_normalise_severity_token(item) for item in config.severities]
-    return config
+    payload["severities"] = [
+        SeverityLevel.from_str(item)
+        for item in cast("Sequence[str]", payload.get("severities", []))
+    ]
+    return RatchetConfig(**payload)
 
 
 def resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:

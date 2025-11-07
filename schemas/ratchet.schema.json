@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://typewiz.dev/schemas/ratchet.schema.json",
+  "title": "RatchetModel",
+  "type": "object",
+  "required": ["schemaVersion", "generatedAt", "runs"],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "manifestPath": {
+      "type": ["string", "null"]
+    },
+    "projectRoot": {
+      "type": ["string", "null"]
+    },
+    "runs": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "patternProperties": {
+        ".+": { "$ref": "#/definitions/runBudget" }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "severity": {
+      "type": "string",
+      "enum": ["error", "warning", "information"]
+    },
+    "runBudget": {
+      "type": "object",
+      "required": ["severities", "paths", "targets"],
+      "properties": {
+        "severities": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/severity" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "paths": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            ".+": { "$ref": "#/definitions/pathBudget" }
+          }
+        },
+        "targets": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/definitions/severity" },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "engine_signature": {
+          "oneOf": [
+            { "$ref": "#/definitions/engineSignature" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "pathBudget": {
+      "type": "object",
+      "required": ["severities"],
+      "properties": {
+        "severities": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/definitions/severity" },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "engineSignature": {
+      "type": "object",
+      "required": ["engineOptions"],
+      "properties": {
+        "tool": { "type": ["string", "null"] },
+        "mode": { "type": ["string", "null"] },
+        "engineOptions": { "type": "object" },
+        "hash": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

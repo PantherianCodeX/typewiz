@@ -3,12 +3,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from ..model_types import SeverityLevel
 from ..type_aliases import RunId
-from .models import EngineSignaturePayloadWithHash, SeverityToken
+from .models import EngineSignaturePayloadWithHash
 
 
 def _new_finding_list() -> list[RatchetFinding]:
@@ -55,7 +54,7 @@ class RatchetRunReport:
     """Aggregated findings for a single tool/mode run."""
 
     run_id: RunId
-    severities: list[SeverityToken]
+    severities: list[SeverityLevel]
     violations: list[RatchetFinding] = field(default_factory=_new_finding_list)
     improvements: list[RatchetFinding] = field(default_factory=_new_finding_list)
     signature_matches: bool = True
@@ -71,7 +70,7 @@ class RatchetRunReport:
     def to_payload(self) -> dict[str, object]:
         return {
             "run": self.run_id,
-            "severities": list(self.severities),
+            "severities": [severity.value for severity in self.severities],
             "violations": [finding.to_payload() for finding in self.violations],
             "improvements": [
                 finding.to_payload(rename_allowed="previous") for finding in self.improvements
@@ -143,15 +142,9 @@ class RatchetRunReport:
 
         if not ignore_signature and self.has_signature_mismatch():
             expected_hash = (
-                self.expected_signature.get("hash")
-                if isinstance(self.expected_signature, Mapping)
-                else "<none>"
+                self.expected_signature.get("hash") if self.expected_signature else "<none>"
             )
-            actual_hash = (
-                self.actual_signature.get("hash")
-                if isinstance(self.actual_signature, Mapping)
-                else "<none>"
-            )
+            actual_hash = self.actual_signature.get("hash") if self.actual_signature else "<none>"
             lines.append(
                 "  Engine signature mismatch:" + f" expected={expected_hash} actual={actual_hash}"
             )

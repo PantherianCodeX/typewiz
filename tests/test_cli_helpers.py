@@ -4,8 +4,18 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
+from typewiz.cli.helpers.formatting import (
+    FolderHotspotEntry,
+    query_engines,
+    query_hotspots,
+    query_overview,
+    query_readiness,
+    query_runs,
+)
 from typewiz.cli_helpers import (
     collect_profile_args,
     parse_comma_separated,
@@ -13,7 +23,19 @@ from typewiz.cli_helpers import (
     parse_key_value_entries,
     render_data_structure,
 )
-from typewiz.model_types import DataFormat
+from typewiz.model_types import (
+    DataFormat,
+    HotspotKind,
+    ReadinessLevel,
+    ReadinessStatus,
+)
+from typewiz.readiness_views import FolderReadinessPayload
+from typewiz.summary_types import (
+    ReadinessOptionEntry,
+    ReadinessOptionsBucket,
+    ReadinessTab,
+    SummaryData,
+)
 
 
 def test_parse_comma_separated_strips_entries() -> None:
@@ -49,3 +71,137 @@ def test_collect_profile_args_uses_helper() -> None:
 def test_render_data_structure_accepts_enum() -> None:
     rows = render_data_structure({"key": "value"}, DataFormat.TABLE)
     assert rows[0].startswith("key")
+
+
+def test_query_overview_payload_shapes() -> None:
+    summary = _sample_summary()
+    payload = query_overview(summary, include_categories=True, include_runs=True)
+    assert payload["severity_totals"]["error"] == 2
+    assert payload.get("category_totals", {})["unknownChecks"] == 2
+    runs = payload.get("runs")
+    assert runs and runs[0]["run"] == "pyright:current"
+
+
+def test_query_hotspots_file_payload() -> None:
+    summary = _sample_summary()
+    entries = query_hotspots(summary, kind=HotspotKind.FILES, limit=1)
+    assert entries[0]["path"] == "src/app.py"
+    folders = cast(
+        list[FolderHotspotEntry], query_hotspots(summary, kind=HotspotKind.FOLDERS, limit=1)
+    )
+    assert folders[0]["participating_runs"] == 1
+
+
+def test_query_runs_and_engines_payloads() -> None:
+    summary = _sample_summary()
+    runs = query_runs(summary, tools=["pyright"], modes=["current"], limit=5)
+    assert runs[0]["command"] == "pyright --strict"
+    engines = query_engines(summary, limit=5)
+    assert engines[0]["plugin_args"] == ["--strict"]
+
+
+def test_query_readiness_payload() -> None:
+    summary = _sample_summary()
+    view = cast(
+        dict[str, list[FolderReadinessPayload]],
+        query_readiness(
+            summary,
+            level=ReadinessLevel.FOLDER,
+            statuses=[ReadinessStatus.BLOCKED],
+            limit=5,
+        ),
+    )
+    assert "blocked" in view
+    assert view["blocked"][0]["path"] == "src"
+
+
+def _sample_summary() -> SummaryData:
+    blocked = ReadinessStatus.BLOCKED.value
+    readiness_tab: ReadinessTab = {
+        "strict": {
+            blocked: [
+                {
+                    "path": "src/app.py",
+                    "diagnostics": 2,
+                    "errors": 1,
+                    "warnings": 1,
+                    "information": 0,
+                }
+            ]
+        },
+        "options": {
+            "unknownChecks": ReadinessOptionsBucket(
+                blocked=[
+                    ReadinessOptionEntry(path="src", count=2, errors=1, warnings=1),
+                ],
+                ready=[],
+                close=[],
+                threshold=1,
+            ),
+        },
+    }
+    summary: SummaryData = {
+        "generatedAt": "now",
+        "projectRoot": "/repo",
+        "severityTotals": {},
+        "categoryTotals": {},
+        "runSummary": {},
+        "topFolders": [],
+        "topFiles": [],
+        "topRules": {},
+        "tabs": {
+            "overview": {
+                "severityTotals": {"error": 2},
+                "categoryTotals": {"unknownChecks": 2},
+                "runSummary": {
+                    "pyright:current": {
+                        "errors": 1,
+                        "warnings": 0,
+                        "information": 1,
+                        "total": 2,
+                    }
+                },
+            },
+            "hotspots": {
+                "topFiles": [{"path": "src/app.py", "errors": 1, "warnings": 0}],
+                "topFolders": [
+                    {
+                        "path": "src",
+                        "errors": 1,
+                        "warnings": 0,
+                        "information": 1,
+                        "participatingRuns": 1,
+                        "codeCounts": {"reportGeneralTypeIssues": 1},
+                        "recommendations": ["add types"],
+                    }
+                ],
+                "topRules": {"reportGeneralTypeIssues": 2},
+            },
+            "readiness": readiness_tab,
+            "runs": {
+                "runSummary": {
+                    "pyright:current": {
+                        "errors": 1,
+                        "warnings": 0,
+                        "information": 1,
+                        "command": ["pyright", "--strict"],
+                    }
+                }
+            },
+            "engines": {
+                "runSummary": {
+                    "pyright:current": {
+                        "engineOptions": {
+                            "profile": "strict",
+                            "configFile": "pyrightconfig.json",
+                            "pluginArgs": ["--strict"],
+                            "include": ["src"],
+                            "exclude": [],
+                            "overrides": [],
+                        }
+                    }
+                }
+            },
+        },
+    }
+    return summary
