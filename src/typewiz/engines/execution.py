@@ -18,12 +18,11 @@ from typewiz._internal.utils import (
     require_json,
     run_command,
 )
-
-from .core.model_types import LogComponent, Mode, SeverityLevel
-from .core.type_aliases import BuiltinEngineName, Command, ToolName
-from .core.types import Diagnostic
-from .engines.base import EngineResult
-from .typed_manifest import ToolSummary
+from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
+from typewiz.core.type_aliases import BuiltinEngineName, Command, ToolName
+from typewiz.core.types import Diagnostic
+from typewiz.engines.base import EngineResult
+from typewiz.typed_manifest import ToolSummary
 
 logger: logging.Logger = logging.getLogger("typewiz")
 PYRIGHT_NAME: Final[BuiltinEngineName] = "pyright"

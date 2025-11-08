@@ -11,7 +11,7 @@ import pytest
 
 from typewiz._internal.utils import CommandOutput, consume
 from typewiz.core.model_types import Mode, SeverityLevel
-from typewiz.runner import run_pyright
+from typewiz.engines.execution import run_pyright
 
 
 def _command_output(payload: Mapping[str, object], *, exit_code: int = 1) -> CommandOutput:
@@ -38,7 +38,7 @@ def _patch_run_command(
     ) -> CommandOutput:
         return _command_output(payload, exit_code=exit_code)
 
-    monkeypatch.setattr("typewiz.runner.run_command", _run_command)
+    monkeypatch.setattr("typewiz.engines.execution.run_command", _run_command)
 
 
 def test_run_pyright_records_tool_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

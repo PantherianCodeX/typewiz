@@ -10,7 +10,7 @@ from typewiz._internal.utils import python_executable
 from typewiz.core.model_types import CategoryMapping, Mode
 from typewiz.core.type_aliases import Command, RelPath
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
-from typewiz.runner import run_mypy
+from typewiz.engines.execution import run_mypy
 
 
 class MypyEngine(BaseEngine):

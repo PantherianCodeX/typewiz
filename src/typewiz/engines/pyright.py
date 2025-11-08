@@ -8,7 +8,7 @@ from typing import override
 from typewiz.core.model_types import CategoryMapping, Mode
 from typewiz.core.type_aliases import Command, RelPath
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
-from typewiz.runner import run_pyright
+from typewiz.engines.execution import run_pyright
 
 
 class PyrightEngine(BaseEngine):

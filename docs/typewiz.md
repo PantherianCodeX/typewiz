@@ -145,7 +145,7 @@ Implement the following on your engine class:
     - `context.engine_options.plugin_args`: merged/deduped args from CLI/config/profiles/overrides.
     - `context.engine_options.config_file`: resolved config path if provided.
     - `paths`: directories/files for the full run; empty for "current" mode.
-  - Execute your tool (see `typewiz.runner.run_pyright` / `run_mypy` as references) and return:
+  - Execute your tool (see `typewiz.engines.execution.run_pyright` / `run_mypy` as references) and return:
     - `engine`: `ToolName(self.name)`.
     - `mode`: `"current"` or `"full"`.
     - `command`: the argv used (for reproducibility and caching keys).
