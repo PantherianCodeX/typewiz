@@ -138,6 +138,20 @@ tox -e mypy,pyright
 
 In CI, a GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests and both type checkers on every push/PR.
 
+### Bulk import rewrites
+
+When files move between packages you can rewrite imports en masse with the helper
+script:
+
+```bash
+python scripts/refactor_imports.py --map typewiz.logging_utils=typewiz._internal.logging_utils --map typewiz.exceptions=typewiz._internal.exceptions
+# review output, then apply
+python scripts/refactor_imports.py --map old.module=new.module --apply
+```
+
+It only touches `import`/`from` statements under `src/` by default; pass
+`--root .` to include other folders.
+
 Validate a manifest against the bundled JSON Schema:
 
 ```bash
