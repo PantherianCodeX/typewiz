@@ -144,13 +144,19 @@ When files move between packages you can rewrite imports en masse with the helpe
 script:
 
 ```bash
+# quick ad-hoc mapping
 python scripts/refactor_imports.py --map typewiz.logging_utils=typewiz._internal.logging_utils --map typewiz.exceptions=typewiz._internal.exceptions
-# review output, then apply
-python scripts/refactor_imports.py --map old.module=new.module --apply
+
+# store large migrations in a file
+cat > mappings.txt <<'EOF'
+typewiz.logging_utils=typewiz._internal.logging_utils
+typewiz.exceptions=typewiz._internal.exceptions
+EOF
+python scripts/refactor_imports.py --mapping-file mappings.txt --apply
 ```
 
 It only touches `import`/`from` statements under `src/` by default; pass
-`--root .` to include other folders.
+`--root .` to include other folders (tests/docs/etc.).
 
 Validate a manifest against the bundled JSON Schema:
 

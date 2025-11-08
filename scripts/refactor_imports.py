@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -40,6 +40,18 @@ def _parse_map_entries(entries: Iterable[str]) -> list[ImportMap]:
     if not mapping:
         raise argparse.ArgumentTypeError("At least one --map entry is required")
     return mapping
+
+
+def _load_mapping_file(path: Path) -> list[str]:
+    if not path.exists():
+        raise FileNotFoundError(f"Mapping file {path} does not exist")
+    entries: list[str] = []
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        entries.append(line)
+    return entries
 
 
 def _rewrite_from_line(line: str, mapping: dict[str, str]) -> tuple[str, bool]:
@@ -106,7 +118,7 @@ def _rewrite_content(content: str, mapping: dict[str, str]) -> tuple[str, bool]:
     return "\n".join(lines) + ("\n" if content.endswith("\n") else ""), True
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Rewrite import statements")
     parser.add_argument(
         "--root",
@@ -121,13 +133,23 @@ def main() -> int:
         help="Mapping entry in the form old.module=new.module (repeatable)",
     )
     parser.add_argument(
+        "--mapping-file",
+        dest="mapping_files",
+        action="append",
+        default=[],
+        help="Optional file containing mapping definitions (one 'old=new' per line)",
+    )
+    parser.add_argument(
         "--apply",
         action="store_true",
         help="Actually write changes (default: dry-run)",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
-    mappings = _parse_map_entries(args.mappings)
+    mapping_entries = list(args.mappings)
+    for file_entry in args.mapping_files:
+        mapping_entries.extend(_load_mapping_file(Path(file_entry)))
+    mappings = _parse_map_entries(mapping_entries)
     mapping_dict = {entry.old: entry.new for entry in mappings}
     root = Path(args.root).resolve()
     if not root.exists():
@@ -149,7 +171,10 @@ def main() -> int:
 
     action = "Updated" if args.apply else "Would update"
     for file_path in changed_files:
-        rel = file_path.relative_to(Path.cwd())
+        try:
+            rel = file_path.relative_to(Path.cwd())
+        except ValueError:
+            rel = file_path
         print(f"{action}: {rel}")
     if not args.apply:
         print("Dry-run complete; re-run with --apply to write changes.")
