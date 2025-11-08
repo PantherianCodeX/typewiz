@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -109,3 +110,76 @@ def test_export_map_updates_real_module(tmp_path: Path) -> None:
     assert exit_code == 0
     text = dest.read_text(encoding="utf-8")
     assert '"execute_audit"' in text
+
+
+def _init_repo(path: Path) -> None:
+    _ = subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
+    _ = subprocess.run(
+        ["git", "config", "user.name", "Codex"],
+        cwd=path,
+        check=True,
+        capture_output=True,
+    )
+    _ = subprocess.run(
+        ["git", "config", "user.email", "codex@example.com"],
+        cwd=path,
+        check=True,
+        capture_output=True,
+    )
+
+
+def _write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _ = path.write_text(text, encoding="utf-8")
+
+
+def test_git_discovery_limits_to_tracked_files(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _init_repo(repo)
+    tracked = repo / "pkg" / "tracked.py"
+    untracked = repo / "pkg" / "untracked.py"
+    _write(tracked, "import alpha.module\n")
+    _write(untracked, "import alpha.module\n")
+    _ = subprocess.run(["git", "add", str(tracked.relative_to(repo))], cwd=repo, check=True)
+    _ = subprocess.run(
+        ["git", "commit", "-m", "add tracked"], cwd=repo, check=True, capture_output=True
+    )
+
+    exit_code = MODULE.main([
+        "--root",
+        str(repo),
+        "--map",
+        "alpha.module=beta.module",
+        "--apply",
+    ])
+    assert exit_code == 0
+    assert tracked.read_text(encoding="utf-8") == "import beta.module\n"
+    # Untracked file untouched because git discovery only lists tracked files
+    assert untracked.read_text(encoding="utf-8") == "import alpha.module\n"
+
+
+def test_no_use_git_processes_untracked_files(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _init_repo(repo)
+    tracked = repo / "pkg" / "tracked.py"
+    untracked = repo / "pkg" / "untracked.py"
+    _write(tracked, "from source import item\n")
+    _write(untracked, "from source import item\n")
+    _ = subprocess.run(["git", "add", str(tracked.relative_to(repo))], cwd=repo, check=True)
+    _ = subprocess.run(
+        ["git", "commit", "-m", "add tracked"], cwd=repo, check=True, capture_output=True
+    )
+
+    exit_code = MODULE.main([
+        "--root",
+        str(repo),
+        "--map",
+        "source=dest",
+        "--no-use-git",
+        "--apply",
+    ])
+    assert exit_code == 0
+    assert tracked.read_text(encoding="utf-8") == "from dest import item\n"
+    assert untracked.read_text(encoding="utf-8") == "from dest import item\n"

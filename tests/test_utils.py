@@ -7,7 +7,7 @@ from typing import cast
 
 import pytest
 
-from typewiz.model_types import ReadinessStatus, SeverityLevel
+from typewiz.core.model_types import ReadinessStatus, SeverityLevel
 from typewiz.utils import consume, normalise_enums_for_json, resolve_project_root
 
 

@@ -17,12 +17,12 @@ from .audit_paths import normalise_override_entries, normalise_paths, relative_o
 from .cache import CachedRun, EngineCache, collect_file_hashes, fingerprint_path
 from .collection_utils import merge_preserve
 from .config import AuditConfig, EngineProfile, EngineSettings, PathOverride
+from .core.model_types import FileHashPayload, LogComponent, Mode, OverrideEntry
+from .core.type_aliases import CacheKey, EngineName, PathKey, ProfileName, RelPath, ToolName
+from .core.types import RunResult
 from .engines import EngineContext, EngineOptions
 from .engines.base import BaseEngine, EngineResult
-from .model_types import FileHashPayload, LogComponent, Mode, OverrideEntry
-from .type_aliases import CacheKey, EngineName, PathKey, ProfileName, RelPath, ToolName
 from .typed_manifest import ToolSummary
-from .types import RunResult
 
 
 @dataclass(slots=True)

@@ -3,8 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from .collection_utils import dedupe_preserve
-from .model_types import OverrideEntry
-from .type_aliases import RelPath
+from .core.model_types import OverrideEntry
+from .core.type_aliases import RelPath
 
 
 def get_override_components(

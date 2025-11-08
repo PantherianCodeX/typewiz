@@ -7,8 +7,7 @@ import argparse
 from pathlib import Path
 from typing import Any, Protocol
 
-from typewiz.dashboard import build_summary, load_manifest
-from typewiz.model_types import (
+from typewiz.core.model_types import (
     DataFormat,
     HotspotKind,
     QuerySection,
@@ -16,7 +15,8 @@ from typewiz.model_types import (
     ReadinessStatus,
     SeverityLevel,
 )
-from typewiz.summary_types import SummaryData
+from typewiz.core.summary_types import SummaryData
+from typewiz.dashboard import build_summary, load_manifest
 
 from ..helpers import (
     echo,

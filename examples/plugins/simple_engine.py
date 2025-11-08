@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from typewiz.core.model_types import SeverityLevel
+from typewiz.core.type_aliases import ToolName
+from typewiz.core.types import Diagnostic
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
-from typewiz.model_types import SeverityLevel
-from typewiz.type_aliases import ToolName
-from typewiz.types import Diagnostic
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

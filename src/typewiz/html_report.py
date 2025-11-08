@@ -6,17 +6,17 @@ from collections.abc import Sequence
 from html import escape
 from typing import Final, cast
 
-from .model_types import (
+from .core.model_types import (
     DashboardView,
     OverrideEntry,
     ReadinessStatus,
     SeverityLevel,
     SummaryTabName,
 )
+from .core.summary_types import HotspotsTab, OverviewTab, ReadinessTab, SummaryData, SummaryTabs
+from .core.type_aliases import RelPath
 from .override_utils import get_override_components
 from .readiness import CATEGORY_LABELS
-from .summary_types import HotspotsTab, OverviewTab, ReadinessTab, SummaryData, SummaryTabs
-from .type_aliases import RelPath
 
 _TAB_ORDER: Final[tuple[SummaryTabName, ...]] = tuple(SummaryTabName)
 _TAB_LABELS: Final[dict[SummaryTabName, str]] = {

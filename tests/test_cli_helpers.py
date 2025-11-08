@@ -25,15 +25,14 @@ from typewiz.cli.helpers.formatting import (
     query_rules,
     query_runs,
 )
-from typewiz.model_types import (
+from typewiz.core.model_types import (
     DataFormat,
     HotspotKind,
     ReadinessLevel,
     ReadinessStatus,
     SeverityLevel,
 )
-from typewiz.readiness_views import FolderReadinessPayload
-from typewiz.summary_types import (
+from typewiz.core.summary_types import (
     CountsByCategory,
     CountsByRule,
     CountsBySeverity,
@@ -43,7 +42,8 @@ from typewiz.summary_types import (
     RulePathEntry,
     SummaryData,
 )
-from typewiz.type_aliases import RelPath, RunId
+from typewiz.core.type_aliases import RelPath, RunId
+from typewiz.readiness_views import FolderReadinessPayload
 
 
 def test_parse_comma_separated_strips_entries() -> None:

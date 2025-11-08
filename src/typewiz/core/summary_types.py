@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TypedDict
 
+from ..typed_manifest import EngineOptionsEntry, ToolSummary
 from .model_types import ReadinessStatus, SeverityLevel
 from .type_aliases import CategoryKey, CategoryName, Command, RunId
-from .typed_manifest import EngineOptionsEntry, ToolSummary
 
 CountsBySeverity = dict[SeverityLevel, int]
 CountsByRule = dict[str, int]

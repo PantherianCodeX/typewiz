@@ -27,7 +27,8 @@ from typewiz.cli.helpers import (
     resolve_summary_only,
 )
 from typewiz.config import RatchetConfig, load_config
-from typewiz.model_types import DataFormat, RatchetAction, SignaturePolicy
+from typewiz.core.model_types import DataFormat, RatchetAction, SignaturePolicy
+from typewiz.core.type_aliases import RunId
 from typewiz.ratchet import (
     apply_auto_update as ratchet_apply_auto_update,
 )
@@ -46,7 +47,6 @@ from typewiz.ratchet import (
 )
 from typewiz.ratchet.io import current_timestamp
 from typewiz.ratchet.io import load_manifest as load_ratchet_manifest
-from typewiz.type_aliases import RunId
 from typewiz.typed_manifest import ManifestData
 from typewiz.utils import normalise_enums_for_json, resolve_project_root
 

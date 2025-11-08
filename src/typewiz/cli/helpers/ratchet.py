@@ -7,9 +7,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Final, cast
 
-from typewiz.model_types import DEFAULT_SEVERITIES, SeverityLevel, SignaturePolicy
+from typewiz.core.model_types import DEFAULT_SEVERITIES, SeverityLevel, SignaturePolicy
+from typewiz.core.type_aliases import RunId
 from typewiz.ratchet.models import RatchetModel
-from typewiz.type_aliases import RunId
 
 from .args import parse_comma_separated, parse_key_value_entries
 

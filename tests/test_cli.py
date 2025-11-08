@@ -27,9 +27,7 @@ from typewiz.cli.helpers.formatting import (
     query_readiness,
 )
 from typewiz.config import Config
-from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
-from typewiz.model_types import (
+from typewiz.core.model_types import (
     Mode,
     OverrideEntry,
     ReadinessLevel,
@@ -38,7 +36,7 @@ from typewiz.model_types import (
     SummaryField,
     SummaryStyle,
 )
-from typewiz.summary_types import (
+from typewiz.core.summary_types import (
     CountsByCategory,
     CountsByRule,
     CountsBySeverity,
@@ -56,8 +54,10 @@ from typewiz.summary_types import (
     SummaryRunEntry,
     SummaryTabs,
 )
-from typewiz.type_aliases import CategoryKey, EngineName, RelPath, RunId, RunnerName, ToolName
-from typewiz.types import Diagnostic, RunResult
+from typewiz.core.type_aliases import CategoryKey, EngineName, RelPath, RunId, RunnerName, ToolName
+from typewiz.core.types import Diagnostic, RunResult
+from typewiz.engines.base import EngineContext, EngineResult
+from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
 from typewiz.utils import consume
 
 _print_summary = print_summary

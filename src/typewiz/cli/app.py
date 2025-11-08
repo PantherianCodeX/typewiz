@@ -26,9 +26,7 @@ from typewiz.cli.helpers import SUMMARY_FIELD_CHOICES as _SUMMARY_FIELD_CHOICES
 from typewiz.cli.helpers import echo as _echo
 from typewiz.cli.helpers import print_readiness_summary as _helpers_print_readiness_summary
 from typewiz.cli.helpers import register_argument as _register_argument
-from typewiz.dashboard import build_summary, load_manifest, render_markdown
-from typewiz.html_report import render_html
-from typewiz.model_types import (
+from typewiz.core.model_types import (
     DashboardFormat,
     DashboardView,
     LogFormat,
@@ -36,7 +34,9 @@ from typewiz.model_types import (
     ReadinessStatus,
     SeverityLevel,
 )
-from typewiz.summary_types import SummaryData
+from typewiz.core.summary_types import SummaryData
+from typewiz.dashboard import build_summary, load_manifest, render_markdown
+from typewiz.html_report import render_html
 from typewiz.utils import consume, normalise_enums_for_json
 
 SUMMARY_FIELD_CHOICES = _SUMMARY_FIELD_CHOICES

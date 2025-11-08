@@ -7,7 +7,8 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any, TypedDict, cast
 
-from typewiz.model_types import SeverityLevel, SignaturePolicy
+from typewiz.core.model_types import SeverityLevel, SignaturePolicy
+from typewiz.core.type_aliases import RelPath, RunId
 from typewiz.ratchet import (
     apply_auto_update,
     build_ratchet_from_manifest,
@@ -15,7 +16,6 @@ from typewiz.ratchet import (
     refresh_signatures,
 )
 from typewiz.ratchet.policies import compare_signatures
-from typewiz.type_aliases import RelPath, RunId
 from typewiz.typed_manifest import (
     EngineOptionsEntry,
     FileEntry,

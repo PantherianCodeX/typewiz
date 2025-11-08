@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .type_aliases import RelPath
+from .core.type_aliases import RelPath
 from .utils import ROOT_MARKERS
 
 if TYPE_CHECKING:

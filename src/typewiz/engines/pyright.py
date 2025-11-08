@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import override
 
+from typewiz.core.model_types import CategoryMapping, Mode
+from typewiz.core.type_aliases import Command, RelPath
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
-from typewiz.model_types import CategoryMapping, Mode
 from typewiz.runner import run_pyright
-from typewiz.type_aliases import Command, RelPath
 
 
 class PyrightEngine(BaseEngine):

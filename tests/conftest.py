@@ -11,8 +11,8 @@ if str(SRC) not in sys.path:
 
 import pytest
 
-from typewiz.model_types import OverrideEntry, ReadinessStatus, SeverityLevel
-from typewiz.summary_types import (
+from typewiz.core.model_types import OverrideEntry, ReadinessStatus, SeverityLevel
+from typewiz.core.summary_types import (
     CountsByCategory,
     CountsBySeverity,
     ReadinessOptionEntry,
@@ -26,7 +26,7 @@ from typewiz.summary_types import (
     SummaryRunEntry,
     SummaryTabs,
 )
-from typewiz.type_aliases import CategoryName, RelPath, RunId
+from typewiz.core.type_aliases import CategoryName, RelPath, RunId
 
 
 class SnapshotMissingError(AssertionError):

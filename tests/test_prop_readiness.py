@@ -7,13 +7,8 @@ from typing import cast
 import hypothesis.strategies as st
 from hypothesis import given
 
-from typewiz.model_types import ReadinessLevel, ReadinessStatus
-from typewiz.readiness_views import (
-    FileReadinessPayload,
-    FolderReadinessPayload,
-    collect_readiness_view,
-)
-from typewiz.summary_types import (
+from typewiz.core.model_types import ReadinessLevel, ReadinessStatus
+from typewiz.core.summary_types import (
     ReadinessOptionEntry,
     ReadinessOptionsPayload,
     ReadinessStrictEntry,
@@ -21,7 +16,12 @@ from typewiz.summary_types import (
     SummaryData,
     SummaryTabs,
 )
-from typewiz.type_aliases import CategoryKey
+from typewiz.core.type_aliases import CategoryKey
+from typewiz.readiness_views import (
+    FileReadinessPayload,
+    FolderReadinessPayload,
+    collect_readiness_view,
+)
 
 
 def _status() -> st.SearchStrategy[ReadinessStatus]:

@@ -12,12 +12,12 @@ from .audit_execution import execute_engine_mode, resolve_engine_options
 from .audit_paths import normalise_paths
 from .cache import EngineCache
 from .config import AuditConfig, Config, load_config
+from .core.model_types import Mode, SeverityLevel
+from .core.type_aliases import RelPath
 from .dashboard import build_summary, render_markdown
 from .engines import EngineContext, resolve_engines
 from .html_report import render_html
 from .manifest import ManifestBuilder
-from .model_types import Mode, SeverityLevel
-from .type_aliases import RelPath
 from .utils import (
     consume,
     default_full_paths,
@@ -30,10 +30,10 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from .core.summary_types import SummaryData
+    from .core.types import RunResult
     from .engines.base import BaseEngine
-    from .summary_types import SummaryData
     from .typed_manifest import ManifestData
-    from .types import RunResult
 
 logger: logging.Logger = logging.getLogger("typewiz")
 

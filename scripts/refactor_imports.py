@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import argparse
 import ast
+import subprocess
 import sys
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -82,6 +83,57 @@ def _parse_ensure_import_entries(entries: Iterable[str], root: Path) -> list[Ens
             raise argparse.ArgumentTypeError(msg)
         ensure_list.append(EnsureImport(path=path, module=module, symbols=symbols))
     return ensure_list
+
+
+def _git_repo_root(start: Path) -> Path | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=start,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    root = result.stdout.strip()
+    return Path(root).resolve() if root else None
+
+
+def _git_tracked_python_files(root: Path) -> list[Path]:
+    repo_root = _git_repo_root(root)
+    if not repo_root:
+        return []
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo_root), "ls-files", "*.py"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError:
+        return []
+    root_resolved = root.resolve()
+    files: list[Path] = []
+    for line in result.stdout.splitlines():
+        rel = line.strip()
+        if not rel:
+            continue
+        path = (repo_root / rel).resolve()
+        if not path.exists():
+            continue
+        if root_resolved == repo_root or path == root_resolved or root_resolved in path.parents:
+            files.append(path)
+    return files
+
+
+def _iter_python_files(root: Path, use_git: bool) -> Iterator[Path]:
+    if use_git:
+        git_files = _git_tracked_python_files(root)
+        if git_files:
+            yield from git_files
+            return
+    yield from root.rglob("*.py")
 
 
 def _load_mapping_file(path: Path) -> list[str]:
@@ -306,6 +358,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=[],
         help="Rename entries inside __all__ blocks (old=new, repeatable)",
     )
+    parser.add_argument(
+        "--use-git",
+        dest="use_git",
+        action="store_true",
+        default=True,
+        help="Use 'git ls-files' to discover Python files (respects gitignore)",
+    )
+    parser.add_argument(
+        "--no-use-git",
+        dest="use_git",
+        action="store_false",
+        help="Disable git discovery and scan filesystem directly",
+    )
     args = parser.parse_args(argv)
 
     root = Path(args.root).resolve()
@@ -336,7 +401,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         changed_files.append(resolved)
 
     if mapping_dict:
-        for path in root.rglob("*.py"):
+        for path in _iter_python_files(root, args.use_git):
             content = path.read_text(encoding="utf-8")
             new_content, changed = _rewrite_content(content, mapping_dict)
             if not changed:
@@ -346,7 +411,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 path.write_text(new_content, encoding="utf-8")
 
     if export_map:
-        for path in root.rglob("*.py"):
+        for path in _iter_python_files(root, args.use_git):
             content = path.read_text(encoding="utf-8")
             new_content, changed = _rewrite_exports(content, export_map)
             if not changed:

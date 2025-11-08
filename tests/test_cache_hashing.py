@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 
 from typewiz.cache import collect_file_hashes
-from typewiz.model_types import FileHashPayload
-from typewiz.type_aliases import PathKey
+from typewiz.core.model_types import FileHashPayload
+from typewiz.core.type_aliases import PathKey
 from typewiz.utils import consume
 
 

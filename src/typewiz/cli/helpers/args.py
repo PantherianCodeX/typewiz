@@ -7,7 +7,7 @@ import argparse
 from collections.abc import Sequence
 from typing import Any, Literal, Protocol
 
-from typewiz.model_types import Mode
+from typewiz.core.model_types import Mode
 from typewiz.utils import consume
 
 

@@ -10,11 +10,11 @@ import pytest
 from typewiz.cli.commands import ratchet as ratchet_cmd
 from typewiz.cli.commands.ratchet import RatchetContext, handle_info, handle_init, handle_update
 from typewiz.config import RatchetConfig
+from typewiz.core.model_types import SeverityLevel, SignaturePolicy
+from typewiz.core.type_aliases import RunId
 from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
-from typewiz.model_types import SeverityLevel, SignaturePolicy
 from typewiz.ratchet.models import RatchetModel, RatchetRunBudgetModel
 from typewiz.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
-from typewiz.type_aliases import RunId
 from typewiz.typed_manifest import ManifestData
 
 

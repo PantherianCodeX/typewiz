@@ -9,9 +9,9 @@ import pytest
 
 from typewiz.api import run_audit
 from typewiz.config import AuditConfig, Config, EngineSettings
+from typewiz.core.model_types import Mode
+from typewiz.core.type_aliases import EngineName, RunnerName, ToolName
 from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.model_types import Mode
-from typewiz.type_aliases import EngineName, RunnerName, ToolName
 from typewiz.utils import consume
 
 

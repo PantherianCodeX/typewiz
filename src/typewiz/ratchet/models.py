@@ -9,8 +9,8 @@ from typing import Any, ClassVar, Final, Literal, TypedDict, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from ..model_types import Mode, SeverityLevel
-from ..type_aliases import RunId
+from ..core.model_types import Mode, SeverityLevel
+from ..core.type_aliases import RunId
 from ..utils import JSONValue
 
 type RatchetSchemaVersion = Literal[1]

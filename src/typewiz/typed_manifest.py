@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TypedDict
 
-from .model_types import CategoryMapping, Mode, OverrideEntry, SeverityLevel
-from .type_aliases import CategoryKey, Command, RelPath
+from .core.model_types import CategoryMapping, Mode, OverrideEntry, SeverityLevel
+from .core.type_aliases import CategoryKey, Command, RelPath
 
 
 class FileDiagnostic(TypedDict):

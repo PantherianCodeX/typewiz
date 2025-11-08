@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from typewiz.model_types import Mode, SeverityLevel
+from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.runner import run_pyright
 from typewiz.utils import CommandOutput, consume
 

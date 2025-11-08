@@ -7,9 +7,9 @@ from typing import TypedDict, cast
 
 import pytest
 
-from typewiz.model_types import SeverityLevel
+from typewiz.core.model_types import SeverityLevel
+from typewiz.core.type_aliases import RelPath
 from typewiz.ratchet.core import build_ratchet_from_manifest
-from typewiz.type_aliases import RelPath
 from typewiz.typed_manifest import (
     EngineOptionsEntry,
     FileEntry,

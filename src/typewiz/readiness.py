@@ -7,9 +7,9 @@ from dataclasses import dataclass, field
 from typing import Final, TypedDict, cast
 
 from .category_utils import CATEGORY_NAMES
-from .model_types import ReadinessStatus
-from .summary_types import ReadinessOptionEntry, ReadinessOptionsPayload, ReadinessStrictEntry
-from .type_aliases import CategoryKey, CategoryName
+from .core.model_types import ReadinessStatus
+from .core.summary_types import ReadinessOptionEntry, ReadinessOptionsPayload, ReadinessStrictEntry
+from .core.type_aliases import CategoryKey, CategoryName
 
 DEFAULT_CLOSE_THRESHOLD: Final[int] = 3
 STRICT_CLOSE_THRESHOLD: Final[int] = 3

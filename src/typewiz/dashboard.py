@@ -11,9 +11,7 @@ from typing import cast
 
 from ._internal.exceptions import TypewizTypeError
 from .category_utils import coerce_category_key
-from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
-from .manifest_loader import load_manifest_data
-from .model_types import (
+from .core.model_types import (
     CategoryMapping,
     OverrideEntry,
     ReadinessStatus,
@@ -21,16 +19,7 @@ from .model_types import (
     SummaryTabName,
     clone_override_entries,
 )
-from .override_utils import format_overrides_block
-from .readiness import (
-    CATEGORY_LABELS,
-    DEFAULT_CLOSE_THRESHOLD,
-    ReadinessEntry,
-    ReadinessOptions,
-    ReadinessPayload,
-    compute_readiness,
-)
-from .summary_types import (
+from .core.summary_types import (
     CountsByCategory,
     CountsByRule,
     CountsBySeverity,
@@ -44,7 +33,18 @@ from .summary_types import (
     SummaryRunEntry,
     SummaryTabs,
 )
-from .type_aliases import CategoryKey, RelPath, RunId
+from .core.type_aliases import CategoryKey, RelPath, RunId
+from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
+from .manifest_loader import load_manifest_data
+from .override_utils import format_overrides_block
+from .readiness import (
+    CATEGORY_LABELS,
+    DEFAULT_CLOSE_THRESHOLD,
+    ReadinessEntry,
+    ReadinessOptions,
+    ReadinessPayload,
+    compute_readiness,
+)
 from .typed_manifest import ManifestData, ToolSummary
 from .utils import JSONValue
 

@@ -9,10 +9,10 @@ from pathlib import Path
 from typing import Protocol
 
 from typewiz.config import AuditConfig
-from typewiz.model_types import CategoryMapping, Mode, OverrideEntry
-from typewiz.type_aliases import Command, ProfileName, RelPath, ToolName
+from typewiz.core.model_types import CategoryMapping, Mode, OverrideEntry
+from typewiz.core.type_aliases import Command, ProfileName, RelPath, ToolName
+from typewiz.core.types import Diagnostic
 from typewiz.typed_manifest import ToolSummary
-from typewiz.types import Diagnostic
 
 logger: logging.Logger = logging.getLogger("typewiz.engine")
 

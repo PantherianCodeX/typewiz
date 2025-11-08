@@ -10,7 +10,7 @@ from functools import lru_cache
 from importlib import metadata
 from typing import Final, Literal, cast
 
-from ..type_aliases import EngineName
+from ..core.type_aliases import EngineName
 from .base import BaseEngine
 from .mypy import MypyEngine
 from .pyright import PyrightEngine

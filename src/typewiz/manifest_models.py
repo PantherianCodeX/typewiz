@@ -14,6 +14,8 @@ from typing import Annotated, Any, ClassVar, cast
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from pydantic_core import PydanticCustomError
 
+from .core.model_types import Mode, SeverityLevel
+from .core.type_aliases import CategoryKey, Command, RelPath
 from .manifest_versioning import (
     CURRENT_MANIFEST_VERSION,
     InvalidManifestRunsError,
@@ -23,8 +25,6 @@ from .manifest_versioning import (
     UnsupportedManifestVersionError,
     ensure_current_manifest_version,
 )
-from .model_types import Mode, SeverityLevel
-from .type_aliases import CategoryKey, Command, RelPath
 from .typed_manifest import ManifestData
 
 STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(extra="forbid")

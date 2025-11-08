@@ -9,11 +9,11 @@ from pathlib import Path
 from typing import Final, cast
 
 from ._internal.logging_utils import StructuredLogExtra
+from .core.model_types import LogComponent, Mode, SeverityLevel
+from .core.type_aliases import BuiltinEngineName, Command, ToolName
+from .core.types import Diagnostic
 from .engines.base import EngineResult
-from .model_types import LogComponent, Mode, SeverityLevel
-from .type_aliases import BuiltinEngineName, Command, ToolName
 from .typed_manifest import ToolSummary
-from .types import Diagnostic
 from .utils import (
     JSONValue,
     as_int,

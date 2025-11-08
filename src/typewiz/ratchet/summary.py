@@ -6,8 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import cast
 
-from ..model_types import Mode, SeverityLevel
-from ..type_aliases import RunId
+from ..core.model_types import Mode, SeverityLevel
+from ..core.type_aliases import RunId
 from .models import EngineSignaturePayloadWithHash
 
 

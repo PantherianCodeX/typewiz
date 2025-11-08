@@ -15,7 +15,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Final, Literal, Protocol, cast
 
-from .type_aliases import Command, ToolName
+from .core.type_aliases import Command, ToolName
 
 logger: logging.Logger = logging.getLogger("typewiz")
 

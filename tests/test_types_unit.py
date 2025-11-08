@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from typewiz.model_types import (
+from typewiz.core.model_types import (
     DashboardView,
     DataFormat,
     FailOnPolicy,
@@ -18,8 +18,8 @@ from typewiz.model_types import (
     SignaturePolicy,
     SummaryStyle,
 )
-from typewiz.type_aliases import ToolName
-from typewiz.types import Diagnostic, RunResult
+from typewiz.core.type_aliases import ToolName
+from typewiz.core.types import Diagnostic, RunResult
 
 STUB_TOOL = ToolName("stub")
 

@@ -8,7 +8,7 @@ import logging
 from pytest import CaptureFixture
 
 from typewiz._internal.logging_utils import configure_logging
-from typewiz.model_types import LogComponent, Mode
+from typewiz.core.model_types import LogComponent, Mode
 
 
 def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str]) -> None:

@@ -21,6 +21,8 @@ from ._internal.license import (
 )
 from .api import AuditResult, run_audit
 from .config import AuditConfig, Config, load_config
+from .core.summary_types import SummaryData
+from .core.types import Diagnostic, RunResult
 from .dashboard import build_summary, load_manifest, render_markdown
 from .html_report import render_html
 from .ratchet import (
@@ -35,9 +37,7 @@ from .ratchet import (
 from .ratchet import (
     refresh_signatures as ratchet_refresh,
 )
-from .summary_types import SummaryData
 from .typed_manifest import ToolSummary
-from .types import Diagnostic, RunResult
 
 __all__ = [
     "__version__",

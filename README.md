@@ -141,7 +141,8 @@ In CI, a GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests and bot
 ### Bulk import rewrites
 
 When files move between packages you can rewrite imports en masse with the helper
-script:
+script. By default it respects `.gitignore`/tracked files (it uses `git ls-files`
+under the hood), so temporary or vendor folders aren’t touched unless you opt out:
 
 ```bash
 # quick ad-hoc mapping
@@ -209,7 +210,7 @@ Write a small class implementing the `BaseEngine` protocol and expose it via the
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
-from typewiz.model_types import SeverityLevel
+from typewiz.core.model_types import SeverityLevel
 from typewiz.type_aliases import ToolName
 from typewiz.types import Diagnostic
 

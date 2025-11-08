@@ -6,8 +6,8 @@ from __future__ import annotations
 import argparse
 from typing import Any, Protocol
 
+from typewiz.core.model_types import DataFormat
 from typewiz.engines.registry import describe_engines
-from typewiz.model_types import DataFormat
 
 from ..helpers import echo, register_argument, render_data
 

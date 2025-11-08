@@ -21,8 +21,8 @@ from typewiz.config import (
     RatchetConfigModel,
     load_config,
 )
-from typewiz.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
-from typewiz.type_aliases import EngineName, ProfileName, RunId, RunnerName
+from typewiz.core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
+from typewiz.core.type_aliases import EngineName, ProfileName, RunId, RunnerName
 from typewiz.utils import consume
 
 ensure_list = config_module.ensure_list

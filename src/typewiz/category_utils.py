@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Final, TypeGuard
 
-from .type_aliases import CategoryKey, CategoryName
+from .core.type_aliases import CategoryKey, CategoryName
 
 CATEGORY_DISPLAY_ORDER: Final[tuple[CategoryKey, ...]] = (
     "unknownChecks",

@@ -16,9 +16,9 @@ from typewiz.audit_paths import (
     relative_override_path,
 )
 from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
+from typewiz.core.model_types import CategoryMapping
+from typewiz.core.type_aliases import EngineName, ProfileName, RelPath
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
-from typewiz.model_types import CategoryMapping
-from typewiz.type_aliases import EngineName, ProfileName, RelPath
 from typewiz.utils import consume
 
 

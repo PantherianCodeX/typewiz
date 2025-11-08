@@ -10,11 +10,11 @@ import pytest
 
 from typewiz import AuditConfig, Config, run_audit
 from typewiz.config import EngineProfile, EngineSettings
+from typewiz.core.model_types import Mode, ReadinessStatus, SeverityLevel
+from typewiz.core.type_aliases import EngineName, ProfileName, RunnerName, ToolName
+from typewiz.core.types import Diagnostic, RunResult
 from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.model_types import Mode, ReadinessStatus, SeverityLevel
-from typewiz.type_aliases import EngineName, ProfileName, RunnerName, ToolName
 from typewiz.typed_manifest import ToolSummary
-from typewiz.types import Diagnostic, RunResult
 from typewiz.utils import consume
 
 STUB_TOOL = ToolName("stub")

@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import cast
 
 from .aggregate import summarise_run
+from .core.model_types import clone_override_entries
+from .core.types import RunResult
 from .manifest_versioning import CURRENT_MANIFEST_VERSION
-from .model_types import clone_override_entries
 from .typed_manifest import (
     AggregatedData,
     EngineError,
@@ -17,7 +18,6 @@ from .typed_manifest import (
     ManifestData,
     RunPayload,
 )
-from .types import RunResult
 from .utils import consume, detect_tool_versions, normalise_enums_for_json
 
 logger: logging.Logger = logging.getLogger("typewiz")

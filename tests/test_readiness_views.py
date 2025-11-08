@@ -6,7 +6,16 @@ from typing import cast
 
 import pytest
 
-from typewiz.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
+from typewiz.core.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
+from typewiz.core.summary_types import (
+    ReadinessOptionEntry,
+    ReadinessOptionsPayload,
+    ReadinessStrictEntry,
+    ReadinessTab,
+    SummaryData,
+    SummaryTabs,
+)
+from typewiz.core.type_aliases import CategoryName
 from typewiz.readiness_views import (
     FileReadinessPayload,
     FileReadinessRecord,
@@ -15,15 +24,6 @@ from typewiz.readiness_views import (
     ReadinessValidationError,
     collect_readiness_view,
 )
-from typewiz.summary_types import (
-    ReadinessOptionEntry,
-    ReadinessOptionsPayload,
-    ReadinessStrictEntry,
-    ReadinessTab,
-    SummaryData,
-    SummaryTabs,
-)
-from typewiz.type_aliases import CategoryName
 from typewiz.utils import consume
 
 

@@ -9,6 +9,14 @@ from dataclasses import dataclass
 from typing import TypedDict, cast
 
 from .category_utils import CATEGORY_DISPLAY_ORDER, coerce_category_key
+from .core.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
+from .core.summary_types import (
+    ReadinessOptionEntry,
+    ReadinessStrictEntry,
+    SummaryData,
+    SummaryTabs,
+)
+from .core.type_aliases import CategoryKey, CategoryName
 from .data_validation import (
     coerce_int,
     coerce_mapping,
@@ -16,15 +24,7 @@ from .data_validation import (
     coerce_optional_str_list,
     coerce_str,
 )
-from .model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
 from .readiness import DEFAULT_CLOSE_THRESHOLD, ReadinessOptions
-from .summary_types import (
-    ReadinessOptionEntry,
-    ReadinessStrictEntry,
-    SummaryData,
-    SummaryTabs,
-)
-from .type_aliases import CategoryKey, CategoryName
 
 
 @dataclass(frozen=True, slots=True)

@@ -14,8 +14,8 @@ from typewiz.cli.helpers.ratchet import (
     resolve_signature_policy,
     split_target_mapping,
 )
-from typewiz.model_types import SeverityLevel, SignaturePolicy
-from typewiz.type_aliases import RunId
+from typewiz.core.model_types import SeverityLevel, SignaturePolicy
+from typewiz.core.type_aliases import RunId
 
 
 def test_parse_target_entries_supports_global_and_scoped() -> None:

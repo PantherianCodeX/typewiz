@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typewiz.model_types import ManifestAction, QuerySection, RatchetAction
+from typewiz.core.model_types import ManifestAction, QuerySection, RatchetAction
 
 
 def test_cli_enums_accept_case_insensitive_values() -> None:

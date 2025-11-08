@@ -7,7 +7,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Final, Literal, TypedDict, cast, override
 
-from ..model_types import LogComponent, LogFormat, Mode, SeverityLevel
+from ..core.model_types import LogComponent, LogFormat, Mode, SeverityLevel
 from ..utils import normalise_enums_for_json
 
 LOG_FORMATS: Final[tuple[Literal["text", "json"], ...]] = cast(

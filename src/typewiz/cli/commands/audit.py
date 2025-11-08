@@ -11,13 +11,13 @@ from typing import Any, Protocol
 
 from typewiz.api import run_audit
 from typewiz.config import AuditConfig, Config, load_config
+from typewiz.core.summary_types import SummaryData
+from typewiz.core.type_aliases import EngineName, ProfileName
 from typewiz.dashboard import build_summary, render_markdown
 from typewiz.html_report import render_html
-from typewiz.summary_types import SummaryData
-from typewiz.type_aliases import EngineName, ProfileName
 from typewiz.utils import default_full_paths, normalise_enums_for_json, resolve_project_root
 
-from ...model_types import (
+from ...core.model_types import (
     DashboardView,
     FailOnPolicy,
     Mode,

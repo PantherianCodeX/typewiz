@@ -6,10 +6,10 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from ..typed_manifest import EngineError, ToolSummary
+from ..utils import JSONValue
 from .model_types import SeverityLevel
 from .type_aliases import Command, RelPath, ToolName
-from .typed_manifest import EngineError, ToolSummary
-from .utils import JSONValue
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

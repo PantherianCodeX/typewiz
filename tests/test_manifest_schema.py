@@ -13,6 +13,8 @@ import pytest
 from typewiz.api import run_audit
 from typewiz.cli import main
 from typewiz.config import AuditConfig
+from typewiz.core.model_types import CategoryMapping, Mode
+from typewiz.core.type_aliases import EngineName, RunnerName, ToolName
 from typewiz.engines.base import EngineContext, EngineResult
 from typewiz.manifest_loader import load_manifest_data
 from typewiz.manifest_models import (
@@ -21,8 +23,6 @@ from typewiz.manifest_models import (
     validate_manifest_payload,
 )
 from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
-from typewiz.model_types import CategoryMapping, Mode
-from typewiz.type_aliases import EngineName, RunnerName, ToolName
 from typewiz.typed_manifest import ManifestData
 from typewiz.utils import consume
 
