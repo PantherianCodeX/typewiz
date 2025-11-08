@@ -20,7 +20,7 @@ from .engines import EngineContext, EngineOptions
 from .engines.base import BaseEngine, EngineResult
 from .logging_utils import StructuredLogExtra
 from .model_types import FileHashPayload, LogComponent, Mode, OverrideEntry
-from .type_aliases import CacheKey, EngineName, PathKey, ProfileName, ToolName
+from .type_aliases import CacheKey, EngineName, PathKey, ProfileName, RelPath, ToolName
 from .typed_manifest import ToolSummary
 from .types import RunResult
 
@@ -28,8 +28,8 @@ from .types import RunResult
 @dataclass(slots=True)
 class _EngineOptionState:
     plugin_args: list[str]
-    include: list[str]
-    exclude: list[str]
+    include: list[RelPath]
+    exclude: list[RelPath]
     profile: ProfileName | None
     config_file: Path | None
 
@@ -216,8 +216,8 @@ def _apply_path_override(
 def _paths_for_mode(
     mode: Mode,
     engine_options: EngineOptions,
-    full_paths_normalised: Sequence[str],
-) -> list[str]:
+    full_paths_normalised: Sequence[RelPath],
+) -> list[RelPath]:
     if mode is Mode.FULL:
         return apply_engine_paths(
             full_paths_normalised,
@@ -260,9 +260,9 @@ def _fingerprint_targets_for_run(
     engine: BaseEngine,
     context: EngineContext,
     root: Path,
-    mode_paths: Sequence[str],
-    full_paths_normalised: Sequence[str],
-) -> list[str]:
+    mode_paths: Sequence[RelPath],
+    full_paths_normalised: Sequence[RelPath],
+) -> list[RelPath]:
     fingerprint_result = list(engine.fingerprint_targets(context, list(mode_paths)))
     engine_fingerprints = normalise_paths(root, fingerprint_result)
     return build_fingerprint_targets(
@@ -283,8 +283,8 @@ def _prepare_cache_inputs(
     context: EngineContext,
     audit_config: AuditConfig,
     root: Path,
-    full_paths_normalised: Sequence[str],
-    mode_paths: Sequence[str],
+    full_paths_normalised: Sequence[RelPath],
+    mode_paths: Sequence[RelPath],
 ) -> tuple[CacheKey, dict[PathKey, FileHashPayload], bool]:
     cache_flags = _build_cache_flags(engine.name, engine_options, tool_versions)
     cache_key = cache.key_for(engine.name, mode, list(mode_paths), cache_flags)
@@ -303,6 +303,7 @@ def _prepare_cache_inputs(
         max_files=audit_config.max_files,
         baseline=prev_hashes,
         max_bytes=getattr(audit_config, "max_bytes", None),
+        hash_workers=audit_config.hash_workers,
     )
     return cache_key, file_hashes, truncated
 
@@ -312,7 +313,7 @@ def _build_cached_run_result(
     engine_name: ToolName,
     mode: Mode,
     cached_run: CachedRun,
-    mode_paths: Sequence[str],
+    mode_paths: Sequence[RelPath],
 ) -> RunResult:
     return RunResult(
         tool=engine_name,
@@ -342,7 +343,7 @@ def _build_run_result(
     *,
     engine_options: EngineOptions,
     result: EngineResult,
-    mode_paths: Sequence[str],
+    mode_paths: Sequence[RelPath],
 ) -> RunResult:
     return RunResult(
         tool=result.engine,
@@ -367,28 +368,29 @@ def _build_run_result(
 logger: logging.Logger = logging.getLogger("typewiz")
 
 
-def _path_matches(candidate: str, pattern: str) -> bool:
+def _path_matches(candidate: RelPath, pattern: RelPath) -> bool:
     if not pattern:
         return False
-    candidate_norm = candidate.rstrip("/")
-    pattern_norm = pattern.rstrip("/")
+    candidate_norm = str(candidate).rstrip("/")
+    pattern_norm = str(pattern).rstrip("/")
     return candidate_norm == pattern_norm or (
         pattern_norm != "" and candidate_norm.startswith(f"{pattern_norm}/")
     )
 
 
 def apply_engine_paths(
-    default_paths: Sequence[str],
-    include: Sequence[str],
-    exclude: Sequence[str],
-) -> list[str]:
+    default_paths: Sequence[RelPath],
+    include: Sequence[RelPath],
+    exclude: Sequence[RelPath],
+) -> list[RelPath]:
     """Merge include/exclude directives with default paths for a run."""
-    ordered: list[str] = []
+    ordered: list[RelPath] = []
     seen: set[str] = set()
 
-    def _add(path: str) -> None:
-        if path and path not in seen:
-            seen.add(path)
+    def _add(path: RelPath) -> None:
+        path_str = str(path)
+        if path_str and path_str not in seen:
+            seen.add(path_str)
             ordered.append(path)
 
     for path in default_paths:
@@ -447,7 +449,7 @@ def execute_engine_mode(
     cache: EngineCache,
     tool_versions: Mapping[str, str],
     root: Path,
-    full_paths_normalised: Sequence[str],
+    full_paths_normalised: Sequence[RelPath],
 ) -> tuple[RunResult, bool]:
     """Execute or fetch a cached engine run and return the result."""
     engine_options = context.engine_options

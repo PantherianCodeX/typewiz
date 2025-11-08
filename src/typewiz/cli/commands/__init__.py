@@ -3,6 +3,6 @@
 
 from __future__ import annotations
 
-from . import audit, help, manifest, query, ratchet
+from . import audit, cache, engines, help, manifest, query, ratchet
 
-__all__ = ["audit", "help", "manifest", "query", "ratchet"]
+__all__ = ["audit", "cache", "engines", "help", "manifest", "query", "ratchet"]

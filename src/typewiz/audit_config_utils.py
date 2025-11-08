@@ -111,6 +111,7 @@ def clone_audit_config(source: AuditConfig) -> AuditConfig:
         skip_current=source.skip_current,
         skip_full=source.skip_full,
         fail_on=source.fail_on,
+        hash_workers=source.hash_workers,
         dashboard_json=source.dashboard_json,
         dashboard_markdown=source.dashboard_markdown,
         dashboard_html=source.dashboard_html,
@@ -137,6 +138,9 @@ def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> Audi
         ),
         skip_full=override.skip_full if override.skip_full is not None else base_copy.skip_full,
         fail_on=override.fail_on or base_copy.fail_on,
+        hash_workers=(
+            override.hash_workers if override.hash_workers is not None else base_copy.hash_workers
+        ),
         dashboard_json=override.dashboard_json or base_copy.dashboard_json,
         dashboard_markdown=override.dashboard_markdown or base_copy.dashboard_markdown,
         dashboard_html=override.dashboard_html or base_copy.dashboard_html,

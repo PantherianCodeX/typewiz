@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from typing import Any, Final, Literal, cast
+from collections.abc import Mapping
+from typing import Any, Final, Literal
 
 type ManifestVersion = Literal["1"]
-type LegacyManifestVersion = Literal["0", ""]
 
 CURRENT_MANIFEST_VERSION: Final[ManifestVersion] = "1"
-LEGACY_MANIFEST_VERSIONS: Final[tuple[LegacyManifestVersion, ...]] = ("0", "")
 
 
 class ManifestVersionError(ValueError):
@@ -39,49 +37,30 @@ class InvalidManifestRunsError(ManifestVersionError):
         super().__init__("runs must be a list of run payloads")
 
 
-def _normalize_version(value: object) -> str | None:
-    if value is None:
-        return None
+def _normalize_version(value: object) -> str:
     if isinstance(value, str):
         return value.strip()
-    if isinstance(value, (int, float)):
-        return str(value)
     raise InvalidManifestVersionTypeError(value)
 
 
-def _ensure_runs(value: object) -> list[object]:
-    if value is None:
-        return []
-    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return list(cast(Sequence[object], value))
-    raise InvalidManifestRunsError
+def ensure_current_manifest_version(manifest: Mapping[str, Any]) -> ManifestVersion:
+    """Validate that a manifest declares the currently supported schema version."""
 
-
-def upgrade_manifest(manifest: Mapping[str, Any]) -> dict[str, Any]:
-    """Upgrade a manifest payload to the current schema version."""
-
-    working = dict(manifest)
-    version_raw = _normalize_version(working.get("schemaVersion"))
-
-    if version_raw in LEGACY_MANIFEST_VERSIONS or version_raw is None:
-        upgraded = dict(working)
-        upgraded["schemaVersion"] = CURRENT_MANIFEST_VERSION
-        upgraded["runs"] = _ensure_runs(upgraded.get("runs"))
-        return upgraded
-
-    if version_raw != CURRENT_MANIFEST_VERSION:
-        raise UnsupportedManifestVersionError(version_raw)
-
-    working["schemaVersion"] = CURRENT_MANIFEST_VERSION
-    working["runs"] = _ensure_runs(working.get("runs"))
-    return working
+    version_raw = manifest.get("schemaVersion")
+    version = _normalize_version(version_raw)
+    if version != CURRENT_MANIFEST_VERSION:
+        raise UnsupportedManifestVersionError(version)
+    runs_raw = manifest.get("runs")
+    if runs_raw is not None and not isinstance(runs_raw, list):
+        raise InvalidManifestRunsError
+    return CURRENT_MANIFEST_VERSION
 
 
 __all__ = [
     "CURRENT_MANIFEST_VERSION",
+    "ensure_current_manifest_version",
     "InvalidManifestRunsError",
     "InvalidManifestVersionTypeError",
     "ManifestVersionError",
     "UnsupportedManifestVersionError",
-    "upgrade_manifest",
 ]

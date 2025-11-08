@@ -16,6 +16,7 @@ runners = ["pyright", "mypy"]
 # dashboard_markdown = "typewiz/dashboard.md"
 # dashboard_html = "typewiz/dashboard.html"
 # fail_on = "warnings"  # choices: never, warnings, errors
+# hash_workers = "auto" # or an integer to bound fingerprint threads
 
 [audit.active_profiles]
 # Select default profiles per engine here (also configurable via the CLI).

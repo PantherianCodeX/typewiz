@@ -11,7 +11,7 @@ from typing import Final, cast
 from .engines.base import EngineResult
 from .logging_utils import StructuredLogExtra
 from .model_types import LogComponent, Mode, SeverityLevel
-from .type_aliases import BuiltinEngineName, ToolName
+from .type_aliases import BuiltinEngineName, Command, ToolName
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
 from .utils import (
@@ -46,12 +46,13 @@ def run_pyright(
     command: Sequence[str],
 ) -> EngineResult:
     start_extra: StructuredLogExtra = {"component": LogComponent.ENGINE, "tool": "pyright"}
+    argv: Command = list(command)
     logger.info(
         "Running pyright (%s)",
-        " ".join(command),
+        " ".join(argv),
         extra=start_extra,
     )
-    result = run_command(command, cwd=project_root)
+    result = run_command(argv, cwd=project_root, allowed={"pyright"})
     payload_str = result.stdout or result.stderr
     payload: dict[str, JSONValue] = require_json(payload_str)
 
@@ -119,7 +120,7 @@ def run_pyright(
     engine_result = EngineResult(
         engine=PYRIGHT_TOOL,
         mode=mode,
-        command=list(command),
+        command=argv,
         exit_code=result.exit_code,
         duration_ms=result.duration_ms,
         diagnostics=diagnostics,
@@ -151,12 +152,17 @@ def run_mypy(
     command: Sequence[str],
 ) -> EngineResult:
     start_extra: StructuredLogExtra = {"component": LogComponent.ENGINE, "tool": "mypy"}
+    argv: Command = list(command)
     logger.info(
         "Running mypy (%s)",
-        " ".join(command),
+        " ".join(argv),
         extra=start_extra,
     )
-    result = run_command(command, cwd=project_root)
+    result = run_command(
+        argv,
+        cwd=project_root,
+        allowed={argv[0]},
+    )
     diagnostics: list[Diagnostic] = []
     remaining_stderr = result.stderr.strip()
     if remaining_stderr:
@@ -211,7 +217,7 @@ def run_mypy(
     engine_result = EngineResult(
         engine=MYPY_TOOL,
         mode=mode,
-        command=list(command),
+        command=argv,
         exit_code=result.exit_code,
         duration_ms=result.duration_ms,
         diagnostics=diagnostics,

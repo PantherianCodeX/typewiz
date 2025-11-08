@@ -13,6 +13,25 @@
     "--config-file",
     "mypy.ini"
   ],
+  // Surface local JSON schemas for manifests and ratchet budgets
+  "json.schemas": [
+    {
+      "fileMatch": [
+        "/typing_audit.json",
+        "/typing_audit_manifest.json",
+        "/reports/typing/typing_audit.json",
+        "/reports/typing/manifest.json"
+      ],
+      "url": "${workspaceFolder}/schemas/typing_audit_manifest.schema.json"
+    },
+    {
+      "fileMatch": [
+        "/.typewiz/ratchet.json",
+        "/ratchet.json"
+      ],
+      "url": "${workspaceFolder}/schemas/ratchet.schema.json"
+    }
+  ],
   // Disable legacy mypy integration from Python extension
   "python.linting.mypyEnabled": false,
   // Pylance/pyright reads pyrightconfig.json (include: src)

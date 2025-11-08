@@ -15,7 +15,7 @@ from typewiz.ratchet import (
     refresh_signatures,
 )
 from typewiz.ratchet.policies import compare_signatures
-from typewiz.type_aliases import RunId
+from typewiz.type_aliases import RelPath, RunId
 from typewiz.typed_manifest import (
     EngineOptionsEntry,
     FileEntry,
@@ -76,7 +76,7 @@ def _make_manifest(
     engine_options: EngineOptionsEntry = {
         "profile": "baseline",
         "pluginArgs": plugin_args or ["--strict"],
-        "include": ["src"],
+        "include": [RelPath("src")],
         "exclude": [],
     }
     summary_totals = cast(

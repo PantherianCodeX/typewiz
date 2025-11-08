@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 from .model_types import ReadinessStatus, SeverityLevel
-from .type_aliases import CategoryKey, CategoryName, RunId
+from .type_aliases import CategoryKey, CategoryName, Command, RunId
 from .typed_manifest import EngineOptionsEntry, ToolSummary
 
 CountsBySeverity = dict[SeverityLevel, int]
@@ -14,7 +14,7 @@ CountsByCategory = dict[CategoryKey, int]
 
 
 class SummaryRunEntry(TypedDict, total=False):
-    command: list[str]
+    command: Command
     errors: int
     warnings: int
     information: int
@@ -40,6 +40,12 @@ class SummaryFileEntry(TypedDict):
     path: str
     errors: int
     warnings: int
+    information: int
+
+
+class RulePathEntry(TypedDict):
+    path: str
+    count: int
 
 
 class OverviewTab(TypedDict):
@@ -56,6 +62,7 @@ class HotspotsTab(TypedDict):
     topRules: dict[str, int]
     topFolders: list[SummaryFolderEntry]
     topFiles: list[SummaryFileEntry]
+    ruleFiles: dict[str, list[RulePathEntry]]
 
 
 class ReadinessStrictEntry(TypedDict, total=False):
@@ -108,4 +115,5 @@ class SummaryData(TypedDict):
     topRules: dict[str, int]
     topFolders: list[SummaryFolderEntry]
     topFiles: list[SummaryFileEntry]
+    ruleFiles: dict[str, list[RulePathEntry]]
     tabs: SummaryTabs

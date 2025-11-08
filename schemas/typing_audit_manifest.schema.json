@@ -128,35 +128,6 @@
       "title": "EngineOptionsModel",
       "type": "object"
     },
-    "JSONValue": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "number"
-        },
-        {
-          "type": "boolean"
-        },
-        {
-          "type": "null"
-        },
-        {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/JSONValue"
-          }
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/JSONValue"
-          }
-        }
-      ],
-      "title": "JSONValue"
-    },
     "FileDiagnosticModel": {
       "additionalProperties": false,
       "properties": {
@@ -186,13 +157,6 @@
         "message": {
           "title": "Message",
           "type": "string"
-        },
-        "raw": {
-          "additionalProperties": {
-            "$ref": "#/$defs/JSONValue"
-          },
-          "title": "Raw",
-          "type": "object"
         }
       },
       "required": [
@@ -313,6 +277,10 @@
       ],
       "title": "FolderEntryModel",
       "type": "object"
+    },
+    "ManifestVersion": {
+      "const": "1",
+      "type": "string"
     },
     "Mode": {
       "enum": [
@@ -689,9 +657,8 @@
       "title": "Projectroot"
     },
     "schemaVersion": {
-      "default": "1",
-      "title": "Schemaversion",
-      "type": "string"
+      "$ref": "#/$defs/ManifestVersion",
+      "default": "1"
     },
     "fingerprintTruncated": {
       "anyOf": [

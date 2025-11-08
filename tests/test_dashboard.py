@@ -8,8 +8,12 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
+import pytest
+
 from typewiz.dashboard import build_summary, load_manifest, render_markdown
 from typewiz.html_report import render_html
+from typewiz.manifest_models import ManifestValidationError
+from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
 from typewiz.summary_types import SummaryData
 from typewiz.type_aliases import RunId
 from typewiz.typed_manifest import FileEntry, FolderEntry, ManifestData, RunPayload
@@ -33,7 +37,12 @@ def test_render_html_snapshot(
 
 
 def test_build_summary_minimal(tmp_path: Path) -> None:
-    manifest: ManifestData = {"projectRoot": str(tmp_path), "generatedAt": "now", "runs": []}
+    manifest: ManifestData = {
+        "projectRoot": str(tmp_path),
+        "generatedAt": "now",
+        "schemaVersion": CURRENT_MANIFEST_VERSION,
+        "runs": [],
+    }
     summary = build_summary(manifest)
     assert summary["runSummary"] == {}
     assert summary["tabs"]["overview"]["severityTotals"] == {}
@@ -41,22 +50,33 @@ def test_build_summary_minimal(tmp_path: Path) -> None:
 
 def test_load_manifest_reads_file(tmp_path: Path) -> None:
     manifest_path = tmp_path / "manifest.json"
-    consume(manifest_path.write_text('{"runs": []}', encoding="utf-8"))
+    consume(
+        manifest_path.write_text(
+            f'{{"schemaVersion": "{CURRENT_MANIFEST_VERSION}", "runs": []}}',
+            encoding="utf-8",
+        ),
+    )
     data = load_manifest(manifest_path)
     assert "runs" in data and data["runs"] == []
 
 
 def test_load_manifest_discards_invalid_runs(tmp_path: Path) -> None:
     manifest_path = tmp_path / "manifest.json"
-    consume(manifest_path.write_text('{"runs": ["not-a-run", 3]}', encoding="utf-8"))
-    data = load_manifest(manifest_path)
-    assert "runs" in data and data["runs"] == []
+    consume(
+        manifest_path.write_text(
+            f'{{"schemaVersion": "{CURRENT_MANIFEST_VERSION}", "runs": ["not-a-run", 3]}}',
+            encoding="utf-8",
+        ),
+    )
+    with pytest.raises(ManifestValidationError):
+        _ = load_manifest(manifest_path)
 
 
 def test_build_summary_skips_missing_entries(tmp_path: Path) -> None:
     manifest: ManifestData = {
         "projectRoot": str(tmp_path),
         "generatedAt": "now",
+        "schemaVersion": CURRENT_MANIFEST_VERSION,
         "runs": [
             cast(
                 RunPayload,
@@ -93,6 +113,7 @@ def test_render_markdown_handles_empty_runs(snapshot_text: Callable[[str], str])
     manifest: ManifestData = {
         "generatedAt": "now",
         "projectRoot": ".",
+        "schemaVersion": CURRENT_MANIFEST_VERSION,
         "runs": [],
     }
     summary = build_summary(manifest)

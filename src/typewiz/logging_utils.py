@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Final, Literal, TypedDict, cast, override
 
-from .model_types import LogComponent, LogFormat, Mode
+from .model_types import LogComponent, LogFormat, Mode, SeverityLevel
 from .utils import normalise_enums_for_json
 
 LOG_FORMATS: Final[tuple[Literal["text", "json"], ...]] = cast(
@@ -22,7 +22,7 @@ class JSONLogFormatter(logging.Formatter):
     @override
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, object] = {
-            "timestamp": datetime.fromtimestamp(record.created, tz=None).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
             "level": record.levelname.lower(),
             "message": record.getMessage(),
             "logger": record.name,
@@ -80,7 +80,7 @@ class StructuredLogExtra(TypedDict, total=False):
     tool: str
     mode: Mode
     duration_ms: float
-    counts: dict[str, int]
+    counts: dict[SeverityLevel, int]
     cached: bool
     exit_code: int
 

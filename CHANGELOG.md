@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- JSON log formatter timestamps are now emitted in UTC with explicit offsets to satisfy repo-wide logging policy.
+- Manifest handling rejects legacy or missing `schemaVersion` values; the upgrade path and tolerant loader fallback have been removed so payloads must already match the current schema.
+- Internal path-heavy structures (engine options, manifests, cache entries, and run results) now use the `RelPath` alias to clarify when POSIX-style relative paths are guaranteed.
+- Common command sequences now flow through a `Command` alias for consistent typing across engines, runners, and cache records.
+
+### Added
+- Manifest JSON Schema regenerated to reflect the stricter `schemaVersion` literal and path aliasing expectations.
+- `typewiz audit` grew `--hash-workers` (parallel fingerprinting) and `--dry-run` modes.
+- New `typewiz engines list` and `typewiz cache clear` commands surface engine metadata and wipe `.typewiz_cache/`.
+- Readiness/Query tooling accepts severity filters, richer detail output, and `typewiz query rules --include-paths` exposes offending files for each rule.
+
+
 ## v0.1.0 — 2026-01-15
 
 ### Highlights

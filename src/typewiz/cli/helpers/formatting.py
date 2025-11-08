@@ -30,7 +30,7 @@ from typewiz.readiness_views import (
 )
 from typewiz.readiness_views import collect_readiness_view as _collect_readiness_view
 from typewiz.summary_types import SummaryData
-from typewiz.type_aliases import RunId
+from typewiz.type_aliases import RelPath, RunId
 from typewiz.types import RunResult
 from typewiz.utils import JSONValue, normalise_enums_for_json
 
@@ -97,9 +97,18 @@ class EngineEntry(TypedDict):
     overrides: list[OverrideEntry]
 
 
-class RuleEntry(TypedDict):
+class RuleEntryRequired(TypedDict):
     rule: str
     count: int
+
+
+class RulePathEntry(TypedDict):
+    path: str
+    count: int
+
+
+class RuleEntry(RuleEntryRequired, total=False):
+    paths: list[RulePathEntry]
 
 
 type ReadinessQueryPayload = ReadinessViewResult
@@ -230,6 +239,7 @@ def collect_readiness_view(
     level: ReadinessLevel,
     statuses: Sequence[ReadinessStatus] | None,
     limit: int,
+    severities: Sequence[SeverityLevel] | None = None,
 ) -> ReadinessQueryPayload:
     """Collect readiness data with consistent error handling."""
     try:
@@ -238,6 +248,7 @@ def collect_readiness_view(
             level=level,
             statuses=statuses,
             limit=limit,
+            severities=severities,
         )
     except ReadinessValidationError as exc:  # pragma: no cover - exercised via CLI tests
         code = error_code_for(exc)
@@ -251,9 +262,29 @@ def print_readiness_summary(
     level: ReadinessLevel,
     statuses: Sequence[ReadinessStatus] | None,
     limit: int,
+    severities: Sequence[SeverityLevel] | None = None,
+    detailed: bool = False,
 ) -> None:
     """Print a readiness summary in the same shape as historic CLI output."""
-    view = collect_readiness_view(summary, level=level, statuses=statuses, limit=limit)
+    view = collect_readiness_view(
+        summary,
+        level=level,
+        statuses=statuses,
+        limit=limit,
+        severities=severities,
+    )
+
+    def _format_counts(
+        label: str,
+        entry: FolderReadinessPayload | FileReadinessPayload,
+    ) -> str:
+        if not detailed:
+            return label
+        errors = entry.get("errors", 0)
+        warnings = entry.get("warnings", 0)
+        information = entry.get("information", 0)
+        return f"{label} (errors={errors} warnings={warnings} info={information})"
+
     if level is ReadinessLevel.FOLDER:
         folder_view: dict[ReadinessStatus, list[FolderReadinessPayload]] = cast(
             dict[ReadinessStatus, list[FolderReadinessPayload]],
@@ -265,7 +296,8 @@ def print_readiness_summary(
                 echo("  <none>")
                 continue
             for folder_entry in folder_entries:
-                echo(f"  {folder_entry['path']}: {folder_entry['count']}")
+                label = f"  {folder_entry['path']}: {folder_entry['count']}"
+                echo(_format_counts(label, folder_entry))
         return
 
     file_view: dict[ReadinessStatus, list[FileReadinessPayload]] = cast(
@@ -278,7 +310,8 @@ def print_readiness_summary(
             echo("  <none>")
             continue
         for file_entry in file_entries:
-            echo(f"  {file_entry['path']}: {file_entry['diagnostics']}")
+            label = f"  {file_entry['path']}: {file_entry['diagnostics']}"
+            echo(_format_counts(label, file_entry))
 
 
 def render_data(data: object, fmt: FormatInput) -> list[str]:
@@ -393,9 +426,16 @@ def query_readiness(
     level: ReadinessLevel,
     statuses: Sequence[ReadinessStatus] | None,
     limit: int,
+    severities: Sequence[SeverityLevel] | None = None,
 ) -> ReadinessQueryPayload:
     """Build the payload for ``typewiz query readiness``."""
-    return collect_readiness_view(summary, level=level, statuses=statuses, limit=limit)
+    return collect_readiness_view(
+        summary,
+        level=level,
+        statuses=statuses,
+        limit=limit,
+        severities=severities,
+    )
 
 
 def query_runs(
@@ -455,10 +495,18 @@ def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:
             plugin_args = coerce_str_list(override_map.get("pluginArgs", []))
             if plugin_args:
                 typed_entry["pluginArgs"] = plugin_args
-            include_paths = coerce_str_list(override_map.get("include", []))
+            include_paths = [
+                RelPath(str(path))
+                for path in coerce_str_list(override_map.get("include", []))
+                if str(path).strip()
+            ]
             if include_paths:
                 typed_entry["include"] = include_paths
-            exclude_paths = coerce_str_list(override_map.get("exclude", []))
+            exclude_paths = [
+                RelPath(str(path))
+                for path in coerce_str_list(override_map.get("exclude", []))
+                if str(path).strip()
+            ]
             if exclude_paths:
                 typed_entry["exclude"] = exclude_paths
             if typed_entry:
@@ -479,13 +527,31 @@ def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:
     return records
 
 
-def query_rules(summary: SummaryData, *, limit: int) -> list[RuleEntry]:
+def query_rules(
+    summary: SummaryData,
+    *,
+    limit: int,
+    include_paths: bool,
+) -> list[RuleEntry]:
     """Build the payload for ``typewiz query rules``."""
-    rules = summary["tabs"]["hotspots"].get("topRules", {})
+    hotspots = summary["tabs"]["hotspots"]
+    rules = hotspots.get("topRules", {})
+    rule_paths = hotspots.get("ruleFiles", {}) if include_paths else {}
     entries = list(rules.items())
     if limit > 0:
         entries = entries[:limit]
-    return [RuleEntry(rule=rule, count=int(count)) for rule, count in entries]
+    result: list[RuleEntry] = []
+    for rule, count in entries:
+        entry: RuleEntry = RuleEntry(rule=rule, count=int(count))
+        if include_paths:
+            path_entries = [
+                RulePathEntry(path=str(path_entry["path"]), count=int(path_entry["count"]))
+                for path_entry in rule_paths.get(rule, [])
+            ]
+            if path_entries:
+                entry["paths"] = path_entries
+        result.append(entry)
+    return result
 
 
 __all__ = [

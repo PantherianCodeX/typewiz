@@ -12,7 +12,10 @@ from collections.abc import Sequence
 from textwrap import dedent
 from typing import Final
 
+from typewiz import __version__ as TYPEWIZ_VERSION
 from typewiz.cli.commands import audit as audit_command
+from typewiz.cli.commands import cache as cache_command
+from typewiz.cli.commands import engines as engines_command
 from typewiz.cli.commands import help as help_command
 from typewiz.cli.commands import manifest as manifest_command
 from typewiz.cli.commands import query as query_command
@@ -31,6 +34,7 @@ from typewiz.model_types import (
     LogFormat,
     ReadinessLevel,
     ReadinessStatus,
+    SeverityLevel,
 )
 from typewiz.summary_types import SummaryData
 from typewiz.utils import consume, normalise_enums_for_json
@@ -124,13 +128,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="text",
         help="Select logging output format (human-readable text or structured JSON).",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    _register_argument(
+        parser,
+        "--version",
+        action="store_true",
+        help="Print the typewiz version and exit.",
+    )
+    subparsers = parser.add_subparsers(dest="command")
 
     audit_command.register_audit_command(subparsers)
     manifest_command.register_manifest_command(subparsers)
     query_command.register_query_command(subparsers)
     ratchet_command.register_ratchet_command(subparsers)
     help_command.register_help_command(subparsers)
+    cache_command.register_cache_command(subparsers)
+    engines_command.register_engines_command(subparsers)
 
     dashboard = subparsers.add_parser(
         "dashboard",
@@ -214,8 +226,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Status buckets to render (repeatable).",
     )
     _register_argument(readiness, "--limit", type=int, default=10)
+    _register_argument(
+        readiness,
+        "--severity",
+        dest="severities",
+        action="append",
+        choices=[severity.value for severity in SeverityLevel],
+        default=None,
+        help="Filter entries to specific severities (repeatable).",
+    )
+    _register_argument(
+        readiness,
+        "--details",
+        action="store_true",
+        help="Include severity breakdown when printing readiness summaries.",
+    )
 
     args = parser.parse_args(list(argv) if argv is not None else None)
+    if args.version:
+        _echo(f"typewiz {TYPEWIZ_VERSION}")
+        return 0
+    if args.command is None:
+        parser.error("No command provided.")
+
     from contextlib import suppress
 
     with suppress(Exception):  # best-effort logger init
@@ -232,6 +265,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "query":
         return query_command.execute_query(args)
+
+    if args.command == "cache":
+        return cache_command.execute_cache(args)
+
+    if args.command == "engines":
+        return engines_command.execute_engines(args)
 
     if args.command == "audit":
         return audit_command.execute_audit(args)
@@ -275,6 +314,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             level=level_choice,
             statuses=statuses,
             limit=args.limit,
+            severities=(
+                [SeverityLevel.from_str(value) for value in args.severities]
+                if getattr(args, "severities", None)
+                else None
+            ),
+            detailed=bool(getattr(args, "details", False)),
         )
         return 0
 

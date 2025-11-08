@@ -28,6 +28,7 @@ from typewiz.cli.helpers.formatting import (
 )
 from typewiz.config import Config
 from typewiz.engines.base import EngineContext, EngineResult
+from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
 from typewiz.model_types import (
     Mode,
     OverrideEntry,
@@ -55,7 +56,7 @@ from typewiz.summary_types import (
     SummaryRunEntry,
     SummaryTabs,
 )
-from typewiz.type_aliases import CategoryKey, EngineName, RunId, RunnerName, ToolName
+from typewiz.type_aliases import CategoryKey, EngineName, RelPath, RunId, RunnerName, ToolName
 from typewiz.types import Diagnostic, RunResult
 from typewiz.utils import consume
 
@@ -74,6 +75,7 @@ def _write_manifest(tmp_path: Path) -> Path:
     manifest: dict[str, object] = {
         "generatedAt": "2025-11-05T00:00:00Z",
         "projectRoot": str(tmp_path),
+        "schemaVersion": CURRENT_MANIFEST_VERSION,
         "runs": [
             {
                 "tool": "pyright",
@@ -94,14 +96,15 @@ def _write_manifest(tmp_path: Path) -> Path:
                     "profile": "strict",
                     "configFile": "pyrightconfig.json",
                     "pluginArgs": ["--strict"],
-                    "include": ["src"],
-                    "exclude": ["tests"],
+                    "include": [RelPath("src")],
+                    "exclude": [RelPath("tests")],
                     "overrides": [{"path": "src", "profile": "strict"}],
                     "categoryMapping": {"unknownChecks": ["reportGeneralTypeIssues"]},
                 },
                 "perFolder": [
                     {
                         "path": "src",
+                        "depth": 1,
                         "errors": 3,
                         "warnings": 2,
                         "information": 0,
@@ -111,8 +114,36 @@ def _write_manifest(tmp_path: Path) -> Path:
                     },
                 ],
                 "perFile": [
-                    {"path": "src/app.py", "errors": 3, "warnings": 0},
-                    {"path": "src/utils.py", "errors": 0, "warnings": 2},
+                    {
+                        "path": "src/app.py",
+                        "errors": 3,
+                        "warnings": 0,
+                        "information": 0,
+                        "diagnostics": [
+                            {
+                                "line": 10,
+                                "column": 4,
+                                "severity": "error",
+                                "code": "reportGeneralTypeIssues",
+                                "message": "strict mode failure",
+                            },
+                        ],
+                    },
+                    {
+                        "path": "src/utils.py",
+                        "errors": 0,
+                        "warnings": 2,
+                        "information": 0,
+                        "diagnostics": [
+                            {
+                                "line": 20,
+                                "column": 2,
+                                "severity": "warning",
+                                "code": "reportUnknownVariableType",
+                                "message": "graduated warning",
+                            },
+                        ],
+                    },
                 ],
             },
             {
@@ -134,7 +165,7 @@ def _write_manifest(tmp_path: Path) -> Path:
                     "profile": "baseline",
                     "configFile": "mypy.ini",
                     "pluginArgs": [],
-                    "include": ["src"],
+                    "include": [RelPath("src")],
                     "exclude": [],
                     "overrides": [],
                     "categoryMapping": {},
@@ -142,6 +173,7 @@ def _write_manifest(tmp_path: Path) -> Path:
                 "perFolder": [
                     {
                         "path": "src",
+                        "depth": 1,
                         "errors": 0,
                         "warnings": 1,
                         "information": 1,
@@ -151,7 +183,28 @@ def _write_manifest(tmp_path: Path) -> Path:
                     },
                 ],
                 "perFile": [
-                    {"path": "src/app.py", "errors": 0, "warnings": 1},
+                    {
+                        "path": "src/app.py",
+                        "errors": 0,
+                        "warnings": 1,
+                        "information": 1,
+                        "diagnostics": [
+                            {
+                                "line": 30,
+                                "column": 6,
+                                "severity": "warning",
+                                "code": "attr-defined",
+                                "message": "attr-defined warning",
+                            },
+                            {
+                                "line": 32,
+                                "column": 1,
+                                "severity": "information",
+                                "code": "note",
+                                "message": "note",
+                            },
+                        ],
+                    },
                 ],
             },
         ],
@@ -178,6 +231,7 @@ def _empty_summary() -> SummaryData:
         "topRules": top_rules,
         "topFolders": top_folders,
         "topFiles": top_files,
+        "ruleFiles": {},
     }
     readiness: ReadinessTab = {
         "strict": {
@@ -204,6 +258,7 @@ def _empty_summary() -> SummaryData:
         "topRules": top_rules,
         "topFolders": top_folders,
         "topFiles": top_files,
+        "ruleFiles": {},
         "tabs": tabs,
     }
     return summary
@@ -343,6 +398,7 @@ def test_cli_dashboard_output(tmp_path: Path) -> None:
     manifest: dict[str, object] = {
         "generatedAt": "2025-01-01T00:00:00Z",
         "projectRoot": str(tmp_path),
+        "schemaVersion": CURRENT_MANIFEST_VERSION,
         "runs": [],
     }
     manifest_path = tmp_path / "manifest.json"
@@ -358,6 +414,37 @@ def test_cli_dashboard_output(tmp_path: Path) -> None:
         ],
     )
     assert exit_code == 0
+
+
+def test_cli_version_flag(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("TYPEWIZ_LICENSE_KEY", "test")
+    exit_code = main(["--version"])
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "typewiz" in output.lower()
+
+
+def test_cli_engines_list(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("TYPEWIZ_LICENSE_KEY", "test")
+    exit_code = main(["engines", "list", "--format", "json"])
+    assert exit_code == 0
+    data = json.loads(capsys.readouterr().out)
+    assert any(entry["name"] == "pyright" for entry in data)
+
+
+def test_cli_cache_clear(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    cache_dir = tmp_path / ".typewiz_cache"
+    cache_dir.mkdir()
+    consume((cache_dir / "cache.json").write_text("{}", encoding="utf-8"))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("TYPEWIZ_LICENSE_KEY", "test")
+    exit_code = main(["cache", "clear"])
+    assert exit_code == 0
+    assert not cache_dir.exists()
 
 
 def test_cli_audit_readiness_summary(
@@ -419,6 +506,30 @@ def test_cli_audit_readiness_summary(
     assert exit_code_readiness == 0
     readiness_output = capsys.readouterr().out
     assert "[typewiz] readiness file status=blocked" in readiness_output
+
+
+def test_cli_readiness_details_and_severity(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    exit_code = main(
+        [
+            "readiness",
+            "--manifest",
+            str(manifest_path),
+            "--level",
+            "file",
+            "--status",
+            "blocked",
+            "--severity",
+            "warning",
+            "--details",
+        ],
+    )
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "warnings=" in output
 
 
 def test_cli_summary_extras(
@@ -503,6 +614,110 @@ exclude = ["unused"]
     full_run = next(run for run in manifest_data["runs"] if run["mode"] == "full")
     engine_options = full_run["engineOptions"]
     assert "--extras" in engine_options["pluginArgs"]
+
+
+def test_cli_audit_dry_run(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_run: RunResult,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    engine = StubEngine(fake_run)
+    _patch_engine_resolution(monkeypatch, engine)
+
+    (tmp_path / "pkg").mkdir(exist_ok=True)
+    consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
+    manifest_path = tmp_path / "manifest.json"
+
+    exit_code = main(
+        [
+            "audit",
+            "--runner",
+            "stub",
+            "--project-root",
+            str(tmp_path),
+            "pkg",
+            "--manifest",
+            str(manifest_path),
+            "--dry-run",
+        ],
+    )
+
+    assert exit_code == 0
+    assert not manifest_path.exists()
+    output = capsys.readouterr().out
+    assert "--dry-run enabled" in output
+
+
+def test_cli_audit_hash_workers_override(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    recorded: dict[str, object] = {}
+
+    sample_summary = cast(
+        SummaryData,
+        {
+            "generatedAt": "now",
+            "projectRoot": str(tmp_path),
+            "runSummary": {},
+            "severityTotals": {},
+            "categoryTotals": {},
+            "topRules": {},
+            "topFolders": [],
+            "topFiles": [],
+            "ruleFiles": {},
+            "tabs": {
+                "overview": {"severityTotals": {}, "categoryTotals": {}, "runSummary": {}},
+                "engines": {"runSummary": {}},
+                "hotspots": {
+                    "topRules": {},
+                    "topFolders": [],
+                    "topFiles": [],
+                    "ruleFiles": {},
+                },
+                "readiness": {"strict": {}, "options": {}},
+                "runs": {"runSummary": {}},
+            },
+        },
+    )
+
+    def _run_audit_stub(**kwargs: object) -> AuditResult:
+        recorded["override"] = kwargs.get("override")
+        return AuditResult(
+            manifest={"schemaVersion": CURRENT_MANIFEST_VERSION, "runs": []},
+            runs=[],
+            summary=sample_summary,
+            error_count=0,
+            warning_count=0,
+        )
+
+    def _noop(*args: object, **kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr("typewiz.cli.commands.audit.run_audit", _run_audit_stub)
+    monkeypatch.setattr("typewiz.cli.commands.audit.print_summary", _noop)
+    monkeypatch.setattr("typewiz.cli.commands.audit._maybe_print_readiness", _noop)
+
+    (tmp_path / "pkg").mkdir(exist_ok=True)
+    consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
+
+    exit_code = main(
+        [
+            "audit",
+            "--runner",
+            "stub",
+            "--project-root",
+            str(tmp_path),
+            "pkg",
+            "--hash-workers",
+            "auto",
+        ],
+    )
+    assert exit_code == 0
+    override = recorded["override"]
+    assert override is not None
+    assert getattr(override, "hash_workers", None) == "auto"
 
 
 def test_cli_mode_only_full(
@@ -654,13 +869,13 @@ def test_cli_audit_full_outputs(
         profile="strict",
         config_file=tmp_path / "pyrightconfig.json",
         plugin_args=["--strict"],
-        include=["pkg"],
+        include=[RelPath("pkg")],
         exclude=[],
         overrides=[override_entry_full],
-        scanned_paths=["pkg"],
+        scanned_paths=[RelPath("pkg")],
     )
     audit_result = AuditResult(
-        manifest={"runs": []},
+        manifest={"schemaVersion": CURRENT_MANIFEST_VERSION, "runs": []},
         runs=[run],
         summary=summary,
         error_count=0,
@@ -752,7 +967,12 @@ def test_cli_dashboard_outputs(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     manifest_path = tmp_path / "manifest.json"
-    consume(manifest_path.write_text(json.dumps({"runs": []}), encoding="utf-8"))
+    consume(
+        manifest_path.write_text(
+            json.dumps({"schemaVersion": CURRENT_MANIFEST_VERSION, "runs": []}),
+            encoding="utf-8",
+        ),
+    )
 
     summary = _empty_summary()
 
@@ -816,7 +1036,14 @@ def test_cli_manifest_validate_with_jsonschema(
     manifest_path = tmp_path / "manifest.json"
     consume(
         manifest_path.write_text(
-            json.dumps({"generatedAt": "now", "projectRoot": ".", "runs": []}),
+            json.dumps(
+                {
+                    "generatedAt": "now",
+                    "projectRoot": ".",
+                    "schemaVersion": CURRENT_MANIFEST_VERSION,
+                    "runs": [],
+                },
+            ),
             encoding="utf-8",
         ),
     )
@@ -847,7 +1074,14 @@ def test_cli_manifest_validate_runs_type(
     manifest_path = tmp_path / "bad.json"
     consume(
         manifest_path.write_text(
-            json.dumps({"generatedAt": "now", "projectRoot": ".", "runs": {}}),
+            json.dumps(
+                {
+                    "generatedAt": "now",
+                    "projectRoot": ".",
+                    "schemaVersion": CURRENT_MANIFEST_VERSION,
+                    "runs": {},
+                },
+            ),
             encoding="utf-8",
         ),
     )
@@ -1031,12 +1265,16 @@ def test_cli_query_rules_limit(tmp_path: Path, capsys: pytest.CaptureFixture[str
             str(manifest_path),
             "--limit",
             "1",
+            "--include-paths",
+            "--format",
+            "json",
         ],
     )
     assert exit_code == 0
     data = json.loads(capsys.readouterr().out)
     assert data[0]["rule"]
     assert data[0]["count"] >= 1
+    assert "paths" in data[0]
 
 
 def test_parse_summary_fields_variants() -> None:
@@ -1203,8 +1441,8 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
         "path": "pkg",
         "profile": "strict",
         "pluginArgs": ["--warnings"],
-        "include": ["src"],
-        "exclude": ["tests"],
+        "include": [RelPath("src")],
+        "exclude": [RelPath("tests")],
     }
     run_expanded = RunResult(
         tool=PYRIGHT_TOOL,
@@ -1216,7 +1454,7 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
         profile=None,
         config_file=None,
         plugin_args=["--strict"],
-        include=["pkg"],
+        include=[RelPath("pkg")],
         exclude=[],
         overrides=[override_entry],
     )
@@ -1231,7 +1469,7 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
         config_file=tmp_path / "pyrightconfig.json",
         plugin_args=[],
         include=[],
-        exclude=["legacy"],
+        exclude=[RelPath("legacy")],
         overrides=[override_entry],
     )
 
@@ -1262,7 +1500,12 @@ def test_cli_manifest_validate_accepts_minimal_payload(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     manifest_path = tmp_path / "manifest.json"
-    consume(manifest_path.write_text(json.dumps({"runs": []}), encoding="utf-8"))
+    consume(
+        manifest_path.write_text(
+            json.dumps({"schemaVersion": CURRENT_MANIFEST_VERSION, "runs": []}),
+            encoding="utf-8",
+        ),
+    )
 
     exit_code = main(["manifest", "validate", str(manifest_path)])
     assert exit_code == 0

@@ -11,15 +11,15 @@ from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, TypedDict, cast
+from typing import TYPE_CHECKING, Final, Literal, TypedDict, cast
 
 from .category_utils import coerce_category_key
 from .data_validation import coerce_int, coerce_object_list, coerce_str_list
 from .model_types import SeverityLevel, clone_override_entries
-from .type_aliases import CacheKey, CategoryKey, CategoryName, PathKey, ToolName
+from .type_aliases import CacheKey, CategoryKey, CategoryName, Command, PathKey, RelPath, ToolName
 from .typed_manifest import ToolSummary
 from .types import Diagnostic
-from .utils import JSONValue, consume, normalise_enums_for_json
+from .utils import JSONValue, consume, file_lock, normalise_enums_for_json
 
 if TYPE_CHECKING:
     from .model_types import (
@@ -41,6 +41,10 @@ def _default_list_str() -> list[str]:
     return []
 
 
+def _default_list_relpath() -> list[RelPath]:
+    return []
+
+
 def _default_list_dict_obj() -> list[OverrideEntry]:
     return []
 
@@ -51,7 +55,7 @@ def _default_dict_str_liststr() -> CategoryMapping:
 
 @dataclass(slots=True)
 class CacheEntry:
-    command: list[str]
+    command: Command
     exit_code: int
     duration_ms: float
     diagnostics: list[DiagnosticPayload]
@@ -59,8 +63,8 @@ class CacheEntry:
     profile: str | None = None
     config_file: str | None = None
     plugin_args: list[str] = field(default_factory=_default_list_str)
-    include: list[str] = field(default_factory=_default_list_str)
-    exclude: list[str] = field(default_factory=_default_list_str)
+    include: list[RelPath] = field(default_factory=_default_list_relpath)
+    exclude: list[RelPath] = field(default_factory=_default_list_relpath)
     overrides: list[OverrideEntry] = field(default_factory=_default_list_dict_obj)
     category_mapping: CategoryMapping = field(default_factory=_default_dict_str_liststr)
     tool_summary: ToolSummary | None = None
@@ -68,15 +72,15 @@ class CacheEntry:
 
 @dataclass(slots=True)
 class CachedRun:
-    command: list[str]
+    command: Command
     exit_code: int
     duration_ms: float
     diagnostics: list[Diagnostic]
     profile: str | None = None
     config_file: Path | None = None
     plugin_args: list[str] = field(default_factory=_default_list_str)
-    include: list[str] = field(default_factory=_default_list_str)
-    exclude: list[str] = field(default_factory=_default_list_str)
+    include: list[RelPath] = field(default_factory=_default_list_relpath)
+    exclude: list[RelPath] = field(default_factory=_default_list_relpath)
     overrides: list[OverrideEntry] = field(default_factory=_default_list_dict_obj)
     category_mapping: CategoryMapping = field(default_factory=_default_dict_str_liststr)
     tool_summary: ToolSummary | None = None
@@ -97,6 +101,18 @@ def _resolve_hash_workers() -> int:
         logger.debug("Ignoring invalid %s=%s value", _HASH_WORKER_ENV, raw)
         return 0
     return max(0, parsed)
+
+
+def _effective_hash_workers(value: int | Literal["auto"] | None) -> int:
+    if value is None:
+        return _resolve_hash_workers()
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered == "auto":
+            return max(1, os.cpu_count() or 1)
+        logger.warning("Unknown hash worker spec '%s'; falling back to defaults", value)
+        return _resolve_hash_workers()
+    return max(0, value)
 
 
 def _compute_hashes(
@@ -157,10 +173,14 @@ def _normalise_override_entry(raw: Mapping[str, object]) -> OverrideEntry:
     plugin_args = coerce_str_list(raw.get("pluginArgs", []))
     if plugin_args:
         entry["pluginArgs"] = plugin_args
-    include_paths = coerce_str_list(raw.get("include", []))
+    include_paths = [
+        RelPath(str(path)) for path in coerce_str_list(raw.get("include", [])) if str(path).strip()
+    ]
     if include_paths:
         entry["include"] = include_paths
-    exclude_paths = coerce_str_list(raw.get("exclude", []))
+    exclude_paths = [
+        RelPath(str(path)) for path in coerce_str_list(raw.get("exclude", [])) if str(path).strip()
+    ]
     if exclude_paths:
         entry["exclude"] = exclude_paths
     return entry
@@ -270,10 +290,10 @@ class EngineCache:
             category_mapping_any = entry.get("category_mapping", {}) or {}
             tool_summary_any = entry.get("tool_summary")
 
-            command_list: list[str] = [str(a) for a in command_any]
+            command_list: Command = [str(a) for a in command_any]
             plugin_args_list: list[str] = [str(a) for a in plugin_args_any]
-            include_list: list[str] = [str(i) for i in include_any]
-            exclude_list: list[str] = [str(i) for i in exclude_any]
+            include_list: list[RelPath] = [RelPath(str(i)) for i in include_any]
+            exclude_list: list[RelPath] = [RelPath(str(i)) for i in exclude_any]
             overrides_list: list[OverrideEntry] = [
                 _normalise_override_entry(cast("Mapping[str, object]", override_raw))
                 for override_raw in coerce_object_list(overrides_any)
@@ -346,7 +366,13 @@ class EngineCache:
             },
         }
         payload_json = normalise_enums_for_json(payload)
-        consume(self.path.write_text(json.dumps(payload_json, indent=2) + "\n", encoding="utf-8"))
+        lock_path = self.path.with_suffix(self.path.suffix + ".lock")
+        tmp_path = self.path.with_suffix(".tmp")
+        with file_lock(lock_path):
+            consume(
+                tmp_path.write_text(json.dumps(payload_json, indent=2) + "\n", encoding="utf-8")
+            )
+            consume(tmp_path.replace(self.path))
         self._dirty = False
 
     def peek_file_hashes(self, key: CacheKey) -> dict[PathKey, FileHashPayload] | None:
@@ -362,7 +388,7 @@ class EngineCache:
         self,
         engine: str,
         mode: Mode,
-        paths: Sequence[str],
+        paths: Sequence[RelPath],
         flags: Sequence[str],
     ) -> CacheKey:
         path_part = ",".join(sorted({str(item) for item in paths}))
@@ -445,8 +471,8 @@ class EngineCache:
         profile: str | None,
         config_file: Path | None,
         plugin_args: Sequence[str],
-        include: Sequence[str],
-        exclude: Sequence[str],
+        include: Sequence[RelPath],
+        exclude: Sequence[RelPath],
         overrides: Sequence[OverrideEntry],
         category_mapping: Mapping[CategoryKey, Sequence[str]] | None,
         tool_summary: ToolSummary | None,
@@ -459,9 +485,12 @@ class EngineCache:
             hash_key: cast("FileHashPayload", dict(hash_payload))
             for hash_key, hash_payload in file_hashes.items()
         }
+        command_list: Command = [str(arg) for arg in command]
+        include_list: list[RelPath] = [RelPath(str(path)) for path in include]
+        exclude_list: list[RelPath] = [RelPath(str(path)) for path in exclude]
 
         self._entries[key] = CacheEntry(
-            command=[str(arg) for arg in command],
+            command=command_list,
             exit_code=exit_code,
             duration_ms=duration_ms,
             diagnostics=[
@@ -484,8 +513,8 @@ class EngineCache:
             profile=profile,
             config_file=config_file.as_posix() if config_file else None,
             plugin_args=[str(arg) for arg in plugin_args],
-            include=[str(path) for path in include],
-            exclude=[str(path) for path in exclude],
+            include=include_list,
+            exclude=exclude_list,
             overrides=clone_override_entries(overrides),
             category_mapping=_normalise_category_mapping(category_mapping),
             tool_summary=(
@@ -548,6 +577,7 @@ def collect_file_hashes(
     max_files: int | None = None,
     baseline: dict[PathKey, FileHashPayload] | None = None,
     max_bytes: int | None = None,
+    hash_workers: int | Literal["auto"] | None = None,
 ) -> tuple[dict[PathKey, FileHashPayload], bool]:
     hashes: dict[PathKey, FileHashPayload] = {}
     seen: set[PathKey] = set()
@@ -571,7 +601,7 @@ def collect_file_hashes(
     bytes_seen = 0
     pending: list[tuple[PathKey, Path]] = []
     stop = False
-    hash_workers = _resolve_hash_workers()
+    worker_count = _effective_hash_workers(hash_workers)
 
     def _maybe_add(file_path: Path) -> None:
         nonlocal truncated, bytes_seen, stop
@@ -640,7 +670,7 @@ def collect_file_hashes(
             if stop:
                 break
 
-    new_hashes = _compute_hashes(pending, hash_workers)
+    new_hashes = _compute_hashes(pending, worker_count)
     hashes.update(new_hashes)
     ordered_hashes: dict[PathKey, FileHashPayload] = dict(
         sorted(hashes.items(), key=lambda item: str(item[0])),

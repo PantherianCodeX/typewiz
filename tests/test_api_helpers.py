@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 from pathlib import Path
 from typing import override
@@ -17,7 +18,7 @@ from typewiz.audit_paths import (
 from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
 from typewiz.model_types import CategoryMapping
-from typewiz.type_aliases import EngineName, ProfileName
+from typewiz.type_aliases import EngineName, ProfileName, RelPath
 from typewiz.utils import consume
 
 
@@ -86,17 +87,22 @@ def test_normalise_override_entries_defaults(tmp_path: Path) -> None:
     override_path = tmp_path / "pkg"
     override_path.mkdir(parents=True)
     entries = normalise_override_entries(tmp_path, override_path, [])
-    assert entries == ["pkg"]
+    assert entries == [RelPath("pkg")]
 
 
 def test_relative_override_path_outside_root(tmp_path: Path) -> None:
     outside = (tmp_path / "..").resolve()
     result = relative_override_path(tmp_path, outside)
-    assert result == outside.as_posix()
+    expected = RelPath(Path(os.path.relpath(outside, tmp_path)).as_posix())
+    assert result == expected
 
 
 def test_apply_engine_paths_respects_exclude() -> None:
-    result = apply_engine_paths(["src"], ["pkg", "tests"], ["src/tests"])
+    result = apply_engine_paths(
+        [RelPath("src")],
+        [RelPath("pkg"), RelPath("tests")],
+        [RelPath("src/tests")],
+    )
     assert "src" in result
     assert "pkg" in result and "tests" in result
     assert all(not path.startswith("src/tests") for path in result)
@@ -106,11 +112,13 @@ class MinimalEngine(BaseEngine):
     name = "stub"
 
     @override
-    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:  # pragma: no cover
+    def run(
+        self, context: EngineContext, paths: Sequence[RelPath]
+    ) -> EngineResult:  # pragma: no cover
         raise NotImplementedError
 
     @override
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> list[str]:
+    def fingerprint_targets(self, context: EngineContext, paths: Sequence[RelPath]) -> list[str]:
         return []
 
     @override

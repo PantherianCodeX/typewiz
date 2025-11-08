@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import logging
 import subprocess
 import sys
 import time
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Final, Literal, cast
+from typing import Final, Literal, Protocol, cast
 
-from .type_aliases import ToolName
+from .type_aliases import Command, ToolName
 
 logger: logging.Logger = logging.getLogger("typewiz")
 
@@ -31,6 +33,34 @@ ROOT_MARKERS: Final[tuple[RootMarker, RootMarker, RootMarker]] = (
 )
 
 
+class _FcntlModule(Protocol):
+    LOCK_EX: int
+    LOCK_UN: int
+
+    def flock(self, fd: int, operation: int) -> None: ...
+
+
+class _MsvcrtModule(Protocol):
+    LK_LOCK: int
+    LK_UNLCK: int
+
+    def locking(self, fd: int, mode: int, size: int) -> None: ...
+
+
+def _import_optional(name: str) -> object | None:
+    try:  # pragma: no cover - platform dependent
+        return importlib.import_module(name)
+    except ImportError:  # pragma: no cover - platform dependent
+        return None
+
+
+fcntl_module = cast("_FcntlModule | None", _import_optional("fcntl"))
+msvcrt_module = cast("_MsvcrtModule | None", _import_optional("msvcrt"))
+
+_HAS_FCNTL: Final[bool] = fcntl_module is not None
+_HAS_MSVCRT: Final[bool] = msvcrt_module is not None
+
+
 def consume(value: object | None) -> None:
     """Explicitly mark a value as intentionally unused."""
 
@@ -39,7 +69,7 @@ def consume(value: object | None) -> None:
 
 @dataclass(slots=True)
 class CommandOutput:
-    args: list[str]
+    args: Command
     stdout: str
     stderr: str
     exit_code: int
@@ -58,7 +88,7 @@ def run_command(
     - Requires an iterable of string arguments; never uses ``shell=True``.
     - Optionally enforces an allowlist for the executable (first arg) via ``allowed``.
     """
-    argv = list(args)
+    argv: Command = list(args)
     if not argv:
         raise ValueError
     if not all(a for a in argv):
@@ -256,6 +286,44 @@ def default_full_paths(root: Path) -> list[str]:
     if not paths:
         paths.append(".")
     return paths
+
+
+@contextmanager
+def file_lock(path: Path) -> Iterator[None]:
+    """Best-effort file lock usable across platforms."""
+
+    path = path.resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if _HAS_FCNTL and fcntl_module:
+        with path.open("a+b") as handle:
+            fcntl_module.flock(handle.fileno(), fcntl_module.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl_module.flock(handle.fileno(), fcntl_module.LOCK_UN)
+        return
+    if _HAS_MSVCRT and msvcrt_module:
+        handle = path.open("a+b")
+        try:
+            while True:
+                try:
+                    msvcrt_module.locking(handle.fileno(), msvcrt_module.LK_LOCK, 1)
+                    break
+                except OSError:
+                    time.sleep(0.05)
+            yield
+        finally:
+            consume(handle.seek(0))
+            try:
+                msvcrt_module.locking(handle.fileno(), msvcrt_module.LK_UNLCK, 1)
+            finally:
+                handle.close()
+        return
+    handle = path.open("a+b")
+    try:
+        yield
+    finally:
+        handle.close()
 
 
 def python_executable() -> str:

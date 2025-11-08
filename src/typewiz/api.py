@@ -17,6 +17,7 @@ from .engines import EngineContext, resolve_engines
 from .html_report import render_html
 from .manifest import ManifestBuilder
 from .model_types import Mode, SeverityLevel
+from .type_aliases import RelPath
 from .utils import (
     consume,
     default_full_paths,
@@ -52,7 +53,7 @@ class AuditResult:
 class _AuditInputs:
     root: Path
     audit_config: AuditConfig
-    full_paths_normalised: list[str]
+    full_paths_normalised: list[RelPath]
     engines: list[BaseEngine]
     tool_versions: dict[str, str]
     cache: EngineCache
@@ -62,7 +63,7 @@ def _determine_full_paths(
     root: Path,
     audit_config: AuditConfig,
     full_paths: Sequence[str] | None,
-) -> list[str]:
+) -> list[RelPath]:
     raw_full_paths = (
         list(full_paths) if full_paths else (audit_config.full_paths or default_full_paths(root))
     )
@@ -142,6 +143,7 @@ def _persist_manifest_and_dashboards(
     fingerprint_truncated: bool,
     write_manifest_to: Path | None,
     build_summary_output: bool,
+    persist_outputs: bool,
 ) -> tuple[ManifestData, SummaryData | None]:
     builder = ManifestBuilder(inputs.root)
     builder.fingerprint_truncated = fingerprint_truncated
@@ -151,19 +153,21 @@ def _persist_manifest_and_dashboards(
     manifest = builder.data
 
     manifest_target = write_manifest_to or inputs.audit_config.manifest_path
-    if manifest_target is not None:
+    if persist_outputs and manifest_target is not None:
         out = manifest_target if manifest_target.is_absolute() else (inputs.root / manifest_target)
         builder.write(out)
 
-    should_build_summary = (
-        build_summary_output
-        or inputs.audit_config.dashboard_json
-        or inputs.audit_config.dashboard_markdown
-        or inputs.audit_config.dashboard_html
+    should_build_summary = build_summary_output or (
+        persist_outputs
+        and (
+            inputs.audit_config.dashboard_json
+            or inputs.audit_config.dashboard_markdown
+            or inputs.audit_config.dashboard_html
+        )
     )
     summary = build_summary(manifest) if should_build_summary else None
 
-    if summary is not None:
+    if summary is not None and persist_outputs:
         _write_dashboard_files(inputs, summary)
 
     return manifest, summary if build_summary_output else None
@@ -213,14 +217,9 @@ def run_audit(
     full_paths: Sequence[str] | None = None,
     write_manifest_to: Path | None = None,
     build_summary_output: bool = False,
+    persist_outputs: bool = True,
 ) -> AuditResult:
     """Run configured engines, persist artefacts, and collate diagnostics."""
-    _cfg, inputs = _prepare_audit_inputs(
-        project_root=project_root,
-        config=config,
-        override=override,
-        full_paths=full_paths,
-    )
     _cfg, inputs = _prepare_audit_inputs(
         project_root=project_root,
         config=config,
@@ -234,6 +233,7 @@ def run_audit(
         fingerprint_truncated=fingerprint_truncated_any,
         write_manifest_to=write_manifest_to,
         build_summary_output=build_summary_output,
+        persist_outputs=persist_outputs,
     )
     error_count, warning_count = _compute_run_totals(runs)
 

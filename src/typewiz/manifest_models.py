@@ -9,7 +9,7 @@ compatible with the existing ``typed_manifest`` TypedDict definitions.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, ClassVar, cast
+from typing import Annotated, Any, ClassVar, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from pydantic_core import PydanticCustomError
@@ -18,15 +18,20 @@ from .manifest_versioning import (
     CURRENT_MANIFEST_VERSION,
     InvalidManifestRunsError,
     InvalidManifestVersionTypeError,
+    ManifestVersion,
     ManifestVersionError,
     UnsupportedManifestVersionError,
-    upgrade_manifest,
+    ensure_current_manifest_version,
 )
 from .model_types import Mode, SeverityLevel
-from .type_aliases import CategoryKey
+from .type_aliases import CategoryKey, Command, RelPath
 from .typed_manifest import ManifestData
 
 STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(extra="forbid")
+
+
+def _empty_relpath_list() -> list[RelPath]:
+    return []
 
 
 class OverrideEntryModel(BaseModel):
@@ -35,8 +40,8 @@ class OverrideEntryModel(BaseModel):
     path: str | None = None
     profile: str | None = None
     pluginArgs: list[str] = Field(default_factory=list)
-    include: list[str] = Field(default_factory=list)
-    exclude: list[str] = Field(default_factory=list)
+    include: Annotated[list[RelPath], Field(default_factory=_empty_relpath_list)]
+    exclude: Annotated[list[RelPath], Field(default_factory=_empty_relpath_list)]
 
 
 def _empty_override_list() -> list[OverrideEntryModel]:
@@ -103,8 +108,8 @@ class EngineOptionsModel(BaseModel):
     profile: str | None = None
     configFile: str | None = None
     pluginArgs: list[str] = Field(default_factory=list)
-    include: list[str] = Field(default_factory=list)
-    exclude: list[str] = Field(default_factory=list)
+    include: Annotated[list[RelPath], Field(default_factory=_empty_relpath_list)]
+    exclude: Annotated[list[RelPath], Field(default_factory=_empty_relpath_list)]
     overrides: list[OverrideEntryModel] = Field(default_factory=_empty_override_list)
     categoryMapping: dict[CategoryKey, list[str]] | None = None
 
@@ -122,7 +127,7 @@ class RunPayloadModel(BaseModel):
 
     tool: str
     mode: Mode
-    command: list[str]
+    command: Command
     exitCode: int
     durationMs: float
     summary: RunSummaryModel
@@ -131,7 +136,7 @@ class RunPayloadModel(BaseModel):
     engineOptions: EngineOptionsModel
     toolSummary: ToolSummaryModel | None = None
     engineArgsEffective: list[str] | None = None
-    scannedPathsResolved: list[str] | None = None
+    scannedPathsResolved: list[RelPath] | None = None
     engineError: EngineErrorModel | None = None
 
 
@@ -144,7 +149,7 @@ class ManifestModel(BaseModel):
 
     generatedAt: str | None = None
     projectRoot: str | None = None
-    schemaVersion: str = Field(default=CURRENT_MANIFEST_VERSION)
+    schemaVersion: ManifestVersion = Field(default=CURRENT_MANIFEST_VERSION)
     fingerprintTruncated: bool | None = None
     toolVersions: dict[str, str] | None = None
     runs: list[RunPayloadModel] = Field(default_factory=_empty_run_payload_list)
@@ -173,12 +178,9 @@ def validate_manifest_payload(payload: Any) -> ManifestData:
     """Validate an arbitrary manifest payload using ``ManifestModel``."""
 
     try:
-        payload_to_validate = (
-            upgrade_manifest(cast(Mapping[str, Any], payload))
-            if isinstance(payload, Mapping)
-            else payload
-        )
-        model = ManifestModel.model_validate(payload_to_validate)
+        if isinstance(payload, Mapping):
+            _ = ensure_current_manifest_version(cast(Mapping[str, Any], payload))
+        model = ManifestModel.model_validate(payload)
     except ManifestVersionError as exc:
         location: tuple[str, ...]
         if isinstance(exc, UnsupportedManifestVersionError):

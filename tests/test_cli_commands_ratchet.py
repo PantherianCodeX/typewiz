@@ -10,6 +10,7 @@ import pytest
 from typewiz.cli.commands import ratchet as ratchet_cmd
 from typewiz.cli.commands.ratchet import RatchetContext, handle_info, handle_init, handle_update
 from typewiz.config import RatchetConfig
+from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
 from typewiz.model_types import SeverityLevel, SignaturePolicy
 from typewiz.ratchet.models import RatchetModel, RatchetRunBudgetModel
 from typewiz.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
@@ -31,7 +32,14 @@ def _make_context(
     payload = (
         manifest_payload
         if manifest_payload is not None
-        else cast(ManifestData, {"generatedAt": "2025-01-01T00:00:00Z", "runs": []})
+        else cast(
+            ManifestData,
+            {
+                "generatedAt": "2025-01-01T00:00:00Z",
+                "schemaVersion": CURRENT_MANIFEST_VERSION,
+                "runs": [],
+            },
+        )
     )
     cfg = config or RatchetConfig()
     manifest_path = project_root / "typing_audit.json"
@@ -49,7 +57,13 @@ def _make_context(
 
 
 def test_ratchet_context_generated_at_prefers_manifest(tmp_path: Path) -> None:
-    context = _make_context(tmp_path, manifest_payload={"generatedAt": "2024-07-01T08:00:00Z"})
+    context = _make_context(
+        tmp_path,
+        manifest_payload={
+            "generatedAt": "2024-07-01T08:00:00Z",
+            "schemaVersion": CURRENT_MANIFEST_VERSION,
+        },
+    )
     assert context.generated_at == "2024-07-01T08:00:00Z"
 
 
@@ -60,7 +74,7 @@ def test_ratchet_context_generated_at_fallback(
         return "NOW"
 
     monkeypatch.setattr(ratchet_cmd, "current_timestamp", fake_timestamp)
-    context = _make_context(tmp_path, manifest_payload={})
+    context = _make_context(tmp_path, manifest_payload={"schemaVersion": CURRENT_MANIFEST_VERSION})
     assert context.generated_at == "NOW"
 
 
@@ -255,7 +269,10 @@ def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) 
         return Path("/tmp/ratchet.json")
 
     def fake_load_manifest(_path: Path) -> ManifestData:
-        return cast(ManifestData, {"generatedAt": "2024-01-01", "runs": []})
+        return cast(
+            ManifestData,
+            {"generatedAt": "2024-01-01", "schemaVersion": CURRENT_MANIFEST_VERSION, "runs": []},
+        )
 
     def fake_resolve_runs(
         cli: Sequence[str | RunId] | None, config_runs: Sequence[str | RunId]

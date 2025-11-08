@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Sequence
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from typewiz.model_types import Mode
 from typewiz.utils import consume
@@ -111,6 +111,24 @@ def normalise_modes(values: Sequence[str] | None) -> list[Mode]:
     return modes
 
 
+def parse_hash_workers(value: str | None) -> int | Literal["auto"] | None:
+    """Return a normalised hash worker spec ('auto' or non-negative integer)."""
+    if value is None:
+        return None
+    token = value.strip().lower()
+    if not token:
+        return None
+    if token == "auto":
+        return "auto"
+    try:
+        workers = int(token)
+    except ValueError as exc:  # pragma: no cover - validated via CLI tests
+        raise SystemExit("--hash-workers must be 'auto' or a non-negative integer") from exc
+    if workers < 0:
+        raise SystemExit("--hash-workers must be non-negative")
+    return workers
+
+
 __all__ = [
     "ArgumentRegistrar",
     "collect_plugin_args",
@@ -118,6 +136,7 @@ __all__ = [
     "normalise_modes",
     "parse_comma_separated",
     "parse_int_mapping",
+    "parse_hash_workers",
     "parse_key_value_entries",
     "register_argument",
 ]

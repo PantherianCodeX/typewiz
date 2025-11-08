@@ -19,13 +19,14 @@ from typewiz.summary_types import (
     ReadinessOptionsPayload,
     ReadinessStrictEntry,
     ReadinessTab,
+    RulePathEntry,
     SummaryData,
     SummaryFileEntry,
     SummaryFolderEntry,
     SummaryRunEntry,
     SummaryTabs,
 )
-from typewiz.type_aliases import CategoryName, RunId
+from typewiz.type_aliases import CategoryName, RelPath, RunId
 
 
 class SnapshotMissingError(AssertionError):
@@ -56,7 +57,10 @@ def snapshot_text(snapshots_dir: Path) -> Callable[[str], str]:
 @pytest.fixture
 def sample_summary() -> SummaryData:
     pyright_override: OverrideEntry = {"path": "apps/platform", "pluginArgs": ["--warnings"]}
-    mypy_override: OverrideEntry = {"path": "packages/legacy", "exclude": ["packages/legacy"]}
+    mypy_override: OverrideEntry = {
+        "path": "packages/legacy",
+        "exclude": [RelPath("packages/legacy")],
+    }
 
     pyright_run: SummaryRunEntry = {
         "command": ["pyright", "--outputjson"],
@@ -68,8 +72,8 @@ def sample_summary() -> SummaryData:
             "profile": "baseline",
             "configFile": "pyrightconfig.json",
             "pluginArgs": ["--lib"],
-            "include": ["apps"],
-            "exclude": ["apps/legacy"],
+            "include": [RelPath("apps")],
+            "exclude": [RelPath("apps/legacy")],
             "overrides": [pyright_override],
         },
     }
@@ -83,7 +87,7 @@ def sample_summary() -> SummaryData:
             "profile": "strict",
             "configFile": "mypy.ini",
             "pluginArgs": ["--strict"],
-            "include": ["packages"],
+            "include": [RelPath("packages")],
             "exclude": [],
             "overrides": [mypy_override],
         },
@@ -125,9 +129,23 @@ def sample_summary() -> SummaryData:
         },
     ]
     top_files: list[SummaryFileEntry] = [
-        {"path": "apps/platform/operations/admin.py", "errors": 0, "warnings": 0},
-        {"path": "packages/core/agents.py", "errors": 1, "warnings": 1},
+        {
+            "path": "apps/platform/operations/admin.py",
+            "errors": 0,
+            "warnings": 0,
+            "information": 0,
+        },
+        {
+            "path": "packages/core/agents.py",
+            "errors": 1,
+            "warnings": 1,
+            "information": 0,
+        },
     ]
+    rule_files: dict[str, list[RulePathEntry]] = {
+        "reportGeneralTypeIssues": [RulePathEntry(path="packages/core/agents.py", count=1)],
+        "reportUnknownMemberType": [RulePathEntry(path="packages/core/agents.py", count=1)],
+    }
 
     readiness_ready_categories: dict[CategoryName, int] = {
         CategoryName("unknownChecks"): 0,
@@ -245,6 +263,7 @@ def sample_summary() -> SummaryData:
             "topRules": top_rules,
             "topFolders": top_folders,
             "topFiles": top_files,
+            "ruleFiles": rule_files,
         },
         "readiness": readiness_tab,
         "runs": {"runSummary": run_summary},
@@ -259,6 +278,7 @@ def sample_summary() -> SummaryData:
         "topRules": top_rules,
         "topFolders": top_folders,
         "topFiles": top_files,
+        "ruleFiles": rule_files,
         "tabs": tabs,
     }
     return summary

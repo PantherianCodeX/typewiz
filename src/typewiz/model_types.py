@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from enum import StrEnum
 from typing import Final, TypedDict, cast
 
-from .type_aliases import CategoryKey
+from .type_aliases import CategoryKey, RelPath
 from .utils import JSONValue
 
 
@@ -318,8 +318,8 @@ class OverrideEntry(TypedDict, total=False):
     path: str
     profile: str
     pluginArgs: list[str]
-    include: list[str]
-    exclude: list[str]
+    include: list[RelPath]
+    exclude: list[RelPath]
 
 
 class DiagnosticPayload(TypedDict, total=False):

@@ -11,6 +11,7 @@ import pytest
 from typewiz.cli.helpers import (
     collect_profile_args,
     parse_comma_separated,
+    parse_hash_workers,
     parse_int_mapping,
     parse_key_value_entries,
     render_data,
@@ -21,6 +22,7 @@ from typewiz.cli.helpers.formatting import (
     query_hotspots,
     query_overview,
     query_readiness,
+    query_rules,
     query_runs,
 )
 from typewiz.model_types import (
@@ -38,9 +40,10 @@ from typewiz.summary_types import (
     ReadinessOptionEntry,
     ReadinessOptionsPayload,
     ReadinessTab,
+    RulePathEntry,
     SummaryData,
 )
-from typewiz.type_aliases import RunId
+from typewiz.type_aliases import RelPath, RunId
 
 
 def test_parse_comma_separated_strips_entries() -> None:
@@ -73,6 +76,19 @@ def test_collect_profile_args_uses_helper() -> None:
     assert result == {"pyright": "baseline"}
 
 
+def test_parse_hash_workers_accepts_values() -> None:
+    assert parse_hash_workers("4") == 4
+    assert parse_hash_workers("auto") == "auto"
+    assert parse_hash_workers(None) is None
+
+
+def test_parse_hash_workers_rejects_invalid() -> None:
+    with pytest.raises(SystemExit):
+        _ = parse_hash_workers("-1")
+    with pytest.raises(SystemExit):
+        _ = parse_hash_workers("fast")
+
+
 def test_render_data_accepts_enum() -> None:
     rows = render_data({"key": "value"}, DataFormat.TABLE)
     assert rows[0].startswith("key")
@@ -103,6 +119,14 @@ def test_query_runs_and_engines_payloads() -> None:
     assert runs[0]["command"] == "pyright --strict"
     engines = query_engines(summary, limit=5)
     assert engines[0]["plugin_args"] == ["--strict"]
+
+
+def test_query_rules_include_paths() -> None:
+    summary = _sample_summary()
+    entries = query_rules(summary, limit=1, include_paths=True)
+    paths = entries[0].get("paths")
+    assert paths is not None
+    assert paths[0]["path"] == "src/app.py"
 
 
 def test_query_readiness_payload() -> None:
@@ -158,6 +182,9 @@ def _sample_summary() -> SummaryData:
         "topFolders": [],
         "topFiles": [],
         "topRules": top_rules,
+        "ruleFiles": {
+            "reportGeneralTypeIssues": [RulePathEntry(path="src/app.py", count=2)],
+        },
         "tabs": {
             "overview": {
                 "severityTotals": severity_totals,
@@ -172,7 +199,14 @@ def _sample_summary() -> SummaryData:
                 },
             },
             "hotspots": {
-                "topFiles": [{"path": "src/app.py", "errors": 1, "warnings": 0}],
+                "topFiles": [
+                    {
+                        "path": "src/app.py",
+                        "errors": 1,
+                        "warnings": 0,
+                        "information": 0,
+                    }
+                ],
                 "topFolders": [
                     {
                         "path": "src",
@@ -185,6 +219,9 @@ def _sample_summary() -> SummaryData:
                     }
                 ],
                 "topRules": {"reportGeneralTypeIssues": 2},
+                "ruleFiles": {
+                    "reportGeneralTypeIssues": [RulePathEntry(path="src/app.py", count=2)],
+                },
             },
             "readiness": readiness_tab,
             "runs": {
@@ -204,7 +241,7 @@ def _sample_summary() -> SummaryData:
                             "profile": "strict",
                             "configFile": "pyrightconfig.json",
                             "pluginArgs": ["--strict"],
-                            "include": ["src"],
+                            "include": [RelPath("src")],
                             "exclude": [],
                             "overrides": [],
                         }

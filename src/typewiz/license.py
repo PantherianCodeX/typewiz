@@ -12,7 +12,7 @@ from typing import Final
 from .model_types import LicenseMode
 
 LICENSE_KEY_ENV: Final[str] = "TYPEWIZ_LICENSE_KEY"
-SUPPORT_EMAIL: Final[str] = "licensing@pantheriancodeX.com"
+SUPPORT_EMAIL: Final[str] = "pantheriancodex@pm.me"
 
 _notice_emitted = False
 

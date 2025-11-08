@@ -37,13 +37,14 @@ from .summary_types import (
     ReadinessOptionEntry,
     ReadinessOptionsPayload,
     ReadinessTab,
+    RulePathEntry,
     SummaryData,
     SummaryFileEntry,
     SummaryFolderEntry,
     SummaryRunEntry,
     SummaryTabs,
 )
-from .type_aliases import CategoryKey, RunId
+from .type_aliases import CategoryKey, RelPath, RunId
 from .typed_manifest import ManifestData, ToolSummary
 from .utils import JSONValue
 
@@ -86,6 +87,10 @@ class DashboardTypeError(TypewizTypeError):
         self.context = context
         self.expected = expected
         super().__init__(f"{context} must be {expected}")
+
+
+def _coerce_rel_paths(values: Sequence[str]) -> list[RelPath]:
+    return [RelPath(str(item)) for item in values if str(item)]
 
 
 def load_manifest(path: Path) -> ManifestData:
@@ -195,9 +200,10 @@ def build_summary(manifest: ManifestData) -> SummaryData:
     folder_counts: dict[str, int] = defaultdict(int)
     folder_code_totals: dict[str, Counter[str]] = defaultdict(Counter)
     folder_recommendations: dict[str, set[str]] = defaultdict(set)
-    file_entries: list[tuple[str, int, int]] = []
+    file_entries: list[tuple[str, int, int, int]] = []
     severity_totals: Counter[SeverityLevel] = Counter()
     rule_totals: Counter[str] = Counter()
+    rule_file_counts: dict[str, Counter[str]] = defaultdict(Counter)
     category_totals: Counter[CategoryKey] = Counter()
     folder_category_totals: dict[str, Counter[CategoryKey]] = defaultdict(Counter)
 
@@ -229,8 +235,8 @@ def build_summary(manifest: ManifestData) -> SummaryData:
         if not config_file:
             config_file = None
         plugin_args = coerce_str_list(options_map.get("pluginArgs", []))
-        include_paths = coerce_str_list(options_map.get("include", []))
-        exclude_paths = coerce_str_list(options_map.get("exclude", []))
+        include_paths = _coerce_rel_paths(coerce_str_list(options_map.get("include", [])))
+        exclude_paths = _coerce_rel_paths(coerce_str_list(options_map.get("exclude", [])))
         overrides: list[OverrideEntry] = []
         overrides_raw = coerce_object_list(options_map.get("overrides", []))
         for override_obj in overrides_raw:
@@ -246,10 +252,12 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 plugin_args_value = coerce_str_list(override_map.get("pluginArgs", []))
                 if plugin_args_value:
                     override_entry["pluginArgs"] = plugin_args_value
-                include_value = coerce_str_list(override_map.get("include", []))
+                include_value_raw = coerce_str_list(override_map.get("include", []))
+                include_value = _coerce_rel_paths(include_value_raw)
                 if include_value:
                     override_entry["include"] = include_value
-                exclude_value = coerce_str_list(override_map.get("exclude", []))
+                exclude_value_raw = coerce_str_list(override_map.get("exclude", []))
+                exclude_value = _coerce_rel_paths(exclude_value_raw)
                 if exclude_value:
                     override_entry["exclude"] = exclude_value
                 overrides.append(override_entry)
@@ -375,9 +383,23 @@ def build_summary(manifest: ManifestData) -> SummaryData:
                 continue
             errors = coerce_int(entry.get("errors"))
             warnings = coerce_int(entry.get("warnings"))
+            information = coerce_int(entry.get("information"))
             if not errors and not warnings:
                 continue
-            file_entries.append((path_obj, errors, warnings))
+            file_entries.append((path_obj, errors, warnings, information))
+            diagnostics = coerce_object_list(entry.get("diagnostics"))
+            if diagnostics:
+                per_file_rule_counts: Counter[str] = Counter()
+                for diag in diagnostics:
+                    if not isinstance(diag, Mapping):
+                        continue
+                    diag_map = coerce_mapping(cast(Mapping[object, object], diag))
+                    code_obj = diag_map.get("code")
+                    code = str(code_obj).strip() if isinstance(code_obj, str) else ""
+                    if code:
+                        per_file_rule_counts[code] += 1
+                for rule, count in per_file_rule_counts.items():
+                    rule_file_counts[rule][path_obj] += count
 
     folder_entries_full: list[ReadinessEntry] = []
     for path, counts in folder_totals.items():
@@ -399,7 +421,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
     )[:25]
     top_files = sorted(
         file_entries,
-        key=lambda item: (-item[1], -item[2], item[0]),
+        key=lambda item: (-item[1], -item[2], -item[3], item[0]),
     )[:25]
     readiness_raw = _collect_readiness(folder_entries_full)
     try:
@@ -429,9 +451,17 @@ def build_summary(manifest: ManifestData) -> SummaryData:
             },
         )
     top_files_list: list[SummaryFileEntry] = [
-        {"path": path, "errors": errors, "warnings": warnings}
-        for path, errors, warnings in top_files
+        {"path": path, "errors": errors, "warnings": warnings, "information": information}
+        for path, errors, warnings, information in top_files
     ]
+
+    rule_files_payload: dict[str, list[RulePathEntry]] = {}
+    for rule, occurrences in sorted(rule_file_counts.items()):
+        entries: list[RulePathEntry] = [
+            RulePathEntry(path=file_path, count=int(count))
+            for file_path, count in occurrences.most_common(10)
+        ]
+        rule_files_payload[rule] = entries
 
     tabs_payload: SummaryTabs = {
         SummaryTabName.OVERVIEW.value: {
@@ -446,6 +476,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
             "topRules": top_rules_dict,
             "topFolders": top_folders_list,
             "topFiles": top_files_list,
+            "ruleFiles": rule_files_payload,
         },
         SummaryTabName.READINESS.value: readiness_tab,
         SummaryTabName.RUNS.value: {
@@ -469,6 +500,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
             "topRules": top_rules_dict,
             "topFolders": top_folders_list,
             "topFiles": top_files_list,
+            "ruleFiles": rule_files_payload,
             "tabs": tabs_payload,
         },
     )
@@ -581,6 +613,22 @@ def render_markdown(summary: SummaryData) -> str:
         lines.extend(f"| `{rule}` | {count} |" for rule, count in top_rules.items())
     else:
         lines.append("- No diagnostic rules recorded")
+
+    rule_files = hotspots.get("ruleFiles", {})
+    if rule_files:
+        lines.extend(
+            [
+                "",
+                "#### Rule hotspots by file",
+                "",
+            ],
+        )
+        for rule, rule_entries in rule_files.items():
+            formatted = ", ".join(
+                f"`{entry.get('path', '<unknown>')}` ({entry.get('count', 0)})"
+                for entry in rule_entries[:5]
+            )
+            lines.append(f"- `{rule}`: {formatted or '—'}")
 
     top_folders = hotspots.get("topFolders", [])
     lines.extend(

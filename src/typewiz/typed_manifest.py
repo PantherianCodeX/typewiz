@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 from .model_types import CategoryMapping, Mode, OverrideEntry, SeverityLevel
-from .type_aliases import CategoryKey
+from .type_aliases import CategoryKey, Command, RelPath
 
 
 class FileDiagnostic(TypedDict):
@@ -52,8 +52,8 @@ class EngineOptionsEntry(TypedDict, total=False):
     profile: str | None
     configFile: str | None
     pluginArgs: list[str]
-    include: list[str]
-    exclude: list[str]
+    include: list[RelPath]
+    exclude: list[RelPath]
     overrides: list[OverrideEntry]
     categoryMapping: CategoryMapping
 
@@ -68,7 +68,7 @@ class ToolSummary(TypedDict, total=False):
 class RunPayloadRequired(TypedDict):
     tool: str
     mode: Mode
-    command: list[str]
+    command: Command
     exitCode: int
     durationMs: float
     summary: RunSummary
@@ -80,7 +80,7 @@ class RunPayloadRequired(TypedDict):
 class RunPayload(RunPayloadRequired, total=False):
     toolSummary: ToolSummary
     engineArgsEffective: list[str]
-    scannedPathsResolved: list[str]
+    scannedPathsResolved: list[RelPath]
     engineError: EngineError
 
 

@@ -4,11 +4,12 @@ from collections.abc import Sequence
 
 from .collection_utils import dedupe_preserve
 from .model_types import OverrideEntry
+from .type_aliases import RelPath
 
 
 def get_override_components(
     entry: OverrideEntry,
-) -> tuple[str, str | None, list[str], list[str], list[str]]:
+) -> tuple[str, str | None, list[str], list[RelPath], list[RelPath]]:
     path = entry.get("path", "—") or "—"
     profile = entry.get("profile")
     plugin_args = dedupe_preserve(entry.get("pluginArgs", []))

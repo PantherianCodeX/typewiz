@@ -6,7 +6,7 @@ from typing import cast
 
 import pytest
 
-from typewiz.model_types import ReadinessLevel, ReadinessStatus
+from typewiz.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
 from typewiz.readiness_views import (
     FileReadinessPayload,
     FileReadinessRecord,
@@ -67,7 +67,7 @@ def _make_summary() -> SummaryData:
     tabs: SummaryTabs = {
         "overview": {"severityTotals": {}, "categoryTotals": {}, "runSummary": {}},
         "engines": {"runSummary": {}},
-        "hotspots": {"topRules": {}, "topFolders": [], "topFiles": []},
+        "hotspots": {"topRules": {}, "topFolders": [], "topFiles": [], "ruleFiles": {}},
         "readiness": readiness_tab,
         "runs": {"runSummary": {}},
     }
@@ -78,6 +78,7 @@ def _make_summary() -> SummaryData:
         "severityTotals": {},
         "categoryTotals": {},
         "topRules": {},
+        "ruleFiles": {},
         "topFolders": [],
         "topFiles": [],
         "tabs": tabs,
@@ -100,6 +101,20 @@ def test_collect_readiness_view_folder() -> None:
     first_entry = blocked_entries[0]
     assert first_entry["path"] == "src/app"
     assert first_entry["count"] == 3
+    assert first_entry["information"] == 0
+
+
+def test_collect_readiness_view_folder_severity_filter() -> None:
+    summary = _make_summary()
+    view = collect_readiness_view(
+        summary,
+        level=ReadinessLevel.FOLDER,
+        statuses=[ReadinessStatus.BLOCKED],
+        limit=5,
+        severities=[SeverityLevel.INFORMATION],
+    )
+    folder_view = cast(dict[ReadinessStatus, list[FolderReadinessPayload]], view)
+    assert folder_view[ReadinessStatus.BLOCKED] == []
 
 
 def test_collect_readiness_view_file() -> None:
@@ -121,6 +136,28 @@ def test_collect_readiness_view_file() -> None:
     assert isinstance(categories, dict)
     categories_dict = cast(dict[CategoryName, object], categories)
     assert categories_dict.get(CategoryName("unknownChecks")) == 3
+
+
+def test_collect_readiness_view_file_severity_filter() -> None:
+    summary = _make_summary()
+    view = collect_readiness_view(
+        summary,
+        level=ReadinessLevel.FILE,
+        statuses=[ReadinessStatus.BLOCKED],
+        limit=5,
+        severities=[SeverityLevel.WARNING],
+    )
+    file_view = cast(dict[ReadinessStatus, list[FileReadinessPayload]], view)
+    assert file_view[ReadinessStatus.BLOCKED]
+    filtered = collect_readiness_view(
+        summary,
+        level=ReadinessLevel.FILE,
+        statuses=[ReadinessStatus.BLOCKED],
+        limit=5,
+        severities=[SeverityLevel.INFORMATION],
+    )
+    filtered_view = cast(dict[ReadinessStatus, list[FileReadinessPayload]], filtered)
+    assert filtered_view[ReadinessStatus.BLOCKED] == []
 
 
 def test_collect_readiness_view_folder_fallback_category() -> None:
@@ -146,7 +183,7 @@ def test_collect_readiness_view_folder_fallback_category() -> None:
     tabs: SummaryTabs = {
         "overview": {"severityTotals": {}, "categoryTotals": {}, "runSummary": {}},
         "engines": {"runSummary": {}},
-        "hotspots": {"topRules": {}, "topFolders": [], "topFiles": []},
+        "hotspots": {"topRules": {}, "topFolders": [], "topFiles": [], "ruleFiles": {}},
         "readiness": readiness_tab,
         "runs": {"runSummary": {}},
     }
@@ -158,6 +195,7 @@ def test_collect_readiness_view_folder_fallback_category() -> None:
         "categoryTotals": {},
         "topRules": {},
         "topFolders": [],
+        "ruleFiles": {},
         "topFiles": [],
         "tabs": tabs,
     }
@@ -194,7 +232,7 @@ def test_collect_readiness_view_rejects_invalid() -> None:
 
 
 def test_folder_record_to_payload_roundtrip() -> None:
-    record = FolderReadinessRecord(path="pkg", count=2, errors=1, warnings=1)
+    record = FolderReadinessRecord(path="pkg", count=2, errors=1, warnings=1, information=0)
     payload = record.to_payload()
     assert payload["path"] == "pkg"
     assert payload["errors"] == 1

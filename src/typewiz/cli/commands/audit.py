@@ -32,6 +32,7 @@ from ..helpers import (
     collect_plugin_args,
     collect_profile_args,
     normalise_modes,
+    parse_hash_workers,
     parse_summary_fields,
     print_readiness_summary,
     print_summary,
@@ -125,6 +126,14 @@ def register_audit_command(subparsers: SubparserRegistry) -> None:
     )
     register_argument(
         audit,
+        "--hash-workers",
+        dest="hash_workers",
+        default=None,
+        metavar="WORKERS",
+        help="Hash worker pool size ('auto' or non-negative integer).",
+    )
+    register_argument(
+        audit,
         "--respect-gitignore",
         action="store_true",
         help="Respect .gitignore rules when expanding directories.",
@@ -202,6 +211,12 @@ def register_audit_command(subparsers: SubparserRegistry) -> None:
     )
     register_argument(
         audit,
+        "--dry-run",
+        action="store_true",
+        help="Skip writing manifests and dashboards; report summaries only.",
+    )
+    register_argument(
+        audit,
         "--dashboard-view",
         choices=[view.value for view in DashboardView],
         default=DashboardView.OVERVIEW.value,
@@ -235,6 +250,21 @@ def register_audit_command(subparsers: SubparserRegistry) -> None:
         type=int,
         default=10,
         help="Maximum entries per status when printing readiness summaries.",
+    )
+    register_argument(
+        audit,
+        "--readiness-severity",
+        dest="readiness_severity",
+        action="append",
+        choices=[severity.value for severity in SeverityLevel],
+        default=None,
+        help="Filter readiness summaries to severities (repeatable).",
+    )
+    register_argument(
+        audit,
+        "--readiness-details",
+        action="store_true",
+        help="Include error/warning counts when printing readiness summaries.",
     )
 
 
@@ -300,11 +330,18 @@ def _maybe_print_readiness(args: argparse.Namespace, summary: SummaryData) -> No
         if args.readiness_status
         else None
     )
+    severities = (
+        [SeverityLevel.from_str(value) for value in args.readiness_severity]
+        if args.readiness_severity
+        else None
+    )
     print_readiness_summary(
         summary,
         level=level_choice,
         statuses=statuses,
         limit=args.readiness_limit,
+        severities=severities,
+        detailed=bool(getattr(args, "readiness_details", False)),
     )
 
 
@@ -371,6 +408,7 @@ def execute_audit(args: argparse.Namespace) -> int:
         skip_current=(not run_current) if modes_specified else None,
         skip_full=(not run_full) if modes_specified else None,
         fail_on=cli_fail_on,
+        hash_workers=parse_hash_workers(args.hash_workers),
         dashboard_json=args.dashboard_json,
         dashboard_markdown=args.dashboard_markdown,
         dashboard_html=args.dashboard_html,
@@ -383,15 +421,27 @@ def execute_audit(args: argparse.Namespace) -> int:
     if args.profiles:
         _update_override_with_profiles(override, args.profiles)
 
+    dry_run = bool(args.dry_run)
+    if dry_run:
+        override.manifest_path = None
+        override.dashboard_json = None
+        override.dashboard_markdown = None
+        override.dashboard_html = None
+        if args.manifest or args.dashboard_json or args.dashboard_markdown or args.dashboard_html:
+            _echo("[typewiz] --dry-run enabled; manifest and dashboard outputs are suppressed")
+
     summary_fields, summary_style = _resolve_summary_fields(args)
+
+    manifest_target = None if dry_run else (args.manifest or None)
 
     result = run_audit(
         project_root=project_root,
         config=config,
         override=override,
         full_paths=selected_full_paths,
-        write_manifest_to=args.manifest or None,
+        write_manifest_to=manifest_target,
         build_summary_output=True,
+        persist_outputs=not dry_run,
     )
 
     print_summary(result.runs, summary_fields, summary_style)
@@ -424,7 +474,8 @@ def execute_audit(args: argparse.Namespace) -> int:
         + delta_segment,
     )
 
-    _emit_dashboard_outputs(args, audit_summary)
+    if not dry_run:
+        _emit_dashboard_outputs(args, audit_summary)
     return exit_code
 
 

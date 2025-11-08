@@ -16,7 +16,7 @@ from .data_validation import (
     coerce_optional_str_list,
     coerce_str,
 )
-from .model_types import ReadinessLevel, ReadinessStatus
+from .model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
 from .readiness import DEFAULT_CLOSE_THRESHOLD, ReadinessOptions
 from .summary_types import (
     ReadinessOptionEntry,
@@ -33,6 +33,7 @@ class FolderReadinessRecord:
     count: int
     errors: int
     warnings: int
+    information: int
 
     def to_payload(self) -> FolderReadinessPayload:
         return FolderReadinessPayload(
@@ -40,6 +41,7 @@ class FolderReadinessRecord:
             count=self.count,
             errors=self.errors,
             warnings=self.warnings,
+            information=self.information,
         )
 
 
@@ -48,6 +50,7 @@ class FolderReadinessPayload(TypedDict):
     count: int
     errors: int
     warnings: int
+    information: int
 
 
 class FileReadinessPayloadBase(TypedDict):
@@ -238,7 +241,14 @@ def _normalise_folder_entry(entry: ReadinessOptionEntry) -> FolderReadinessRecor
     count = coerce_int(entry.get("count"))
     errors = coerce_int(entry.get("errors"))
     warnings = coerce_int(entry.get("warnings"))
-    return FolderReadinessRecord(path=path, count=count, errors=errors, warnings=warnings)
+    information = max(0, count - errors - warnings)
+    return FolderReadinessRecord(
+        path=path,
+        count=count,
+        errors=errors,
+        warnings=warnings,
+        information=information,
+    )
 
 
 def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
@@ -288,6 +298,50 @@ def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
     )
 
 
+def _normalise_severity_filters(
+    severities: Sequence[SeverityLevel] | None,
+) -> tuple[SeverityLevel, ...]:
+    if not severities:
+        return ()
+    ordered: list[SeverityLevel] = []
+    for severity in severities:
+        if severity not in ordered:
+            ordered.append(severity)
+    return tuple(ordered)
+
+
+def _folder_matches_severity(
+    record: FolderReadinessRecord,
+    severities: Sequence[SeverityLevel],
+) -> bool:
+    if not severities:
+        return True
+    for severity in severities:
+        if severity is SeverityLevel.ERROR and record.errors > 0:
+            return True
+        if severity is SeverityLevel.WARNING and record.warnings > 0:
+            return True
+        if severity is SeverityLevel.INFORMATION and record.information > 0:
+            return True
+    return False
+
+
+def _file_matches_severity(
+    record: FileReadinessRecord,
+    severities: Sequence[SeverityLevel],
+) -> bool:
+    if not severities:
+        return True
+    for severity in severities:
+        if severity is SeverityLevel.ERROR and record.errors > 0:
+            return True
+        if severity is SeverityLevel.WARNING and record.warnings > 0:
+            return True
+        if severity is SeverityLevel.INFORMATION and record.information > 0:
+            return True
+    return False
+
+
 def _extract_file_entries(
     strict_map: Mapping[ReadinessStatus, Sequence[ReadinessStrictEntry]],
     status: ReadinessStatus,
@@ -314,6 +368,7 @@ def _folder_payload_for_status(
     options_tab: Mapping[CategoryKey, ReadinessOptions],
     status: ReadinessStatus,
     limit: int,
+    severities: Sequence[SeverityLevel],
 ) -> list[FolderReadinessPayload]:
     entries: list[ReadinessOptionEntry] = []
     for category in CATEGORY_DISPLAY_ORDER:
@@ -332,6 +387,7 @@ def _folder_payload_for_status(
             records.append(_normalise_folder_entry(option_entry))
         except ValueError as exc:
             raise ReadinessValidationError(str(exc)) from exc
+    records = [record for record in records if _folder_matches_severity(record, severities)]
     if limit > 0:
         records = records[:limit]
     return [record.to_payload() for record in records]
@@ -341,6 +397,7 @@ def _file_payload_for_status(
     strict_map: Mapping[ReadinessStatus, list[ReadinessStrictEntry]],
     status: ReadinessStatus,
     limit: int,
+    severities: Sequence[SeverityLevel],
 ) -> list[FileReadinessPayload]:
     entries = _extract_file_entries(strict_map, status)
     records: list[FileReadinessRecord] = []
@@ -349,6 +406,7 @@ def _file_payload_for_status(
             records.append(_normalise_file_entry(strict_entry))
         except ValueError as exc:
             raise ReadinessValidationError(str(exc)) from exc
+    records = [record for record in records if _file_matches_severity(record, severities)]
     if limit > 0:
         records = records[:limit]
     return [record.to_payload() for record in records]
@@ -365,6 +423,7 @@ def collect_readiness_view(
     level: ReadinessLevel,
     statuses: Sequence[ReadinessStatus] | None,
     limit: int,
+    severities: Sequence[SeverityLevel] | None = None,
 ) -> ReadinessViewResult:
     tabs: SummaryTabs = summary["tabs"]
     readiness_tab = tabs.get("readiness") or {}
@@ -372,12 +431,23 @@ def collect_readiness_view(
     strict_map = _coerce_strict_map(readiness_tab.get("strict"))
 
     statuses_normalised = _normalise_status_filters(statuses)
+    severity_filter = _normalise_severity_filters(severities)
     if level is ReadinessLevel.FOLDER:
         view: FolderReadinessView = {}
         for status in statuses_normalised:
-            view[status] = _folder_payload_for_status(options_tab, status, limit)
+            view[status] = _folder_payload_for_status(
+                options_tab,
+                status,
+                limit,
+                severity_filter,
+            )
         return view
     file_view: FileReadinessView = {}
     for status in statuses_normalised:
-        file_view[status] = _file_payload_for_status(strict_map, status, limit)
+        file_view[status] = _file_payload_for_status(
+            strict_map,
+            status,
+            limit,
+            severity_filter,
+        )
     return file_view

@@ -9,6 +9,7 @@ import pytest
 
 from typewiz.model_types import SeverityLevel
 from typewiz.ratchet.core import build_ratchet_from_manifest
+from typewiz.type_aliases import RelPath
 from typewiz.typed_manifest import (
     EngineOptionsEntry,
     FileEntry,
@@ -65,7 +66,7 @@ def _manifest() -> ManifestData:
     engine_options: EngineOptionsEntry = {
         "profile": "baseline",
         "pluginArgs": ["--strict"],
-        "include": ["src"],
+        "include": [RelPath("src")],
         "exclude": [],
     }
     summary_totals = cast(

@@ -21,4 +21,4 @@
 - Circumventing technical controls that enforce licensing terms.
 
 For commercial pantheriancodex@pm.mens, or support agreements,
-please contact licensing@pantheriancodeX.com.
+please contact pantheriancodex@pm.me.

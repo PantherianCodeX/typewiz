@@ -30,7 +30,12 @@ def _patch_run_command(
     *,
     exit_code: int = 1,
 ) -> None:
-    def _run_command(args: Sequence[str], cwd: Path | None = None) -> CommandOutput:
+    def _run_command(
+        args: Sequence[str],
+        cwd: Path | None = None,
+        *,
+        allowed: set[str] | None = None,
+    ) -> CommandOutput:
         return _command_output(payload, exit_code=exit_code)
 
     monkeypatch.setattr("typewiz.runner.run_command", _run_command)

@@ -20,7 +20,7 @@ from typewiz.manifest_models import (
     manifest_json_schema,
     validate_manifest_payload,
 )
-from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION, upgrade_manifest
+from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
 from typewiz.model_types import CategoryMapping, Mode
 from typewiz.type_aliases import EngineName, RunnerName, ToolName
 from typewiz.typed_manifest import ManifestData
@@ -59,7 +59,7 @@ def _sample_manifest() -> ManifestData:
     return {
         "generatedAt": "2025-01-01T00:00:00Z",
         "projectRoot": "/example/project",
-        "schemaVersion": "1",
+        "schemaVersion": CURRENT_MANIFEST_VERSION,
         "runs": [
             {
                 "tool": "pyright",
@@ -125,9 +125,6 @@ def test_validate_manifest_payload_rejects_invalid_tool() -> None:
     invalid_run["tool"] = 123
     with pytest.raises(ManifestValidationError):
         consume(validate_manifest_payload(manifest))
-    coerced = load_manifest_data(manifest)
-    assert "runs" in coerced
-    assert coerced["runs"] == []
 
 
 def test_validate_manifest_payload_accepts_missing_optionals() -> None:
@@ -161,20 +158,24 @@ def test_validate_manifest_payload_rejects_extra_fields() -> None:
         consume(validate_manifest_payload(manifest))
 
 
-def test_validate_manifest_payload_upgrades_missing_schema_version() -> None:
+def test_validate_manifest_payload_rejects_missing_schema_version() -> None:
     manifest = _sample_manifest()
     manifest_dict = cast("dict[str, Any]", manifest)
     manifest_dict.pop("schemaVersion")
-    validated = validate_manifest_payload(manifest)
-    assert validated.get("schemaVersion") == CURRENT_MANIFEST_VERSION
+    with pytest.raises(ManifestValidationError) as exc_info:
+        consume(validate_manifest_payload(manifest))
+    errors = exc_info.value.validation_error.errors()
+    assert errors[0]["loc"] == ("schemaVersion",)
 
 
-def test_validate_manifest_payload_accepts_numeric_schema_version() -> None:
+def test_validate_manifest_payload_rejects_numeric_schema_version() -> None:
     manifest = _sample_manifest()
     manifest_dict = cast("dict[str, Any]", manifest)
     manifest_dict["schemaVersion"] = 1
-    validated = validate_manifest_payload(manifest)
-    assert validated.get("schemaVersion") == CURRENT_MANIFEST_VERSION
+    with pytest.raises(ManifestValidationError) as exc_info:
+        consume(validate_manifest_payload(manifest))
+    errors = exc_info.value.validation_error.errors()
+    assert errors[0]["type"].endswith("manifest.version.type")
 
 
 def test_validate_manifest_payload_rejects_future_schema_version() -> None:
@@ -187,11 +188,14 @@ def test_validate_manifest_payload_rejects_future_schema_version() -> None:
     assert errors[0]["type"].endswith("manifest.version.unsupported")
 
 
-def test_upgrade_manifest_normalises_runs_sequence() -> None:
-    legacy: dict[str, Any] = {"schemaVersion": "0", "runs": ({"tool": "pyright"},)}
-    upgraded = upgrade_manifest(legacy)
-    assert isinstance(upgraded["runs"], list)
-    assert upgraded["runs"][0]["tool"] == "pyright"
+def test_validate_manifest_payload_rejects_non_list_runs() -> None:
+    manifest = _sample_manifest()
+    manifest_dict = cast("dict[str, Any]", manifest)
+    manifest_dict["runs"] = cast("Any", tuple(manifest_dict["runs"]))
+    with pytest.raises(ManifestValidationError) as exc_info:
+        consume(validate_manifest_payload(manifest))
+    errors = exc_info.value.validation_error.errors()
+    assert errors[0]["type"].endswith("manifest.runs.type")
 
 
 def test_manifest_schema_cli_round_trip(tmp_path: Path) -> None:

@@ -14,6 +14,7 @@ from typewiz.model_types import (
     QuerySection,
     ReadinessLevel,
     ReadinessStatus,
+    SeverityLevel,
 )
 from typewiz.summary_types import SummaryData
 
@@ -130,6 +131,15 @@ def register_query_command(subparsers: SubparserRegistry) -> None:
     )
     register_argument(
         query_readiness_parser,
+        "--severity",
+        dest="severities",
+        action="append",
+        choices=[severity.value for severity in SeverityLevel],
+        default=None,
+        help="Filter to severities (repeatable: error, warning, information)",
+    )
+    register_argument(
+        query_readiness_parser,
         "--format",
         choices=[fmt.value for fmt in DataFormat],
         default=DataFormat.JSON.value,
@@ -214,6 +224,12 @@ def register_query_command(subparsers: SubparserRegistry) -> None:
         default=DataFormat.JSON.value,
         help="Output format",
     )
+    register_argument(
+        query_rules_parser,
+        "--include-paths",
+        action="store_true",
+        help="Include top file paths per rule",
+    )
 
 
 def _register_common_manifest_argument(parser: argparse.ArgumentParser) -> None:
@@ -269,18 +285,28 @@ def execute_query(args: argparse.Namespace) -> int:
                 if args.statuses
                 else None
             )
+            severities = (
+                [SeverityLevel.from_str(severity) for severity in args.severities]
+                if args.severities
+                else None
+            )
             payload = query_readiness(
                 summary,
                 level=level_choice,
                 statuses=statuses,
                 limit=args.limit,
+                severities=severities,
             )
         case QuerySection.RUNS:
             payload = query_runs(summary, tools=args.tools, modes=args.modes, limit=args.limit)
         case QuerySection.ENGINES:
             payload = query_engines(summary, limit=args.limit)
         case QuerySection.RULES:
-            payload = query_rules(summary, limit=args.limit)
+            payload = query_rules(
+                summary,
+                limit=args.limit,
+                include_paths=bool(getattr(args, "include_paths", False)),
+            )
 
     _render_payload(payload, format_choice)
     return 0

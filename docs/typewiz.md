@@ -20,6 +20,8 @@ This produces `typing_audit_manifest.json` (relative to the working directory) c
 - The original tool-provided summary counts (when present) under `toolSummary`, alongside the parsed totals used in `summary`. If the two diverge, typewiz logs a warning so the mismatch is visible in CI output.
 - Each diagnostic preserves the engine-provided payload under `raw`, normalised to a recursive JSON value (`JSONValue`) so downstream tooling can safely consume the data without resorting to casts or `Any`.
 
+Manifests always declare `schemaVersion = "1"` and typewiz enforces that value strictly. If you still have artefacts from older builds, regenerate them with the current `typewiz audit` command before invoking the manifest tooling.
+
 Options:
 
 - `--skip-current` / `--skip-full` – limit runs to the requested modes.
@@ -31,6 +33,8 @@ Options:
 - `--summary {compact,expanded,full}` – choose the CLI summary layout (`full` expands and shows every field).
 - `--summary-fields profile,paths,overrides` – comma-separated extras to display alongside the summary (ignored when `--summary full` is used).
 - `--dashboard-view overview` – set the default tab for HTML output (`overview`, `engines`, `hotspots`, or `runs`).
+- `--hash-workers auto|N` – bound the number of threads used while fingerprinting files.
+- `--dry-run` – execute engines and print summaries without writing manifests or dashboards.
 
 #### Directory overrides
 
@@ -124,6 +128,9 @@ class MyRunner(BaseEngine):
 
 Expose additional arguments via the CLI with `--plugin-arg my-runner=--flag` or via the TOML config `plugin_args`
 section (see below).
+
+Use `typewiz engines list` to inspect which engines were discovered (and where they came from), and `typewiz cache clear`
+to remove `.typewiz_cache/` when you need to rebuild fingerprints from scratch.
 
 #### Engine Author Guide
 

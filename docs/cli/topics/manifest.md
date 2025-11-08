@@ -7,3 +7,4 @@
 - `typewiz manifest schema` — print the built-in JSON schema, or `--output` to write it.
 
 Use these commands in CI to guard against malformed artefacts in your pipeline.
+Validation no longer upgrades legacy manifests: only `schemaVersion` `"1"` is accepted, and the loader rejects missing fields or coercion attempts. Re-run `typewiz audit` if your stored manifest predates the current schema.

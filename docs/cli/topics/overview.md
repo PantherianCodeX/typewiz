@@ -7,6 +7,8 @@ Common entry points:
 - `typewiz query`: inspect existing manifests in structured formats.
 - `typewiz ratchet`: manage per-file budgets derived from manifests.
 - `typewiz manifest`: validate manifests or emit the JSON schema.
+- `typewiz engines`: list discovered engines (built-ins + entry points).
+- `typewiz cache`: clear `.typewiz_cache/` when fingerprints need to be rebuilt.
 - `typewiz help <topic>`: view contextual documentation like this page.
 
 Run `typewiz --help` to see every command and flag. Combine subcommand `--help`

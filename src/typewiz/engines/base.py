@@ -10,7 +10,7 @@ from typing import Protocol
 
 from typewiz.config import AuditConfig
 from typewiz.model_types import CategoryMapping, Mode, OverrideEntry
-from typewiz.type_aliases import ProfileName, ToolName
+from typewiz.type_aliases import Command, ProfileName, RelPath, ToolName
 from typewiz.typed_manifest import ToolSummary
 from typewiz.types import Diagnostic
 
@@ -29,8 +29,8 @@ def _default_category_mapping() -> CategoryMapping:
 class EngineOptions:
     plugin_args: list[str]
     config_file: Path | None
-    include: list[str]
-    exclude: list[str]
+    include: list[RelPath]
+    exclude: list[RelPath]
     profile: ProfileName | None
     overrides: list[OverrideEntry] = field(default_factory=_default_overrides)
     category_mapping: CategoryMapping = field(default_factory=_default_category_mapping)
@@ -48,7 +48,7 @@ class EngineContext:
 class EngineResult:
     engine: ToolName
     mode: Mode
-    command: list[str]
+    command: Command
     exit_code: int
     duration_ms: float
     diagnostics: list[Diagnostic]
@@ -76,12 +76,16 @@ class EngineResult:
 class BaseEngine(Protocol):
     name: str
 
-    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult: ...
+    def run(self, context: EngineContext, paths: Sequence[RelPath]) -> EngineResult: ...
 
     def category_mapping(self) -> CategoryMapping:
         """Optional mapping from categories to rule substrings for readiness analysis."""
         return {}
 
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+    def fingerprint_targets(
+        self,
+        context: EngineContext,
+        paths: Sequence[RelPath],
+    ) -> Sequence[str]:
         """Additional files or globs whose contents should invalidate cached runs."""
         return []

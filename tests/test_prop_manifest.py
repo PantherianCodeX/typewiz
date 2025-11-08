@@ -10,6 +10,7 @@ import pytest
 from hypothesis import HealthCheck, assume, given, settings
 
 from typewiz.manifest_models import ManifestValidationError, validate_manifest_payload
+from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
 from typewiz.utils import consume
 
 
@@ -82,7 +83,7 @@ def _run_payloads() -> st.SearchStrategy[dict[str, Any]]:
 @settings(suppress_health_check=[HealthCheck.too_slow], max_examples=50)
 @given(st.lists(_run_payloads(), min_size=0, max_size=3))
 def test_h_manifest_valid_roundtrip(runs: list[dict[str, Any]]) -> None:
-    manifest: dict[str, Any] = {"runs": runs}
+    manifest: dict[str, Any] = {"schemaVersion": CURRENT_MANIFEST_VERSION, "runs": runs}
     validated = validate_manifest_payload(manifest)
     assert "runs" in validated
     assert len(cast("Mapping[str, Any]", validated)["runs"]) == len(runs)
@@ -116,6 +117,7 @@ def test_h_manifest_rejects_unknown_top_level(
     if not extras:
         assume(False)
     manifest: dict[str, Any] = {"runs": runs}
+    manifest["schemaVersion"] = CURRENT_MANIFEST_VERSION
     manifest.update(extras)
     with pytest.raises(ManifestValidationError):
         consume(validate_manifest_payload(manifest))

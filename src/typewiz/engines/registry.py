@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import logging
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from functools import lru_cache
 from importlib import metadata
 from typing import Final, Literal, cast
@@ -96,3 +97,32 @@ def resolve_engines(names: Iterable[str | EngineName] | None) -> list[BaseEngine
             raise ValueError(message)
         resolved.append(mapping[engine_name])
     return resolved
+
+
+@dataclass(slots=True, frozen=True)
+class EngineDescriptor:
+    name: EngineName
+    module: str
+    qualified_name: str
+    origin: str
+
+
+def describe_engines() -> list[EngineDescriptor]:
+    """Return a sorted list of discovered engines with metadata."""
+
+    mapping = engine_map()
+    entrypoints = entrypoint_engines()
+    descriptors: list[EngineDescriptor] = []
+    for name, engine in mapping.items():
+        cls = engine.__class__
+        origin = "entry_point" if name in entrypoints else "builtin"
+        descriptors.append(
+            EngineDescriptor(
+                name=name,
+                module=cls.__module__,
+                qualified_name=cls.__qualname__,
+                origin=origin,
+            ),
+        )
+    descriptors.sort(key=lambda desc: str(desc.name))
+    return descriptors

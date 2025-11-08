@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from html import escape
 from typing import Final, cast
 
@@ -15,6 +16,7 @@ from .model_types import (
 from .override_utils import get_override_components
 from .readiness import CATEGORY_LABELS
 from .summary_types import HotspotsTab, OverviewTab, ReadinessTab, SummaryData, SummaryTabs
+from .type_aliases import RelPath
 
 _TAB_ORDER: Final[tuple[SummaryTabName, ...]] = tuple(SummaryTabName)
 _TAB_LABELS: Final[dict[SummaryTabName, str]] = {
@@ -116,7 +118,7 @@ def render_html(
         ],
     )
 
-    def _as_code_list(items: list[str]) -> str:
+    def _as_code_list(items: Sequence[str | RelPath]) -> str:
         if not items:
             return "—"
         return " ".join(f"<code>{h(str(item))}</code>" for item in items)
@@ -259,6 +261,25 @@ def render_html(
     else:
         parts.append('          <tr><td colspan="3"><em>No file hotspots</em></td></tr>')
     parts.extend(["        </tbody>", "      </table>", "    </section>"])
+    rule_files = hotspots.get("ruleFiles", {})
+    parts.append("    <section>")
+    parts.append("      <h3>Rule hotspots by file</h3>")
+    if rule_files:
+        for rule, rule_entries in rule_files.items():
+            parts.append(
+                f"      <details><summary><code>{h(rule)}</code></summary><ul>",
+            )
+            if rule_entries:
+                for rule_entry in rule_entries[:10]:
+                    path = rule_entry.get("path", "<unknown>")
+                    count = rule_entry.get("count", 0)
+                    parts.append(f"        <li><code>{h(str(path))}</code> ({count})</li>")
+            else:
+                parts.append("        <li><em>No matching paths</em></li>")
+            parts.append("      </ul></details>")
+    else:
+        parts.append("      <p>No rule hotspot breakdown available.</p>")
+    parts.append("    </section>")
     parts.append("  </section>")
 
     # Readiness tab

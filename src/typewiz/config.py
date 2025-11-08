@@ -170,6 +170,7 @@ class AuditConfig:
     skip_current: bool | None = None
     skip_full: bool | None = None
     fail_on: FailOnPolicy | None = None
+    hash_workers: int | Literal["auto"] | None = None
     dashboard_json: Path | None = None
     dashboard_markdown: Path | None = None
     dashboard_html: Path | None = None

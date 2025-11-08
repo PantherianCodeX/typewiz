@@ -45,6 +45,11 @@
 | `reportUnknownMemberType` | 1 |
 | `reportGeneralTypeIssues` | 1 |
 
+#### Rule hotspots by file
+
+- `reportGeneralTypeIssues`: `packages/core/agents.py` (1)
+- `reportUnknownMemberType`: `packages/core/agents.py` (1)
+
 #### Folder hotspots
 
 | Folder | Errors | Warnings | Information | Runs |

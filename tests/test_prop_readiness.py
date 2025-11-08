@@ -134,7 +134,7 @@ def test_h_collect_readiness_view_shapes(
     tabs: SummaryTabs = {
         "overview": {"severityTotals": {}, "categoryTotals": {}, "runSummary": {}},
         "engines": {"runSummary": {}},
-        "hotspots": {"topRules": {}, "topFolders": [], "topFiles": []},
+        "hotspots": {"topRules": {}, "topFolders": [], "topFiles": [], "ruleFiles": {}},
         "readiness": readiness_tab,
         "runs": {"runSummary": {}},
     }
@@ -147,6 +147,7 @@ def test_h_collect_readiness_view_shapes(
         "topRules": {},
         "topFolders": [],
         "topFiles": [],
+        "ruleFiles": {},
         "tabs": tabs,
     }
 

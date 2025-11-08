@@ -9,6 +9,7 @@ from typing import override
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
 from typewiz.model_types import CategoryMapping, Mode
 from typewiz.runner import run_mypy
+from typewiz.type_aliases import Command, RelPath
 from typewiz.utils import python_executable
 
 
@@ -24,14 +25,14 @@ class MypyEngine(BaseEngine):
         candidate = context.project_root / "mypy.ini"
         return candidate if candidate.exists() else None
 
-    def _build_command(self, context: EngineContext, paths: Sequence[str]) -> list[str]:
+    def _build_command(self, context: EngineContext, paths: Sequence[RelPath]) -> Command:
         args = self._args(context)
         base = [python_executable(), "-m", "mypy"]
         config_file = self._config_file(context)
         if config_file:
             base.extend(["--config-file", str(config_file)])
         if context.mode is Mode.CURRENT:
-            command = [*base, "--no-pretty", *args]
+            command: Command = [*base, "--no-pretty", *args]
         else:
             command = [
                 *base,
@@ -40,12 +41,12 @@ class MypyEngine(BaseEngine):
                 "--show-error-codes",
                 "--no-pretty",
                 *args,
-                *paths,
+                *(str(path) for path in paths),
             ]
         return command
 
     @override
-    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+    def run(self, context: EngineContext, paths: Sequence[RelPath]) -> EngineResult:
         command = self._build_command(context, paths)
         return run_mypy(context.project_root, mode=context.mode, command=command)
 
@@ -74,7 +75,9 @@ class MypyEngine(BaseEngine):
         }
 
     @override
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+    def fingerprint_targets(
+        self, context: EngineContext, paths: Sequence[RelPath]
+    ) -> Sequence[str]:
         targets: list[str] = []
         config = self._config_file(context)
         if config:

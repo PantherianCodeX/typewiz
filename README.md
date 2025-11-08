@@ -41,11 +41,15 @@ typewiz dashboard --manifest typing_audit.json --format html --output dashboard.
 
 # fingerprinting options for large repos
 typewiz audit --respect-gitignore --max-files 50000 --manifest typing_audit.json
+# parallelise hashing or skip writes entirely
+typewiz audit --hash-workers auto --dry-run
 ```
 
 Running `typewiz audit` with no additional arguments also works — typewiz will analyse the current project using its built-in Pyright and mypy defaults.
 
 Pass extra flags to engines with `--plugin-arg runner=VALUE` (repeatable). When the value itself starts with a dash, keep the `runner=value` form to avoid ambiguity, e.g. `--plugin-arg pyright=--verifytypes`.
+
+Need faster fingerprints or a quick health check? Use `--hash-workers auto|N` to fan out hashing, and `--dry-run` to run engines without writing manifests/dashboards (the CLI summary still prints totals for CI logs).
 
 ### Querying manifest summaries
 
@@ -69,9 +73,24 @@ typewiz query engines --manifest typing_audit.json --format table
 
 # Quick snapshot of the most frequent diagnostic rules
 typewiz query rules --manifest typing_audit.json --limit 10
+
+# Include offending files per rule
+typewiz query rules --manifest typing_audit.json --include-paths --limit 5
+
+# Filter readiness payloads by severity
+typewiz query readiness --manifest typing_audit.json --severity warning --format table
 ```
 
 Each subcommand accepts `--format json` (default) or `--format table` for a human-friendly view.
+
+### Inspect engines and caches
+
+Discover which engines are available (built-ins plus entry points) and clear stale caches:
+
+```bash
+typewiz engines list --format table
+typewiz cache clear
+```
 
 ### Per-file ratchets
 
@@ -124,6 +143,8 @@ Validate a manifest against the bundled JSON Schema:
 ```bash
 typewiz manifest validate typing_audit.json
 ```
+
+Manifests must declare `schemaVersion` `"1"` exactly; older payloads or files missing the field now fail fast instead of being upgraded implicitly. Re-run `typewiz audit` to regenerate manifests before running query/ratchet commands if your artefacts predate the current schema.
 
 ### Why both Pyright and mypy?
 
@@ -289,7 +310,7 @@ The standalone readiness command mirrors the new behaviour:
 typewiz readiness --manifest typing_audit.json --status blocked --status ready
 ```
 
-It now accepts multiple `--status` arguments, renders headers for every bucket, and reports `<none>` when a bucket is empty so the output stays informative in CI logs.
+It now accepts multiple `--status` arguments, renders headers for every bucket, and reports `<none>` when a bucket is empty so the output stays informative in CI logs. Pair it with `--severity error --severity warning` to focus on high-signal findings, and `--details` to include per-entry severity counts.
 
 ### Folder overrides
 
@@ -338,6 +359,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("typewiz").setLevel(logging.DEBUG)
 ```
+
+Structured JSON logs now emit ISO8601 timestamps with explicit UTC offsets so downstream collectors can safely merge results from multi-region runs.
 
 See the [docs](docs/typewiz.md) for detailed guidance and the export roadmap.
 
@@ -419,7 +442,6 @@ When `typewiz` writes dashboards during `audit`, you can control the default HTM
 6. **Ecosystem integration**
    - Ship VS Code/IDE tasks that hydrate profiles and dashboards
    - Grow first-party engines (Pyre, Pytype) once profile API is stable
-   - Prepare for PyPI release with migration guide covering new config surface
 
 ### Manifest validation and schema
 

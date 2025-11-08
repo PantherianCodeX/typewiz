@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .model_types import SeverityLevel
-from .type_aliases import ToolName
+from .type_aliases import Command, RelPath, ToolName
 from .typed_manifest import EngineError, ToolSummary
 from .utils import JSONValue
 
@@ -22,7 +22,7 @@ def _default_raw_mapping() -> Mapping[str, JSONValue]:
     return {}
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class Diagnostic:
     tool: ToolName
     severity: SeverityLevel
@@ -46,11 +46,15 @@ def _default_category_mapping() -> CategoryMapping:
     return {}
 
 
+def _default_relpath_list() -> list[RelPath]:
+    return []
+
+
 @dataclass(slots=True)
 class RunResult:
     tool: ToolName
     mode: Mode
-    command: list[str]
+    command: Command
     exit_code: int
     duration_ms: float
     diagnostics: list[Diagnostic]
@@ -58,13 +62,13 @@ class RunResult:
     profile: str | None = None
     config_file: Path | None = None
     plugin_args: list[str] = field(default_factory=_default_str_list)
-    include: list[str] = field(default_factory=_default_str_list)
-    exclude: list[str] = field(default_factory=_default_str_list)
+    include: list[RelPath] = field(default_factory=_default_relpath_list)
+    exclude: list[RelPath] = field(default_factory=_default_relpath_list)
     overrides: list[OverrideEntry] = field(default_factory=_default_overrides_list)
     category_mapping: CategoryMapping = field(default_factory=_default_category_mapping)
     # Optional: raw tool-provided summary counts (normalised to errors/warnings/information/total)
     tool_summary: ToolSummary | None = None
-    scanned_paths: list[str] = field(default_factory=_default_str_list)
+    scanned_paths: list[RelPath] = field(default_factory=_default_relpath_list)
     engine_error: EngineError | None = None
 
     def severity_counts(self) -> Counter[SeverityLevel]:
