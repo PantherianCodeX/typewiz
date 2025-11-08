@@ -905,8 +905,8 @@ def test_cli_audit_full_outputs(
     monkeypatch.setattr("typewiz.cli.commands.audit.resolve_project_root", _resolve_root)
     monkeypatch.setattr("typewiz.cli.commands.audit.default_full_paths", _default_paths)
     monkeypatch.setattr("typewiz.cli.commands.audit.run_audit", _run_audit_stub)
-    monkeypatch.setattr("typewiz.cli.commands.audit.render_markdown", _render_markdown)
-    monkeypatch.setattr("typewiz.cli.commands.audit.render_html", _render_html)
+    monkeypatch.setattr("typewiz.services.dashboard.render_markdown", _render_markdown)
+    monkeypatch.setattr("typewiz.services.dashboard.render_html", _render_html)
 
     def _fake_build_summary(data: object) -> SummaryData:
         if isinstance(data, dict):
@@ -917,10 +917,13 @@ def test_cli_audit_full_outputs(
 
     monkeypatch.setattr("typewiz.cli.commands.audit.build_summary", _fake_build_summary)
 
-    def _load_manifest(_: Path) -> dict[str, bool]:
-        return {"__prev__": True}
+    def _load_prev_summary(_: Path) -> SummaryData:
+        return prev_summary
 
-    monkeypatch.setattr("typewiz.dashboard.load_manifest", _load_manifest)
+    monkeypatch.setattr(
+        "typewiz.cli.commands.audit.load_summary_from_manifest",
+        _load_prev_summary,
+    )
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     compare_path = tmp_path / "prev_manifest.json"

@@ -4,16 +4,11 @@
 from __future__ import annotations
 
 import argparse
-import json
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
-from typewiz._internal.utils import (
-    default_full_paths,
-    normalise_enums_for_json,
-    resolve_project_root,
-)
+from typewiz._internal.utils import default_full_paths, resolve_project_root
 from typewiz.api import run_audit
 from typewiz.cli.helpers import (
     SUMMARY_FIELD_CHOICES,
@@ -40,8 +35,8 @@ from typewiz.core.model_types import (
 )
 from typewiz.core.summary_types import SummaryData
 from typewiz.core.type_aliases import EngineName, ProfileName
-from typewiz.dashboard import build_summary, render_markdown
-from typewiz.dashboard.render_html import render_html
+from typewiz.dashboard import build_summary
+from typewiz.services.dashboard import emit_dashboard_outputs, load_summary_from_manifest
 
 
 class SubparserRegistry(Protocol):
@@ -357,10 +352,7 @@ def _build_delta_line(
     if not args.compare_to or not args.compare_to.exists():
         return ""
     try:
-        from typewiz.dashboard import load_manifest as load_manifest_for_delta
-
-        prev_manifest = load_manifest_for_delta(args.compare_to)
-        prev_summary = build_summary(prev_manifest)
+        prev_summary = load_summary_from_manifest(args.compare_to)
         prev_totals = prev_summary["tabs"]["overview"]["severityTotals"]
         de = error_count - int(prev_totals.get(SeverityLevel.ERROR, 0))
         dw = warning_count - int(prev_totals.get(SeverityLevel.WARNING, 0))
@@ -376,19 +368,13 @@ def _build_delta_line(
 
 def _emit_dashboard_outputs(args: argparse.Namespace, summary: SummaryData) -> None:
     view_choice = DashboardView.from_str(args.dashboard_view)
-    if args.dashboard_json:
-        args.dashboard_json.parent.mkdir(parents=True, exist_ok=True)
-        payload = normalise_enums_for_json(summary)
-        args.dashboard_json.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    if args.dashboard_markdown:
-        args.dashboard_markdown.parent.mkdir(parents=True, exist_ok=True)
-        args.dashboard_markdown.write_text(render_markdown(summary), encoding="utf-8")
-    if args.dashboard_html:
-        args.dashboard_html.parent.mkdir(parents=True, exist_ok=True)
-        args.dashboard_html.write_text(
-            render_html(summary, default_view=view_choice.value),
-            encoding="utf-8",
-        )
+    emit_dashboard_outputs(
+        summary,
+        json_path=args.dashboard_json,
+        markdown_path=args.dashboard_markdown,
+        html_path=args.dashboard_html,
+        default_view=view_choice,
+    )
 
 
 def execute_audit(args: argparse.Namespace) -> int:
