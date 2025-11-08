@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from typewiz._internal.utils import consume
 from typewiz.data_validation import (
     coerce_float,
     coerce_int,
@@ -15,7 +16,6 @@ from typewiz.data_validation import (
     ensure_optional_str_list,
     require_non_negative_int,
 )
-from typewiz.utils import consume
 
 
 def test_coerce_str_handles_non_string() -> None:

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from typewiz._internal.utils import normalise_enums_for_json, resolve_project_root
 from typewiz.cli.helpers import (
     DEFAULT_RATCHET_FILENAME,
     apply_target_overrides,
@@ -48,7 +49,6 @@ from typewiz.ratchet import (
 from typewiz.ratchet.io import current_timestamp
 from typewiz.ratchet.io import load_manifest as load_ratchet_manifest
 from typewiz.typed_manifest import ManifestData
-from typewiz.utils import normalise_enums_for_json, resolve_project_root
 
 
 @dataclass(slots=True)

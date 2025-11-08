@@ -8,8 +8,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from typewiz._internal.utils import normalise_enums_for_json
+
 from ..manifest_loader import load_manifest_data
-from ..utils import normalise_enums_for_json
 from .models import RatchetModel
 
 if TYPE_CHECKING:

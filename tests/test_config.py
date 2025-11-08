@@ -8,6 +8,7 @@ from typing import cast
 import pytest
 
 import typewiz.config as config_module
+from typewiz._internal.utils import consume
 from typewiz.audit_config_utils import merge_audit_configs
 from typewiz.config import (
     AuditConfig,
@@ -23,7 +24,6 @@ from typewiz.config import (
 )
 from typewiz.core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import EngineName, ProfileName, RunId, RunnerName
-from typewiz.utils import consume
 
 ensure_list = config_module.ensure_list
 resolve_path_fields = config_module.resolve_path_fields

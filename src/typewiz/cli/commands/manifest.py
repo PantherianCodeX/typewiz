@@ -10,13 +10,13 @@ from pathlib import Path
 from typing import Any, Protocol, cast
 
 from typewiz._internal.error_codes import error_code_for
+from typewiz._internal.utils import consume
 from typewiz.core.model_types import ManifestAction
 from typewiz.manifest_models import (
     ManifestValidationError,
     manifest_json_schema,
     validate_manifest_payload,
 )
-from typewiz.utils import consume
 
 from ..helpers import echo, register_argument
 

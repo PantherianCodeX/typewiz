@@ -7,10 +7,18 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from typewiz._internal.cache import EngineCache
+from typewiz._internal.utils import (
+    consume,
+    default_full_paths,
+    detect_tool_versions,
+    normalise_enums_for_json,
+    resolve_project_root,
+)
+
 from .audit_config_utils import merge_audit_configs
 from .audit_execution import execute_engine_mode, resolve_engine_options
 from .audit_paths import normalise_paths
-from .cache import EngineCache
 from .config import AuditConfig, Config, load_config
 from .core.model_types import Mode, SeverityLevel
 from .core.type_aliases import RelPath
@@ -18,13 +26,6 @@ from .dashboard import build_summary, render_markdown
 from .engines import EngineContext, resolve_engines
 from .html_report import render_html
 from .manifest import ManifestBuilder
-from .utils import (
-    consume,
-    default_full_paths,
-    detect_tool_versions,
-    normalise_enums_for_json,
-    resolve_project_root,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

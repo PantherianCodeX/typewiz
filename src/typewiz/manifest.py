@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
+from typewiz._internal.utils import consume, detect_tool_versions, normalise_enums_for_json
+
 from .aggregate import summarise_run
 from .core.model_types import clone_override_entries
 from .core.types import RunResult
@@ -18,7 +20,6 @@ from .typed_manifest import (
     ManifestData,
     RunPayload,
 )
-from .utils import consume, detect_tool_versions, normalise_enums_for_json
 
 logger: logging.Logger = logging.getLogger("typewiz")
 

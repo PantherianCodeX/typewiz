@@ -13,9 +13,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Final, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Final, Literal, Protocol, cast
 
-from .core.type_aliases import Command, ToolName
+if TYPE_CHECKING:
+    from ..core.type_aliases import Command, ToolName
 
 logger: logging.Logger = logging.getLogger("typewiz")
 

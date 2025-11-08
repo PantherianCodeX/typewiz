@@ -7,8 +7,9 @@ import logging
 from datetime import UTC, datetime
 from typing import Final, Literal, TypedDict, cast, override
 
+from typewiz._internal.utils import normalise_enums_for_json
+
 from ..core.model_types import LogComponent, LogFormat, Mode, SeverityLevel
-from ..utils import normalise_enums_for_json
 
 LOG_FORMATS: Final[tuple[Literal["text", "json"], ...]] = cast(
     tuple[Literal["text", "json"], ...],

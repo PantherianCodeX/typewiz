@@ -33,6 +33,47 @@ class EnsureImport:
     symbols: tuple[str, ...]
 
 
+def _strip_suffix(name: str) -> str:
+    for suffix in (".py", ".pyi"):
+        if name.endswith(suffix):
+            return name[: -len(suffix)]
+    return name
+
+
+def _module_name_from_path(path: Path, root: Path) -> str | None:
+    try:
+        relative = path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return None
+    parts = list(relative.parts)
+    if not parts:
+        return None
+    parts[-1] = _strip_suffix(parts[-1])
+    if parts[-1] == "__init__":
+        parts.pop()
+    if not parts:
+        return None
+    return ".".join(parts)
+
+
+def _resolve_absolute_module(module: str, current_module: str | None) -> str | None:
+    if not module.startswith("."):
+        return module
+    if not current_module:
+        return None
+    level = len(module) - len(module.lstrip("."))
+    remainder = module[level:]
+    parents = current_module.split(".")
+    if level > len(parents):
+        return None
+    target = parents[: len(parents) - level]
+    if remainder:
+        target.extend(part for part in remainder.split(".") if part)
+    if not target:
+        return None
+    return ".".join(target)
+
+
 def _parse_map_entries(entries: Iterable[str]) -> list[ImportMap]:
     mapping: list[ImportMap] = []
     for entry in entries:
@@ -148,7 +189,11 @@ def _load_mapping_file(path: Path) -> list[str]:
     return entries
 
 
-def _rewrite_from_line(line: str, mapping: dict[str, str]) -> tuple[str, bool]:
+def _rewrite_from_line(
+    line: str,
+    mapping: dict[str, str],
+    current_module: str | None,
+) -> tuple[str, bool]:
     stripped = line.lstrip()
     if not stripped.startswith("from "):
         return line, False
@@ -159,7 +204,12 @@ def _rewrite_from_line(line: str, mapping: dict[str, str]) -> tuple[str, bool]:
         return line, False
     module, suffix = remainder.split(" import ", 1)
     module = module.strip()
-    replacement = mapping.get(module)
+    absolute_module = _resolve_absolute_module(module, current_module)
+    replacement = None
+    if absolute_module:
+        replacement = mapping.get(absolute_module)
+    if replacement is None:
+        replacement = mapping.get(module)
     if replacement is None:
         return line, False
     new_line = f"{indent}from {replacement} import {suffix}"
@@ -194,11 +244,15 @@ def _rewrite_import_line(line: str, mapping: dict[str, str]) -> tuple[str, bool]
     return new_line, True
 
 
-def _rewrite_content(content: str, mapping: dict[str, str]) -> tuple[str, bool]:
+def _rewrite_content(
+    content: str,
+    mapping: dict[str, str],
+    current_module: str | None = None,
+) -> tuple[str, bool]:
     lines = content.splitlines()
     changed_any = False
     for idx, line in enumerate(lines):
-        new_line, changed = _rewrite_from_line(line, mapping)
+        new_line, changed = _rewrite_from_line(line, mapping, current_module)
         if changed:
             lines[idx] = new_line
             changed_any = True
@@ -403,7 +457,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if mapping_dict:
         for path in _iter_python_files(root, args.use_git):
             content = path.read_text(encoding="utf-8")
-            new_content, changed = _rewrite_content(content, mapping_dict)
+            module_name = _module_name_from_path(path, root)
+            new_content, changed = _rewrite_content(content, mapping_dict, module_name)
             if not changed:
                 continue
             _mark(path)

@@ -7,8 +7,8 @@ from typing import cast
 
 import pytest
 
+from typewiz._internal.utils import consume, normalise_enums_for_json, resolve_project_root
 from typewiz.core.model_types import ReadinessStatus, SeverityLevel
-from typewiz.utils import consume, normalise_enums_for_json, resolve_project_root
 
 
 def test_resolve_project_root_prefers_local_markers(tmp_path: Path) -> None:

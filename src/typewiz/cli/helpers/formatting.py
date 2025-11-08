@@ -8,6 +8,7 @@ from collections.abc import Mapping, Sequence
 from typing import Literal, TypedDict, cast
 
 from typewiz._internal.error_codes import error_code_for
+from typewiz._internal.utils import JSONValue, normalise_enums_for_json
 from typewiz.core.model_types import (
     DataFormat,
     HotspotKind,
@@ -32,7 +33,6 @@ from typewiz.readiness_views import (
     ReadinessViewResult,
 )
 from typewiz.readiness_views import collect_readiness_view as _collect_readiness_view
-from typewiz.utils import JSONValue, normalise_enums_for_json
 
 from .io import echo
 

@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
+from typewiz._internal.utils import consume
 from typewiz.api import run_audit
 from typewiz.config import AuditConfig, Config, EngineSettings
 from typewiz.core.model_types import Mode
 from typewiz.core.type_aliases import EngineName, RunnerName, ToolName
 from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.utils import consume
 
 
 class RecordingEngine:

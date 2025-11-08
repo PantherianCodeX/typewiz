@@ -10,6 +10,7 @@ from typing import Any, cast
 
 import pytest
 
+from typewiz._internal.utils import consume
 from typewiz.api import run_audit
 from typewiz.cli import main
 from typewiz.config import AuditConfig
@@ -24,7 +25,6 @@ from typewiz.manifest_models import (
 )
 from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
 from typewiz.typed_manifest import ManifestData
-from typewiz.utils import consume
 
 
 class RecordingEngine:

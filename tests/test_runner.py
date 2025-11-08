@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
+from typewiz._internal.utils import CommandOutput, consume
 from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.runner import run_pyright
-from typewiz.utils import CommandOutput, consume
 
 
 def _command_output(payload: Mapping[str, object], *, exit_code: int = 1) -> CommandOutput:

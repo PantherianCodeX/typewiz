@@ -13,8 +13,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import cast
 
+from typewiz._internal.collection_utils import dedupe_preserve, merge_preserve
+
 from .category_utils import coerce_category_key
-from .collection_utils import dedupe_preserve, merge_preserve
 from .config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from .core.type_aliases import CategoryKey, EngineName
 from .data_validation import coerce_object_list

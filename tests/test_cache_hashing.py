@@ -6,10 +6,10 @@ from typing import Any
 
 import pytest
 
-from typewiz.cache import collect_file_hashes
+from typewiz._internal.cache import collect_file_hashes
+from typewiz._internal.utils import consume
 from typewiz.core.model_types import FileHashPayload
 from typewiz.core.type_aliases import PathKey
-from typewiz.utils import consume
 
 
 def _write(path: Path, content: str) -> None:
@@ -42,8 +42,8 @@ def test_collect_file_hashes_respects_gitignore(
     def fake_git_list(root: Path) -> set[str]:
         return {"project/keep.py"} if root == repo_root else set()
 
-    monkeypatch.setattr("typewiz.cache._git_repo_root", fake_repo_root)
-    monkeypatch.setattr("typewiz.cache._git_list_files", fake_git_list)
+    monkeypatch.setattr("typewiz._internal.cache._git_repo_root", fake_repo_root)
+    monkeypatch.setattr("typewiz._internal.cache._git_list_files", fake_git_list)
 
     hashes, _ = collect_file_hashes(project_root, paths=["."], respect_gitignore=True)
 
@@ -65,7 +65,7 @@ def test_collect_file_hashes_reuses_baseline(
         fingerprint_called["value"] = True
         return {"hash": "stub", "mtime": 0, "size": 0}
 
-    monkeypatch.setattr("typewiz.cache._fingerprint", record_fingerprint)
+    monkeypatch.setattr("typewiz._internal.cache._fingerprint", record_fingerprint)
 
     hashes, truncated = collect_file_hashes(
         tmp_path,
@@ -93,7 +93,7 @@ def test_collect_file_hashes_honours_worker_env(
         return {key: {"hash": "stub", "mtime": 0, "size": 0} for key, _ in pending}
 
     monkeypatch.setenv("TYPEWIZ_HASH_WORKERS", "4")
-    monkeypatch.setattr("typewiz.cache._compute_hashes", fake_compute)
+    monkeypatch.setattr("typewiz._internal.cache._compute_hashes", fake_compute)
 
     hashes, _ = collect_file_hashes(tmp_path, paths=["worker.py"])
 

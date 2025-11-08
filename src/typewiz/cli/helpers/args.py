@@ -7,8 +7,8 @@ import argparse
 from collections.abc import Sequence
 from typing import Any, Literal, Protocol
 
+from typewiz._internal.utils import consume
 from typewiz.core.model_types import Mode
-from typewiz.utils import consume
 
 
 class ArgumentRegistrar(Protocol):

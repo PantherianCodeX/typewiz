@@ -15,6 +15,7 @@ from typing import Final
 from typewiz import __version__ as TYPEWIZ_VERSION
 from typewiz._internal.license import maybe_emit_evaluation_notice
 from typewiz._internal.logging_utils import LOG_FORMATS, configure_logging
+from typewiz._internal.utils import consume, normalise_enums_for_json
 from typewiz.cli.commands import audit as audit_command
 from typewiz.cli.commands import cache as cache_command
 from typewiz.cli.commands import engines as engines_command
@@ -37,7 +38,6 @@ from typewiz.core.model_types import (
 from typewiz.core.summary_types import SummaryData
 from typewiz.dashboard import build_summary, load_manifest, render_markdown
 from typewiz.html_report import render_html
-from typewiz.utils import consume, normalise_enums_for_json
 
 SUMMARY_FIELD_CHOICES = _SUMMARY_FIELD_CHOICES
 logger: logging.Logger = logging.getLogger("typewiz.cli")

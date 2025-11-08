@@ -9,7 +9,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import cast
 
-from ._internal.exceptions import TypewizTypeError
+from typewiz._internal.exceptions import TypewizTypeError
+from typewiz._internal.utils import JSONValue
+
 from .category_utils import coerce_category_key
 from .core.model_types import (
     CategoryMapping,
@@ -46,7 +48,6 @@ from .readiness import (
     compute_readiness,
 )
 from .typed_manifest import ManifestData, ToolSummary
-from .utils import JSONValue
 
 logger: logging.Logger = logging.getLogger("typewiz.dashboard")
 

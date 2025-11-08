@@ -9,16 +9,17 @@ tracking.
 
 from __future__ import annotations
 
-from ._internal.exceptions import (
+from typewiz._internal.exceptions import (
     TypewizError,
     TypewizTypeError,
     TypewizValidationError,
 )
-from ._internal.license import (
+from typewiz._internal.license import (
     LICENSE_KEY_ENV,
     has_commercial_license,
     license_mode,
 )
+
 from .api import AuditResult, run_audit
 from .config import AuditConfig, Config, load_config
 from .core.summary_types import SummaryData

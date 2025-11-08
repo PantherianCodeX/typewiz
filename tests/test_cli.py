@@ -11,6 +11,7 @@ from typing import cast
 
 import pytest
 
+from typewiz._internal.utils import consume
 from typewiz.api import AuditResult
 from typewiz.cli.app import main, write_config_template
 from typewiz.cli.commands.audit import normalise_modes_tuple
@@ -58,7 +59,6 @@ from typewiz.core.type_aliases import CategoryKey, EngineName, RelPath, RunId, R
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.engines.base import EngineContext, EngineResult
 from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
-from typewiz.utils import consume
 
 _print_summary = print_summary
 _print_readiness_summary = print_readiness_summary

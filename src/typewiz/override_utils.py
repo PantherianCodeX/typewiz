@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from .collection_utils import dedupe_preserve
+from typewiz._internal.collection_utils import dedupe_preserve
+
 from .core.model_types import OverrideEntry
 from .core.type_aliases import RelPath
 

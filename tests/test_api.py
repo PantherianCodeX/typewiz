@@ -9,13 +9,13 @@ from typing import cast
 import pytest
 
 from typewiz import AuditConfig, Config, run_audit
+from typewiz._internal.utils import consume
 from typewiz.config import EngineProfile, EngineSettings
 from typewiz.core.model_types import Mode, ReadinessStatus, SeverityLevel
 from typewiz.core.type_aliases import EngineName, ProfileName, RunnerName, ToolName
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.engines.base import EngineContext, EngineResult
 from typewiz.typed_manifest import ToolSummary
-from typewiz.utils import consume
 
 STUB_TOOL = ToolName("stub")
 

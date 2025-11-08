@@ -18,8 +18,9 @@ from pydantic import (
     model_validator,
 )
 
-from ._internal.exceptions import TypewizValidationError
-from .collection_utils import dedupe_preserve
+from typewiz._internal.collection_utils import dedupe_preserve
+from typewiz._internal.exceptions import TypewizValidationError
+
 from .core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
 from .core.type_aliases import EngineName, ProfileName, RunId, RunnerName
 from .data_validation import require_non_negative_int

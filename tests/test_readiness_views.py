@@ -6,6 +6,7 @@ from typing import cast
 
 import pytest
 
+from typewiz._internal.utils import consume
 from typewiz.core.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
 from typewiz.core.summary_types import (
     ReadinessOptionEntry,
@@ -24,7 +25,6 @@ from typewiz.readiness_views import (
     ReadinessValidationError,
     collect_readiness_view,
 )
-from typewiz.utils import consume
 
 
 def _make_summary() -> SummaryData:

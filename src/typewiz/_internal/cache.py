@@ -13,9 +13,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Literal, TypedDict, cast
 
-from .category_utils import coerce_category_key
-from .core.model_types import SeverityLevel, clone_override_entries
-from .core.type_aliases import (
+from typewiz._internal.utils import JSONValue, consume, file_lock, normalise_enums_for_json
+
+from ..category_utils import coerce_category_key
+from ..core.model_types import SeverityLevel, clone_override_entries
+from ..core.type_aliases import (
     CacheKey,
     CategoryKey,
     CategoryName,
@@ -24,13 +26,12 @@ from .core.type_aliases import (
     RelPath,
     ToolName,
 )
-from .core.types import Diagnostic
-from .data_validation import coerce_int, coerce_object_list, coerce_str_list
-from .typed_manifest import ToolSummary
-from .utils import JSONValue, consume, file_lock, normalise_enums_for_json
+from ..core.types import Diagnostic
+from ..data_validation import coerce_int, coerce_object_list, coerce_str_list
+from ..typed_manifest import ToolSummary
 
 if TYPE_CHECKING:
-    from .core.model_types import (
+    from ..core.model_types import (
         CategoryMapping,
         DiagnosticPayload,
         FileHashPayload,

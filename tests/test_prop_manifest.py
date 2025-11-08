@@ -9,9 +9,9 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import HealthCheck, assume, given, settings
 
+from typewiz._internal.utils import consume
 from typewiz.manifest_models import ManifestValidationError, validate_manifest_payload
 from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
-from typewiz.utils import consume
 
 
 def _run_payloads() -> st.SearchStrategy[dict[str, Any]]:

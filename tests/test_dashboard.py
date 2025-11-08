@@ -10,6 +10,7 @@ from typing import cast
 
 import pytest
 
+from typewiz._internal.utils import consume
 from typewiz.core.summary_types import SummaryData
 from typewiz.core.type_aliases import RunId
 from typewiz.dashboard import build_summary, load_manifest, render_markdown
@@ -17,7 +18,6 @@ from typewiz.html_report import render_html
 from typewiz.manifest_models import ManifestValidationError
 from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
 from typewiz.typed_manifest import FileEntry, FolderEntry, ManifestData, RunPayload
-from typewiz.utils import consume
 
 
 def test_render_markdown_snapshot(

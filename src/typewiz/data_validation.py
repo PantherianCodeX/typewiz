@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import cast
 
-from .utils import JSONValue
+from typewiz._internal.utils import JSONValue
 
 
 def coerce_str(value: object, default: str = "") -> str:

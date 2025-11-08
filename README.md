@@ -157,7 +157,7 @@ python scripts/refactor_imports.py --mapping-file mappings.txt --apply
 
 # insert missing imports or update __all__ entries
 python scripts/refactor_imports.py \
-  --ensure-import src/typewiz/api.py:typewiz.utils:new_helper \
+  --ensure-import src/typewiz/api.py:typewiz._internal.utils:new_helper \
   --export-map run_audit=execute_audit \
   --apply
 ```
