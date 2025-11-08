@@ -1,4 +1,3 @@
-# pyright: reportPrivateUsage=false
 # Copyright (c) 2024 PantherianCodeX
 
 """Unit tests for CLI helper utilities."""
@@ -16,13 +15,11 @@ from typewiz.cli.helpers import (
     parse_hash_workers,
     parse_int_mapping,
     parse_key_value_entries,
+    print_summary,
     render_data,
 )
 from typewiz.cli.helpers.formatting import (
     FolderHotspotEntry,
-    _format_run_header,
-    _paths_details,
-    _profile_details,
     query_engines,
     query_hotspots,
     query_overview,
@@ -37,6 +34,8 @@ from typewiz.core.model_types import (
     ReadinessLevel,
     ReadinessStatus,
     SeverityLevel,
+    SummaryField,
+    SummaryStyle,
 )
 from typewiz.core.summary_types import (
     CountsByCategory,
@@ -151,20 +150,29 @@ def test_query_readiness_payload() -> None:
     assert view[ReadinessStatus.BLOCKED][0]["path"] == "src"
 
 
-def test_format_run_header_includes_counts() -> None:
+def test_format_run_header_includes_counts(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     run = _sample_run_result()
-    header = _format_run_header(run)
+    print_summary([run], fields=[], style=SummaryStyle.COMPACT)
+    header = capsys.readouterr().out.strip().splitlines()[0]
     assert "pyright:current" in header
     assert "errors=1" in header
 
 
-def test_profile_and_path_details_respect_expanded_flag() -> None:
+def test_profile_and_path_details_respect_expanded_flag(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     run = _sample_run_result()
-    profile_details = dict(_profile_details(run, expanded=False))
-    assert profile_details["profile"] == "strict"
-    path_details = dict(_paths_details(run, expanded=False))
-    assert path_details["include"] == "src"
-    assert path_details["exclude"] == "tests"
+    print_summary(
+        [run],
+        fields=[SummaryField.PROFILE, SummaryField.PATHS],
+        style=SummaryStyle.EXPANDED,
+    )
+    output = capsys.readouterr().out.splitlines()
+    assert any("profile: strict" in line for line in output)
+    assert any("include: src" in line for line in output)
+    assert any("exclude: tests" in line for line in output)
 
 
 def _sample_summary() -> SummaryData:
