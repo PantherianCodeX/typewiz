@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Command modules for the typewiz CLI."""
 
 from __future__ import annotations

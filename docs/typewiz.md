@@ -1,10 +1,10 @@
-## typewiz
+# typewiz
 
 The `typewiz` package collects typing diagnostics from Pyright, mypy, and other plugins and
 summarises them into a single manifest that highlights both the current enforcement surface
 and the remaining work across the repository.
 
-### Commands
+## Commands
 
 Run a full audit from the repository root:
 
@@ -36,7 +36,7 @@ Options:
 - `--hash-workers auto|N` – bound the number of threads used while fingerprinting files.
 - `--dry-run` – execute engines and print summaries without writing manifests or dashboards.
 
-#### Directory overrides
+### Directory overrides
 
 Place a `typewiz.dir.toml` (or `.typewizdir.toml`) within a subdirectory to scope additional configuration to that tree:
 
@@ -51,7 +51,7 @@ exclude = ["legacy"]
 
 Paths in `include`/`exclude` are resolved relative to the override file; engine settings and profiles are merged with the root configuration.
 
-### Dashboard summaries
+## Dashboard summaries
 
 Generate a condensed dashboard view from an existing manifest:
 
@@ -88,7 +88,7 @@ typewiz ratchet update \
 
 Each ratchet is keyed to the tool, mode, and fully merged engine options (profile, plugin arguments, include/exclude paths, overrides, category mappings). If any of those change—for example, enabling a Ruff runner—`typewiz ratchet check` will flag a signature mismatch so you deliberately rebuild the baseline instead of silently accepting stale budgets.
 
-### Engines & plugins
+## Engines & plugins
 
 typewiz loads engines from the built-in registry (`pyright`, `mypy`) and from any entry points exposed under
 the `typewiz.engines` group. Provide a custom engine by implementing the
@@ -132,7 +132,7 @@ section (see below).
 Use `typewiz engines list` to inspect which engines were discovered (and where they came from), and `typewiz cache clear`
 to remove `.typewiz_cache/` when you need to rebuild fingerprints from scratch.
 
-#### Engine Author Guide
+### Engine Author Guide
 
 Engines are lightweight adapters that translate `typewiz` options into tool invocations and parse results.
 Implement the following on your engine class:
@@ -168,7 +168,7 @@ Best practices:
 - Prefer JSON outputs for parsing stability; when parsing text, add resilient fallbacks and tests.
 - Use `EngineOptions.include`/`exclude` to honor per-engine path scoping and folder overrides.
 
-### Configuration (typewiz.toml)
+## Configuration (typewiz.toml)
 
 Place a `typewiz.toml` in the project root or pass `--config` when running the CLI. Example:
 
@@ -196,7 +196,7 @@ The `config_version` field is required and validated; typewiz currently ships sc
 override the config file values. Per-engine arguments are merged with CLI overrides and deduplicated to ensure
 stable command ordering.
 
-### Incremental cache
+## Incremental cache
 
 Runs are cached in `.typewiz_cache/cache.json`. The cache key combines the engine name, mode, command flags, and
 fingerprints (mtime, size, content hash) for all files under the configured `full_paths` and key config files
@@ -208,7 +208,7 @@ plugins or type stubs (for example, Django or DRF shims) may leave stale results
 after dependency or configuration changes that affect tool behaviour to force a fresh run. Cached entries now retain
 the upstream `toolSummary` block so manifests from reused runs still include the raw totals reported by each engine.
 
-### Nightly pipeline
+## Nightly pipeline
 
 The typing nightly workflow invokes the audit and publishes the manifest as a build artifact,
 allowing progress tracking without failing the pipeline while the codebase is still being migrated.

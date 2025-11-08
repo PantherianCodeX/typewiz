@@ -9,7 +9,10 @@ import sys
 from collections.abc import Iterable
 from pathlib import Path
 
-from typewiz._internal.error_codes import error_code_catalog
+"""
+This script must work whether the package is installed or not. It prepends the
+repo's `src/` directory to `sys.path` before importing internal modules.
+"""
 
 
 def _emit(message: str, *, error: bool = False) -> None:
@@ -18,7 +21,12 @@ def _emit(message: str, *, error: bool = False) -> None:
 
 
 def _load_error_codes(src_path: Path) -> Iterable[str]:
-    _ = sys.path.insert(0, str(src_path))
+    # Ensure local sources are importable without requiring an installed wheel
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+    # Import lazily after path injection to avoid ModuleNotFoundError
+    from typewiz._internal.error_codes import error_code_catalog  # type: ignore
+
     return error_code_catalog().values()
 
 

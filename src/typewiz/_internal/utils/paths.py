@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Filesystem helpers for locating project roots and scanning directories."""
 
 from __future__ import annotations

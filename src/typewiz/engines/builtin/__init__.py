@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Built-in Typewiz engines."""
 
 from __future__ import annotations

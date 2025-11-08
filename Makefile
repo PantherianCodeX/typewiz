@@ -113,7 +113,7 @@ precommit.check: ## Run lint (ruff) and typing checks in parallel (used by pre-c
 type: type.mypy type.pyright ## Run mypy + pyright
 
 type.mypy: ## Run mypy (strict)
-	$(MYPY)
+	$(MYPY) --no-incremental
 
 type.pyright: ## Run pyright using repo config
 	$(PYRIGHT) -p pyrightconfig.json
@@ -128,11 +128,11 @@ typing.run: typing.baseline typing.strict type.verify ## Run baseline then stric
 
 typing.baseline: ## Run pyright then mypy checks
 	$(PYRIGHT) -p pyrightconfig.json
-	$(MYPY)
+	$(MYPY) --no-incremental
 
 typing.strict: ## Enforce strict gates (ruff + mypy strict again)
 	$(RUFF) check
-	$(MYPY)
+	$(MYPY) --no-incremental
 
 typing.ci: ## Generate Typewiz outputs (JSON/MD/HTML) for CI insight
 	mkdir -p $(TYPING_REPORT_DIR)

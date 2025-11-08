@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """I/O helpers for ratchet artefacts and manifests."""
 
 from __future__ import annotations

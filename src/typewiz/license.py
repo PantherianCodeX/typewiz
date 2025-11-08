@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """License helpers provided for CLI and packaging layers."""
 
 from __future__ import annotations

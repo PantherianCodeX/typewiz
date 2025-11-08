@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Signature policy utilities for ratchet comparisons."""
 
 from __future__ import annotations

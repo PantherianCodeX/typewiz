@@ -19,6 +19,7 @@
 ### Engine details
 
 #### `pyright:current`
+
 - Profile: baseline
 - Config file: pyrightconfig.json
 - Plugin args: `--lib`
@@ -28,6 +29,7 @@
   - `apps/platform` (plugin args: `--warnings`)
 
 #### `mypy:full`
+
 - Profile: strict
 - Config file: mypy.ini
 - Plugin args: `--strict`
@@ -67,6 +69,7 @@
 ### Run logs
 
 #### `pyright:current`
+
 - Errors: 0
 - Warnings: 0
 - Information: 0
@@ -74,6 +77,7 @@
 - Severity breakdown: {}
 
 #### `mypy:full`
+
 - Errors: 1
 - Warnings: 1
 - Information: 0
@@ -81,11 +85,13 @@
 - Severity breakdown: {}
 
 ### Readiness snapshot
+
 - Ready for strict typing: `apps/platform/operations`
 - Close to strict typing: `packages/agents`
 - Blocked folders: —
 
 #### Per-option readiness
+
 - **Unknown type checks** (≤2 to be close):
   - Ready: `apps/platform/operations`
   - Close: `packages/agents`

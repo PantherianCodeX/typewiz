@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Ratchet orchestration services used by CLI and API layers."""
 
 from __future__ import annotations

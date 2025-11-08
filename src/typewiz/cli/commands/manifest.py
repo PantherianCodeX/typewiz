@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Manifest command implementation for the modular Typewiz CLI."""
 
 from __future__ import annotations

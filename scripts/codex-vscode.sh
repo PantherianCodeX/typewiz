@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 # Wrapper used by the Codex VS Code extension to give each workspace an isolated
 # Codex home directory and app-server port so that multiple workspaces can run
 # concurrently without clobbering each other's state.

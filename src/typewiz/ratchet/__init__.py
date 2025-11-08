@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Ratchet package public API."""
 
 from .core import (

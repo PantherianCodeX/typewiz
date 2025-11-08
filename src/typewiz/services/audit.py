@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Audit service façade used by CLI layers."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Cross-platform file locking helpers."""
 
 from __future__ import annotations

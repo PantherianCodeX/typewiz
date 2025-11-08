@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Ratchet report data structures and formatting helpers."""
 
 from __future__ import annotations

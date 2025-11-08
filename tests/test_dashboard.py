@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 # pyright: reportPrivateUsage=false
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 

@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Logging utilities exposed for CLI usage."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Subprocess helpers and typed command wrappers."""
 
 from __future__ import annotations
@@ -59,7 +61,9 @@ def run_command(
     )
     duration_ms = (time.perf_counter() - start) * 1000
     if completed.returncode != 0:
-        logger.warning("Command failed (exit=%s): %s", completed.returncode, " ".join(argv))
+        message = f"Command failed (exit={completed.returncode}): {' '.join(argv)}"
+        logger.warning(message)
+        logging.getLogger().warning(message)
     return CommandOutput(
         args=argv,
         stdout=completed.stdout,

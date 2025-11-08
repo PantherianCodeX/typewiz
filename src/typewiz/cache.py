@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Public cache facade for engine run caching utilities."""
 
 from __future__ import annotations

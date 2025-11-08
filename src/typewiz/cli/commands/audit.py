@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Audit command wiring for the modular Typewiz CLI."""
 
 from __future__ import annotations
@@ -54,7 +55,8 @@ def register_audit_command(subparsers: SubparserRegistry) -> None:
         help="Run typing audits and produce manifests/dashboards",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description=(
-            "Collect diagnostics from configured engines and optionally write manifests or dashboards."
+            "Collect diagnostics from configured engines "
+            "and optionally write manifests or dashboards."
         ),
     )
 
@@ -145,7 +147,10 @@ def register_audit_command(subparsers: SubparserRegistry) -> None:
         action="append",
         metavar="RUNNER=ARG",
         default=[],
-        help="Pass an extra argument to a runner (repeatable). Example: --plugin-arg pyright=--verifytypes",
+        help=(
+            "Pass an extra argument to a runner (repeatable).",
+            " Example: --plugin-arg pyright=--verifytypes",
+        ),
     )
     register_argument(
         audit,
@@ -179,7 +184,10 @@ def register_audit_command(subparsers: SubparserRegistry) -> None:
         "--fail-on",
         choices=[policy.value for policy in FailOnPolicy],
         default=None,
-        help="Non-zero exit when diagnostics reach this severity (aliases: none=never, any=any finding).",
+        help=(
+            "Non-zero exit when diagnostics reach this severity",
+            " (aliases: none=never, any=any finding).",
+        ),
     )
     register_argument(
         audit,
@@ -207,7 +215,10 @@ def register_audit_command(subparsers: SubparserRegistry) -> None:
         "--compare-to",
         type=Path,
         default=None,
-        help="Optional path to a previous manifest to compare totals against (adds deltas to CI line).",
+        help=(
+            "Optional path to a previous manifest to compare totals against",
+            " (adds deltas to CI line).",
+        ),
     )
     register_argument(
         audit,
@@ -498,7 +509,10 @@ def _summarize_audit_run(
     exit_code = _determine_exit_code(fail_on_policy, error_count, warning_count, info_count)
 
     _echo(
-        f"[typewiz] totals: errors={error_count} warnings={warning_count} info={info_count}; runs={len(result.runs)}"
+        "[typewiz] totals:"
+        + f" errors={error_count}"
+        + f" warnings={warning_count}"
+        + f" info={info_count}; runs={len(result.runs)}"
         + delta_segment,
     )
     return audit_summary, exit_code

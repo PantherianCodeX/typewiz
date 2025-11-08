@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """IO helpers for CLI output."""
 
 from __future__ import annotations

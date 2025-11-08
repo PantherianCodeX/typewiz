@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Query command implementation for the modular Typewiz CLI."""
 
 from __future__ import annotations

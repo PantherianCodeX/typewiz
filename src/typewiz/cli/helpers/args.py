@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Argument parser helpers used across CLI commands."""
 
 from __future__ import annotations
@@ -90,10 +91,7 @@ def collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
 
 def collect_profile_args(entries: Sequence[str]) -> dict[str, str]:
     """Normalise ``--profile`` overrides provided on the command line."""
-    return {
-        runner: profile
-        for runner, profile in parse_key_value_entries(entries, argument="--profile")
-    }
+    return dict(parse_key_value_entries(entries, argument="--profile"))
 
 
 def normalise_modes(values: Sequence[str] | None) -> list[Mode]:

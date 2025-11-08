@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """JSON helpers shared across the project."""
 
 from __future__ import annotations

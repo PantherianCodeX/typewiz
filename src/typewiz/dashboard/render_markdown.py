@@ -1,17 +1,21 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from typing import cast
 
 from typewiz.common.override_utils import format_overrides_block
-from typewiz.config.validation import coerce_mapping
+from typewiz.config.validation import coerce_int, coerce_mapping, coerce_object_list
 from typewiz.core.model_types import OverrideEntry, ReadinessStatus, SeverityLevel, SummaryTabName
 from typewiz.core.summary_types import (
     ReadinessOptionsPayload,
     ReadinessStrictEntry,
     ReadinessTab,
     SummaryData,
+    SummaryRunEntry,
 )
+from typewiz.core.type_aliases import RunId
 from typewiz.readiness.compute import CATEGORY_LABELS
 
 
@@ -42,99 +46,121 @@ def _empty_readiness_tab() -> ReadinessTab:
     return {"strict": strict_defaults, "options": {}}
 
 
-def render_markdown(summary: SummaryData) -> str:
-    tabs = summary["tabs"]
-    overview = tabs[SummaryTabName.OVERVIEW.value]
-    run_summary = overview["runSummary"]
-    severity = overview["severityTotals"]
-    hotspots = tabs[SummaryTabName.HOTSPOTS.value]
-
-    lines: list[str] = [
+def _md_header(summary: SummaryData) -> list[str]:
+    return [
         "# typewiz Dashboard",
         "",
         f"- Generated at: {summary['generatedAt']}",
         f"- Project root: `{summary['projectRoot']}`",
     ]
 
-    if severity:
+
+def _md_overview(severity: Mapping[SeverityLevel, int]) -> list[str]:
+    if not severity:
+        return []
+    return [
+        "",
+        "## Overview",
+        "",
+        f"- Errors: {severity.get(SeverityLevel.ERROR, 0)}",
+        f"- Warnings: {severity.get(SeverityLevel.WARNING, 0)}",
+        f"- Information: {severity.get(SeverityLevel.INFORMATION, 0)}",
+    ]
+
+
+def _md_run_summary(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:
+    lines = [
+        "",
+        "### Run summary",
+        "",
+        "| Run | Errors | Warnings | Information | Command |",
+        "| --- | ---: | ---: | ---: | --- |",
+    ]
+    if not run_summary:
+        lines.append("| _No runs recorded_ | 0 | 0 | 0 | — |")
+        return lines
+    for key, data in run_summary.items():
+        dm = coerce_mapping(cast(Mapping[object, object], data))
+        cmd = " ".join(str(part) for part in coerce_object_list(dm.get("command")))
+        row = (
+            f"| `{key}` | {dm.get('errors', 0)} | {dm.get('warnings', 0)} | "
+            f"{dm.get('information', 0)} | `{cmd}` |"
+        )
+        lines.append(row)
+    return lines
+
+
+def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:
+    lines = ["", "### Engine details"]
+    if not run_summary:
+        lines.append("- No engine data available")
+        return lines
+    for key, data in run_summary.items():
+        dm = coerce_mapping(cast(Mapping[object, object], data))
+        options_obj = dm.get("engineOptions")
+        options = (
+            coerce_mapping(cast(Mapping[object, object], options_obj))
+            if isinstance(options_obj, Mapping)
+            else {}
+        )
+        profile = str(options.get("profile") or "—")
+        config_file = str(options.get("configFile") or "—")
+        plugin_args_list = [str(a) for a in coerce_object_list(options.get("pluginArgs"))]
+        plugin_args = ", ".join(f"`{arg}`" for arg in plugin_args_list) or "—"
+        include_list = [str(p) for p in coerce_object_list(options.get("include"))]
+        include = ", ".join(f"`{p}`" for p in include_list) or "—"
+        exclude_list = [str(p) for p in coerce_object_list(options.get("exclude"))]
+        exclude = ", ".join(f"`{p}`" for p in exclude_list) or "—"
         lines.extend(
             [
                 "",
-                "## Overview",
+                f"#### `{key}`",
                 "",
-                f"- Errors: {severity.get(SeverityLevel.ERROR, 0)}",
-                f"- Warnings: {severity.get(SeverityLevel.WARNING, 0)}",
-                f"- Information: {severity.get(SeverityLevel.INFORMATION, 0)}",
+                f"- Profile: {profile}",
+                f"- Config file: {config_file}",
+                f"- Plugin args: {plugin_args}",
+                f"- Include paths: {include}",
+                f"- Exclude paths: {exclude}",
             ],
         )
-
-    lines.extend(
-        [
-            "",
-            "### Run summary",
-            "",
-            "| Run | Errors | Warnings | Information | Command |",
-            "| --- | ---: | ---: | ---: | --- |",
-        ],
-    )
-    for key, data in run_summary.items():
-        cmd = " ".join(str(part) for part in data.get("command", []))
-        lines.append(
-            f"| `{key}` | {data.get('errors', 0)} | {data.get('warnings', 0)} | {data.get('information', 0)} | `{cmd}` |",
-        )
-    if not run_summary:
-        lines.append("| _No runs recorded_ | 0 | 0 | 0 | — |")
-
-    lines.extend(["", "### Engine details"])
-    if run_summary:
-        for key, data in run_summary.items():
-            options = data.get("engineOptions", {})
-            profile = options.get("profile") or "—"
-            config_file = options.get("configFile") or "—"
-            plugin_args = (
-                ", ".join(f"`{arg}`" for arg in options.get("pluginArgs", []) or []) or "—"
+        tool_totals_obj = dm.get("toolSummary")
+        if isinstance(tool_totals_obj, Mapping):
+            tool_totals = coerce_mapping(cast(Mapping[object, object], tool_totals_obj))
+            t_errors = coerce_int(tool_totals.get("errors"))
+            t_warnings = coerce_int(tool_totals.get("warnings"))
+            t_info = coerce_int(tool_totals.get("information"))
+            t_total = coerce_int(tool_totals.get("total")) or (t_errors + t_warnings + t_info)
+            p_errors = coerce_int(dm.get("errors"))
+            p_warnings = coerce_int(dm.get("warnings"))
+            p_info = coerce_int(dm.get("information"))
+            p_total = coerce_int(dm.get("total")) or (p_errors + p_warnings + p_info)
+            mismatch = t_errors != p_errors or t_warnings != p_warnings or t_total != p_total
+            mismatch_text = (
+                f" (mismatch vs parsed: {p_errors}/{p_warnings}/{p_info} total={p_total})"
+                if mismatch
+                else ""
             )
-            include = ", ".join(f"`{path}`" for path in options.get("include", []) or []) or "—"
-            exclude = ", ".join(f"`{path}`" for path in options.get("exclude", []) or []) or "—"
-            lines.extend(
-                [
-                    "",
-                    f"#### `{key}`",
-                    f"- Profile: {profile}",
-                    f"- Config file: {config_file}",
-                    f"- Plugin args: {plugin_args}",
-                    f"- Include paths: {include}",
-                    f"- Exclude paths: {exclude}",
-                ],
+            lines.append(
+                (
+                    f"- Tool totals: errors={t_errors}, warnings={t_warnings}, "
+                    f"information={t_info}, total={t_total}{mismatch_text}"
+                ),
             )
-            tool_totals = data.get("toolSummary")
-            if isinstance(tool_totals, dict) and tool_totals:
-                t_errors = int(tool_totals.get("errors", 0))
-                t_warnings = int(tool_totals.get("warnings", 0))
-                t_info = int(tool_totals.get("information", 0))
-                t_total = int(tool_totals.get("total", t_errors + t_warnings + t_info))
-                p_errors = int(data.get("errors", 0))
-                p_warnings = int(data.get("warnings", 0))
-                p_info = int(data.get("information", 0))
-                p_total = int(data.get("total", p_errors + p_warnings + p_info))
-                mismatch = t_errors != p_errors or t_warnings != p_warnings or t_total != p_total
-                mismatch_note = (
-                    f" (mismatch vs parsed: {p_errors}/{p_warnings}/{p_info} total={p_total})"
-                    if mismatch
-                    else ""
-                )
-                lines.append(
-                    f"- Tool totals: errors={t_errors}, warnings={t_warnings}, information={t_info}, total={t_total}{mismatch_note}",
-                )
-            overrides: list[OverrideEntry] = options.get("overrides", []) or []
-            if overrides:
-                lines.append("- Folder overrides:")
-                lines.extend(format_overrides_block(overrides))
-    else:
-        lines.append("- No engine data available")
+        overrides_obj = options.get("overrides")
+        overrides: list[OverrideEntry] = []
+        for item in coerce_object_list(overrides_obj):
+            if isinstance(item, Mapping):
+                entry_map = coerce_mapping(cast(Mapping[object, object], item))
+                overrides.append(cast(OverrideEntry, dict(entry_map.items())))
+        if overrides:
+            lines.append("- Folder overrides:")
+            lines.extend(format_overrides_block(overrides))
+    return lines
 
-    lines.extend(["", "### Hotspots"])
-    top_rules = hotspots.get("topRules", summary.get("topRules", {}))
+
+def _md_hotspots(hotspots: Mapping[str, object], summary: SummaryData) -> list[str]:
+    lines: list[str] = ["", "### Hotspots"]
+    top_rules = cast(Mapping[str, int], hotspots.get("topRules", summary.get("topRules", {})))
     if top_rules:
         lines.extend(
             [
@@ -149,15 +175,9 @@ def render_markdown(summary: SummaryData) -> str:
     else:
         lines.append("- No diagnostic rules recorded")
 
-    rule_files = hotspots.get("ruleFiles", {})
+    rule_files = cast(Mapping[str, Sequence[Mapping[str, object]]], hotspots.get("ruleFiles", {}))
     if rule_files:
-        lines.extend(
-            [
-                "",
-                "#### Rule hotspots by file",
-                "",
-            ],
-        )
+        lines.extend(["", "#### Rule hotspots by file", ""])
         for rule, rule_entries in rule_files.items():
             formatted = ", ".join(
                 f"`{entry.get('path', '<unknown>')}` ({entry.get('count', 0)})"
@@ -165,6 +185,7 @@ def render_markdown(summary: SummaryData) -> str:
             )
             lines.append(f"- `{rule}`: {formatted or '—'}")
 
+    # Folders
     top_folders = hotspots.get("topFolders", [])
     lines.extend(
         [
@@ -176,76 +197,82 @@ def render_markdown(summary: SummaryData) -> str:
         ],
     )
     if top_folders:
-        lines.extend(
-            f"| `{folder['path']}` | {folder['errors']} | {folder['warnings']} | {folder['information']} | {folder['participatingRuns']} |"
-            for folder in top_folders
-        )
+        for folder in cast(Sequence[Mapping[str, object]], top_folders):
+            row = (
+                f"| `{folder['path']}` | {folder['errors']} | {folder['warnings']} | "
+                f"{folder['information']} | {folder['participatingRuns']} |"
+            )
+            lines.append(row)
     else:
         lines.append("| _No folder hotspots_ | 0 | 0 | 0 | 0 |")
 
+    # Files
     top_files = hotspots.get("topFiles", [])
-    lines.extend(
-        [
-            "",
-            "#### File hotspots",
-            "",
-            "| File | Errors | Warnings |",
-            "| --- | ---: | ---: |",
-        ],
-    )
+    lines.extend([
+        "",
+        "#### File hotspots",
+        "",
+        "| File | Errors | Warnings |",
+        "| --- | ---: | ---: |",
+    ])
     if top_files:
-        lines.extend(
-            f"| `{file_entry['path']}` | {file_entry['errors']} | {file_entry['warnings']} |"
-            for file_entry in top_files
-        )
+        for entry in cast(Sequence[Mapping[str, object]], top_files):
+            row = f"| `{entry['path']}` | {entry['errors']} | {entry['warnings']} |"
+            lines.append(row)
     else:
         lines.append("| _No file hotspots_ | 0 | 0 |")
+    return lines
 
-    lines.extend(["", "### Run logs"])
-    runs_tab = tabs[SummaryTabName.RUNS.value]
-    run_details = runs_tab.get("runSummary", run_summary)
-    if run_details:
-        for key, data in run_details.items():
-            breakdown = data.get("severityBreakdown", {})
-            lines.extend(
-                [
-                    "",
-                    f"#### `{key}`",
-                    f"- Errors: {data.get('errors', 0)}",
-                    f"- Warnings: {data.get('warnings', 0)}",
-                    f"- Information: {data.get('information', 0)}",
-                    f"- Total diagnostics: {data.get('total', 0)}",
-                    f"- Severity breakdown: {breakdown or '{}'}",
-                ],
-            )
-    else:
-        lines.append("- No runs recorded")
 
-    lines.extend(["", "### Readiness snapshot"])
-    try:
-        readiness_section = tabs[SummaryTabName.READINESS.value]
-    except KeyError:
-        readiness_section = _empty_readiness_tab()
-    strict_section_raw = cast(
-        dict[ReadinessStatus, list[dict[str, object]]], readiness_section.get("strict", {})
+def _md_run_logs(
+    runs_tab: Mapping[str, object],
+    run_summary: Mapping[RunId, SummaryRunEntry],
+) -> list[str]:
+    lines = ["", "### Run logs"]
+    rd_obj = runs_tab.get("runSummary")
+    run_details = (
+        cast(Mapping[RunId, SummaryRunEntry], rd_obj)
+        if isinstance(rd_obj, Mapping)
+        else run_summary
     )
-    strict_ready_raw = strict_section_raw.get(ReadinessStatus.READY, [])
-    strict_close_raw = strict_section_raw.get(ReadinessStatus.CLOSE, [])
-    strict_blocked_raw = strict_section_raw.get(ReadinessStatus.BLOCKED, [])
+    if not run_details:
+        lines.append("- No runs recorded")
+        return lines
+    for key, data in run_details.items():
+        dm = coerce_mapping(cast(Mapping[object, object], data))
+        breakdown = coerce_mapping(cast(Mapping[object, object], dm.get("severityBreakdown")))
+        lines.extend(
+            [
+                "",
+                f"#### `{key}`",
+                "",
+                f"- Errors: {coerce_int(dm.get('errors'))}",
+                f"- Warnings: {coerce_int(dm.get('warnings'))}",
+                f"- Information: {coerce_int(dm.get('information'))}",
+                f"- Total diagnostics: {coerce_int(dm.get('total'))}",
+                f"- Severity breakdown: {breakdown or '{}'}",
+            ],
+        )
+    return lines
 
-    ready_entries = _materialise_dict_list(strict_ready_raw)
-    close_entries = _materialise_dict_list(strict_close_raw)
-    blocked_entries = _materialise_dict_list(strict_blocked_raw)
 
+def _md_readiness(tabs: Mapping[str, object]) -> list[str]:
+    lines = ["", "### Readiness snapshot", ""]
+    raw = tabs.get(SummaryTabName.READINESS.value)
+    rs: ReadinessTab = (
+        cast(ReadinessTab, raw) if isinstance(raw, Mapping) else _empty_readiness_tab()
+    )
+    strict_section_raw = cast(dict[ReadinessStatus, list[dict[str, object]]], rs.get("strict", {}))
+    ready_entries = _materialise_dict_list(strict_section_raw.get(ReadinessStatus.READY, []))
+    close_entries = _materialise_dict_list(strict_section_raw.get(ReadinessStatus.CLOSE, []))
+    blocked_entries = _materialise_dict_list(strict_section_raw.get(ReadinessStatus.BLOCKED, []))
     lines.append(f"- Ready for strict typing: {_format_entry_list(ready_entries)}")
     lines.append(f"- Close to strict typing: {_format_entry_list(close_entries)}")
     lines.append(f"- Blocked folders: {_format_entry_list(blocked_entries)}")
 
-    readiness_options_raw = cast(
-        dict[str, ReadinessOptionsPayload], readiness_section.get("options", {})
-    )
+    readiness_options_raw = cast(dict[str, ReadinessOptionsPayload], rs.get("options", {}))
     if readiness_options_raw:
-        lines.extend(["", "#### Per-option readiness"])
+        lines.extend(["", "#### Per-option readiness", ""])
         label_lookup = cast(dict[str, str], CATEGORY_LABELS)
         for category, buckets_obj in readiness_options_raw.items():
             label_key: str = str(category)
@@ -256,6 +283,23 @@ def render_markdown(summary: SummaryData) -> str:
             for status in ReadinessStatus:
                 entries = _materialise_dict_list(bucket_map.get(status, ()))
                 lines.append(f"  - {status.value.title()}: {_format_entry_list(entries)}")
+    return lines
 
+
+def render_markdown(summary: SummaryData) -> str:
+    tabs = summary["tabs"]
+    overview = tabs[SummaryTabName.OVERVIEW.value]
+    run_summary = overview["runSummary"]
+    severity = overview["severityTotals"]
+    hotspots = tabs[SummaryTabName.HOTSPOTS.value]
+
+    lines: list[str] = []
+    lines.extend(_md_header(summary))
+    lines.extend(_md_overview(severity))
+    lines.extend(_md_run_summary(run_summary))
+    lines.extend(_md_engine_details(run_summary))
+    lines.extend(_md_hotspots(hotspots, summary))
+    lines.extend(_md_run_logs(tabs[SummaryTabName.RUNS.value], run_summary))
+    lines.extend(_md_readiness(tabs))
     lines.append("")
     return "\n".join(lines)

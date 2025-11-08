@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Bulk rewrite import statements according to a mapping.
 
 Usage:

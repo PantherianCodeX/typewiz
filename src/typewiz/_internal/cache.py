@@ -467,7 +467,7 @@ class EngineCache:
             ),
         )
 
-    def update(
+    def update(  # noqa: PLR0913
         self,
         key: CacheKey,
         file_hashes: dict[PathKey, FileHashPayload],
@@ -577,7 +577,7 @@ def _git_list_files(repo_root: Path) -> set[str]:
     return {line.strip() for line in completed.stdout.splitlines() if line.strip()}
 
 
-def collect_file_hashes(
+def collect_file_hashes(  # noqa: C901, PLR0913, PLR0912, PLR0915
     project_root: Path,
     paths: Iterable[str],
     *,
@@ -611,7 +611,7 @@ def collect_file_hashes(
     stop = False
     worker_count = _effective_hash_workers(hash_workers)
 
-    def _maybe_add(file_path: Path) -> None:
+    def _maybe_add(file_path: Path) -> None:  # noqa: C901
         nonlocal truncated, bytes_seen, stop
         if stop:
             return

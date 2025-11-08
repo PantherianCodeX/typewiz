@@ -110,7 +110,36 @@ def _render_document_head(context: _DashboardContext) -> list[str]:
         "<head>",
         '  <meta charset="utf-8" />',
         "  <title>typewiz Dashboard</title>",
-        "  <style>\n    :root{color-scheme:light dark;}\n    body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:2rem;background:#f5f5f5;color:#1f2330;}\n    h1,h2{color:#2b4b80;}\n    table{border-collapse:collapse;width:100%;margin-bottom:1.5rem;background:white;}\n    th,td{border:1px solid #d0d7e2;padding:0.5rem;text-align:left;}\n    th{background:#e8edf7;}\n    section{margin-bottom:2rem;}\n    .metrics{display:flex;flex-wrap:wrap;gap:1.5rem;}\n    .metric{background:white;border:1px solid #d0d7e2;padding:1rem;border-radius:6px;min-width:8rem;text-align:center;}\n    .metric strong{display:block;font-size:1.5rem;}\n    .tabs{display:flex;gap:0.75rem;margin:1.5rem 0;}\n    .tabs button{border:1px solid #2b4b80;background:white;color:#2b4b80;padding:0.45rem 1rem;border-radius:999px;cursor:pointer;font-weight:600;}\n    .tabs button.active{background:#2b4b80;color:white;}\n    .tab-pane{margin-top:1.5rem;}\n    .has-js .tab-pane{display:none;}\n    .has-js .tab-pane.active{display:block;}\n    .no-js .tabs{display:none;}\n    code{background:#eef1fb;padding:0.1rem 0.35rem;border-radius:4px;}\n    details{background:white;border:1px solid #d0d7e2;border-radius:8px;margin-bottom:1rem;padding:0.75rem;}\n    details[open]>summary{margin-bottom:0.5rem;}\n    summary{cursor:pointer;font-weight:600;}\n  </style>",
+        (
+            "  <style>\n"
+            "    :root{color-scheme:light dark;}\n"
+            "    body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:2rem;"
+            "background:#f5f5f5;color:#1f2330;}\n"
+            "    h1,h2{color:#2b4b80;}\n"
+            "    table{border-collapse:collapse;width:100%;margin-bottom:1.5rem;"
+            "background:white;}\n"
+            "    th,td{border:1px solid #d0d7e2;padding:0.5rem;text-align:left;}\n"
+            "    th{background:#e8edf7;}\n"
+            "    section{margin-bottom:2rem;}\n"
+            "    .metrics{display:flex;flex-wrap:wrap;gap:1.5rem;}\n"
+            "    .metric{background:white;border:1px solid #d0d7e2;padding:1rem;border-radius:6px;"
+            "min-width:8rem;text-align:center;}\n"
+            "    .metric strong{display:block;font-size:1.5rem;}\n"
+            "    .tabs{display:flex;gap:0.75rem;margin:1.5rem 0;}\n"
+            "    .tabs button{border:1px solid #2b4b80;background:white;color:#2b4b80;"
+            "padding:0.45rem 1rem;border-radius:999px;cursor:pointer;font-weight:600;}\n"
+            "    .tabs button.active{background:#2b4b80;color:white;}\n"
+            "    .tab-pane{margin-top:1.5rem;}\n"
+            "    .has-js .tab-pane{display:none;}\n"
+            "    .has-js .tab-pane.active{display:block;}\n"
+            "    .no-js .tabs{display:none;}\n"
+            "    code{background:#eef1fb;padding:0.1rem 0.35rem;border-radius:4px;}\n"
+            "    details{background:white;border:1px solid #d0d7e2;border-radius:8px;"
+            "margin-bottom:1rem;padding:0.75rem;}\n"
+            "    details[open]>summary{margin-bottom:0.5rem;}\n"
+            "    summary{cursor:pointer;font-weight:600;}\n"
+            "  </style>"
+        ),
         "</head>",
         f'<body class="no-js" data-default-tab="{context.default_tab}">',
         "  <h1>typewiz Dashboard</h1>",
@@ -120,13 +149,17 @@ def _render_document_head(context: _DashboardContext) -> list[str]:
 
 
 def _render_tabs_navigation() -> list[str]:
-    lines = ['  <nav class="tabs" role="tablist">']
-    lines.extend(
-        f'    <button type="button" data-tab-target="{tab.value}" role="tab" aria-selected="false">{_TAB_LABELS[tab]}</button>'
-        for tab in _TAB_ORDER
-    )
-    lines.append("  </nav>")
-    return lines
+    return [
+        '  <nav class="tabs" role="tablist">',
+        *[
+            (
+                f'    <button type="button" data-tab-target="{tab.value}" role="tab" '
+                f'aria-selected="false">{_TAB_LABELS[tab]}</button>'
+            )
+            for tab in _TAB_ORDER
+        ],
+        "  </nav>",
+    ]
 
 
 def _overview_severity_section(severity: Mapping[SeverityLevel, int]) -> list[str]:
@@ -134,9 +167,21 @@ def _overview_severity_section(severity: Mapping[SeverityLevel, int]) -> list[st
         "    <section>",
         "      <h2>Severity Totals</h2>",
         '      <div class="metrics">',
-        f'        <div class="metric"><strong>{severity.get(SeverityLevel.ERROR, 0)}</strong>Errors</div>',
-        f'        <div class="metric"><strong>{severity.get(SeverityLevel.WARNING, 0)}</strong>Warnings</div>',
-        f'        <div class="metric"><strong>{severity.get(SeverityLevel.INFORMATION, 0)}</strong>Information</div>',
+        (
+            f'        <div class="metric"><strong>'
+            f"{severity.get(SeverityLevel.ERROR, 0)}</strong>"
+            "Errors</div>"
+        ),
+        (
+            f'        <div class="metric"><strong>'
+            f"{severity.get(SeverityLevel.WARNING, 0)}</strong>"
+            "Warnings</div>"
+        ),
+        (
+            f'        <div class="metric"><strong>'
+            f"{severity.get(SeverityLevel.INFORMATION, 0)}</strong>"
+            "Information</div>"
+        ),
         "      </div>",
         "    </section>",
     ]
@@ -150,7 +195,10 @@ def _overview_run_summary_section(
         "    <section>",
         "      <h2>Run Summary</h2>",
         "      <table>",
-        "        <thead><tr><th>Run</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Total</th><th>Command</th></tr></thead>",
+        (
+            "        <thead><tr><th>Run</th><th>Errors</th><th>Warnings</th>"
+            "<th>Information</th><th>Total</th><th>Command</th></tr></thead>"
+        ),
         "        <tbody>",
     ]
     if run_summary:
@@ -207,63 +255,72 @@ def _render_overview_tab(context: _DashboardContext) -> list[str]:
     lines = ['  <section class="tab-pane" data-tab-pane="overview">']
     lines.extend(_overview_severity_section(context.severity_totals))
     lines.extend(_overview_run_summary_section(context.run_summary, context.escape))
-    lines.extend(_overview_category_section(context.category_totals, context.escape))
+    if context.category_totals:
+        lines.extend(_overview_category_section(context.category_totals, context.escape))
     lines.append("  </section>")
     return lines
 
 
 def _render_engines_tab(context: _DashboardContext) -> list[str]:
+    h = context.escape
     lines = ['  <section class="tab-pane" data-tab-pane="engines">', "    <h2>Engine Details</h2>"]
     if context.engines:
-        lines.extend(_engine_table_section(context))
+        for key, data in context.engines.items():
+            options = _as_mapping(data.get("engineOptions", {}))
+            profile = options.get("profile")
+            config_file = options.get("configFile")
+            plugin_args = _coerce_str_list(options.get("pluginArgs"))
+            include_paths = _coerce_str_list(options.get("include"))
+            exclude_paths = _coerce_str_list(options.get("exclude"))
+            overrides = _coerce_override_list(options.get("overrides"))
+            lines.append('    <details class="engine-options" open>')
+            lines.append(f"      <summary><strong>{h(key)}</strong></summary>")
+            lines.append("      <ul>")
+            if profile is not None:
+                lines.append(f"        <li>Profile: <code>{h(str(profile))}</code></li>")
+            if config_file is not None:
+                lines.append(f"        <li>Config file: <code>{h(str(config_file))}</code></li>")
+            if plugin_args:
+                lines.append(f"        <li>Plugin args: {_format_code_list(plugin_args, h)}</li>")
+            include_html = _format_code_list(include_paths, h) if include_paths else "—"
+            lines.append("        <li>Include paths: " + include_html + "</li>")
+            exclude_html = _format_code_list(exclude_paths, h) if exclude_paths else "—"
+            lines.append("        <li>Exclude paths: " + exclude_html + "</li>")
+            lines.append("        <li>Folder overrides:<ul>")
+            if overrides:
+                for entry in overrides:
+                    lines.append(f"          <li>{_format_override_html(entry, h)}</li>")
+            else:
+                lines.append("          <li><em>None</em></li>")
+            lines.append("        </ul></li>")
+            lines.append("      </ul>")
+            lines.append("    </details>")
     else:
         lines.append("    <p>No engine data recorded.</p>")
     lines.append("  </section>")
     return lines
 
 
-def _engine_table_section(context: _DashboardContext) -> list[str]:
-    lines = [
-        "    <section>",
-        "      <table>",
-        "        <thead><tr><th>Run</th><th>Profile</th><th>Config file</th><th>Plugin args</th><th>Include</th><th>Exclude</th><th>Overrides</th></tr></thead>",
-        "        <tbody>",
-    ]
-    lines.extend(_engine_rows(context))
-    lines.extend(["        </tbody>", "      </table>", "    </section>"])
-    return lines
+def _format_code_list(values: list[str], escape_fn: Callable[[object], str]) -> str:
+    if not values:
+        return "—"
+    if len(values) == 1:
+        return f"<code>{escape_fn(values[0])}</code>"
+    return ", ".join(f"<code>{escape_fn(v)}</code>" for v in values)
 
 
-def _engine_rows(context: _DashboardContext) -> list[str]:
-    h = context.escape
-    rows: list[str] = []
-    for key, data in context.engines.items():
-        engine_options = _as_mapping(data.get("engineOptions", {}))
-        plugin_args = ", ".join(
-            h(arg) for arg in _coerce_str_list(engine_options.get("pluginArgs"))
-        )
-        include_paths = ", ".join(
-            h(path) for path in _coerce_str_list(engine_options.get("include"))
-        )
-        exclude_paths = ", ".join(
-            h(path) for path in _coerce_str_list(engine_options.get("exclude"))
-        )
-        override_summaries = [
-            _summarise_override_entry(entry, h)
-            for entry in _coerce_override_list(engine_options.get("overrides"))
-        ]
-        rows.append(
-            "          <tr>"
-            + f"<td>{h(key)}</td>"
-            + f"<td>{h(str(engine_options.get('profile')))}</td>"
-            + f"<td>{h(str(engine_options.get('configFile')))}</td>"
-            + f"<td>{plugin_args}</td>"
-            + f"<td>{include_paths}</td>"
-            + f"<td>{exclude_paths}</td>"
-            + f"<td>{h('; '.join(override_summaries))}</td>"
-            + "</tr>"
-        )
-    return rows
+def _format_override_html(entry: OverrideEntry, escape_fn: Callable[[object], str]) -> str:
+    path, profile, plugin_args, include_paths, exclude_paths = get_override_components(entry)
+    details: list[str] = []
+    if plugin_args:
+        details.append(f"plugin args={_format_code_list(plugin_args, escape_fn)}")
+    if include_paths:
+        details.append(f"include={_format_code_list([str(p) for p in include_paths], escape_fn)}")
+    if exclude_paths:
+        details.append(f"exclude={_format_code_list([str(p) for p in exclude_paths], escape_fn)}")
+    if not details and profile:
+        details.append(f"profile=<code>{escape_fn(profile)}</code>")
+    return f"<code>{escape_fn(path)}</code>: " + ", ".join(details)
 
 
 def _render_hotspots_tab(context: _DashboardContext) -> list[str]:
@@ -284,9 +341,9 @@ def _render_rule_hotspot_table(context: _DashboardContext) -> list[str]:
     top_rules = context.hotspots["topRules"]
     lines = [
         "    <section>",
-        "      <h3>Top Rules</h3>",
+        "      <h3>Common Diagnostic Rules</h3>",
         "      <table>",
-        "        <thead><tr><th>Rule</th><th>Occurrences</th></tr></thead><tbody>",
+        "        <thead><tr><th>Rule</th><th>Count</th></tr></thead><tbody>",
     ]
     if top_rules:
         for rule, count in top_rules.items():
@@ -304,13 +361,20 @@ def _render_folder_hotspot_table(context: _DashboardContext) -> list[str]:
         "    <section>",
         "      <h3>Top Folder Hotspots</h3>",
         "      <table>",
-        "        <thead><tr><th>Folder</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Runs</th></tr></thead><tbody>",
+        (
+            "        <thead><tr><th>Folder</th><th>Errors</th><th>Warnings</th>"
+            "<th>Information</th><th>Runs</th></tr></thead><tbody>"
+        ),
     ]
     if top_folders:
         for folder in top_folders:
-            lines.append(
-                f"          <tr><td>{h(folder['path'])}</td><td>{folder['errors']}</td><td>{folder['warnings']}</td><td>{folder['information']}</td><td>{folder['participatingRuns']}</td></tr>"
+            row = (
+                "          <tr><td>"
+                f"{h(folder['path'])}</td><td>{folder['errors']}</td>"
+                f"<td>{folder['warnings']}</td><td>{folder['information']}</td>"
+                f"<td>{folder['participatingRuns']}</td></tr>"
             )
+            lines.append(row)
     else:
         lines.append('          <tr><td colspan="5"><em>No folder hotspots</em></td></tr>')
     lines.extend(["        </tbody>", "      </table>", "    </section>"])
@@ -328,9 +392,12 @@ def _render_file_hotspot_table(context: _DashboardContext) -> list[str]:
     ]
     if top_files:
         for file_entry in top_files:
-            lines.append(
-                f"          <tr><td>{h(file_entry['path'])}</td><td>{file_entry['errors']}</td><td>{file_entry['warnings']}</td></tr>"
+            row = (
+                "          <tr><td>"
+                f"{h(file_entry['path'])}</td><td>{file_entry['errors']}</td>"
+                f"<td>{file_entry['warnings']}</td></tr>"
             )
+            lines.append(row)
     else:
         lines.append('          <tr><td colspan="3"><em>No file hotspots</em></td></tr>')
     lines.extend(["        </tbody>", "      </table>", "    </section>"])
@@ -356,23 +423,6 @@ def _render_rule_file_details(context: _DashboardContext) -> list[str]:
         lines.append("      <p>No rule hotspot breakdown available.</p>")
     lines.append("    </section>")
     return lines
-
-
-def _summarise_override_entry(entry: OverrideEntry, escape_fn: Callable[[str], str]) -> str:
-    path, profile, plugin_args, include_paths, exclude_paths = get_override_components(entry)
-    details: list[str] = []
-    if profile:
-        details.append(f"profile={escape_fn(profile)}")
-    if plugin_args:
-        details.append("args=" + "/".join(escape_fn(str(arg)) for arg in plugin_args))
-    if include_paths:
-        details.append("include=" + "/".join(escape_fn(str(path)) for path in include_paths))
-    if exclude_paths:
-        details.append("exclude=" + "/".join(escape_fn(str(path)) for path in exclude_paths))
-    summary = escape_fn(path)
-    if details:
-        summary = f"{summary} ({', '.join(details)})"
-    return summary
 
 
 def _coerce_str_list(value: object) -> list[str]:
@@ -425,9 +475,12 @@ def _render_readiness_tab(context: _DashboardContext) -> list[str]:
         for entry in entries[:12]:
             notes_list = cast(list[str], entry.get("notes") or entry.get("recommendations") or [])
             note_text = f" — {', '.join(notes_list)}" if notes_list else ""
-            lines.append(
-                f"        <li><code>{h(str(entry['path']))}</code> (diagnostics={entry.get('diagnostics', 0)}){note_text}</li>",
+            li = (
+                "        <li><code>"
+                f"{h(str(entry['path']))}</code> "
+                f"(diagnostics={entry.get('diagnostics', 0)}){note_text}</li>"
             )
+            lines.append(li)
         if len(entries) > 12:
             lines.append(f"        <li>… plus {len(entries) - 12} more</li>")
         lines.append("      </ul>")
@@ -442,7 +495,11 @@ def _render_readiness_tab(context: _DashboardContext) -> list[str]:
         lines.append("    <section>")
         lines.append("      <h3>Per-option readiness</h3>")
         lines.append(
-            "      <table><thead><tr><th>Option</th><th>Ready</th><th>Close</th><th>Blocked</th><th>Close threshold</th></tr></thead><tbody>",
+            (
+                "      <table><thead><tr><th>Option</th><th>Ready</th>"
+                "<th>Close</th><th>Blocked</th><th>Close threshold</th></tr>"
+                "</thead><tbody>"
+            ),
         )
         label_lookup = cast(dict[str, str], CATEGORY_LABELS)
         for category, payload in readiness_options.items():
@@ -481,7 +538,10 @@ def _render_runs_tab(context: _DashboardContext) -> list[str]:
             lines.extend(
                 [
                     '    <details class="run-log" open>',
-                    f"      <summary><strong>{h(key)}</strong> · command: <code>{cmd}</code></summary>",
+                    (
+                        f"      <summary><strong>{h(key)}</strong> · command: "
+                        f"<code>{cmd}</code></summary>"
+                    ),
                     "      <ul>",
                     f"        <li>Errors: {data.get('errors', 0)}</li>",
                     f"        <li>Warnings: {data.get('warnings', 0)}</li>",
@@ -500,5 +560,35 @@ def _render_runs_tab(context: _DashboardContext) -> list[str]:
 
 def _render_script_block() -> list[str]:
     return [
-        "  <script>\n    (function(){\n      const body=document.body;\n      body.classList.remove('no-js');\n      body.classList.add('has-js');\n      const storageKey='typewiz-dashboard-tab';\n      const tabs=Array.from(document.querySelectorAll('[data-tab-target]'));\n      const panes=Array.from(document.querySelectorAll('[data-tab-pane]'));\n      function activate(name){\n        tabs.forEach(btn=>{const active=btn.dataset.tabTarget===name;btn.classList.toggle('active',active);btn.setAttribute('aria-selected',String(active));});\n        panes.forEach(pane=>pane.classList.toggle('active',pane.dataset.tabPane===name));\n      }\n      let stored=null;\n      try{stored=window.localStorage.getItem(storageKey);}catch(_){}\n      const initial=tabs.some(btn=>btn.dataset.tabTarget===stored) ? stored : body.dataset.defaultTab || 'overview';\n      activate(initial);\n      tabs.forEach(btn=>btn.addEventListener('click',()=>{const name=btn.dataset.tabTarget;activate(name);try{window.localStorage.setItem(storageKey,name);}catch(_){};}));\n    })();\n  </script>",
+        "  <script>",
+        "    (function(){",
+        "      const body=document.body;",
+        "      body.classList.remove('no-js');",
+        "      body.classList.add('has-js');",
+        "      const storageKey='typewiz-dashboard-tab';",
+        "      const tabs=Array.from(document.querySelectorAll('[data-tab-target]'));",
+        "      const panes=Array.from(document.querySelectorAll('[data-tab-pane]'));",
+        "      function activate(name){",
+        (
+            "        tabs.forEach(btn=>{const active=btn.dataset.tabTarget===name;"
+            "btn.classList.toggle('active',active);"
+            "btn.setAttribute('aria-selected',String(active));});"
+        ),
+        "        panes.forEach(pane=>pane.classList.toggle('active',pane.dataset.tabPane===name));",
+        "      }",
+        "      let stored=null;",
+        "      try{stored=window.localStorage.getItem(storageKey);}catch(_){}",
+        (
+            "      const initial=tabs.some(btn=>btn.dataset.tabTarget===stored) ? stored : "
+            "body.dataset.defaultTab || 'overview';"
+        ),
+        "      activate(initial);",
+        (
+            "      tabs.forEach(btn=>btn.addEventListener('click',()=>{"
+            "const name=btn.dataset.tabTarget;"
+            "activate(name);"
+            "try{window.localStorage.setItem(storageKey,name);}catch(_){};}));"
+        ),
+        "    })();",
+        "  </script>",
     ]

@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Shared helper utilities for the typewiz CLI."""
 
 from __future__ import annotations

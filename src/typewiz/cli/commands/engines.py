@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Engine discovery helpers for the Typewiz CLI."""
 
 from __future__ import annotations

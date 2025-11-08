@@ -141,7 +141,9 @@ def run_pyright(
 
 
 _MYPY_LINE: Final[re.Pattern[str]] = re.compile(
-    r"^(?P<path>.+?):(?P<line>\d+):(?:(?P<column>\d+):)? (?P<severity>error|note|warning): (?P<message>.*?)(?: \[(?P<code>[^\]]+)\])?$",
+    r"^(?P<path>.+?):(?P<line>\d+):(?:(?P<column>\d+):)? "
+    + r"(?P<severity>error|note|warning): (?P<message>.*?)"
+    + r"(?: \[(?P<code>[^\]]+)\])?$"
 )
 
 

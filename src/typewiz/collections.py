@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Public collections helpers (stable shim over internal implementations)."""
 
 from __future__ import annotations

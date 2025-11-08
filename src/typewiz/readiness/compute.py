@@ -1,4 +1,4 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright (c) 2024 PantherianCodeX. All Rights Reserved.
 
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ class ReadinessEntry(TypedDict):
 class ReadinessOptions:
     threshold: int
     buckets: dict[ReadinessStatus, tuple[ReadinessOptionEntry, ...]] = field(
-        default_factory=lambda: {status: () for status in ReadinessStatus}
+        default_factory=lambda: dict.fromkeys(ReadinessStatus, ())
     )
 
     def add_entry(self, status: ReadinessStatus, entry: ReadinessOptionEntry) -> None:
@@ -222,7 +222,7 @@ def _build_strict_entry_payload(
             CategoryName(category): categories.get(CategoryName(category), 0)
             for category in CATEGORY_PATTERNS
         },
-        "categoryStatus": {category: status for category, status in category_status.items()},
+        "categoryStatus": dict(category_status.items()),
         "recommendations": entry.get("recommendations", []),
     }
     if notes:

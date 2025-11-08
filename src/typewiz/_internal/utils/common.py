@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Small shared helpers used across utils modules."""
 
 from __future__ import annotations

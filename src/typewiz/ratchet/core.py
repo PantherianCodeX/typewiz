@@ -1,4 +1,5 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Core ratchet algorithms for building, comparing, and updating budgets."""
 
 from __future__ import annotations
@@ -167,7 +168,7 @@ def _build_path_budgets(
             continue
         counts = _severity_counts_from_file(entry_map)
         if not counts:
-            counts = Counter({severity: 0 for severity in severities})
+            counts = Counter(dict.fromkeys(severities, 0))
         budgets: dict[SeverityLevel, int] = {
             severity: max(0, counts.get(severity, 0)) for severity in severities
         }

@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Structured utility helpers used across Typewiz internals."""
 
 from __future__ import annotations

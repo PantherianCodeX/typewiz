@@ -1,3 +1,5 @@
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+
 """Category metadata used throughout Typewiz."""
 
 from __future__ import annotations
