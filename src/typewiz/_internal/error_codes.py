@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import NewType
 
-from .config import (
+from ..config import (
     ConfigFieldChoiceError,
     ConfigFieldTypeError,
     ConfigReadError,
@@ -16,15 +16,15 @@ from .config import (
     UnknownEngineProfileError,
     UnsupportedConfigVersionError,
 )
-from .dashboard import DashboardTypeError
-from .exceptions import TypewizError, TypewizTypeError, TypewizValidationError
-from .manifest_models import ManifestValidationError
-from .manifest_versioning import (
+from ..dashboard import DashboardTypeError
+from ..manifest_models import ManifestValidationError
+from ..manifest_versioning import (
     InvalidManifestRunsError,
     InvalidManifestVersionTypeError,
     UnsupportedManifestVersionError,
 )
-from .readiness_views import ReadinessValidationError
+from ..readiness_views import ReadinessValidationError
+from .exceptions import TypewizError, TypewizTypeError, TypewizValidationError
 
 ErrorCode = NewType("ErrorCode", str)
 

@@ -9,7 +9,7 @@ import sys
 from collections.abc import Iterable
 from pathlib import Path
 
-from typewiz.error_codes import error_code_catalog
+from typewiz._internal.error_codes import error_code_catalog
 
 
 def _emit(message: str, *, error: bool = False) -> None:

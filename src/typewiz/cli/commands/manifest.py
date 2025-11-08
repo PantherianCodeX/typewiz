@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any, Protocol, cast
 
-from typewiz.error_codes import error_code_for
+from typewiz._internal.error_codes import error_code_for
 from typewiz.manifest_models import (
     ManifestValidationError,
     manifest_json_schema,

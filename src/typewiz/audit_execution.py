@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
+from ._internal.logging_utils import StructuredLogExtra
 from .audit_config_utils import normalise_category_mapping, prepare_category_mapping
 from .audit_paths import fingerprint_targets as build_fingerprint_targets
 from .audit_paths import normalise_override_entries, normalise_paths, relative_override_path
@@ -18,7 +19,6 @@ from .collection_utils import merge_preserve
 from .config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from .engines import EngineContext, EngineOptions
 from .engines.base import BaseEngine, EngineResult
-from .logging_utils import StructuredLogExtra
 from .model_types import FileHashPayload, LogComponent, Mode, OverrideEntry
 from .type_aliases import CacheKey, EngineName, PathKey, ProfileName, RelPath, ToolName
 from .typed_manifest import ToolSummary

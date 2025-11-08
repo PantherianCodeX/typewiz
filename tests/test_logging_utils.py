@@ -7,7 +7,7 @@ import logging
 
 from pytest import CaptureFixture
 
-from typewiz.logging_utils import configure_logging
+from typewiz._internal.logging_utils import configure_logging
 from typewiz.model_types import LogComponent, Mode
 
 

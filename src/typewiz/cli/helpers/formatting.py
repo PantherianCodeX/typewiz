@@ -7,8 +7,8 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Literal, TypedDict, cast
 
+from typewiz._internal.error_codes import error_code_for
 from typewiz.data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
-from typewiz.error_codes import error_code_for
 from typewiz.formatting import render_table_rows, stringify
 from typewiz.model_types import (
     DataFormat,

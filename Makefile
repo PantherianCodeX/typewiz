@@ -265,7 +265,7 @@ sec.lint: ## Advisory security lint (ruff S-rules)
 
 sec.bandit: ## Run Bandit if available (advisory)
 	@if command -v bandit >/dev/null 2>&1; then \
-	  bandit -q -r src -x src/typewiz/logging_utils.py; \
+	  bandit -q -r src -x src/typewiz/_internal/logging_utils.py; \
 	else \
 	  echo "[advisory] bandit not installed; skipping"; \
 	fi

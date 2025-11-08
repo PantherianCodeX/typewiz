@@ -2,13 +2,13 @@
 
 Typewiz raises a small set of structured exceptions to make it easy to handle
 errors programmatically. Each exception maps to a stable error code (see
-`typewiz.error_codes.error_code_for`) which can be used in logs or CI.
+`typewiz._internal.error_codes.error_code_for`) which can be used in logs or CI.
 
 Core exceptions:
 
-- `typewiz.exceptions.TypewizError` — base for all Typewiz errors. Code: `TW000`.
-- `typewiz.exceptions.TypewizValidationError` — validation failures. Code: `TW100`.
-- `typewiz.exceptions.TypewizTypeError` — type mismatches at runtime. Code: `TW101`.
+- `typewiz._internal.exceptions.TypewizError` — base for all Typewiz errors. Code: `TW000`.
+- `typewiz._internal.exceptions.TypewizValidationError` — validation failures. Code: `TW100`.
+- `typewiz._internal.exceptions.TypewizTypeError` — type mismatches at runtime. Code: `TW101`.
 
 Configuration errors (`typewiz.config`):
 

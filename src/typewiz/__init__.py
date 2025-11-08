@@ -9,20 +9,20 @@ tracking.
 
 from __future__ import annotations
 
-from .api import AuditResult, run_audit
-from .config import AuditConfig, Config, load_config
-from .dashboard import build_summary, load_manifest, render_markdown
-from .exceptions import (
+from ._internal.exceptions import (
     TypewizError,
     TypewizTypeError,
     TypewizValidationError,
 )
-from .html_report import render_html
-from .license import (
+from ._internal.license import (
     LICENSE_KEY_ENV,
     has_commercial_license,
     license_mode,
 )
+from .api import AuditResult, run_audit
+from .config import AuditConfig, Config, load_config
+from .dashboard import build_summary, load_manifest, render_markdown
+from .html_report import render_html
 from .ratchet import (
     apply_auto_update as ratchet_apply_auto_update,
 )

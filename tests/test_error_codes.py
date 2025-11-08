@@ -8,9 +8,9 @@ from pathlib import Path
 from pydantic import ValidationError
 from pydantic_core import PydanticCustomError
 
+from typewiz._internal.error_codes import error_code_catalog, error_code_for
+from typewiz._internal.exceptions import TypewizError, TypewizTypeError, TypewizValidationError
 from typewiz.config import ConfigValidationError
-from typewiz.error_codes import error_code_catalog, error_code_for
-from typewiz.exceptions import TypewizError, TypewizTypeError, TypewizValidationError
 from typewiz.manifest_models import ManifestValidationError
 
 
@@ -44,7 +44,7 @@ def test_error_code_catalog_uniqueness() -> None:
     catalog = error_code_catalog()
     codes = list(catalog.values())
     assert len(set(codes)) == len(codes)
-    assert catalog["typewiz.exceptions.TypewizError"] == "TW000"
+    assert catalog["typewiz._internal.exceptions.TypewizError"] == "TW000"
 
 
 def test_error_code_documentation_is_in_sync() -> None:

@@ -13,6 +13,8 @@ from textwrap import dedent
 from typing import Final
 
 from typewiz import __version__ as TYPEWIZ_VERSION
+from typewiz._internal.license import maybe_emit_evaluation_notice
+from typewiz._internal.logging_utils import LOG_FORMATS, configure_logging
 from typewiz.cli.commands import audit as audit_command
 from typewiz.cli.commands import cache as cache_command
 from typewiz.cli.commands import engines as engines_command
@@ -26,8 +28,6 @@ from typewiz.cli.helpers import print_readiness_summary as _helpers_print_readin
 from typewiz.cli.helpers import register_argument as _register_argument
 from typewiz.dashboard import build_summary, load_manifest, render_markdown
 from typewiz.html_report import render_html
-from typewiz.license import maybe_emit_evaluation_notice
-from typewiz.logging_utils import LOG_FORMATS, configure_logging
 from typewiz.model_types import (
     DashboardFormat,
     DashboardView,

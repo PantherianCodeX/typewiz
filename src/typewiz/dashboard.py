@@ -9,9 +9,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import cast
 
+from ._internal.exceptions import TypewizTypeError
 from .category_utils import coerce_category_key
 from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
-from .exceptions import TypewizTypeError
 from .manifest_loader import load_manifest_data
 from .model_types import (
     CategoryMapping,

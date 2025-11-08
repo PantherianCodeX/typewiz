@@ -16,7 +16,7 @@ lint.ignore = ["E501"]
 "tests/conftest.py" = ["E402"]
 "tests/**" = ["S101", "D100", "D101", "D102", "D103", "D104", "PLR2004", "CPY001"]
 "src/typewiz/manifest_models.py" = ["N815"]
-"src/typewiz/logging_utils.py" = ["TRY003"]
+"src/typewiz/_internal/logging_utils.py" = ["TRY003"]
 
 
 [tool.coverage.run]

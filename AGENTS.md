@@ -60,7 +60,7 @@
 - `make check.error-codes` — ensure exception code registry matches docs.
 
 **Error Handling & Codes**
-- Raise precise, typed exceptions (see `src/typewiz/exceptions.py`) and map to stable error codes (see `src/typewiz/error_codes.py`).
+- Raise precise, typed exceptions (see `src/typewiz/_internal/exceptions.py`) and map to stable error codes (see `src/typewiz/_internal/error_codes.py`).
 - Keep docs synchronized with `docs/EXCEPTIONS.md`; CI enforces via `make check.error-codes`.
 
 **Documentation**

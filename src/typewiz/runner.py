@@ -8,8 +8,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Final, cast
 
+from ._internal.logging_utils import StructuredLogExtra
 from .engines.base import EngineResult
-from .logging_utils import StructuredLogExtra
 from .model_types import LogComponent, Mode, SeverityLevel
 from .type_aliases import BuiltinEngineName, Command, ToolName
 from .typed_manifest import ToolSummary
