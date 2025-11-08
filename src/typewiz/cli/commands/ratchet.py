@@ -31,24 +31,26 @@ from typewiz.config import RatchetConfig, load_config
 from typewiz.core.model_types import DataFormat, RatchetAction, SignaturePolicy
 from typewiz.core.type_aliases import RunId
 from typewiz.manifest.typed import ManifestData
-from typewiz.ratchet import (
+from typewiz.services.ratchet import (
     apply_auto_update as ratchet_apply_auto_update,
 )
-from typewiz.ratchet import (
+from typewiz.services.ratchet import (
     build_ratchet_from_manifest as ratchet_build_from_manifest,
 )
-from typewiz.ratchet import (
+from typewiz.services.ratchet import (
     compare_manifest_to_ratchet as ratchet_compare_manifest,
 )
-from typewiz.ratchet import (
+from typewiz.services.ratchet import (
+    current_timestamp,
     load_ratchet,
     write_ratchet,
 )
-from typewiz.ratchet import (
+from typewiz.services.ratchet import (
+    load_manifest as load_ratchet_manifest,
+)
+from typewiz.services.ratchet import (
     refresh_signatures as ratchet_refresh_signatures,
 )
-from typewiz.ratchet.io import current_timestamp
-from typewiz.ratchet.io import load_manifest as load_ratchet_manifest
 
 
 @dataclass(slots=True)
