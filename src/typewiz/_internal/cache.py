@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Final, Literal, TypedDict, cast
 from typewiz._internal.utils import JSONValue, consume, file_lock, normalise_enums_for_json
 from typewiz.config.validation import coerce_int, coerce_object_list, coerce_str_list
 from typewiz.core.categories import coerce_category_key
-from typewiz.core.model_types import SeverityLevel, clone_override_entries
+from typewiz.core.model_types import LogComponent, SeverityLevel, clone_override_entries
 from typewiz.core.type_aliases import (
     CacheKey,
     CategoryKey,
@@ -27,6 +27,7 @@ from typewiz.core.type_aliases import (
     ToolName,
 )
 from typewiz.core.types import Diagnostic
+from typewiz.logging import structured_extra
 from typewiz.manifest.typed import ToolSummary
 
 if TYPE_CHECKING:
@@ -106,7 +107,12 @@ def _resolve_hash_workers() -> int:
     try:
         parsed = int(value)
     except ValueError:
-        logger.debug("Ignoring invalid %s=%s value", _HASH_WORKER_ENV, raw)
+        logger.debug(
+            "Ignoring invalid %s=%s value",
+            _HASH_WORKER_ENV,
+            raw,
+            extra=structured_extra(component=LogComponent.CACHE, details={"env": _HASH_WORKER_ENV}),
+        )
         return 0
     return max(0, parsed)
 
@@ -118,7 +124,11 @@ def _effective_hash_workers(value: int | Literal["auto"] | None) -> int:
         lowered = value.strip().lower()
         if lowered == "auto":
             return max(1, os.cpu_count() or 1)
-        logger.warning("Unknown hash worker spec '%s'; falling back to defaults", value)
+        logger.warning(
+            "Unknown hash worker spec '%s'; falling back to defaults",
+            value,
+            extra=structured_extra(component=LogComponent.CACHE),
+        )
         return _resolve_hash_workers()
     return max(0, value)
 
@@ -554,7 +564,10 @@ def _git_list_files(repo_root: Path) -> set[str]:
     """
     git_cmd = shutil.which("git")
     if git_cmd is None:
-        logger.debug("git executable not found; skipping gitignore-aware listing")
+        logger.debug(
+            "git executable not found; skipping gitignore-aware listing",
+            extra=structured_extra(component=LogComponent.CACHE),
+        )
         return set()
 
     try:
@@ -568,7 +581,11 @@ def _git_list_files(repo_root: Path) -> set[str]:
             text=True,
         )
     except Exception as exc:  # pragma: no cover - defensive
-        logger.debug("git ls-files failed: %s", exc)
+        logger.debug(
+            "git ls-files failed: %s",
+            exc,
+            extra=structured_extra(component=LogComponent.CACHE),
+        )
         return set()
 
     if completed.returncode != 0:

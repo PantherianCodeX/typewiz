@@ -12,7 +12,7 @@ from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
 from typewiz.core.type_aliases import BuiltinEngineName, Command, ToolName
 from typewiz.core.types import Diagnostic
 from typewiz.engines.base import EngineResult
-from typewiz.logging import StructuredLogExtra
+from typewiz.logging import StructuredLogExtra, structured_extra
 from typewiz.manifest.typed import ToolSummary
 from typewiz.runtime import (
     JSONValue,
@@ -24,7 +24,7 @@ from typewiz.runtime import (
     run_command,
 )
 
-logger: logging.Logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz.engines.execution")
 PYRIGHT_NAME: Final[BuiltinEngineName] = "pyright"
 MYPY_NAME: Final[BuiltinEngineName] = "mypy"
 PYRIGHT_TOOL: Final[ToolName] = ToolName(PYRIGHT_NAME)
@@ -45,7 +45,11 @@ def run_pyright(
     mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
-    start_extra: StructuredLogExtra = {"component": LogComponent.ENGINE, "tool": "pyright"}
+    start_extra: StructuredLogExtra = structured_extra(
+        component=LogComponent.ENGINE,
+        tool="pyright",
+        mode=mode,
+    )
     argv: Command = list(command)
     logger.info(
         "Running pyright (%s)",
@@ -116,7 +120,19 @@ def run_pyright(
                 tool_summary.get("errors"),
                 tool_summary.get("warnings"),
                 tool_summary.get("total"),
-                extra={"component": LogComponent.ENGINE, "tool": "pyright"},
+                extra=structured_extra(
+                    component=LogComponent.ENGINE,
+                    tool="pyright",
+                    mode=mode,
+                    details={
+                        "parsed": (parsed_errors, parsed_warnings, parsed_total),
+                        "tool": (
+                            tool_summary.get("errors"),
+                            tool_summary.get("warnings"),
+                            tool_summary.get("total"),
+                        ),
+                    },
+                ),
             )
     engine_result = EngineResult(
         engine=PYRIGHT_TOOL,
@@ -127,11 +143,14 @@ def run_pyright(
         diagnostics=diagnostics,
         tool_summary=tool_summary,
     )
-    debug_extra: StructuredLogExtra = {
-        "component": LogComponent.ENGINE,
-        "tool": "pyright",
-        "duration_ms": engine_result.duration_ms,
-    }
+    debug_extra: StructuredLogExtra = structured_extra(
+        component=LogComponent.ENGINE,
+        tool="pyright",
+        mode=mode,
+        duration_ms=engine_result.duration_ms,
+        exit_code=engine_result.exit_code,
+        details={"diagnostics": len(engine_result.diagnostics)},
+    )
     logger.debug(
         "pyright run completed: exit=%s diagnostics=%s",
         engine_result.exit_code,
@@ -154,7 +173,11 @@ def run_mypy(
     mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
-    start_extra: StructuredLogExtra = {"component": LogComponent.ENGINE, "tool": "mypy"}
+    start_extra: StructuredLogExtra = structured_extra(
+        component=LogComponent.ENGINE,
+        tool="mypy",
+        mode=mode,
+    )
     argv: Command = list(command)
     logger.info(
         "Running mypy (%s)",
@@ -225,11 +248,14 @@ def run_mypy(
         duration_ms=result.duration_ms,
         diagnostics=diagnostics,
     )
-    debug_extra: StructuredLogExtra = {
-        "component": LogComponent.ENGINE,
-        "tool": "mypy",
-        "duration_ms": engine_result.duration_ms,
-    }
+    debug_extra: StructuredLogExtra = structured_extra(
+        component=LogComponent.ENGINE,
+        tool="mypy",
+        mode=mode,
+        duration_ms=engine_result.duration_ms,
+        exit_code=engine_result.exit_code,
+        details={"diagnostics": len(engine_result.diagnostics)},
+    )
     logger.debug(
         "mypy run completed: exit=%s diagnostics=%s",
         engine_result.exit_code,

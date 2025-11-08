@@ -283,7 +283,7 @@ def _register_readiness_command(subparsers: Any) -> None:
 
 def _initialize_logging(log_format: str, log_level: str) -> None:
     with suppress(Exception):  # best-effort logger init
-        configure_logging(LogFormat.from_str(log_format), log_level=log_level)
+        _ = configure_logging(LogFormat.from_str(log_format), log_level=log_level)
 
 
 def _command_handlers() -> dict[str, CommandHandler]:

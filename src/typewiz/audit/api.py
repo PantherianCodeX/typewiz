@@ -16,6 +16,7 @@ from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
 from typewiz.core.type_aliases import RelPath
 from typewiz.dashboard import build_summary, render_html, render_markdown
 from typewiz.engines import EngineContext, resolve_engines
+from typewiz.logging import structured_extra
 from typewiz.manifest.builder import ManifestBuilder
 from typewiz.runtime import (
     consume,
@@ -34,7 +35,7 @@ if TYPE_CHECKING:
     from typewiz.engines.base import BaseEngine
     from typewiz.manifest.typed import ManifestData
 
-logger: logging.Logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz.audit")
 
 
 @dataclass(slots=True)
@@ -101,7 +102,7 @@ def _prepare_audit_inputs(
         [str(path) for path in full_paths_normalised],
         [engine.name for engine in engines],
         tool_versions,
-        extra={"component": LogComponent.CLI},
+        extra=structured_extra(component=LogComponent.CLI, details={"runners": len(engines)}),
     )
     return cfg, inputs
 
@@ -144,12 +145,12 @@ def _run_engines(inputs: _AuditInputs) -> tuple[list[RunResult], bool]:
     if truncated_any:
         logger.warning(
             "Fingerprint truncated across one or more runs",
-            extra={"component": LogComponent.CACHE},
+            extra=structured_extra(component=LogComponent.CACHE, fingerprint_truncated=True),
         )
     else:
         logger.debug(
             "Fingerprint scan completed without truncation",
-            extra={"component": LogComponent.CACHE},
+            extra=structured_extra(component=LogComponent.CACHE, fingerprint_truncated=False),
         )
     inputs.cache.save()
     return runs, truncated_any
@@ -204,6 +205,11 @@ def _write_dashboard_files(inputs: _AuditInputs, summary: SummaryData) -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
         payload = normalise_enums_for_json(summary)
         consume(target.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8"))
+        logger.info(
+            "Wrote dashboard JSON to %s",
+            target,
+            extra=structured_extra(component=LogComponent.DASHBOARD, path=target),
+        )
     if audit_config.dashboard_markdown:
         target = (
             audit_config.dashboard_markdown
@@ -212,6 +218,11 @@ def _write_dashboard_files(inputs: _AuditInputs, summary: SummaryData) -> None:
         )
         target.parent.mkdir(parents=True, exist_ok=True)
         consume(target.write_text(render_markdown(summary), encoding="utf-8"))
+        logger.info(
+            "Wrote dashboard Markdown to %s",
+            target,
+            extra=structured_extra(component=LogComponent.DASHBOARD, path=target),
+        )
     if audit_config.dashboard_html:
         target = (
             audit_config.dashboard_html
@@ -220,6 +231,11 @@ def _write_dashboard_files(inputs: _AuditInputs, summary: SummaryData) -> None:
         )
         target.parent.mkdir(parents=True, exist_ok=True)
         consume(target.write_text(render_html(summary), encoding="utf-8"))
+        logger.info(
+            "Wrote dashboard HTML to %s",
+            target,
+            extra=structured_extra(component=LogComponent.DASHBOARD, path=target),
+        )
 
 
 def _compute_run_totals(runs: list[RunResult]) -> tuple[int, int]:
@@ -260,13 +276,15 @@ def run_audit(  # noqa: PLR0913
         len(runs),
         error_count,
         warning_count,
-        extra={
-            "component": LogComponent.CLI,
-            "counts": {
+        extra=structured_extra(
+            component=LogComponent.CLI,
+            counts={
                 SeverityLevel.ERROR: error_count,
                 SeverityLevel.WARNING: warning_count,
             },
-        },
+            fingerprint_truncated=fingerprint_truncated_any,
+            details={"runs": len(runs)},
+        ),
     )
 
     return AuditResult(

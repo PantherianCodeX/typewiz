@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from enum import StrEnum
 from typing import Final, TypedDict, cast
 
-from typewiz.runtime import JSONValue
+from typewiz.json_types import JSONValue
 
 from .type_aliases import CategoryKey, RelPath
 
@@ -94,6 +94,9 @@ class LogComponent(StrEnum):
     CLI = "cli"
     DASHBOARD = "dashboard"
     CACHE = "cache"
+    RATCHET = "ratchet"
+    SERVICES = "services"
+    MANIFEST = "manifest"
 
     @classmethod
     def from_str(cls, raw: str) -> LogComponent:

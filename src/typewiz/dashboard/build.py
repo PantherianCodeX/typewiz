@@ -19,6 +19,7 @@ from typewiz.config.validation import (
 from typewiz.core.categories import coerce_category_key
 from typewiz.core.model_types import (
     CategoryMapping,
+    LogComponent,
     OverrideEntry,
     ReadinessStatus,
     SeverityLevel,
@@ -41,6 +42,7 @@ from typewiz.core.summary_types import (
 )
 from typewiz.core.type_aliases import CategoryKey, RelPath, RunId
 from typewiz.exceptions import TypewizTypeError
+from typewiz.logging import structured_extra
 from typewiz.manifest.loader import load_manifest_data
 from typewiz.manifest.typed import EngineOptionsEntry, ManifestData, ToolSummary
 from typewiz.readiness.compute import (
@@ -446,7 +448,11 @@ def _build_readiness_section(folder_entries: Sequence[ReadinessEntry]) -> Readin
     try:
         return _validate_readiness_tab(cast("Mapping[object, object]", readiness_raw))
     except ValueError as exc:
-        logger.warning("Discarding invalid readiness payload: %s", exc)
+        logger.warning(
+            "Discarding invalid readiness payload: %s",
+            exc,
+            extra=structured_extra(component=LogComponent.DASHBOARD),
+        )
         return _empty_readiness_tab()
 
 

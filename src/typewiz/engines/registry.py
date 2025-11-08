@@ -10,7 +10,9 @@ from functools import lru_cache
 from importlib import metadata
 from typing import Final, Literal, cast
 
+from ..core.model_types import LogComponent
 from ..core.type_aliases import EngineName
+from ..logging import structured_extra
 from .base import BaseEngine
 from .builtin.mypy import MypyEngine
 from .builtin.pyright import PyrightEngine
@@ -70,7 +72,12 @@ def entrypoint_engines() -> dict[EngineName, BaseEngine]:
             loaded = entry_point.load()
             engine = _instantiate_engine(loaded, source=entry_point.name)
         except Exception as exc:  # pragma: no cover - plugin misconfiguration
-            logger.debug("Failed to load engine entry point '%s': %s", entry_point.name, exc)
+            logger.debug(
+                "Failed to load engine entry point '%s': %s",
+                entry_point.name,
+                exc,
+                extra=structured_extra(component=LogComponent.ENGINE, tool=entry_point.name),
+            )
             continue
         name = getattr(engine, "name", None)
         if not isinstance(name, str) or not name:
