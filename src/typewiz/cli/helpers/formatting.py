@@ -24,7 +24,12 @@ from typewiz.core.model_types import (
     SummaryStyle,
     clone_override_entries,
 )
-from typewiz.core.summary_types import SummaryData
+from typewiz.core.summary_types import (
+    HotspotsTab,
+    SummaryData,
+    SummaryFileEntry,
+    SummaryFolderEntry,
+)
 from typewiz.core.type_aliases import RelPath, RunId
 from typewiz.core.types import RunResult
 from typewiz.error_codes import error_code_for
@@ -166,12 +171,7 @@ def parse_summary_fields(
     return fields
 
 
-def _print_run_summary(  # noqa: C901, PLR0912
-    run: RunResult,
-    *,
-    fields: set[SummaryField],
-    style: SummaryStyle,
-) -> None:
+def _format_run_header(run: RunResult) -> str:
     counts = run.severity_counts()
     summary = (
         f"errors={counts.get(SeverityLevel.ERROR, 0)} "
@@ -179,43 +179,89 @@ def _print_run_summary(  # noqa: C901, PLR0912
         f"info={counts.get(SeverityLevel.INFORMATION, 0)}"
     )
     command = " ".join(run.command)
-    header = f"[typewiz] {run.tool}:{run.mode} exit={run.exit_code} {summary} ({command})"
+    return f"[typewiz] {run.tool}:{run.mode} exit={run.exit_code} {summary} ({command})"
 
-    detail_items: list[tuple[str, str]] = []
 
-    expanded = style is not SummaryStyle.COMPACT
+def _collect_run_details(
+    run: RunResult,
+    *,
+    fields: set[SummaryField],
+    expanded: bool,
+) -> list[tuple[str, str]]:
+    items: list[tuple[str, str]] = []
     if SummaryField.PROFILE in fields:
-        if run.profile:
-            detail_items.append(("profile", run.profile))
-        elif expanded:
-            detail_items.append(("profile", "—"))
+        items.extend(_profile_details(run, expanded))
     if SummaryField.CONFIG in fields:
-        if run.config_file:
-            detail_items.append(("config", str(run.config_file)))
-        elif expanded:
-            detail_items.append(("config", "—"))
+        items.extend(_config_details(run, expanded))
     if SummaryField.PLUGIN_ARGS in fields:
-        plugin_args = format_list(list(run.plugin_args))
-        if plugin_args != "—" or expanded:
-            detail_items.append(("plugin args", plugin_args))
+        items.extend(_plugin_args_details(run, expanded))
     if SummaryField.PATHS in fields:
-        include_paths = format_list(list(run.include))
-        exclude_paths = format_list(list(run.exclude))
-        if include_paths != "—" or expanded:
-            detail_items.append(("include", include_paths))
-        if exclude_paths != "—" or expanded:
-            detail_items.append(("exclude", exclude_paths))
+        items.extend(_paths_details(run, expanded))
     if SummaryField.OVERRIDES in fields:
-        overrides_data = clone_override_entries(run.overrides)
-        if overrides_data:
-            if expanded:
-                for entry in overrides_data:
-                    path, details = override_detail_lines(entry)
-                    detail_items.append((f"override {path}", "; ".join(details)))
-            else:
-                short = [format_override_inline(entry) for entry in overrides_data]
-                detail_items.append(("overrides", "; ".join(short)))
+        items.extend(_format_override_details(run.overrides, expanded=expanded))
+    return items
 
+
+def _format_override_details(
+    overrides: Sequence[OverrideEntry],
+    *,
+    expanded: bool,
+) -> list[tuple[str, str]]:
+    cloned = clone_override_entries(overrides)
+    if not cloned:
+        return []
+    if expanded:
+        detailed: list[tuple[str, str]] = []
+        for entry in cloned:
+            path, details = override_detail_lines(entry)
+            detailed.append((f"override {path}", "; ".join(details)))
+        return detailed
+    summary = [format_override_inline(entry) for entry in cloned]
+    return [("overrides", "; ".join(summary))]
+
+
+def _optional_detail(label: str, value: str | None, expanded: bool) -> list[tuple[str, str]]:
+    if value or expanded:
+        return [(label, value or "—")]
+    return []
+
+
+def _profile_details(run: RunResult, expanded: bool) -> list[tuple[str, str]]:
+    return _optional_detail("profile", run.profile, expanded)
+
+
+def _config_details(run: RunResult, expanded: bool) -> list[tuple[str, str]]:
+    value = str(run.config_file) if run.config_file else None
+    return _optional_detail("config", value, expanded)
+
+
+def _plugin_args_details(run: RunResult, expanded: bool) -> list[tuple[str, str]]:
+    plugin_args = format_list([str(arg) for arg in run.plugin_args])
+    if plugin_args != "—" or expanded:
+        return [("plugin args", plugin_args)]
+    return []
+
+
+def _paths_details(run: RunResult, expanded: bool) -> list[tuple[str, str]]:
+    details: list[tuple[str, str]] = []
+    include_paths = format_list([str(path) for path in run.include])
+    exclude_paths = format_list([str(path) for path in run.exclude])
+    if include_paths != "—" or expanded:
+        details.append(("include", include_paths))
+    if exclude_paths != "—" or expanded:
+        details.append(("exclude", exclude_paths))
+    return details
+
+
+def _print_run_summary(
+    run: RunResult,
+    *,
+    fields: set[SummaryField],
+    style: SummaryStyle,
+) -> None:
+    header = _format_run_header(run)
+    expanded = style is not SummaryStyle.COMPACT
+    detail_items = _collect_run_details(run, fields=fields, expanded=expanded)
     if expanded and detail_items:
         echo(header)
         for label, value in detail_items:
@@ -353,21 +399,35 @@ def query_hotspots(
     """Build the payload for ``typewiz query hotspots``."""
     hotspots = summary["tabs"]["hotspots"]
     if kind is HotspotKind.FILES:
-        result: list[FileHotspotEntry] = []
-        for file_entry in hotspots.get("topFiles", []):
-            result.append(
-                FileHotspotEntry(
-                    path=str(file_entry.get("path", "<unknown>")),
-                    errors=coerce_int(file_entry.get("errors")),
-                    warnings=coerce_int(file_entry.get("warnings")),
-                )
-            )
-        if limit > 0:
-            return result[:limit]
-        return result
+        return _build_file_hotspot_entries(hotspots, limit=limit)
+    return _build_folder_hotspot_entries(hotspots, limit=limit)
 
-    folder_result: list[FolderHotspotEntry] = []
-    for folder_entry in hotspots.get("topFolders", []):
+
+def _build_file_hotspot_entries(
+    hotspots: HotspotsTab,
+    *,
+    limit: int,
+) -> list[FileHotspotEntry]:
+    source: Sequence[SummaryFileEntry] = hotspots["topFiles"]
+    entries: list[FileHotspotEntry] = [
+        FileHotspotEntry(
+            path=str(file_entry.get("path", "<unknown>")),
+            errors=coerce_int(file_entry.get("errors")),
+            warnings=coerce_int(file_entry.get("warnings")),
+        )
+        for file_entry in source
+    ]
+    return entries[:limit] if limit > 0 else entries
+
+
+def _build_folder_hotspot_entries(
+    hotspots: HotspotsTab,
+    *,
+    limit: int,
+) -> list[FolderHotspotEntry]:
+    folder_entries: list[FolderHotspotEntry] = []
+    source: Sequence[SummaryFolderEntry] = hotspots["topFolders"]
+    for folder_entry in source:
         folder_record: FolderHotspotEntry = {
             "path": str(folder_entry.get("path", "<unknown>")),
             "errors": coerce_int(folder_entry.get("errors")),
@@ -383,10 +443,10 @@ def query_hotspots(
         recommendations_list = coerce_object_list(folder_entry.get("recommendations"))
         if recommendations_list:
             folder_record["recommendations"] = [str(item) for item in recommendations_list]
-        folder_result.append(folder_record)
-    if limit > 0:
-        return folder_result[:limit]
-    return folder_result
+        folder_entries.append(folder_record)
+        if limit > 0 and len(folder_entries) >= limit:
+            break
+    return folder_entries[:limit] if limit > 0 else folder_entries
 
 
 def query_readiness(
@@ -441,59 +501,69 @@ def query_runs(
     return records
 
 
-def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:  # noqa: C901
+def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:
     """Build the payload for ``typewiz query engines``."""
     runs = summary["tabs"]["engines"]["runSummary"]
     records: list[EngineEntry] = []
     for name, entry in sorted(runs.items()):
         run_id, _, _ = _parse_run_identifier(name)
         options = entry.get("engineOptions", {})
-        overrides_raw = coerce_object_list(options.get("overrides", []))
-        overrides: list[OverrideEntry] = []
-        for override in overrides_raw:
-            if not isinstance(override, Mapping):
-                continue
-            override_map = coerce_mapping(cast(Mapping[object, object], override))
-            typed_entry: OverrideEntry = {}
-            path = override_map.get("path")
-            if isinstance(path, str) and path:
-                typed_entry["path"] = path
-            profile = override_map.get("profile")
-            if isinstance(profile, str) and profile:
-                typed_entry["profile"] = profile
-            plugin_args = coerce_str_list(override_map.get("pluginArgs", []))
-            if plugin_args:
-                typed_entry["pluginArgs"] = plugin_args
-            include_paths = [
-                RelPath(str(path))
-                for path in coerce_str_list(override_map.get("include", []))
-                if str(path).strip()
-            ]
-            if include_paths:
-                typed_entry["include"] = include_paths
-            exclude_paths = [
-                RelPath(str(path))
-                for path in coerce_str_list(override_map.get("exclude", []))
-                if str(path).strip()
-            ]
-            if exclude_paths:
-                typed_entry["exclude"] = exclude_paths
-            if typed_entry:
-                overrides.append(typed_entry)
+        profile = options.get("profile")
+        config_file = options.get("configFile")
         records.append(
             EngineEntry(
                 run=run_id,
-                profile=options.get("profile"),
-                config_file=options.get("configFile"),
-                plugin_args=coerce_str_list(options.get("pluginArgs", [])),
-                include=coerce_str_list(options.get("include", [])),
-                exclude=coerce_str_list(options.get("exclude", [])),
-                overrides=overrides,
+                profile=profile if isinstance(profile, str) else None,
+                config_file=config_file if isinstance(config_file, str) else None,
+                plugin_args=_coerce_strs(options.get("pluginArgs", [])),
+                include=_coerce_strs(options.get("include", [])),
+                exclude=_coerce_strs(options.get("exclude", [])),
+                overrides=_parse_override_entries(options.get("overrides", [])),
             )
         )
         if limit > 0 and len(records) >= limit:
             break
     return records
+
+
+def _coerce_strs(value: object) -> list[str]:
+    return coerce_str_list(value)
+
+
+def _parse_override_entries(raw_overrides: object) -> list[OverrideEntry]:
+    overrides: list[OverrideEntry] = []
+    for override in coerce_object_list(raw_overrides):
+        entry = _parse_single_override(override)
+        if entry:
+            overrides.append(entry)
+    return overrides
+
+
+def _parse_single_override(candidate: object) -> OverrideEntry | None:
+    if not isinstance(candidate, Mapping):
+        return None
+    override_map = coerce_mapping(cast(Mapping[object, object], candidate))
+    typed_entry: OverrideEntry = {}
+    path = override_map.get("path")
+    if isinstance(path, str) and path:
+        typed_entry["path"] = path
+    profile = override_map.get("profile")
+    if isinstance(profile, str) and profile:
+        typed_entry["profile"] = profile
+    plugin_args = coerce_str_list(override_map.get("pluginArgs", []))
+    if plugin_args:
+        typed_entry["pluginArgs"] = plugin_args
+    include_paths = _coerce_rel_path_list(override_map.get("include", []))
+    if include_paths:
+        typed_entry["include"] = include_paths
+    exclude_paths = _coerce_rel_path_list(override_map.get("exclude", []))
+    if exclude_paths:
+        typed_entry["exclude"] = exclude_paths
+    return typed_entry if typed_entry else None
+
+
+def _coerce_rel_path_list(raw: object) -> list[RelPath]:
+    return [RelPath(str(path)) for path in coerce_str_list(raw) if str(path).strip()]
 
 
 def query_rules(

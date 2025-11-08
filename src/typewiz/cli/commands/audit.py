@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -34,8 +35,9 @@ from typewiz.core.model_types import (
 )
 from typewiz.core.summary_types import SummaryData
 from typewiz.core.type_aliases import EngineName, ProfileName
+from typewiz.core.types import RunResult
 from typewiz.runtime import default_full_paths, resolve_project_root
-from typewiz.services.audit import run_audit
+from typewiz.services.audit import AuditResult, run_audit
 from typewiz.services.dashboard import emit_dashboard_outputs, load_summary_from_manifest
 
 
@@ -377,17 +379,14 @@ def _emit_dashboard_outputs(args: argparse.Namespace, summary: SummaryData) -> N
     )
 
 
-def execute_audit(args: argparse.Namespace) -> int:  # noqa: C901
-    """Execute the ``typewiz audit`` command."""
-    config = load_config(args.config)
-    project_root = resolve_project_root(args.project_root)
-
-    selected_full_paths = _resolve_full_paths(args, config, project_root)
-    if not selected_full_paths:
-        raise SystemExit("No paths found for full runs. Provide paths or configure 'full_paths'.")
-
-    modes_specified, run_current, run_full = normalise_modes_tuple(args.modes)
-    cli_fail_on = FailOnPolicy.from_str(args.fail_on) if args.fail_on else None
+def _build_cli_override(
+    args: argparse.Namespace,
+    *,
+    modes_specified: bool,
+    run_current: bool,
+    run_full: bool,
+    cli_fail_on: FailOnPolicy | None,
+) -> AuditConfig:
     override = AuditConfig(
         manifest_path=args.manifest,
         full_paths=[path for path in args.paths if path] or None,
@@ -404,67 +403,156 @@ def execute_audit(args: argparse.Namespace) -> int:  # noqa: C901
         respect_gitignore=args.respect_gitignore,
         runners=args.runners,
     )
-
     if args.plugin_arg:
         _update_override_with_plugin_args(override, args.plugin_arg)
     if args.profiles:
         _update_override_with_profiles(override, args.profiles)
+    return override
 
+
+def _apply_dry_run_settings(args: argparse.Namespace, override: AuditConfig) -> bool:
     dry_run = bool(args.dry_run)
-    if dry_run:
-        override.manifest_path = None
-        override.dashboard_json = None
-        override.dashboard_markdown = None
-        override.dashboard_html = None
-        if args.manifest or args.dashboard_json or args.dashboard_markdown or args.dashboard_html:
-            _echo("[typewiz] --dry-run enabled; manifest and dashboard outputs are suppressed")
+    if not dry_run:
+        return False
+    override.manifest_path = None
+    override.dashboard_json = None
+    override.dashboard_markdown = None
+    override.dashboard_html = None
+    if args.manifest or args.dashboard_json or args.dashboard_markdown or args.dashboard_html:
+        _echo("[typewiz] --dry-run enabled; manifest and dashboard outputs are suppressed")
+    return True
 
-    summary_fields, summary_style = _resolve_summary_fields(args)
 
-    manifest_target = None if dry_run else (args.manifest or None)
+@dataclass(slots=True)
+class _AuditExecutionPlan:
+    config: Config
+    project_root: Path
+    full_paths: list[str]
+    override: AuditConfig
+    cli_fail_on: FailOnPolicy | None
+    summary_fields: Sequence[SummaryField]
+    summary_style: SummaryStyle
+    dry_run: bool
+    manifest_target: Path | None
 
-    result = run_audit(
-        project_root=project_root,
-        config=config,
-        override=override,
-        full_paths=selected_full_paths,
-        write_manifest_to=manifest_target,
-        build_summary_output=True,
-        persist_outputs=not dry_run,
+
+def _prepare_execution_plan(args: argparse.Namespace) -> _AuditExecutionPlan:
+    config = load_config(args.config)
+    project_root = resolve_project_root(args.project_root)
+    selected_full_paths = _resolve_full_paths(args, config, project_root)
+    if not selected_full_paths:
+        raise SystemExit("No paths found for full runs. Provide paths or configure 'full_paths'.")
+
+    modes_specified, run_current, run_full = normalise_modes_tuple(args.modes)
+    cli_fail_on = FailOnPolicy.from_str(args.fail_on) if args.fail_on else None
+    override = _build_cli_override(
+        args,
+        modes_specified=modes_specified,
+        run_current=run_current,
+        run_full=run_full,
+        cli_fail_on=cli_fail_on,
     )
 
-    print_summary(result.runs, summary_fields, summary_style)
+    dry_run = _apply_dry_run_settings(args, override)
+    summary_fields, summary_style = _resolve_summary_fields(args)
+    manifest_target = None if dry_run else (args.manifest or None)
 
+    return _AuditExecutionPlan(
+        config=config,
+        project_root=project_root,
+        full_paths=selected_full_paths,
+        override=override,
+        cli_fail_on=cli_fail_on,
+        summary_fields=summary_fields,
+        summary_style=summary_style,
+        dry_run=dry_run,
+        manifest_target=manifest_target,
+    )
+
+
+def _run_audit_plan(plan: _AuditExecutionPlan) -> AuditResult:
+    return run_audit(
+        project_root=plan.project_root,
+        config=plan.config,
+        override=plan.override,
+        full_paths=plan.full_paths,
+        write_manifest_to=plan.manifest_target,
+        build_summary_output=True,
+        persist_outputs=not plan.dry_run,
+    )
+
+
+def _summarize_audit_run(
+    args: argparse.Namespace,
+    *,
+    plan: _AuditExecutionPlan,
+    result: AuditResult,
+) -> tuple[SummaryData, int]:
+    print_summary(result.runs, plan.summary_fields, plan.summary_style)
     audit_summary: SummaryData = result.summary or build_summary(result.manifest)
-
     _maybe_print_readiness(args, audit_summary)
 
-    fail_on_policy = cli_fail_on or config.audit.fail_on or FailOnPolicy.NEVER
-    if fail_on_policy is FailOnPolicy.NONE:
-        fail_on_policy = FailOnPolicy.NEVER
-    error_count = sum(run.severity_counts().get(SeverityLevel.ERROR, 0) for run in result.runs)
-    warning_count = sum(run.severity_counts().get(SeverityLevel.WARNING, 0) for run in result.runs)
-    info_count = sum(run.severity_counts().get(SeverityLevel.INFORMATION, 0) for run in result.runs)
-
+    fail_on_policy = _resolve_fail_on_policy(plan.cli_fail_on, plan.config.audit.fail_on)
+    error_count, warning_count, info_count = _accumulate_run_totals(result.runs)
     delta_segment = _build_delta_line(args, error_count, warning_count, info_count)
-
-    exit_code = 0
-    if fail_on_policy is FailOnPolicy.ERRORS and error_count > 0:
-        exit_code = 2
-    elif fail_on_policy is FailOnPolicy.WARNINGS and (error_count > 0 or warning_count > 0):
-        exit_code = 2
-    elif fail_on_policy is FailOnPolicy.ANY and (
-        error_count > 0 or warning_count > 0 or info_count > 0
-    ):
-        exit_code = 2
+    exit_code = _determine_exit_code(fail_on_policy, error_count, warning_count, info_count)
 
     _echo(
         f"[typewiz] totals: errors={error_count} warnings={warning_count} info={info_count}; runs={len(result.runs)}"
         + delta_segment,
     )
+    return audit_summary, exit_code
 
-    if not dry_run:
-        _emit_dashboard_outputs(args, audit_summary)
+
+def _persist_audit_outputs(
+    args: argparse.Namespace,
+    *,
+    plan: _AuditExecutionPlan,
+    audit_summary: SummaryData,
+) -> None:
+    if plan.dry_run:
+        return
+    _emit_dashboard_outputs(args, audit_summary)
+
+
+def _resolve_fail_on_policy(
+    cli_fail_on: FailOnPolicy | None,
+    config_fail_on: FailOnPolicy | None,
+) -> FailOnPolicy:
+    policy = cli_fail_on or config_fail_on or FailOnPolicy.NEVER
+    if policy is FailOnPolicy.NONE:
+        return FailOnPolicy.NEVER
+    return policy
+
+
+def _accumulate_run_totals(runs: Sequence[RunResult]) -> tuple[int, int, int]:
+    error_count = sum(run.severity_counts().get(SeverityLevel.ERROR, 0) for run in runs)
+    warning_count = sum(run.severity_counts().get(SeverityLevel.WARNING, 0) for run in runs)
+    info_count = sum(run.severity_counts().get(SeverityLevel.INFORMATION, 0) for run in runs)
+    return error_count, warning_count, info_count
+
+
+def _determine_exit_code(
+    policy: FailOnPolicy,
+    error_count: int,
+    warning_count: int,
+    info_count: int,
+) -> int:
+    if policy is FailOnPolicy.ERRORS and error_count > 0:
+        return 2
+    if policy is FailOnPolicy.WARNINGS and (error_count > 0 or warning_count > 0):
+        return 2
+    if policy is FailOnPolicy.ANY and (error_count > 0 or warning_count > 0 or info_count > 0):
+        return 2
+    return 0
+
+
+def execute_audit(args: argparse.Namespace) -> int:
+    """Execute the ``typewiz audit`` command."""
+    plan = _prepare_execution_plan(args)
+    result = _run_audit_plan(plan)
+    audit_summary, exit_code = _summarize_audit_run(args, plan=plan, result=result)
+    _persist_audit_outputs(args, plan=plan, audit_summary=audit_summary)
     return exit_code
 
 

@@ -165,6 +165,19 @@ python scripts/refactor_imports.py \
 It only touches `import`/`from` statements under `src/` by default; pass
 `--root .` to include other folders (tests/docs/etc.).
 
+### Public shims (runtime/helpers)
+
+Downstream code should import shared helpers from the supported shims instead of
+the private `_internal` modules. The stable surfaces are:
+
+- `typewiz.runtime` for JSON/command helpers and path resolution utilities.
+- `typewiz.logging` for CLI logging setup.
+- `typewiz.exceptions` and `typewiz.error_codes` for structured error handling.
+- `typewiz.cache` and `typewiz.collections` for cache helpers and dedupe utilities.
+
+These modules are what the CLI and services layer use today; importing directly
+from `typewiz._internal` is blocked in CI and will fail guardrail tests.
+
 Validate a manifest against the bundled JSON Schema:
 
 ```bash

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tomllib as toml
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Final, Literal, cast
 
@@ -14,6 +15,7 @@ from .models import (
     ConfigModel,
     ConfigReadError,
     DirectoryOverrideValidationError,
+    EngineSettings,
     InvalidConfigFileError,
     PathOverride,
     PathOverrideModel,
@@ -24,29 +26,40 @@ from .models import (
 )
 
 
-def resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:  # noqa: C901, PLR0912
+def resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:
+    _resolve_output_paths(base_dir, audit)
+    for settings in audit.engine_settings.values():
+        _resolve_engine_settings_paths(base_dir, settings)
+    _resolve_path_override_fields(base_dir, audit.path_overrides)
+
+
+def _resolve_output_paths(base_dir: Path, audit: AuditConfig) -> None:
     for field_name in ("manifest_path", "dashboard_json", "dashboard_markdown", "dashboard_html"):
         value = getattr(audit, field_name)
-        if value is None:
-            continue
-        if not value.is_absolute():
-            resolved = (base_dir / value).resolve()
-            setattr(audit, field_name, resolved)
-    for settings in audit.engine_settings.values():
-        if settings.config_file and not settings.config_file.is_absolute():
-            settings.config_file = (base_dir / settings.config_file).resolve()
-        for profile in settings.profiles.values():
-            if profile.config_file and not profile.config_file.is_absolute():
-                profile.config_file = (base_dir / profile.config_file).resolve()
-    for override in audit.path_overrides:
-        if not override.path.is_absolute():
-            override.path = (base_dir / override.path).resolve()
+        setattr(audit, field_name, _resolved_path(base_dir, value))
+
+
+def _resolve_engine_settings_paths(base_dir: Path, settings: EngineSettings) -> None:
+    settings.config_file = _resolved_path(base_dir, settings.config_file)
+    for profile in settings.profiles.values():
+        profile.config_file = _resolved_path(base_dir, profile.config_file)
+
+
+def _resolve_path_override_fields(base_dir: Path, overrides: Sequence[PathOverride]) -> None:
+    for override in overrides:
+        override.path = _resolved_required_path(base_dir, override.path)
         for settings in override.engine_settings.values():
-            if settings.config_file and not settings.config_file.is_absolute():
-                settings.config_file = (override.path / settings.config_file).resolve()
-            for profile in settings.profiles.values():
-                if profile.config_file and not profile.config_file.is_absolute():
-                    profile.config_file = (override.path / profile.config_file).resolve()
+            _resolve_engine_settings_paths(override.path, settings)
+
+
+def _resolved_path(base_dir: Path, value: Path | None) -> Path | None:
+    if value is None:
+        return None
+    return value if value.is_absolute() else (base_dir / value).resolve()
+
+
+def _resolved_required_path(base_dir: Path, value: Path) -> Path:
+    return value if value.is_absolute() else (base_dir / value).resolve()
 
 
 def _resolve_ratchet_paths(base_dir: Path, ratchet: RatchetConfig) -> None:

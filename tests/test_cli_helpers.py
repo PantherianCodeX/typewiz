@@ -1,9 +1,11 @@
+# pyright: reportPrivateUsage=false
 # Copyright (c) 2024 PantherianCodeX
 
 """Unit tests for CLI helper utilities."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -18,6 +20,9 @@ from typewiz.cli.helpers import (
 )
 from typewiz.cli.helpers.formatting import (
     FolderHotspotEntry,
+    _format_run_header,
+    _paths_details,
+    _profile_details,
     query_engines,
     query_hotspots,
     query_overview,
@@ -28,6 +33,7 @@ from typewiz.cli.helpers.formatting import (
 from typewiz.core.model_types import (
     DataFormat,
     HotspotKind,
+    Mode,
     ReadinessLevel,
     ReadinessStatus,
     SeverityLevel,
@@ -42,7 +48,8 @@ from typewiz.core.summary_types import (
     RulePathEntry,
     SummaryData,
 )
-from typewiz.core.type_aliases import RelPath, RunId
+from typewiz.core.type_aliases import RelPath, RunId, ToolName
+from typewiz.core.types import Diagnostic, RunResult
 from typewiz.readiness.views import FolderReadinessPayload
 
 
@@ -142,6 +149,22 @@ def test_query_readiness_payload() -> None:
     )
     assert ReadinessStatus.BLOCKED in view
     assert view[ReadinessStatus.BLOCKED][0]["path"] == "src"
+
+
+def test_format_run_header_includes_counts() -> None:
+    run = _sample_run_result()
+    header = _format_run_header(run)
+    assert "pyright:current" in header
+    assert "errors=1" in header
+
+
+def test_profile_and_path_details_respect_expanded_flag() -> None:
+    run = _sample_run_result()
+    profile_details = dict(_profile_details(run, expanded=False))
+    assert profile_details["profile"] == "strict"
+    path_details = dict(_paths_details(run, expanded=False))
+    assert path_details["include"] == "src"
+    assert path_details["exclude"] == "tests"
 
 
 def _sample_summary() -> SummaryData:
@@ -251,3 +274,29 @@ def _sample_summary() -> SummaryData:
         },
     }
     return summary
+
+
+def _sample_run_result() -> RunResult:
+    diagnostic = Diagnostic(
+        tool=ToolName("pyright"),
+        severity=SeverityLevel.ERROR,
+        path=Path("src/app.py"),
+        line=1,
+        column=1,
+        code="E100",
+        message="boom",
+    )
+    run = RunResult(
+        tool=ToolName("pyright"),
+        mode=Mode.CURRENT,
+        command=["pyright", "--strict"],
+        exit_code=1,
+        duration_ms=1.0,
+        diagnostics=[diagnostic],
+        profile="strict",
+        config_file=Path("pyrightconfig.json"),
+    )
+    run.plugin_args = ["--strict"]
+    run.include = [RelPath("src")]
+    run.exclude = [RelPath("tests")]
+    return run

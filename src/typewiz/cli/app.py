@@ -7,9 +7,10 @@ from __future__ import annotations
 import argparse
 import logging
 import pathlib
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from contextlib import suppress
 from textwrap import dedent
-from typing import Final
+from typing import Any, Final
 
 from typewiz import __version__ as TYPEWIZ_VERSION
 from typewiz.cli.commands import audit as audit_command
@@ -115,8 +116,26 @@ def write_config_template(path: pathlib.Path, *, force: bool) -> int:
     return 0
 
 
-def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
+CommandHandler = Callable[[argparse.Namespace], int]
+
+
+def main(argv: Sequence[str] | None = None) -> int:
     maybe_emit_evaluation_notice(lambda message: _echo(message, err=True))
+    parser = _build_parser()
+    args = parser.parse_args(list(argv) if argv is not None else None)
+    if args.version:
+        _echo(f"typewiz {TYPEWIZ_VERSION}")
+        return 0
+    if args.command is None:
+        parser.error("No command provided.")
+    _initialize_logging(args.log_format)
+    handler = _command_handlers().get(args.command)
+    if handler is None:
+        parser.error(f"Unknown command {args.command}")
+    return handler(args)
+
+
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="typewiz",
         description="Collect typing diagnostics and readiness insights for Python projects.",
@@ -145,6 +164,13 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0
     cache_command.register_cache_command(subparsers)
     engines_command.register_engines_command(subparsers)
 
+    _register_dashboard_command(subparsers)
+    _register_init_command(subparsers)
+    _register_readiness_command(subparsers)
+    return parser
+
+
+def _register_dashboard_command(subparsers: Any) -> None:
     dashboard = subparsers.add_parser(
         "dashboard",
         help="Render a summary from an existing manifest",
@@ -179,6 +205,8 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0
         help="Default tab when generating HTML.",
     )
 
+
+def _register_init_command(subparsers: Any) -> None:
     init = subparsers.add_parser(
         "init",
         help="Generate a starter configuration file",
@@ -199,6 +227,8 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0
         help="Overwrite the output file if it already exists.",
     )
 
+
+def _register_readiness_command(subparsers: Any) -> None:
     readiness = subparsers.add_parser(
         "readiness",
         help="Show top-N candidates for strict typing",
@@ -243,83 +273,67 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0
         help="Include severity breakdown when printing readiness summaries.",
     )
 
-    args = parser.parse_args(list(argv) if argv is not None else None)
-    if args.version:
-        _echo(f"typewiz {TYPEWIZ_VERSION}")
-        return 0
-    if args.command is None:
-        parser.error("No command provided.")
 
-    from contextlib import suppress
-
+def _initialize_logging(log_format: str) -> None:
     with suppress(Exception):  # best-effort logger init
-        configure_logging(LogFormat.from_str(args.log_format))
+        configure_logging(LogFormat.from_str(log_format))
 
-    if args.command == "init":
-        return write_config_template(args.output, force=args.force)
 
-    if args.command == "help":
-        return help_command.execute_help(args)
+def _command_handlers() -> dict[str, CommandHandler]:
+    return {
+        "audit": audit_command.execute_audit,
+        "cache": cache_command.execute_cache,
+        "dashboard": _execute_dashboard,
+        "engines": engines_command.execute_engines,
+        "help": help_command.execute_help,
+        "init": _execute_init,
+        "manifest": manifest_command.execute_manifest,
+        "query": query_command.execute_query,
+        "ratchet": ratchet_command.execute_ratchet,
+        "readiness": _execute_readiness,
+    }
 
-    if args.command == "ratchet":
-        return ratchet_command.execute_ratchet(args)
 
-    if args.command == "query":
-        return query_command.execute_query(args)
+def _execute_init(args: argparse.Namespace) -> int:
+    return write_config_template(args.output, force=args.force)
 
-    if args.command == "cache":
-        return cache_command.execute_cache(args)
 
-    if args.command == "engines":
-        return engines_command.execute_engines(args)
+def _execute_dashboard(args: argparse.Namespace) -> int:
+    summary = load_summary_from_manifest(args.manifest)
+    dashboard_format = DashboardFormat.from_str(args.format)
+    view_choice = DashboardView.from_str(args.view)
+    rendered = render_dashboard_summary(
+        summary,
+        format=dashboard_format,
+        default_view=view_choice,
+    )
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        consume(args.output.write_text(rendered, encoding="utf-8"))
+    elif dashboard_format is DashboardFormat.JSON:
+        _echo(rendered, newline=False)
+    else:
+        _echo(rendered)
+    return 0
 
-    if args.command == "audit":
-        return audit_command.execute_audit(args)
 
-    if args.command == "dashboard":
-        summary = load_summary_from_manifest(args.manifest)
-        dashboard_format = DashboardFormat.from_str(args.format)
-        view_choice = DashboardView.from_str(args.view)
-        rendered = render_dashboard_summary(
-            summary,
-            format=dashboard_format,
-            default_view=view_choice,
-        )
-
-        if args.output:
-            args.output.parent.mkdir(parents=True, exist_ok=True)
-            consume(args.output.write_text(rendered, encoding="utf-8"))
-        elif dashboard_format is DashboardFormat.JSON:
-            _echo(rendered, newline=False)
-        else:
-            _echo(rendered)
-
-        return 0
-
-    if args.command == "manifest":
-        return manifest_command.execute_manifest(args)
-
-    if args.command == "readiness":
-        summary_map: SummaryData = load_summary_from_manifest(args.manifest)
-        level_choice = ReadinessLevel.from_str(args.level)
-        statuses = (
-            [ReadinessStatus.from_str(status) for status in args.statuses]
-            if args.statuses
-            else None
-        )
-        _helpers_print_readiness_summary(
-            summary_map,
-            level=level_choice,
-            statuses=statuses,
-            limit=args.limit,
-            severities=(
-                [SeverityLevel.from_str(value) for value in args.severities]
-                if getattr(args, "severities", None)
-                else None
-            ),
-            detailed=bool(getattr(args, "details", False)),
-        )
-        return 0
-
-    message = f"Unknown command {args.command}"
-    raise SystemExit(message)
+def _execute_readiness(args: argparse.Namespace) -> int:
+    summary_map: SummaryData = load_summary_from_manifest(args.manifest)
+    level_choice = ReadinessLevel.from_str(args.level)
+    statuses = (
+        [ReadinessStatus.from_str(status) for status in args.statuses] if args.statuses else None
+    )
+    severities = (
+        [SeverityLevel.from_str(value) for value in args.severities]
+        if getattr(args, "severities", None)
+        else None
+    )
+    _helpers_print_readiness_summary(
+        summary_map,
+        level=level_choice,
+        statuses=statuses,
+        limit=args.limit,
+        severities=severities,
+        detailed=bool(getattr(args, "details", False)),
+    )
+    return 0

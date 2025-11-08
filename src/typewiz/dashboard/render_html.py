@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
 from html import escape
-from typing import Final, cast
+from typing import Any, Final, cast
 
 from typewiz.core.model_types import (
     DashboardView,
@@ -20,7 +21,7 @@ from typewiz.core.summary_types import (
     SummaryData,
     SummaryTabs,
 )
-from typewiz.core.type_aliases import RelPath
+from typewiz.core.type_aliases import CategoryKey
 from typewiz.override_utils import get_override_components
 from typewiz.readiness.compute import CATEGORY_LABELS
 
@@ -34,7 +35,48 @@ _TAB_LABELS: Final[dict[SummaryTabName, str]] = {
 }
 
 
-def render_html(  # noqa: C901, PLR0912, PLR0915
+@dataclass
+class _DashboardContext:
+    summary: SummaryData
+    view_choice: DashboardView
+    tabs: SummaryTabs = field(init=False)
+    overview: OverviewTab = field(init=False)
+    severity_totals: Mapping[SeverityLevel, int] = field(init=False)
+    category_totals: Mapping[CategoryKey, int] = field(init=False)
+    run_summary: dict[str, dict[str, object]] = field(init=False)
+    hotspots: HotspotsTab = field(init=False)
+    readiness: ReadinessTab = field(init=False)
+    engines: dict[str, dict[str, object]] = field(init=False)
+    runs_tab: dict[str, dict[str, object]] = field(init=False)
+    rule_files: dict[str, list[dict[str, object]]] = field(init=False)
+    default_tab: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.tabs = self.summary["tabs"]
+        self.overview = self.tabs[SummaryTabName.OVERVIEW.value]
+        self.severity_totals = self.overview["severityTotals"]
+        self.category_totals = self.overview.get("categoryTotals", {})
+        self.run_summary = cast(dict[str, dict[str, object]], self.overview["runSummary"])
+        self.hotspots = self.tabs[SummaryTabName.HOTSPOTS.value]
+        self.readiness = self.tabs[SummaryTabName.READINESS.value]
+        engines_tab = self.tabs[SummaryTabName.ENGINES.value]
+        runs_tab = self.tabs[SummaryTabName.RUNS.value]
+        self.engines = cast(
+            dict[str, dict[str, object]], engines_tab.get("runSummary", self.run_summary)
+        )
+        self.runs_tab = cast(
+            dict[str, dict[str, object]], runs_tab.get("runSummary", self.run_summary)
+        )
+        self.rule_files = cast(
+            dict[str, list[dict[str, object]]], self.hotspots.get("ruleFiles", {})
+        )
+        self.default_tab = self.view_choice.value
+
+    def escape(self, value: object) -> str:
+        return escape(str(value), quote=True)
+
+
+def render_html(
     summary: SummaryData,
     *,
     default_view: DashboardView | str = DashboardView.OVERVIEW.value,
@@ -44,23 +86,25 @@ def render_html(  # noqa: C901, PLR0912, PLR0915
         if isinstance(default_view, DashboardView)
         else DashboardView.from_str(default_view)
     )
-    default_view_value = view_choice.value
+    context = _DashboardContext(summary=summary, view_choice=view_choice)
 
-    def h(text: str) -> str:
-        return escape(text, quote=True)
+    parts: list[str] = []
+    parts.extend(_render_document_head(context))
+    parts.extend(_render_tabs_navigation())
+    parts.extend(_render_overview_tab(context))
+    parts.extend(_render_engines_tab(context))
+    parts.extend(_render_hotspots_tab(context))
+    parts.extend(_render_readiness_tab(context))
+    parts.extend(_render_runs_tab(context))
+    parts.extend(_render_script_block())
+    parts.append("</body>")
+    parts.append("</html>")
+    return "\n".join(parts) + "\n"
 
-    tabs: SummaryTabs = summary["tabs"]
-    overview: OverviewTab = tabs[SummaryTabName.OVERVIEW.value]
-    run_summary = overview["runSummary"]
-    severity = overview["severityTotals"]
-    hotspots: HotspotsTab = tabs[SummaryTabName.HOTSPOTS.value]
-    readiness: ReadinessTab = tabs[SummaryTabName.READINESS.value]
 
-    top_rules = hotspots["topRules"]
-    top_folders = hotspots["topFolders"]
-    top_files = hotspots["topFiles"]
-
-    parts: list[str] = [
+def _render_document_head(context: _DashboardContext) -> list[str]:
+    h = context.escape
+    return [
         "<!DOCTYPE html>",
         '<html lang="en">',
         "<head>",
@@ -68,261 +112,326 @@ def render_html(  # noqa: C901, PLR0912, PLR0915
         "  <title>typewiz Dashboard</title>",
         "  <style>\n    :root{color-scheme:light dark;}\n    body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:2rem;background:#f5f5f5;color:#1f2330;}\n    h1,h2{color:#2b4b80;}\n    table{border-collapse:collapse;width:100%;margin-bottom:1.5rem;background:white;}\n    th,td{border:1px solid #d0d7e2;padding:0.5rem;text-align:left;}\n    th{background:#e8edf7;}\n    section{margin-bottom:2rem;}\n    .metrics{display:flex;flex-wrap:wrap;gap:1.5rem;}\n    .metric{background:white;border:1px solid #d0d7e2;padding:1rem;border-radius:6px;min-width:8rem;text-align:center;}\n    .metric strong{display:block;font-size:1.5rem;}\n    .tabs{display:flex;gap:0.75rem;margin:1.5rem 0;}\n    .tabs button{border:1px solid #2b4b80;background:white;color:#2b4b80;padding:0.45rem 1rem;border-radius:999px;cursor:pointer;font-weight:600;}\n    .tabs button.active{background:#2b4b80;color:white;}\n    .tab-pane{margin-top:1.5rem;}\n    .has-js .tab-pane{display:none;}\n    .has-js .tab-pane.active{display:block;}\n    .no-js .tabs{display:none;}\n    code{background:#eef1fb;padding:0.1rem 0.35rem;border-radius:4px;}\n    details{background:white;border:1px solid #d0d7e2;border-radius:8px;margin-bottom:1rem;padding:0.75rem;}\n    details[open]>summary{margin-bottom:0.5rem;}\n    summary{cursor:pointer;font-weight:600;}\n  </style>",
         "</head>",
-        f'<body class="no-js" data-default-tab="{default_view_value}">',
+        f'<body class="no-js" data-default-tab="{context.default_tab}">',
         "  <h1>typewiz Dashboard</h1>",
-        f"  <p><strong>Generated:</strong> {h(str(summary['generatedAt']))}<br />",
-        f"     <strong>Project root:</strong> {h(str(summary['projectRoot']))}</p>",
-        '  <nav class="tabs" role="tablist">',
+        f"  <p><strong>Generated:</strong> {h(context.summary['generatedAt'])}<br />",
+        f"     <strong>Project root:</strong> {h(context.summary['projectRoot'])}</p>",
     ]
 
-    parts.extend(
+
+def _render_tabs_navigation() -> list[str]:
+    lines = ['  <nav class="tabs" role="tablist">']
+    lines.extend(
         f'    <button type="button" data-tab-target="{tab.value}" role="tab" aria-selected="false">{_TAB_LABELS[tab]}</button>'
         for tab in _TAB_ORDER
     )
-    parts.append("  </nav>")
+    lines.append("  </nav>")
+    return lines
 
-    # Overview tab
-    parts.extend(
-        [
-            '  <section class="tab-pane" data-tab-pane="overview">',
-            "    <section>",
-            "      <h2>Severity Totals</h2>",
-            '      <div class="metrics">',
-            f'        <div class="metric"><strong>{severity.get(SeverityLevel.ERROR, 0)}</strong>Errors</div>',
-            f'        <div class="metric"><strong>{severity.get(SeverityLevel.WARNING, 0)}</strong>Warnings</div>',
-            f'        <div class="metric"><strong>{severity.get(SeverityLevel.INFORMATION, 0)}</strong>Information</div>',
-            "      </div>",
-            "    </section>",
-            "    <section>",
-            "      <h2>Run Summary</h2>",
-            "      <table>",
-            "        <thead><tr><th>Run</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Total</th><th>Command</th></tr></thead>",
-            "        <tbody>",
-        ],
-    )
+
+def _overview_severity_section(severity: Mapping[SeverityLevel, int]) -> list[str]:
+    return [
+        "    <section>",
+        "      <h2>Severity Totals</h2>",
+        '      <div class="metrics">',
+        f'        <div class="metric"><strong>{severity.get(SeverityLevel.ERROR, 0)}</strong>Errors</div>',
+        f'        <div class="metric"><strong>{severity.get(SeverityLevel.WARNING, 0)}</strong>Warnings</div>',
+        f'        <div class="metric"><strong>{severity.get(SeverityLevel.INFORMATION, 0)}</strong>Information</div>',
+        "      </div>",
+        "    </section>",
+    ]
+
+
+def _overview_run_summary_section(
+    run_summary: Mapping[str, Mapping[str, object]],
+    escape_fn: Callable[[object], str],
+) -> list[str]:
+    lines = [
+        "    <section>",
+        "      <h2>Run Summary</h2>",
+        "      <table>",
+        "        <thead><tr><th>Run</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Total</th><th>Command</th></tr></thead>",
+        "        <tbody>",
+    ]
     if run_summary:
-        for key, data in run_summary.items():
-            cmd = " ".join(h(part) for part in data.get("command", []))
-            parts.append(
-                (
-                    f"          <tr><td>{h(key)}</td>"
-                    f"<td>{data.get('errors', 0)}</td>"
-                    f"<td>{data.get('warnings', 0)}</td>"
-                    f"<td>{data.get('information', 0)}</td>"
-                    f"<td>{data.get('total', 0)}</td>"
-                    f"<td><code>{cmd}</code></td></tr>"
-                ),
-            )
+        lines.extend(_overview_run_rows(run_summary, escape_fn))
     else:
-        parts.append('          <tr><td colspan="6"><em>No runs recorded</em></td></tr>')
-    parts.extend(
-        [
-            "        </tbody>",
-            "      </table>",
-            "    </section>",
-            "  </section>",
-        ],
-    )
+        lines.append('          <tr><td colspan="6"><em>No run data available</em></td></tr>')
+    lines.extend(["        </tbody>", "      </table>", "    </section>"])
+    return lines
 
-    def _as_code_list(items: Sequence[str | RelPath]) -> str:
-        if not items:
-            return "—"
-        return " ".join(f"<code>{h(str(item))}</code>" for item in items)
 
-    # Engine details tab
-    parts.append('  <section class="tab-pane" data-tab-pane="engines">')
-    parts.append("    <h2>Engine Details</h2>")
-    if run_summary:
-        for key, data in run_summary.items():
-            options = data.get("engineOptions", {}) or {}
-            profile_value = options.get("profile")
-            config_value = options.get("configFile")
-            plugin_args = options.get("pluginArgs", []) or []
-            include = options.get("include", []) or []
-            exclude = options.get("exclude", []) or []
-            overrides: list[OverrideEntry] = options.get("overrides", []) or []
-            profile_display = f"<code>{h(str(profile_value))}</code>" if profile_value else "—"
-            config_display = f"<code>{h(str(config_value))}</code>" if config_value else "—"
-            parts.extend(
-                [
-                    '    <details class="engine-options" open>',
-                    f"      <summary><strong>{h(key)}</strong></summary>",
-                    "      <ul>",
-                    f"        <li>Profile: {profile_display}</li>",
-                    f"        <li>Config file: {config_display}</li>",
-                    f"        <li>Plugin args: {_as_code_list(plugin_args)}</li>",
-                    f"        <li>Include paths: {_as_code_list(include)}</li>",
-                    f"        <li>Exclude paths: {_as_code_list(exclude)}</li>",
-                ],
-            )
-            if overrides:
-                parts.append("        <li>Folder overrides:<ul>")
-                for entry in overrides:
-                    path, profile, plugin_args, include_paths, exclude_paths = (
-                        get_override_components(entry)
-                    )
-                    detail_bits: list[str] = []
-                    if profile:
-                        detail_bits.append(f"profile=<code>{h(profile)}</code>")
-                    if plugin_args:
-                        detail_bits.append(
-                            "plugin args="
-                            + " ".join(f"<code>{h(arg)}</code>" for arg in plugin_args),
-                        )
-                    if include_paths:
-                        detail_bits.append(
-                            "include="
-                            + " ".join(f"<code>{h(item)}</code>" for item in include_paths),
-                        )
-                    if exclude_paths:
-                        detail_bits.append(
-                            "exclude="
-                            + " ".join(f"<code>{h(item)}</code>" for item in exclude_paths),
-                        )
-                    if not detail_bits:
-                        detail_bits.append("no explicit changes")
-                    details_html = "; ".join(detail_bits)
-                    parts.append(f"          <li><code>{h(path)}</code>: {details_html}</li>")
-                parts.append("        </ul></li>")
-            parts.extend(
-                [
-                    "      </ul>",
-                    "    </details>",
-                ],
-            )
-            # Optional: display raw tool totals if present, and indicate mismatch with parsed counts.
-            tool_totals = data.get("toolSummary")
-            if isinstance(tool_totals, dict) and tool_totals:
-                t_errors = int(tool_totals.get("errors", 0))
-                t_warnings = int(tool_totals.get("warnings", 0))
-                t_info = int(tool_totals.get("information", 0))
-                t_total = int(tool_totals.get("total", t_errors + t_warnings + t_info))
-                p_errors = int(data.get("errors", 0))
-                p_warnings = int(data.get("warnings", 0))
-                p_info = int(data.get("information", 0))
-                p_total = int(data.get("total", p_errors + p_warnings + p_info))
-                mismatch = t_errors != p_errors or t_warnings != p_warnings or t_total != p_total
-                mismatch_note = (
-                    f" <em>(mismatch vs parsed: {p_errors}/{p_warnings}/{p_info} total={p_total})</em>"
-                    if mismatch
-                    else ""
-                )
-                parts.append(
-                    f"    <p><strong>Tool totals:</strong> errors={t_errors}, warnings={t_warnings}, information={t_info}, total={t_total}{mismatch_note}</p>",
-                )
+def _overview_run_rows(
+    run_summary: Mapping[str, Mapping[str, object]],
+    escape_fn: Callable[[object], str],
+) -> list[str]:
+    rows: list[str] = []
+    for key, data in run_summary.items():
+        command_parts = _coerce_str_list(data.get("command"))
+        cmd = " ".join(escape_fn(part) for part in command_parts)
+        rows.append(
+            "          <tr>"
+            + f"<td>{escape_fn(key)}</td>"
+            + f"<td>{data.get('errors', 0)}</td>"
+            + f"<td>{data.get('warnings', 0)}</td>"
+            + f"<td>{data.get('information', 0)}</td>"
+            + f"<td>{data.get('total', 0)}</td>"
+            + f"<td><code>{cmd}</code></td></tr>"
+        )
+    return rows
+
+
+def _overview_category_section(
+    categories: Mapping[CategoryKey, int],
+    escape_fn: Callable[[object], str],
+) -> list[str]:
+    lines = [
+        "    <section>",
+        "      <h2>Category Totals</h2>",
+        "      <table>",
+        "        <thead><tr><th>Category</th><th>Total diagnostics</th></tr></thead>",
+        "        <tbody>",
+    ]
+    if categories:
+        lines.extend([
+            f"          <tr><td>{escape_fn(key)}</td><td>{value}</td></tr>"
+            for key, value in categories.items()
+        ])
     else:
-        parts.append("    <p>No engine data available.</p>")
-    parts.append("  </section>")
+        lines.append('          <tr><td colspan="2"><em>No categories recorded</em></td></tr>')
+    lines.extend(["        </tbody>", "      </table>", "    </section>"])
+    return lines
 
-    # Hotspots tab
-    parts.append('  <section class="tab-pane" data-tab-pane="hotspots">')
-    parts.append("    <h2>Hotspots</h2>")
+
+def _render_overview_tab(context: _DashboardContext) -> list[str]:
+    lines = ['  <section class="tab-pane" data-tab-pane="overview">']
+    lines.extend(_overview_severity_section(context.severity_totals))
+    lines.extend(_overview_run_summary_section(context.run_summary, context.escape))
+    lines.extend(_overview_category_section(context.category_totals, context.escape))
+    lines.append("  </section>")
+    return lines
+
+
+def _render_engines_tab(context: _DashboardContext) -> list[str]:
+    lines = ['  <section class="tab-pane" data-tab-pane="engines">', "    <h2>Engine Details</h2>"]
+    if context.engines:
+        lines.extend(_engine_table_section(context))
+    else:
+        lines.append("    <p>No engine data recorded.</p>")
+    lines.append("  </section>")
+    return lines
+
+
+def _engine_table_section(context: _DashboardContext) -> list[str]:
+    lines = [
+        "    <section>",
+        "      <table>",
+        "        <thead><tr><th>Run</th><th>Profile</th><th>Config file</th><th>Plugin args</th><th>Include</th><th>Exclude</th><th>Overrides</th></tr></thead>",
+        "        <tbody>",
+    ]
+    lines.extend(_engine_rows(context))
+    lines.extend(["        </tbody>", "      </table>", "    </section>"])
+    return lines
+
+
+def _engine_rows(context: _DashboardContext) -> list[str]:
+    h = context.escape
+    rows: list[str] = []
+    for key, data in context.engines.items():
+        engine_options = _as_mapping(data.get("engineOptions", {}))
+        plugin_args = ", ".join(
+            h(arg) for arg in _coerce_str_list(engine_options.get("pluginArgs"))
+        )
+        include_paths = ", ".join(
+            h(path) for path in _coerce_str_list(engine_options.get("include"))
+        )
+        exclude_paths = ", ".join(
+            h(path) for path in _coerce_str_list(engine_options.get("exclude"))
+        )
+        override_summaries = [
+            _summarise_override_entry(entry, h)
+            for entry in _coerce_override_list(engine_options.get("overrides"))
+        ]
+        rows.append(
+            "          <tr>"
+            + f"<td>{h(key)}</td>"
+            + f"<td>{h(str(engine_options.get('profile')))}</td>"
+            + f"<td>{h(str(engine_options.get('configFile')))}</td>"
+            + f"<td>{plugin_args}</td>"
+            + f"<td>{include_paths}</td>"
+            + f"<td>{exclude_paths}</td>"
+            + f"<td>{h('; '.join(override_summaries))}</td>"
+            + "</tr>"
+        )
+    return rows
+
+
+def _render_hotspots_tab(context: _DashboardContext) -> list[str]:
+    lines = [
+        '  <section class="tab-pane" data-tab-pane="hotspots">',
+        "    <h2>Hotspots</h2>",
+    ]
+    lines.extend(_render_rule_hotspot_table(context))
+    lines.extend(_render_folder_hotspot_table(context))
+    lines.extend(_render_file_hotspot_table(context))
+    lines.extend(_render_rule_file_details(context))
+    lines.append("  </section>")
+    return lines
+
+
+def _render_rule_hotspot_table(context: _DashboardContext) -> list[str]:
+    h = context.escape
+    top_rules = context.hotspots["topRules"]
+    lines = [
+        "    <section>",
+        "      <h3>Top Rules</h3>",
+        "      <table>",
+        "        <thead><tr><th>Rule</th><th>Occurrences</th></tr></thead><tbody>",
+    ]
     if top_rules:
-        parts.extend(
-            [
-                "    <section>",
-                "      <h3>Common Diagnostic Rules</h3>",
-                "      <table>",
-                "        <thead><tr><th>Rule</th><th>Count</th></tr></thead><tbody>",
-            ],
-        )
-        parts.extend(
-            f"          <tr><td><code>{h(rule)}</code></td><td>{count}</td></tr>"
-            for rule, count in top_rules.items()
-        )
-        parts.extend(["        </tbody>", "      </table>", "    </section>"])
+        for rule, count in top_rules.items():
+            lines.append(f"          <tr><td><code>{h(rule)}</code></td><td>{count}</td></tr>")
     else:
-        parts.append("    <p>No diagnostic rules recorded.</p>")
+        lines.append('          <tr><td colspan="2"><em>No rules recorded</em></td></tr>')
+    lines.extend(["        </tbody>", "      </table>", "    </section>"])
+    return lines
 
-    parts.extend(
-        [
-            "    <section>",
-            "      <h3>Top Folder Hotspots</h3>",
-            "      <table>",
-            "        <thead><tr><th>Folder</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Runs</th></tr></thead><tbody>",
-        ],
-    )
+
+def _render_folder_hotspot_table(context: _DashboardContext) -> list[str]:
+    h = context.escape
+    top_folders = context.hotspots["topFolders"]
+    lines = [
+        "    <section>",
+        "      <h3>Top Folder Hotspots</h3>",
+        "      <table>",
+        "        <thead><tr><th>Folder</th><th>Errors</th><th>Warnings</th><th>Information</th><th>Runs</th></tr></thead><tbody>",
+    ]
     if top_folders:
-        parts.extend(
-            f"          <tr><td>{h(folder['path'])}</td><td>{folder['errors']}</td><td>{folder['warnings']}</td><td>{folder['information']}</td><td>{folder['participatingRuns']}</td></tr>"
-            for folder in top_folders
-        )
+        for folder in top_folders:
+            lines.append(
+                f"          <tr><td>{h(folder['path'])}</td><td>{folder['errors']}</td><td>{folder['warnings']}</td><td>{folder['information']}</td><td>{folder['participatingRuns']}</td></tr>"
+            )
     else:
-        parts.append('          <tr><td colspan="5"><em>No folder hotspots</em></td></tr>')
-    parts.extend(["        </tbody>", "      </table>", "    </section>"])
+        lines.append('          <tr><td colspan="5"><em>No folder hotspots</em></td></tr>')
+    lines.extend(["        </tbody>", "      </table>", "    </section>"])
+    return lines
 
-    parts.extend(
-        [
-            "    <section>",
-            "      <h3>Top File Hotspots</h3>",
-            "      <table>",
-            "        <thead><tr><th>File</th><th>Errors</th><th>Warnings</th></tr></thead><tbody>",
-        ],
-    )
+
+def _render_file_hotspot_table(context: _DashboardContext) -> list[str]:
+    h = context.escape
+    top_files = context.hotspots["topFiles"]
+    lines = [
+        "    <section>",
+        "      <h3>Top File Hotspots</h3>",
+        "      <table>",
+        "        <thead><tr><th>File</th><th>Errors</th><th>Warnings</th></tr></thead><tbody>",
+    ]
     if top_files:
-        parts.extend(
-            f"          <tr><td>{h(file_entry['path'])}</td><td>{file_entry['errors']}</td><td>{file_entry['warnings']}</td></tr>"
-            for file_entry in top_files
-        )
+        for file_entry in top_files:
+            lines.append(
+                f"          <tr><td>{h(file_entry['path'])}</td><td>{file_entry['errors']}</td><td>{file_entry['warnings']}</td></tr>"
+            )
     else:
-        parts.append('          <tr><td colspan="3"><em>No file hotspots</em></td></tr>')
-    parts.extend(["        </tbody>", "      </table>", "    </section>"])
-    rule_files = hotspots.get("ruleFiles", {})
-    parts.append("    <section>")
-    parts.append("      <h3>Rule hotspots by file</h3>")
+        lines.append('          <tr><td colspan="3"><em>No file hotspots</em></td></tr>')
+    lines.extend(["        </tbody>", "      </table>", "    </section>"])
+    return lines
+
+
+def _render_rule_file_details(context: _DashboardContext) -> list[str]:
+    h = context.escape
+    rule_files = context.rule_files
+    lines = ["    <section>", "      <h3>Rule hotspots by file</h3>"]
     if rule_files:
         for rule, rule_entries in rule_files.items():
-            parts.append(
-                f"      <details><summary><code>{h(rule)}</code></summary><ul>",
-            )
+            lines.append(f"      <details><summary><code>{h(rule)}</code></summary><ul>")
             if rule_entries:
                 for rule_entry in rule_entries[:10]:
                     path = rule_entry.get("path", "<unknown>")
                     count = rule_entry.get("count", 0)
-                    parts.append(f"        <li><code>{h(str(path))}</code> ({count})</li>")
+                    lines.append(f"        <li><code>{h(str(path))}</code> ({count})</li>")
             else:
-                parts.append("        <li><em>No matching paths</em></li>")
-            parts.append("      </ul></details>")
+                lines.append("        <li><em>No matching paths</em></li>")
+            lines.append("      </ul></details>")
     else:
-        parts.append("      <p>No rule hotspot breakdown available.</p>")
-    parts.append("    </section>")
-    parts.append("  </section>")
+        lines.append("      <p>No rule hotspot breakdown available.</p>")
+    lines.append("    </section>")
+    return lines
 
-    # Readiness tab
-    parts.append('  <section class="tab-pane" data-tab-pane="readiness">')
-    parts.append("    <h2>Strict Typing Readiness</h2>")
+
+def _summarise_override_entry(entry: OverrideEntry, escape_fn: Callable[[str], str]) -> str:
+    path, profile, plugin_args, include_paths, exclude_paths = get_override_components(entry)
+    details: list[str] = []
+    if profile:
+        details.append(f"profile={escape_fn(profile)}")
+    if plugin_args:
+        details.append("args=" + "/".join(escape_fn(str(arg)) for arg in plugin_args))
+    if include_paths:
+        details.append("include=" + "/".join(escape_fn(str(path)) for path in include_paths))
+    if exclude_paths:
+        details.append("exclude=" + "/".join(escape_fn(str(path)) for path in exclude_paths))
+    summary = escape_fn(path)
+    if details:
+        summary = f"{summary} ({', '.join(details)})"
+    return summary
+
+
+def _coerce_str_list(value: object) -> list[str]:
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        items = cast(Sequence[object], value)
+        return [str(item) for item in items]
+    return []
+
+
+def _coerce_override_list(value: object) -> list[OverrideEntry]:
+    entries: list[OverrideEntry] = []
+    if isinstance(value, Sequence):
+        for entry in cast(Sequence[object], value):
+            if isinstance(entry, dict):
+                entries.append(cast(OverrideEntry, entry))
+    return entries
+
+
+def _as_mapping(value: object) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return cast(dict[str, Any], value)
+    return cast(dict[str, Any], {})
+
+
+def _render_readiness_tab(context: _DashboardContext) -> list[str]:
+    h = context.escape
+    readiness = context.readiness
     strict = cast(dict[ReadinessStatus, list[dict[str, object]]], readiness.get("strict", {}))
     ready_list = strict.get(ReadinessStatus.READY, [])
     close_list = strict.get(ReadinessStatus.CLOSE, [])
     blocked_list = strict.get(ReadinessStatus.BLOCKED, [])
-    parts.extend(
-        [
-            '    <div class="metrics">',
-            f'      <div class="metric"><strong>{len(ready_list)}</strong>Ready</div>',
-            f'      <div class="metric"><strong>{len(close_list)}</strong>Close</div>',
-            f'      <div class="metric"><strong>{len(blocked_list)}</strong>Blocked</div>',
-            "    </div>",
-        ],
-    )
+    lines = [
+        '  <section class="tab-pane" data-tab-pane="readiness">',
+        "    <h2>Strict Typing Readiness</h2>",
+        '    <div class="metrics">',
+        f'      <div class="metric"><strong>{len(ready_list)}</strong>Ready</div>',
+        f'      <div class="metric"><strong>{len(close_list)}</strong>Close</div>',
+        f'      <div class="metric"><strong>{len(blocked_list)}</strong>Blocked</div>',
+        "    </div>",
+    ]
 
     def _render_strict_entries(label: str, entries: list[dict[str, object]]) -> None:
         if not entries:
-            parts.append(f"    <p><strong>{label}:</strong> none</p>")
+            lines.append(f"    <p><strong>{label}:</strong> none</p>")
             return
-        parts.append(
+        lines.append(
             f"    <details open><summary><strong>{label}</strong> ({len(entries)})</summary>",
         )
-        parts.append("      <ul>")
+        lines.append("      <ul>")
         for entry in entries[:12]:
             notes_list = cast(list[str], entry.get("notes") or entry.get("recommendations") or [])
             note_text = f" — {', '.join(notes_list)}" if notes_list else ""
-            parts.append(
-                f"        <li><code>{h(str(entry['path']))}</code> (diagnostics={entry['diagnostics']}){note_text}</li>",
+            lines.append(
+                f"        <li><code>{h(str(entry['path']))}</code> (diagnostics={entry.get('diagnostics', 0)}){note_text}</li>",
             )
         if len(entries) > 12:
-            parts.append(f"        <li>… plus {len(entries) - 12} more</li>")
-        parts.append("      </ul>")
-        parts.append("    </details>")
+            lines.append(f"        <li>… plus {len(entries) - 12} more</li>")
+        lines.append("      </ul>")
+        lines.append("    </details>")
 
     _render_strict_entries("Strict-ready folders", ready_list)
     _render_strict_entries("Close to strict", close_list)
@@ -330,21 +439,21 @@ def render_html(  # noqa: C901, PLR0912, PLR0915
 
     readiness_options = readiness.get("options", {})
     if readiness_options:
-        parts.append("    <section>")
-        parts.append("      <h3>Per-option readiness</h3>")
-        parts.append(
+        lines.append("    <section>")
+        lines.append("      <h3>Per-option readiness</h3>")
+        lines.append(
             "      <table><thead><tr><th>Option</th><th>Ready</th><th>Close</th><th>Blocked</th><th>Close threshold</th></tr></thead><tbody>",
         )
         label_lookup = cast(dict[str, str], CATEGORY_LABELS)
         for category, payload in readiness_options.items():
-            label_key: str = str(category)
+            label_key = str(category)
             label = label_lookup.get(label_key, label_key)
             bucket_map = payload.get("buckets", {})
             ready_entries = bucket_map.get(ReadinessStatus.READY, ())
             close_entries = bucket_map.get(ReadinessStatus.CLOSE, ())
             blocked_entries = bucket_map.get(ReadinessStatus.BLOCKED, ())
             threshold = int(payload.get("threshold", 0))
-            parts.append(
+            lines.append(
                 (
                     f"        <tr><td>{h(label)}</td>"
                     f"<td>{len(ready_entries)}</td>"
@@ -353,21 +462,23 @@ def render_html(  # noqa: C901, PLR0912, PLR0915
                     f"<td>{threshold}</td></tr>"
                 ),
             )
-        parts.extend(["      </tbody></table>", "    </section>"])
+        lines.extend(["      </tbody></table>", "    </section>"])
     else:
-        parts.append("    <p>No readiness data available.</p>")
-    parts.append("  </section>")
+        lines.append("    <p>No readiness data available.</p>")
+    lines.append("  </section>")
+    return lines
 
-    # Runs tab
-    parts.append('  <section class="tab-pane" data-tab-pane="runs">')
-    parts.append("    <h2>Run Logs</h2>")
-    runs_tab = tabs[SummaryTabName.RUNS.value]
-    run_details = runs_tab.get("runSummary", run_summary)
+
+def _render_runs_tab(context: _DashboardContext) -> list[str]:
+    h = context.escape
+    run_details = context.runs_tab or context.run_summary
+    lines = ['  <section class="tab-pane" data-tab-pane="runs">', "    <h2>Run Logs</h2>"]
     if run_details:
         for key, data in run_details.items():
             breakdown = data.get("severityBreakdown", {})
-            cmd = " ".join(h(str(part)) for part in data.get("command", []))
-            parts.extend(
+            command_items = _coerce_str_list(data.get("command"))
+            cmd = " ".join(h(part) for part in command_items)
+            lines.extend(
                 [
                     '    <details class="run-log" open>',
                     f"      <summary><strong>{h(key)}</strong> · command: <code>{cmd}</code></summary>",
@@ -382,15 +493,12 @@ def render_html(  # noqa: C901, PLR0912, PLR0915
                 ],
             )
     else:
-        parts.append("    <p>No runs recorded.</p>")
-    parts.append("  </section>")
+        lines.append("    <p>No runs recorded.</p>")
+    lines.append("  </section>")
+    return lines
 
-    parts.extend(
-        [
-            "  <script>\n    (function(){\n      const body=document.body;\n      body.classList.remove('no-js');\n      body.classList.add('has-js');\n      const storageKey='typewiz-dashboard-tab';\n      const tabs=Array.from(document.querySelectorAll('[data-tab-target]'));\n      const panes=Array.from(document.querySelectorAll('[data-tab-pane]'));\n      function activate(name){\n        tabs.forEach(btn=>{const active=btn.dataset.tabTarget===name;btn.classList.toggle('active',active);btn.setAttribute('aria-selected',String(active));});\n        panes.forEach(pane=>pane.classList.toggle('active',pane.dataset.tabPane===name));\n      }\n      let stored=null;\n      try{stored=window.localStorage.getItem(storageKey);}catch(_){}\n      const initial=tabs.some(btn=>btn.dataset.tabTarget===stored) ? stored : body.dataset.defaultTab || 'overview';\n      activate(initial);\n      tabs.forEach(btn=>btn.addEventListener('click',()=>{const name=btn.dataset.tabTarget;activate(name);try{window.localStorage.setItem(storageKey,name);}catch(_){};}));\n    })();\n  </script>",
-            "</body>",
-            "</html>",
-        ],
-    )
 
-    return "\n".join(parts) + "\n"
+def _render_script_block() -> list[str]:
+    return [
+        "  <script>\n    (function(){\n      const body=document.body;\n      body.classList.remove('no-js');\n      body.classList.add('has-js');\n      const storageKey='typewiz-dashboard-tab';\n      const tabs=Array.from(document.querySelectorAll('[data-tab-target]'));\n      const panes=Array.from(document.querySelectorAll('[data-tab-pane]'));\n      function activate(name){\n        tabs.forEach(btn=>{const active=btn.dataset.tabTarget===name;btn.classList.toggle('active',active);btn.setAttribute('aria-selected',String(active));});\n        panes.forEach(pane=>pane.classList.toggle('active',pane.dataset.tabPane===name));\n      }\n      let stored=null;\n      try{stored=window.localStorage.getItem(storageKey);}catch(_){}\n      const initial=tabs.some(btn=>btn.dataset.tabTarget===stored) ? stored : body.dataset.defaultTab || 'overview';\n      activate(initial);\n      tabs.forEach(btn=>btn.addEventListener('click',()=>{const name=btn.dataset.tabTarget;activate(name);try{window.localStorage.setItem(storageKey,name);}catch(_){};}));\n    })();\n  </script>",
+    ]
