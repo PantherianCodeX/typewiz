@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -70,3 +71,41 @@ def test_mapping_file_support(tmp_path: Path) -> None:
 def test_parse_map_entries_requires_values() -> None:
     with pytest.raises(argparse.ArgumentTypeError):
         MODULE._parse_map_entries(["invalid"])
+
+
+def test_ensure_import_respects_docstring_and_future(tmp_path: Path) -> None:
+    source = Path("src/typewiz/api.py")
+    dest = tmp_path / "api.py"
+    _ = shutil.copy2(source, dest)
+
+    exit_code = MODULE.main([
+        "--root",
+        str(tmp_path),
+        "--ensure-import",
+        "api.py:tests.helpers:new_helper",
+        "--apply",
+    ])
+    assert exit_code == 0
+    contents = dest.read_text(encoding="utf-8").splitlines()
+    injected_line = "from tests.helpers import new_helper"
+    assert injected_line in contents
+    future_idx = contents.index("from __future__ import annotations")
+    injected_idx = contents.index(injected_line)
+    assert injected_idx > future_idx
+
+
+def test_export_map_updates_real_module(tmp_path: Path) -> None:
+    source = Path("src/typewiz/__init__.py")
+    dest = tmp_path / "__init__.py"
+    _ = shutil.copy2(source, dest)
+
+    exit_code = MODULE.main([
+        "--root",
+        str(tmp_path),
+        "--export-map",
+        "run_audit=execute_audit",
+        "--apply",
+    ])
+    assert exit_code == 0
+    text = dest.read_text(encoding="utf-8")
+    assert '"execute_audit"' in text

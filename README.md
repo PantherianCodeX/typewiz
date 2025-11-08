@@ -153,6 +153,12 @@ typewiz.logging_utils=typewiz._internal.logging_utils
 typewiz.exceptions=typewiz._internal.exceptions
 EOF
 python scripts/refactor_imports.py --mapping-file mappings.txt --apply
+
+# insert missing imports or update __all__ entries
+python scripts/refactor_imports.py \
+  --ensure-import src/typewiz/api.py:typewiz.utils:new_helper \
+  --export-map run_audit=execute_audit \
+  --apply
 ```
 
 It only touches `import`/`from` statements under `src/` by default; pass
