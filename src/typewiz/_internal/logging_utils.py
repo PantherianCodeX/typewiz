@@ -4,11 +4,19 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Final, Literal, TypedDict, cast, override
+from typing import Final, Literal, SupportsFloat, SupportsInt, TypedDict, Unpack, cast, override
 
-from typewiz._internal.utils import normalise_enums_for_json
+from typewiz._internal.utils.json import normalise_enums_for_json
 from typewiz.core.model_types import LogComponent, LogFormat, Mode, SeverityLevel
+from typewiz.core.type_aliases import RunId, ToolName
+
+ROOT_LOGGER_NAME: Final[str] = "typewiz"
+LOG_FORMAT_ENV: Final[str] = "TYPEWIZ_LOG_FORMAT"
+LOG_LEVEL_ENV: Final[str] = "TYPEWIZ_LOG_LEVEL"
 
 LOG_FORMATS: Final[tuple[Literal["text", "json"], ...]] = cast(
     tuple[Literal["text", "json"], ...],
@@ -20,6 +28,40 @@ LOG_LEVELS: Final[tuple[Literal["debug", "info", "warning", "error"], ...]] = (
     "warning",
     "error",
 )
+STRUCTURED_FIELDS: Final[tuple[str, ...]] = (
+    "component",
+    "tool",
+    "mode",
+    "duration_ms",
+    "counts",
+    "cached",
+    "exit_code",
+    "manifest",
+    "path",
+    "run_id",
+    "signature_matches",
+    "fingerprint_truncated",
+    "details",
+)
+CHILD_LOGGERS: Final[tuple[str, ...]] = (
+    "typewiz.cli",
+    "typewiz.cache",
+    "typewiz.engine",
+    "typewiz.engine.registry",
+    "typewiz.dashboard",
+    "typewiz.ratchet",
+    "typewiz.services",
+    "typewiz.manifest",
+)
+
+
+@dataclass(slots=True, frozen=True)
+class LogConfig:
+    """Resolved logging configuration for diagnostics and debugging."""
+
+    format: LogFormat
+    level: int
+    level_name: str
 
 
 class JSONLogFormatter(logging.Formatter):
@@ -33,7 +75,7 @@ class JSONLogFormatter(logging.Formatter):
             "message": record.getMessage(),
             "logger": record.name,
         }
-        for field in ("component", "tool", "mode", "duration_ms", "counts", "cached", "exit_code"):
+        for field in STRUCTURED_FIELDS:
             if hasattr(record, field):
                 payload[field] = getattr(record, field)
         if record.exc_info:
@@ -54,56 +96,197 @@ def _coerce_log_format(log_format: LogFormat | str) -> LogFormat:
     return LogFormat.from_str(log_format)
 
 
-def _coerce_log_level(level: str | int) -> int:
+def _coerce_log_level(level: str | int) -> tuple[int, str]:
     if isinstance(level, int):
-        return level
+        return level, logging.getLevelName(level).lower()
     value = str(level).strip().lower()
     match value:
         case "debug":
-            return logging.DEBUG
+            return logging.DEBUG, "debug"
         case "warning":
-            return logging.WARNING
+            return logging.WARNING, "warning"
         case "error":
-            return logging.ERROR
+            return logging.ERROR, "error"
         case _:
-            return logging.INFO
+            return logging.INFO, "info"
 
 
-def configure_logging(log_format: LogFormat | str, *, log_level: str | int = "info") -> None:
-    """Configure Typewiz logging according to the requested format."""
+def _select_format(preferred: LogFormat | str | None) -> LogFormat:
+    if preferred is not None:
+        return _coerce_log_format(preferred)
+    env_value = os.getenv(LOG_FORMAT_ENV)
+    return _coerce_log_format(env_value) if env_value else LogFormat.TEXT
 
-    selected_format = _coerce_log_format(log_format)
+
+def _select_level(level: str | int | None) -> tuple[int, str]:
+    if level is not None:
+        return _coerce_log_level(level)
+    env_value = os.getenv(LOG_LEVEL_ENV)
+    if env_value:
+        return _coerce_log_level(env_value)
+    return _coerce_log_level("info")
+
+
+def _configure_handler(log_format: LogFormat) -> logging.Handler:
     handler = logging.StreamHandler()
-    if selected_format is LogFormat.JSON:
+    if log_format is LogFormat.JSON:
         handler.setFormatter(JSONLogFormatter())
     else:
         handler.setFormatter(TextLogFormatter())
+    return handler
 
-    root_logger = logging.getLogger("typewiz")
+
+def _apply_child_levels(level: int, children: Iterable[str]) -> None:
+    for child in children:
+        logging.getLogger(child).setLevel(level)
+
+
+def configure_logging(
+    log_format: LogFormat | str | None = None,
+    *,
+    log_level: str | int | None = None,
+) -> LogConfig:
+    """Configure Typewiz logging according to the requested format and level."""
+
+    selected_format = _select_format(log_format)
+    level_value, level_name = _select_level(log_level)
+
+    root_logger = logging.getLogger(ROOT_LOGGER_NAME)
     root_logger.handlers.clear()
-    root_logger.addHandler(handler)
-    root_logger.setLevel(_coerce_log_level(log_level))
+    root_logger.addHandler(_configure_handler(selected_format))
+    root_logger.setLevel(level_value)
     root_logger.propagate = False
 
-    # Ensure child loggers inherit the configured handler/level.
-    for child in (
-        "typewiz.cli",
-        "typewiz.cache",
-        "typewiz.engine",
-        "typewiz.engine.registry",
-        "typewiz.dashboard",
-    ):
-        logging.getLogger(child).setLevel(_coerce_log_level(log_level))
+    _apply_child_levels(level_value, CHILD_LOGGERS)
+    return LogConfig(format=selected_format, level=level_value, level_name=level_name)
 
 
-class StructuredLogExtra(TypedDict, total=False):
+class _StructuredLogBase(TypedDict):
     component: LogComponent
+
+
+class StructuredLogExtra(_StructuredLogBase, total=False):
     tool: str
     mode: Mode
     duration_ms: float
-    counts: dict[SeverityLevel, int]
+    counts: Mapping[SeverityLevel, int]
     cached: bool
     exit_code: int
+    manifest: str
+    path: str
+    run_id: str
+    signature_matches: bool
+    fingerprint_truncated: bool
+    details: Mapping[str, object]
 
 
-__all__ = ["LOG_FORMATS", "LOG_LEVELS", "StructuredLogExtra", "configure_logging"]
+class _StructuredLogKwargs(TypedDict, total=False):
+    tool: ToolName | str
+    mode: Mode | str
+    duration_ms: float
+    counts: Mapping[SeverityLevel, int]
+    cached: bool
+    exit_code: int
+    manifest: str | os.PathLike[str]
+    path: str | os.PathLike[str]
+    run_id: RunId | str
+    signature_matches: bool
+    fingerprint_truncated: bool
+    details: Mapping[str, object]
+
+
+def _normalise_mode(value: Mode | str | None) -> Mode | None:
+    if value is None:
+        return None
+    return value if isinstance(value, Mode) else Mode.from_str(str(value))
+
+
+def _normalise_path(value: object) -> str | None:
+    if value is None:
+        return None
+    return os.fspath(cast(str | os.PathLike[str], value))
+
+
+def _to_float(value: object) -> float:
+    return float(cast(SupportsFloat | str | float, value))
+
+
+def _to_bool(value: object) -> bool:
+    return bool(value)
+
+
+def _to_int(value: object) -> int:
+    return int(cast(SupportsInt | str | int, value))
+
+
+def _maybe_assign(
+    extra: StructuredLogExtra,
+    *,
+    key: str,
+    kwargs: dict[str, object],
+    transform: Callable[[object], object | None] | None = None,
+) -> None:
+    if key not in kwargs:
+        return
+    value = kwargs[key]
+    if value is None:
+        return
+    if transform is not None:
+        value = transform(value)
+        if value is None:
+            return
+    cast("dict[str, object]", extra)[key] = value
+
+
+def structured_extra(
+    component: LogComponent,
+    **kwargs: Unpack[_StructuredLogKwargs],
+) -> StructuredLogExtra:
+    """Return a consistently typed ``logging.extra`` payload."""
+
+    extra: StructuredLogExtra = {"component": component}
+    payload_kwargs = cast(dict[str, object], kwargs)
+    _maybe_assign(extra, key="tool", kwargs=payload_kwargs, transform=str)
+    mode_value = _normalise_mode(cast(Mode | str | None, payload_kwargs.get("mode")))
+    if mode_value is not None:
+        extra["mode"] = mode_value
+    _maybe_assign(extra, key="duration_ms", kwargs=payload_kwargs, transform=_to_float)
+    counts = payload_kwargs.get("counts")
+    if isinstance(counts, Mapping) and counts:
+        extra["counts"] = dict(cast(Mapping[SeverityLevel, int], counts))
+    _maybe_assign(extra, key="cached", kwargs=payload_kwargs, transform=_to_bool)
+    _maybe_assign(extra, key="exit_code", kwargs=payload_kwargs, transform=_to_int)
+    _maybe_assign(
+        extra,
+        key="manifest",
+        kwargs=payload_kwargs,
+        transform=_normalise_path,
+    )
+    _maybe_assign(
+        extra,
+        key="path",
+        kwargs=payload_kwargs,
+        transform=_normalise_path,
+    )
+    _maybe_assign(extra, key="run_id", kwargs=payload_kwargs, transform=str)
+    _maybe_assign(extra, key="signature_matches", kwargs=payload_kwargs, transform=_to_bool)
+    _maybe_assign(
+        extra,
+        key="fingerprint_truncated",
+        kwargs=payload_kwargs,
+        transform=_to_bool,
+    )
+    details = payload_kwargs.get("details")
+    if isinstance(details, Mapping) and details:
+        extra["details"] = dict(cast(Mapping[str, object], details))
+    return extra
+
+
+__all__ = [
+    "LOG_FORMATS",
+    "LOG_LEVELS",
+    "LogConfig",
+    "StructuredLogExtra",
+    "configure_logging",
+    "structured_extra",
+]

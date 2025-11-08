@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Final, Literal
+from typing import Any, Final, Literal, cast
 
-logger: logging.Logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz.internal.paths")
 
 __all__ = ["ROOT_MARKERS", "RootMarker", "default_full_paths", "resolve_project_root"]
 
@@ -64,11 +64,24 @@ def resolve_project_root(start: Path | None = None) -> Path:
         if not base.exists():
             message = f"Provided project root {start} does not exist."
             raise FileNotFoundError(message)
-        logger.debug("No project markers found; using provided path %s as project root", base)
+        logger.debug(
+            "No project markers found; using provided path %s as project root",
+            base,
+            extra=_structured_extra(path=base),
+        )
         return base
 
     logger.debug(
         "No project markers found in %s; using current working directory as root",
         ", ".join(str(path) for path in checked),
+        extra=_structured_extra(details={"checked": [str(path) for path in checked]}),
     )
     return base
+
+
+def _structured_extra(**kwargs: object) -> dict[str, object]:
+    from typewiz.core.model_types import LogComponent
+    from typewiz.logging import structured_extra
+
+    payload = structured_extra(LogComponent.SERVICES, **cast(dict[str, Any], kwargs))
+    return cast(dict[str, object], payload)

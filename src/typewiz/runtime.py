@@ -7,7 +7,6 @@ from __future__ import annotations
 from typewiz._internal.utils import (
     ROOT_MARKERS,
     CommandOutput,
-    JSONValue,
     RootMarker,
     as_int,
     as_list,
@@ -22,6 +21,7 @@ from typewiz._internal.utils import (
     resolve_project_root,
     run_command,
 )
+from typewiz.json_types import JSONValue
 
 __all__ = [
     "CommandOutput",

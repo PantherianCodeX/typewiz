@@ -94,12 +94,12 @@
 
 Always execute the following at the end of a code change **completion**:
 Run `mypy`, `pyright`, `ruff`, and `pytest` and clear all errors without taking shortcuts.
-Git commit once all are passing.
+Git commit once all are passing - no consent required - this must be completed to end the cycle.
 
 ## GIT Commit
 
-Git commit should only be executed after all typing/linting/testing has passed and only with expressed user consent.
-If the commit contains code from beyond your scope, only commit your scope.
+Git commit should only be executed after all typing/linting/testing has passed.
+If the commit contains code from beyond your scope, only commit your scope by default.
 **IF DIRECTED TO COMMIT ALL** then investigate all changes on the repo and always git commit with a detailed, multi-line message that summarizes all code changes and when applicable the impacts or outcomes.
 
 **Quick Start**

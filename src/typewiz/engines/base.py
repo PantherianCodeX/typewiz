@@ -9,9 +9,10 @@ from pathlib import Path
 from typing import Protocol
 
 from typewiz.config import AuditConfig
-from typewiz.core.model_types import CategoryMapping, Mode, OverrideEntry
+from typewiz.core.model_types import CategoryMapping, LogComponent, Mode, OverrideEntry
 from typewiz.core.type_aliases import Command, ProfileName, RelPath, ToolName
 from typewiz.core.types import Diagnostic
+from typewiz.logging import structured_extra
 from typewiz.manifest.typed import ToolSummary
 
 logger: logging.Logger = logging.getLogger("typewiz.engine")
@@ -58,18 +59,24 @@ class EngineResult:
 
     def __post_init__(self) -> None:
         if not self.command:
-            logger.warning("Engine '%s' returned an empty command", self.engine)
+            logger.warning(
+                "Engine '%s' returned an empty command",
+                self.engine,
+                extra=structured_extra(component=LogComponent.ENGINE, tool=self.engine),
+            )
         if self.duration_ms < 0:
             logger.warning(
                 "Engine '%s' reported negative duration %.2f ms",
                 self.engine,
                 self.duration_ms,
+                extra=structured_extra(component=LogComponent.ENGINE, tool=self.engine),
             )
         if self.exit_code < 0:
             logger.warning(
                 "Engine '%s' returned negative exit code %s",
                 self.engine,
                 self.exit_code,
+                extra=structured_extra(component=LogComponent.ENGINE, tool=self.engine),
             )
 
 

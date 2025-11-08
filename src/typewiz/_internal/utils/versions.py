@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from .process import python_executable, run_command
 
-logger: logging.Logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz.internal.versions")
 
 if TYPE_CHECKING:
     from typewiz.core.type_aliases import ToolName
@@ -51,6 +51,19 @@ def detect_tool_versions(tools: Sequence[str | ToolName]) -> dict[str, str]:
                 if ver:
                     versions[name] = ver
         except Exception as exc:
-            logger.debug("Failed to detect version for %s: %s", name, exc)
+            logger.debug(
+                "Failed to detect version for %s: %s",
+                name,
+                exc,
+                extra=_structured_extra(tool=name),
+            )
             continue
     return versions
+
+
+def _structured_extra(**kwargs: object) -> dict[str, object]:
+    from typewiz.core.model_types import LogComponent
+    from typewiz.logging import structured_extra
+
+    payload = structured_extra(LogComponent.SERVICES, **cast(dict[str, Any], kwargs))
+    return cast(dict[str, object], payload)

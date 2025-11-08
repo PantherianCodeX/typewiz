@@ -35,6 +35,21 @@ Options:
 - `--dashboard-view overview` – set the default tab for HTML output (`overview`, `engines`, `hotspots`, or `runs`).
 - `--log-format {text,json}` – control the logging format. JSON mode emits structured records with `component`, `tool`, `mode`, `duration_ms`, `cached`, and `exit_code` metadata; text mode keeps it human-friendly for terminals.
 - `--log-level {debug,info,warning,error}` – set verbosity. `debug` surfaces command wiring and cache decisions, `info` covers high-level progress/status (default), and `warning`/`error` suppress routine notices.
+- Environment overrides: set `TYPEWIZ_LOG_FORMAT` / `TYPEWIZ_LOG_LEVEL` to enforce defaults when the CLI flags are not provided.
+- Programmatic logging: `typewiz.logging.configure_logging()` and `typewiz.logging.structured_extra()` ensure every log record shares the same schema.
+
+```python
+from typewiz.logging import configure_logging, structured_extra
+from typewiz.core.model_types import LogComponent
+
+configure_logging()  # honours CLI flags and environment overrides
+logger = logging.getLogger("typewiz")
+logger.debug(
+    "Resolved audit configuration",
+    extra=structured_extra(component=LogComponent.CLI, details={"runs": 2}),
+)
+```
+
 - `--hash-workers auto|N` – bound the number of threads used while fingerprinting files.
 - `--dry-run` – execute engines and print summaries without writing manifests or dashboards.
 

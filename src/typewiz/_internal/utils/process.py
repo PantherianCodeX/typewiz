@@ -11,9 +11,9 @@ import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
-logger: logging.Logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz.internal.process")
 
 if TYPE_CHECKING:
     from typewiz.core.type_aliases import Command
@@ -51,7 +51,16 @@ def run_command(
     if allowed is not None and executable not in allowed:
         raise ValueError
     start = time.perf_counter()
-    logger.debug("Executing command: %s", " ".join(argv))
+    debug_details: dict[str, object] = {}
+    if cwd:
+        debug_details["cwd"] = str(cwd)
+    if allowed:
+        debug_details["allowed"] = sorted(allowed)
+    logger.debug(
+        "Executing command: %s",
+        " ".join(argv),
+        extra=_structured_extra(details=debug_details),
+    )
     completed = subprocess.run(  # noqa: S603 - command arguments provided by caller
         argv,
         check=False,
@@ -61,9 +70,20 @@ def run_command(
     )
     duration_ms = (time.perf_counter() - start) * 1000
     if completed.returncode != 0:
-        message = f"Command failed (exit={completed.returncode}): {' '.join(argv)}"
-        logger.warning(message)
-        logging.getLogger().warning(message)
+        warning_details: dict[str, object] = {}
+        if cwd:
+            warning_details["cwd"] = str(cwd)
+        logger.warning(
+            "Command failed (exit=%s): %s",
+            completed.returncode,
+            " ".join(argv),
+            extra=_structured_extra(exit_code=completed.returncode, details=warning_details),
+        )
+        logging.getLogger().warning(
+            "Command failed (exit=%s): %s",
+            completed.returncode,
+            " ".join(argv),
+        )
     return CommandOutput(
         args=argv,
         stdout=completed.stdout,
@@ -75,3 +95,11 @@ def run_command(
 
 def python_executable() -> str:
     return sys.executable
+
+
+def _structured_extra(**kwargs: object) -> dict[str, object]:
+    from typewiz.core.model_types import LogComponent
+    from typewiz.logging import structured_extra
+
+    payload = structured_extra(LogComponent.SERVICES, **cast(dict[str, Any], kwargs))
+    return cast(dict[str, object], payload)

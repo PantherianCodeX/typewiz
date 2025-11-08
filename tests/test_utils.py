@@ -188,7 +188,7 @@ def test_run_command_requires_arguments() -> None:
 
 
 def test_run_command_logs_warning_on_failure(caplog: pytest.LogCaptureFixture) -> None:
-    caplog.set_level(logging.WARNING)
+    caplog.set_level(logging.WARNING, logger="typewiz.internal.process")
     result = run_command([sys.executable, "-c", "import sys; sys.exit(1)"])
     assert result.exit_code != 0
     assert any("Command failed" in record.message for record in caplog.records)

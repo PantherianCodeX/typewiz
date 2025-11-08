@@ -17,7 +17,7 @@ class _StubLogger:
         super().__init__()
         self.messages: list[str] = []
 
-    def warning(self, message: str, *args: object) -> None:
+    def warning(self, message: str, *args: object, **_: object) -> None:
         formatted = message % args if args else message
         self.messages.append(formatted)
 

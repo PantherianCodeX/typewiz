@@ -21,7 +21,7 @@ from typewiz.core.type_aliases import CacheKey, EngineName, PathKey, ProfileName
 from typewiz.core.types import RunResult
 from typewiz.engines import EngineContext, EngineOptions
 from typewiz.engines.base import BaseEngine, EngineResult
-from typewiz.logging import StructuredLogExtra
+from typewiz.logging import StructuredLogExtra, structured_extra
 from typewiz.manifest.typed import ToolSummary
 
 
@@ -146,6 +146,7 @@ def _diff_override_entry(
         logger.warning(
             "Active profile change detected for engine '%s' but profile is missing",
             engine_name,
+            extra=structured_extra(component=LogComponent.CLI, tool=engine_name),
         )
     if after_args:
         entry["pluginArgs"] = after_args
@@ -241,7 +242,12 @@ def _build_cache_flags(
         try:
             fingerprint = fingerprint_path(cfg_path)
         except Exception as exc:  # pragma: no cover - defensive logging
-            logger.debug("Unable to fingerprint config %s: %s", cfg_path, exc)
+            logger.debug(
+                "Unable to fingerprint config %s: %s",
+                cfg_path,
+                exc,
+                extra=structured_extra(component=LogComponent.CACHE, tool=engine_name),
+            )
         else:
             if "hash" in fingerprint:
                 cache_flags.append(f"config_hash={fingerprint['hash']}")
@@ -365,7 +371,7 @@ def _build_run_result(
     )
 
 
-logger: logging.Logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz.audit.execution")
 
 
 def _path_matches(candidate: RelPath, pattern: RelPath) -> bool:
@@ -469,12 +475,12 @@ def execute_engine_mode(  # noqa: PLR0913
 
     cached_run = cache.get(cache_key, file_hashes)
     if cached_run:
-        cache_hit_extra: StructuredLogExtra = {
-            "component": LogComponent.CACHE,
-            "tool": engine.name,
-            "mode": mode,
-            "cached": True,
-        }
+        cache_hit_extra: StructuredLogExtra = structured_extra(
+            component=LogComponent.CACHE,
+            tool=engine.name,
+            mode=mode,
+            cached=True,
+        )
         logger.info(
             "Cache hit for %s:%s",
             engine.name,
@@ -488,12 +494,12 @@ def execute_engine_mode(  # noqa: PLR0913
             mode_paths=mode_paths,
         ), truncated
 
-    cache_miss_extra: StructuredLogExtra = {
-        "component": LogComponent.CACHE,
-        "tool": engine.name,
-        "mode": mode,
-        "cached": False,
-    }
+    cache_miss_extra: StructuredLogExtra = structured_extra(
+        component=LogComponent.CACHE,
+        tool=engine.name,
+        mode=mode,
+        cached=False,
+    )
     logger.info(
         "Cache miss for %s:%s",
         engine.name,
@@ -509,11 +515,11 @@ def execute_engine_mode(  # noqa: PLR0913
             engine.name,
             mode,
             exc_info=True,
-            extra={
-                "component": LogComponent.ENGINE,
-                "tool": engine.name,
-                "mode": mode,
-            },
+            extra=structured_extra(
+                component=LogComponent.ENGINE,
+                tool=engine.name,
+                mode=mode,
+            ),
         )
         run_result = RunResult(
             tool=ToolName(engine.name),
@@ -536,14 +542,14 @@ def execute_engine_mode(  # noqa: PLR0913
         )
         return run_result, truncated
 
-    run_extra: StructuredLogExtra = {
-        "component": LogComponent.CLI,
-        "tool": engine.name,
-        "mode": mode,
-        "cached": False,
-        "duration_ms": result.duration_ms,
-        "exit_code": result.exit_code,
-    }
+    run_extra: StructuredLogExtra = structured_extra(
+        component=LogComponent.CLI,
+        tool=engine.name,
+        mode=mode,
+        cached=False,
+        duration_ms=result.duration_ms,
+        exit_code=result.exit_code,
+    )
     logger.info(
         "Running %s:%s (%s)",
         engine.name,

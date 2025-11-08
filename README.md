@@ -394,19 +394,45 @@ Every manifest entry also records the resolved engine options (`engineOptions` b
 
 ### Logging
 
-typewiz uses Python's standard `logging` module with the logger name `typewiz`.
-Configure it in your application to capture command execution details:
+Typewiz exposes a dedicated logging façade so CLI runs, engines, ratchets, and dashboards all emit
+consistent, structured records. Configure it once and wire the output into your collector:
 
 ```python
-import logging
+from typewiz.logging import configure_logging, structured_extra
+from typewiz.core.model_types import LogComponent
 
-logging.basicConfig(level=logging.INFO)
-logging.getLogger("typewiz").setLevel(logging.DEBUG)
+# CLI flags take precedence, then environment variables, then these defaults.
+configure_logging(log_format="json", log_level="info")
+logger = logging.getLogger("typewiz")
+logger.info(
+    "typewiz audit starting",
+    extra=structured_extra(component=LogComponent.CLI, details={"runs": 2}),
+)
 ```
 
-Structured JSON logs now emit ISO8601 timestamps with explicit UTC offsets so downstream collectors can safely merge results from multi-region runs.
+- `--log-format` / `TYPEWIZ_LOG_FORMAT` (`text`, `json`)
+- `--log-level` / `TYPEWIZ_LOG_LEVEL` (`debug`, `info`, `warning`, `error`)
 
-See the [docs](docs/typewiz.md) for detailed guidance and the export roadmap.
+`structured_extra` enforces the typed payload used throughout the CLI so downstream tooling can rely
+on fields such as `component`, `tool`, `mode`, `duration_ms`, `counts`, `cached`, and `exit_code`.
+
+Sample JSON line (truncated for brevity):
+
+```json
+{
+  "timestamp": "2025-01-12T12:12:01.234567+00:00",
+  "level": "info",
+  "logger": "typewiz.audit.execution",
+  "message": "Running pyright:current (pyright --outputjson ...)",
+  "component": "cli",
+  "tool": "pyright",
+  "mode": "current",
+  "duration_ms": 812.4,
+  "exit_code": 0
+}
+```
+
+See the [docs](docs/typewiz.md) for a full breakdown of components and fields.
 
 ### Extending typewiz
 

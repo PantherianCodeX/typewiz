@@ -9,8 +9,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
-from typewiz.core.model_types import clone_override_entries
+from typewiz.core.model_types import LogComponent, clone_override_entries
 from typewiz.core.types import RunResult
+from typewiz.logging import structured_extra
 from typewiz.runtime import consume, detect_tool_versions, normalise_enums_for_json
 
 from .typed import (
@@ -22,7 +23,7 @@ from .typed import (
 )
 from .versioning import CURRENT_MANIFEST_VERSION
 
-logger: logging.Logger = logging.getLogger("typewiz")
+logger: logging.Logger = logging.getLogger("typewiz.manifest.builder")
 
 
 @dataclass(slots=True)
@@ -45,7 +46,17 @@ class ManifestBuilder:
     def add_run(self, run: RunResult, *, max_depth: int = 3) -> None:
         from .aggregate import summarise_run
 
-        logger.debug("Adding run: tool=%s mode=%s", run.tool, run.mode)
+        logger.debug(
+            "Adding run: tool=%s mode=%s",
+            run.tool,
+            run.mode,
+            extra=structured_extra(
+                component=LogComponent.MANIFEST,
+                tool=str(run.tool),
+                mode=run.mode,
+                details={"max_depth": max_depth},
+            ),
+        )
         summary: AggregatedData = summarise_run(run, max_depth=max_depth)
         options: EngineOptionsEntry = {
             "profile": run.profile,
@@ -98,7 +109,11 @@ class ManifestBuilder:
 
     def write(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        logger.info("Writing manifest to %s", path)
+        logger.info(
+            "Writing manifest to %s",
+            path,
+            extra=structured_extra(component=LogComponent.MANIFEST, path=path),
+        )
         # Fill in toolVersions based on tools present in runs
         try:
             tools = sorted({run.get("tool", "") for run in self.data.get("runs", []) if run})
@@ -106,7 +121,11 @@ class ManifestBuilder:
             if versions:
                 self.data["toolVersions"] = versions
         except Exception as exc:  # pragma: no cover - defensive logging
-            logger.debug("Failed to detect tool versions: %s", exc)
+            logger.debug(
+                "Failed to detect tool versions: %s",
+                exc,
+                extra=structured_extra(component=LogComponent.MANIFEST),
+            )
         if self.fingerprint_truncated:
             self.data["fingerprintTruncated"] = True
         payload = normalise_enums_for_json(self.data)
