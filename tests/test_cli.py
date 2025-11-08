@@ -1019,11 +1019,11 @@ def test_cli_dashboard_outputs(
         return "<html>"
 
     monkeypatch.setattr(
-        "typewiz.services.dashboard.load_summary_from_manifest",
+        "typewiz.cli.app.load_summary_from_manifest",
         _load_summary,
     )
     monkeypatch.setattr(
-        "typewiz.services.dashboard.render_dashboard_summary",
+        "typewiz.cli.app.render_dashboard_summary",
         _render_dashboard_cli,
     )
 

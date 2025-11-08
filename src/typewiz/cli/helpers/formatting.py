@@ -26,13 +26,13 @@ from typewiz.core.types import RunResult
 from typewiz.data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
 from typewiz.formatting import render_table_rows, stringify
 from typewiz.override_utils import format_override_inline, override_detail_lines
-from typewiz.readiness.views import (
-    FileReadinessPayload,
-    FolderReadinessPayload,
-    ReadinessValidationError,
-    ReadinessViewResult,
+from typewiz.readiness.views import ReadinessValidationError, ReadinessViewResult
+from typewiz.services.readiness import (
+    collect_readiness_view as service_collect_readiness_view,
 )
-from typewiz.readiness.views import collect_readiness_view as _collect_readiness_view
+from typewiz.services.readiness import (
+    format_readiness_summary,
+)
 
 from .io import echo
 
@@ -243,7 +243,7 @@ def collect_readiness_view(
 ) -> ReadinessQueryPayload:
     """Collect readiness data with consistent error handling."""
     try:
-        return _collect_readiness_view(
+        return service_collect_readiness_view(
             summary,
             level=level,
             statuses=statuses,
@@ -266,52 +266,16 @@ def print_readiness_summary(
     detailed: bool = False,
 ) -> None:
     """Print a readiness summary in the same shape as historic CLI output."""
-    view = collect_readiness_view(
+    lines = format_readiness_summary(
         summary,
         level=level,
         statuses=statuses,
         limit=limit,
         severities=severities,
+        detailed=detailed,
     )
-
-    def _format_counts(
-        label: str,
-        entry: FolderReadinessPayload | FileReadinessPayload,
-    ) -> str:
-        if not detailed:
-            return label
-        errors = entry.get("errors", 0)
-        warnings = entry.get("warnings", 0)
-        information = entry.get("information", 0)
-        return f"{label} (errors={errors} warnings={warnings} info={information})"
-
-    if level is ReadinessLevel.FOLDER:
-        folder_view: dict[ReadinessStatus, list[FolderReadinessPayload]] = cast(
-            dict[ReadinessStatus, list[FolderReadinessPayload]],
-            view,
-        )
-        for status, folder_entries in folder_view.items():
-            echo(f"[typewiz] readiness {level.value} status={status.value} (top {limit})")
-            if not folder_entries:
-                echo("  <none>")
-                continue
-            for folder_entry in folder_entries:
-                label = f"  {folder_entry['path']}: {folder_entry['count']}"
-                echo(_format_counts(label, folder_entry))
-        return
-
-    file_view: dict[ReadinessStatus, list[FileReadinessPayload]] = cast(
-        dict[ReadinessStatus, list[FileReadinessPayload]],
-        view,
-    )
-    for status, file_entries in file_view.items():
-        echo(f"[typewiz] readiness {level.value} status={status.value} (top {limit})")
-        if not file_entries:
-            echo("  <none>")
-            continue
-        for file_entry in file_entries:
-            label = f"  {file_entry['path']}: {file_entry['diagnostics']}"
-            echo(_format_counts(label, file_entry))
+    for line in lines:
+        echo(line)
 
 
 def render_data(data: object, fmt: FormatInput) -> list[str]:

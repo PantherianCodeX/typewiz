@@ -116,7 +116,7 @@ def write_config_template(path: pathlib.Path, *, force: bool) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    maybe_emit_evaluation_notice(lambda message: _echo(message))
+    maybe_emit_evaluation_notice(lambda message: _echo(message, err=True))
     parser = argparse.ArgumentParser(
         prog="typewiz",
         description="Collect typing diagnostics and readiness insights for Python projects.",
