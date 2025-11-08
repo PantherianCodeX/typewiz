@@ -240,6 +240,10 @@ class SimpleEngine(BaseEngine):
         )
 ```
 
+Built-in adapters live under `typewiz.engines.builtin` (see `pyright` and `mypy`) and are good templates for production
+plugins. Higher layers (CLI/services) consume public modules such as `typewiz.runtime`, `typewiz.logging`, and
+`typewiz.license`; direct imports from `typewiz._internal` are disallowed and enforced via tests.
+
 Declare the entry point in your `pyproject.toml`:
 
 ```toml

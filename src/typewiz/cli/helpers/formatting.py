@@ -7,8 +7,6 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Literal, TypedDict, cast
 
-from typewiz._internal.error_codes import error_code_for
-from typewiz._internal.utils import JSONValue, normalise_enums_for_json
 from typewiz.core.model_types import (
     DataFormat,
     HotspotKind,
@@ -24,9 +22,11 @@ from typewiz.core.summary_types import SummaryData
 from typewiz.core.type_aliases import RelPath, RunId
 from typewiz.core.types import RunResult
 from typewiz.data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
+from typewiz.error_codes import error_code_for
 from typewiz.formatting import render_table_rows, stringify
 from typewiz.override_utils import format_override_inline, override_detail_lines
 from typewiz.readiness.views import ReadinessValidationError, ReadinessViewResult
+from typewiz.runtime import JSONValue, normalise_enums_for_json
 from typewiz.services.readiness import (
     collect_readiness_view as service_collect_readiness_view,
 )

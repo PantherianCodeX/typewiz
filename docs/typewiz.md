@@ -114,7 +114,7 @@ class MyRunner(BaseEngine):
         if context.engine_options.profile:
             args.extend(["--profile", context.engine_options.profile])
         command = [*args, *paths]
-        # execute subprocess here (see typewiz.engines.mypy for a template)
+        # execute subprocess here (see typewiz.engines.builtin.mypy for a template)
         tool_name = ToolName(self.name)
         return EngineResult(
             engine=tool_name,

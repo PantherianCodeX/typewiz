@@ -3,13 +3,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Final, cast
+from typing import Final
 
 from typewiz.core.model_types import DEFAULT_SEVERITIES, SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import RunId
-from typewiz.ratchet.models import RatchetModel
+from typewiz.services.ratchet import apply_target_overrides, split_target_mapping
 
 from .args import parse_comma_separated, parse_key_value_entries
 
@@ -37,39 +37,6 @@ def parse_target_entries(entries: Sequence[str]) -> dict[str, int]:
             raise SystemExit(f"Invalid target value '{raw_value}' for key '{key}'") from exc
         mapping[key] = budget
     return mapping
-
-
-def split_target_mapping(
-    mapping: Mapping[str, int],
-) -> tuple[dict[SeverityLevel, int], dict[str, dict[SeverityLevel, int]]]:
-    global_targets: dict[SeverityLevel, int] = {}
-    per_run: dict[str, dict[SeverityLevel, int]] = {}
-    for raw_key, value in mapping.items():
-        key = raw_key.strip()
-        if not key:
-            continue
-        budget = max(0, int(value))
-        if "." in key:
-            run_id, severity_token = key.rsplit(".", 1)
-            severity = SeverityLevel.from_str(severity_token)
-            run_key = run_id.strip()
-            entry = per_run.setdefault(run_key, cast(dict[SeverityLevel, int], {}))
-            entry[severity] = budget
-        else:
-            severity = SeverityLevel.from_str(key)
-            global_targets[severity] = budget
-    return global_targets, per_run
-
-
-def apply_target_overrides(model: RatchetModel, overrides: Mapping[str, int]) -> None:
-    if not overrides:
-        return
-    global_targets, per_run = split_target_mapping(overrides)
-    for run_id, run_budget in model.runs.items():
-        if global_targets:
-            run_budget.targets.update(global_targets)
-        if run_id in per_run:
-            run_budget.targets.update(per_run[run_id])
 
 
 def normalise_runs(runs: Sequence[str | RunId] | None) -> list[RunId]:

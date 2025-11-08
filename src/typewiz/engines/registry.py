@@ -12,8 +12,8 @@ from typing import Final, Literal, cast
 
 from ..core.type_aliases import EngineName
 from .base import BaseEngine
-from .mypy import MypyEngine
-from .pyright import PyrightEngine
+from .builtin.mypy import MypyEngine
+from .builtin.pyright import PyrightEngine
 
 logger: logging.Logger = logging.getLogger("typewiz.engine.registry")
 

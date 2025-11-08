@@ -8,7 +8,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Protocol
 
-from typewiz._internal.utils import resolve_project_root
+from typewiz.runtime import resolve_project_root
 
 from ..helpers import echo, register_argument
 

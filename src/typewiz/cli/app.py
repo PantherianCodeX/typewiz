@@ -12,9 +12,6 @@ from textwrap import dedent
 from typing import Final
 
 from typewiz import __version__ as TYPEWIZ_VERSION
-from typewiz._internal.license import maybe_emit_evaluation_notice
-from typewiz._internal.logging_utils import LOG_FORMATS, configure_logging
-from typewiz._internal.utils import consume
 from typewiz.cli.commands import audit as audit_command
 from typewiz.cli.commands import cache as cache_command
 from typewiz.cli.commands import engines as engines_command
@@ -35,6 +32,9 @@ from typewiz.core.model_types import (
     SeverityLevel,
 )
 from typewiz.core.summary_types import SummaryData
+from typewiz.license import maybe_emit_evaluation_notice
+from typewiz.logging import LOG_FORMATS, configure_logging
+from typewiz.runtime import consume
 from typewiz.services.dashboard import (
     load_summary_from_manifest,
     render_dashboard_summary,

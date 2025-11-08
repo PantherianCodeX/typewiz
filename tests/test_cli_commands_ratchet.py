@@ -14,8 +14,9 @@ from typewiz.core.model_types import SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import RunId
 from typewiz.manifest.typed import ManifestData
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
-from typewiz.ratchet.models import RatchetModel, RatchetRunBudgetModel
+from typewiz.ratchet.models import RatchetModel
 from typewiz.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
+from typewiz.services.ratchet import RatchetInitResult, RatchetUpdateResult
 
 
 def _make_context(
@@ -84,19 +85,20 @@ def test_handle_init_writes_ratchet_and_applies_targets(
 ) -> None:
     output_path = tmp_path / "ratchet.json"
     captured_keywords: dict[str, Any] = {}
+    baseline_model = RatchetModel.model_validate(
+        {
+            "generatedAt": "2025-01-01T00:00:00Z",
+            "manifestPath": str(tmp_path / "typing_audit.json"),
+            "projectRoot": str(tmp_path),
+            "runs": {},
+        },
+    )
 
-    def fake_build_from_manifest(**kwargs: Any) -> dict[str, Any]:
+    def fake_init_ratchet(**kwargs: Any) -> RatchetInitResult:
         captured_keywords.update(kwargs)
-        return {"ratchet": "baseline"}
+        return RatchetInitResult(model=baseline_model, output_path=output_path)
 
-    write_calls: list[Path] = []
-
-    def fake_write(path: Path, model: dict[str, Any]) -> None:
-        write_calls.append(path)
-        assert model == {"ratchet": "baseline"}
-
-    monkeypatch.setattr(ratchet_cmd, "ratchet_build_from_manifest", fake_build_from_manifest)
-    monkeypatch.setattr(ratchet_cmd, "write_ratchet", fake_write)
+    monkeypatch.setattr(ratchet_cmd, "init_ratchet", fake_init_ratchet)
 
     config = RatchetConfig()
     config.targets = {"warning": 2}
@@ -111,10 +113,11 @@ def test_handle_init_writes_ratchet_and_applies_targets(
 
     exit_code = handle_init(context, args)
     assert exit_code == 0
-    assert write_calls == [output_path]
+    assert captured_keywords["output_path"] == output_path
+    assert captured_keywords["force"] is True
     assert captured_keywords["severities"] == [SeverityLevel.ERROR, SeverityLevel.WARNING]
     assert captured_keywords["targets"] == {SeverityLevel.WARNING: 2, SeverityLevel.ERROR: 1}
-    assert captured_keywords["manifest_path"] == str(context.manifest_path)
+    assert captured_keywords["manifest_path"] == context.manifest_path
 
 
 def test_handle_init_refuses_overwrite_without_force(
@@ -122,12 +125,11 @@ def test_handle_init_refuses_overwrite_without_force(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     output_path = tmp_path / "ratchet.json"
-    _ = output_path.write_text("{}", encoding="utf-8")
 
-    def fail_build(**_: Any) -> None:
-        raise AssertionError("ratchet_build_from_manifest should not be called")
+    def fail_init(**_: Any) -> None:
+        raise ratchet_cmd.RatchetFileExistsError(output_path)
 
-    monkeypatch.setattr(ratchet_cmd, "ratchet_build_from_manifest", fail_build)
+    monkeypatch.setattr(ratchet_cmd, "init_ratchet", fail_init)
 
     context = _make_context(tmp_path)
     args = Namespace(output=output_path, force=False, severities=None, targets=[])
@@ -143,72 +145,43 @@ def test_handle_update_dry_run_skips_write(
     ratchet_path = tmp_path / "ratchet.json"
     context = _make_context(tmp_path, ratchet_path=ratchet_path)
 
-    minimum_model = RatchetModel.model_validate(
-        {
-            "generatedAt": "2025-01-01T00:00:00Z",
-            "manifestPath": str(tmp_path / "typing_audit.json"),
-            "projectRoot": str(tmp_path),
-            "runs": {"pyright:current": {"severities": ["error"], "paths": {}, "targets": {}}},
-        },
+    report = RatchetReport(
+        runs=[
+            RatchetRunReport(
+                run_id=RunId("pyright:current"),
+                severities=[SeverityLevel.ERROR],
+                violations=[
+                    RatchetFinding(path="pkg", severity=SeverityLevel.ERROR, allowed=1, actual=2)
+                ],
+            ),
+        ],
     )
+    captured_kwargs: dict[str, Any] = {}
 
-    def fake_load_ratchet(path: Path) -> RatchetModel:
-        assert path == ratchet_path
-        return minimum_model
-
-    monkeypatch.setattr(ratchet_cmd, "load_ratchet", fake_load_ratchet)
-    applied_targets: dict[str, int] | None = None
-
-    def fake_apply_target_overrides(model: RatchetModel, targets: dict[str, int]) -> None:
-        nonlocal applied_targets
-        applied_targets = targets
-        normalised: dict[SeverityLevel, int] = {
-            SeverityLevel.from_str(key): value for key, value in targets.items()
-        }
-        model.runs.setdefault(
-            RunId("pyright:current"),
-            RatchetRunBudgetModel(severities=[SeverityLevel.ERROR]),
-        ).targets.update(normalised)
-
-    def fake_compare_manifest(**_: Any) -> RatchetReport:
-        finding = RatchetFinding(path="pkg", severity=SeverityLevel.ERROR, allowed=1, actual=2)
-        run_report = RatchetRunReport(
-            run_id=RunId("pyright:current"),
-            severities=[SeverityLevel.ERROR],
-            violations=[finding],
-        )
-        return RatchetReport(runs=[run_report])
-
-    def fake_apply_auto_update(**_: Any) -> RatchetModel:
-        return RatchetModel.model_validate(
+    def fake_update_ratchet(**kwargs: Any) -> RatchetUpdateResult:
+        captured_kwargs.update(kwargs)
+        dummy_model = RatchetModel.model_validate(
             {
                 "generatedAt": "2025-01-02T00:00:00Z",
                 "manifestPath": str(tmp_path / "typing_audit.json"),
                 "projectRoot": str(tmp_path),
-                "runs": {
-                    "pyright:current": {
-                        "severities": ["error"],
-                        "paths": {"pkg": {"severities": {"error": 2}}},
-                        "targets": {"error": 5},
-                    },
-                },
+                "runs": {},
             },
         )
+        return RatchetUpdateResult(
+            report=report,
+            updated=dummy_model,
+            output_path=None,
+            wrote_file=False,
+        )
 
-    monkeypatch.setattr(ratchet_cmd, "apply_target_overrides", fake_apply_target_overrides)
-    monkeypatch.setattr(ratchet_cmd, "ratchet_compare_manifest", fake_compare_manifest)
-    monkeypatch.setattr(ratchet_cmd, "ratchet_apply_auto_update", fake_apply_auto_update)
-
-    def fail_write(path: Path, model: dict[str, Any]) -> None:  # pragma: no cover - guard
-        raise AssertionError(f"write_ratchet should not be called: {(path, model)}")
-
-    monkeypatch.setattr(ratchet_cmd, "write_ratchet", fail_write)
+    monkeypatch.setattr(ratchet_cmd, "update_ratchet", fake_update_ratchet)
 
     args = Namespace(targets=["error=5"], dry_run=True, output=None, limit=None, summary_only=False)
     exit_code = handle_update(context, args)
 
     assert exit_code == 0
-    assert applied_targets == {"error": 5}
+    assert captured_kwargs["target_overrides"] == {"error": 5}
     captured = capsys.readouterr().out
     assert "[typewiz] Dry-run mode; ratchet not written." in captured
 

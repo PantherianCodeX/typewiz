@@ -10,14 +10,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
-from typewiz._internal.utils import normalise_enums_for_json, resolve_project_root
 from typewiz.cli.helpers import (
     DEFAULT_RATCHET_FILENAME,
-    apply_target_overrides,
     discover_manifest_path,
     discover_ratchet_path,
     echo,
-    ensure_parent,
     parse_target_entries,
     register_argument,
     resolve_limit,
@@ -31,25 +28,20 @@ from typewiz.config import RatchetConfig, load_config
 from typewiz.core.model_types import DataFormat, RatchetAction, SignaturePolicy
 from typewiz.core.type_aliases import RunId
 from typewiz.manifest.typed import ManifestData
+from typewiz.runtime import normalise_enums_for_json, resolve_project_root
 from typewiz.services.ratchet import (
-    apply_auto_update as ratchet_apply_auto_update,
-)
-from typewiz.services.ratchet import (
-    build_ratchet_from_manifest as ratchet_build_from_manifest,
-)
-from typewiz.services.ratchet import (
-    compare_manifest_to_ratchet as ratchet_compare_manifest,
-)
-from typewiz.services.ratchet import (
+    RatchetFileExistsError,
+    RatchetPathRequiredError,
+    RatchetServiceError,
+    check_ratchet,
     current_timestamp,
-    load_ratchet,
-    write_ratchet,
+    describe_ratchet,
+    init_ratchet,
+    rebaseline_ratchet,
+    update_ratchet,
 )
 from typewiz.services.ratchet import (
     load_manifest as load_ratchet_manifest,
-)
-from typewiz.services.ratchet import (
-    refresh_signatures as ratchet_refresh_signatures,
 )
 
 
@@ -72,6 +64,11 @@ class RatchetContext:
         if isinstance(value, str) and value:
             return value
         return current_timestamp()
+
+
+def _handle_service_error(exc: RatchetServiceError) -> int:
+    echo(f"[typewiz] {exc}", err=True)
+    return 1
 
 
 class SubparserRegistry(Protocol):
@@ -450,10 +447,6 @@ def handle_init(context: RatchetContext, args: argparse.Namespace) -> int:
     else:
         output = resolve_path(context.project_root, output)
 
-    if output.exists() and not getattr(args, "force", False):
-        echo(f"[typewiz] Refusing to overwrite existing ratchet: {output}", err=True)
-        return 1
-
     severities = resolve_severities(
         getattr(args, "severities", None),
         context.config.severities,
@@ -462,146 +455,140 @@ def handle_init(context: RatchetContext, args: argparse.Namespace) -> int:
     targets = dict(context.config.targets)
     targets.update(parse_target_entries(getattr(args, "targets", [])))
 
-    ratchet_model = ratchet_build_from_manifest(
-        manifest=context.manifest_payload,
-        runs=context.runs,
-        severities=severities or None,
-        targets=targets or None,
-        manifest_path=str(context.manifest_path),
-    )
-    ensure_parent(output)
-    write_ratchet(output, ratchet_model)
-    echo(f"[typewiz] Ratchet baseline written to {output}")
+    try:
+        result = init_ratchet(
+            manifest=context.manifest_payload,
+            runs=context.runs,
+            manifest_path=context.manifest_path,
+            severities=severities or None,
+            targets=targets or None,
+            output_path=output,
+            force=getattr(args, "force", False),
+        )
+    except RatchetServiceError as exc:
+        return _handle_service_error(exc)
+
+    echo(f"[typewiz] Ratchet baseline written to {result.output_path}")
     return 0
 
 
 def handle_check(context: RatchetContext, args: argparse.Namespace) -> int:
-    if context.ratchet_path is None:
-        raise SystemExit("Ratchet path is required for ratchet check.")
-    ratchet_model = load_ratchet(context.ratchet_path)
-    report = ratchet_compare_manifest(
-        manifest=context.manifest_payload,
-        ratchet=ratchet_model,
-        runs=context.runs,
-    )
-    ignore_signature = context.signature_policy in {
-        SignaturePolicy.WARN,
-        SignaturePolicy.IGNORE,
-    }
-    warn_signature = (
-        context.signature_policy is SignaturePolicy.WARN and report.has_signature_mismatch()
-    )
+    try:
+        result = check_ratchet(
+            manifest=context.manifest_payload,
+            ratchet_path=context.ratchet_path,
+            runs=context.runs,
+            signature_policy=context.signature_policy,
+        )
+    except RatchetServiceError as exc:
+        return _handle_service_error(exc)
+
     output_format = DataFormat.from_str(getattr(args, "format", DataFormat.TABLE.value))
 
     if output_format is DataFormat.JSON:
-        echo(json.dumps(normalise_enums_for_json(report.to_payload()), indent=2))
+        echo(json.dumps(normalise_enums_for_json(result.report.to_payload()), indent=2))
     else:
-        for line in report.format_lines(
-            ignore_signature=ignore_signature,
+        for line in result.report.format_lines(
+            ignore_signature=result.ignore_signature,
             limit=context.limit,
             summary_only=context.summary_only,
         ):
             echo(line)
 
-    exit_code = report.exit_code(ignore_signature=ignore_signature)
-    if warn_signature:
+    if result.warn_signature:
         echo("[typewiz] Signature mismatch (policy=warn)", err=True)
-    return exit_code
+    return result.exit_code
 
 
 def handle_update(context: RatchetContext, args: argparse.Namespace) -> int:
-    if context.ratchet_path is None:
-        raise SystemExit("Ratchet path is required for ratchet update.")
-    ratchet_model = load_ratchet(context.ratchet_path)
     cli_targets = parse_target_entries(getattr(args, "targets", []))
-    if cli_targets:
-        apply_target_overrides(ratchet_model, cli_targets)
+    output: Path | None = getattr(args, "output", None)
+    output = resolve_path(context.project_root, output) if output else None
 
-    report = ratchet_compare_manifest(
-        manifest=context.manifest_payload,
-        ratchet=ratchet_model,
-        runs=context.runs,
-    )
-    for line in report.format_lines(
+    try:
+        result = update_ratchet(
+            manifest=context.manifest_payload,
+            ratchet_path=context.ratchet_path,
+            runs=context.runs,
+            generated_at=context.generated_at,
+            target_overrides=cli_targets,
+            output_path=output,
+            force=getattr(args, "force", False),
+            dry_run=getattr(args, "dry_run", False),
+        )
+    except RatchetServiceError as exc:
+        return _handle_service_error(exc)
+
+    for line in result.report.format_lines(
         ignore_signature=True,
         limit=context.limit,
         summary_only=context.summary_only,
     ):
         echo(line)
 
-    updated = ratchet_apply_auto_update(
-        manifest=context.manifest_payload,
-        ratchet=ratchet_model,
-        runs=context.runs,
-        generated_at=context.generated_at,
-    )
-
-    if getattr(args, "dry_run", False):
+    if not result.wrote_file:
         echo("[typewiz] Dry-run mode; ratchet not written.")
         return 0
 
-    output: Path | None = getattr(args, "output", None)
-    if output is None:
-        output = context.ratchet_path or (context.project_root / DEFAULT_RATCHET_FILENAME).resolve()
-    else:
-        output = resolve_path(context.project_root, output)
-
-    if output.exists() and not getattr(args, "force", False):
-        echo(f"[typewiz] Refusing to overwrite existing ratchet: {output}", err=True)
-        return 1
-
-    ensure_parent(output)
-    write_ratchet(output, updated)
-    echo(f"[typewiz] Ratchet updated at {output}")
+    echo(f"[typewiz] Ratchet updated at {result.output_path}")
     return 0
 
 
 def handle_rebaseline(context: RatchetContext, args: argparse.Namespace) -> int:
-    if context.ratchet_path is None:
-        raise SystemExit("Ratchet path is required for ratchet rebaseline.")
-    ratchet_model = load_ratchet(context.ratchet_path)
-
     target_path: Path | None = getattr(args, "output", None)
     target_path = (
         context.ratchet_path
         if target_path is None
         else resolve_path(context.project_root, target_path)
     )
+    if target_path is None:
+        raise SystemExit("Ratchet path is required for ratchet rebaseline.")
 
-    if target_path.exists() and not getattr(args, "force", False):
-        echo(f"[typewiz] Refusing to overwrite existing ratchet: {target_path}", err=True)
-        return 1
+    try:
+        result = rebaseline_ratchet(
+            manifest=context.manifest_payload,
+            ratchet_path=context.ratchet_path,
+            runs=context.runs,
+            generated_at=context.generated_at,
+            output_path=target_path,
+            force=getattr(args, "force", False),
+        )
+    except RatchetServiceError as exc:
+        return _handle_service_error(exc)
 
-    refreshed = ratchet_refresh_signatures(
-        manifest=context.manifest_payload,
-        ratchet=ratchet_model,
-        runs=context.runs,
-        generated_at=context.generated_at,
-    )
-    ensure_parent(target_path)
-    write_ratchet(target_path, refreshed)
-    echo(f"[typewiz] Ratchet signatures refreshed at {target_path}")
+    echo(f"[typewiz] Ratchet signatures refreshed at {result.output_path}")
     return 0
 
 
 def handle_info(context: RatchetContext) -> int:
-    echo("[typewiz] Ratchet configuration summary")
-    echo(f"  manifest: {context.manifest_path}")
-    echo(f"  ratchet: {context.ratchet_path or '<computed>'}")
-    echo(f"  runs: {', '.join(context.runs) if context.runs else '<all>'}")
     severities = resolve_severities(None, context.config.severities)
-    echo(f"  severities: {', '.join(severity.value for severity in severities)}")
+    snapshot = describe_ratchet(
+        manifest_path=context.manifest_path,
+        ratchet_path=context.ratchet_path,
+        runs=context.runs,
+        severities=severities,
+        targets=context.config.targets,
+        signature_policy=context.config.signature,
+        limit=context.limit,
+        summary_only=context.summary_only,
+    )
 
-    if context.config.targets:
-        for key, value in sorted(context.config.targets.items()):
+    echo("[typewiz] Ratchet configuration summary")
+    echo(f"  manifest: {snapshot.manifest_path}")
+    echo(f"  ratchet: {snapshot.ratchet_path or '<computed>'}")
+    echo(f"  runs: {', '.join(snapshot.runs) if snapshot.runs else '<all>'}")
+    echo(f"  severities: {', '.join(severity.value for severity in snapshot.severities)}")
+
+    if snapshot.targets:
+        for key, value in sorted(snapshot.targets.items()):
             echo(f"  target[{key}] = {value}")
     else:
         echo("  targets: <none>")
 
-    echo(f"  signature policy: {context.config.signature}")
-    limit_display = str(context.limit) if context.limit is not None else "<none>"
+    echo(f"  signature policy: {snapshot.signature_policy}")
+    limit_display = str(snapshot.limit) if snapshot.limit is not None else "<none>"
     echo(f"  display limit: {limit_display}")
-    echo(f"  summary-only: {'yes' if context.summary_only else 'no'}")
+    echo(f"  summary-only: {'yes' if snapshot.summary_only else 'no'}")
     return 0
 
 
@@ -614,4 +601,7 @@ __all__ = [
     "handle_rebaseline",
     "handle_update",
     "register_ratchet_command",
+    "RatchetServiceError",
+    "RatchetFileExistsError",
+    "RatchetPathRequiredError",
 ]

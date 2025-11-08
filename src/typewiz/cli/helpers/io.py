@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 from typing import Protocol
 
-from typewiz._internal.utils import consume
+from typewiz.runtime import consume
 
 
 class _TextStream(Protocol):
