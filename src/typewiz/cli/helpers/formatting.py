@@ -33,7 +33,6 @@ from typewiz.core.summary_types import (
 from typewiz.core.type_aliases import RelPath, RunId
 from typewiz.core.types import RunResult
 from typewiz.error_codes import error_code_for
-from typewiz.formatting import render_table_rows, stringify
 from typewiz.override_utils import format_override_inline, override_detail_lines
 from typewiz.readiness.views import ReadinessValidationError, ReadinessViewResult
 from typewiz.runtime import JSONValue, normalise_enums_for_json
@@ -45,6 +44,44 @@ from typewiz.services.readiness import (
 )
 
 from .io import echo
+
+
+def stringify(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str | int | float):
+        return str(value)
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, Mapping):
+        mapping = cast(Mapping[str, JSONValue], value)
+        items: list[str] = []
+        for key, val in mapping.items():
+            items.append(f"{key}: {stringify(val)}")
+        return "{" + ", ".join(items) + "}"
+    if isinstance(value, Sequence) and not isinstance(value, str | bytes | bytearray):
+        sequence = cast(Sequence[JSONValue], value)
+        return "[" + ", ".join(stringify(item) for item in sequence) + "]"
+    return str(value)
+
+
+def render_table_rows(rows: Sequence[Mapping[str, JSONValue]]) -> list[str]:
+    if not rows:
+        return ["<empty>"]
+    headers = sorted({key for row in rows for key in row})
+    widths: dict[str, int] = {}
+    for header in headers:
+        max_len = max(len(header), *(len(stringify(row.get(header))) for row in rows))
+        widths[header] = max_len
+    header_line = " | ".join(header.ljust(widths[header]) for header in headers)
+    separator = "-+-".join("-" * widths[header] for header in headers)
+    lines = [header_line, separator]
+    lines.extend(
+        " | ".join(stringify(row.get(header)).ljust(widths[header]) for header in headers)
+        for row in rows
+    )
+    return lines
+
 
 SUMMARY_FIELD_CHOICES: set[SummaryField] = set(SummaryField)
 

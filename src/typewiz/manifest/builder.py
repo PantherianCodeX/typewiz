@@ -41,7 +41,7 @@ class ManifestBuilder:
         )
 
     def add_run(self, run: RunResult, *, max_depth: int = 3) -> None:
-        from typewiz.aggregate import summarise_run
+        from .aggregate import summarise_run
 
         logger.debug("Adding run: tool=%s mode=%s", run.tool, run.mode)
         summary: AggregatedData = summarise_run(run, max_depth=max_depth)

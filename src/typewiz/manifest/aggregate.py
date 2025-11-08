@@ -9,16 +9,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final, cast
 
 from typewiz.core.categories import coerce_category_key
-
-from .core.model_types import RecommendationCode, SeverityLevel
-from .core.type_aliases import CategoryKey, CategoryName, RuleName
-from .readiness.compute import CATEGORY_PATTERNS
+from typewiz.core.model_types import RecommendationCode, SeverityLevel
+from typewiz.core.type_aliases import CategoryKey, CategoryName, RuleName
+from typewiz.readiness.compute import CATEGORY_PATTERNS
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
-    from .core.types import RunResult
-    from .manifest.typed import AggregatedData, FileDiagnostic, FileEntry, FolderEntry
+    from typewiz.core.types import RunResult
+    from typewiz.manifest.typed import AggregatedData, FileDiagnostic, FileEntry, FolderEntry
 
 
 def _default_file_diagnostics() -> list[FileDiagnostic]:

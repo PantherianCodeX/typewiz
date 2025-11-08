@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from typewiz.aggregate import summarise_run
 from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.core.type_aliases import ToolName
 from typewiz.core.types import Diagnostic, RunResult
+from typewiz.manifest.aggregate import summarise_run
 
 PYRIGHT_TOOL = ToolName("pyright")
 
