@@ -16,7 +16,7 @@
 - Typing is non-optional: annotate every function, method, variable, constant, and attribute. No `Any` except in rare, justified containment boundaries.
 - Type checkers: `mypy` and `pyright` must pass in strict mode. Config is in `mypy.ini` and `pyrightconfig.json` and already strict.
 - Public typing: maintain `src/typewiz/py.typed` and run `make verifytypes` to validate exported types.
-- Pydantic v2 is the canonical way to model/validate internal configuration and data interchange (see `src/typewiz/config.py`).
+- Pydantic v2 is the canonical way to model/validate internal configuration and data interchange (see `src/typewiz/config/models.py`).
 - External/interop formats must be specified with JSON Schema (see `schemas/typing_audit_manifest.schema.json`). Keep schema and code in sync.
 
 **Design & Patterns**

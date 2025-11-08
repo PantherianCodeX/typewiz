@@ -2,28 +2,18 @@
 
 from __future__ import annotations
 
-import tomllib as toml
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar, Final, Literal, cast
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    ValidationError,
-    ValidationInfo,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from typewiz._internal.collection_utils import dedupe_preserve
 from typewiz._internal.exceptions import TypewizValidationError
-
-from .core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
-from .core.type_aliases import EngineName, ProfileName, RunId, RunnerName
-from .data_validation import require_non_negative_int
+from typewiz.core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
+from typewiz.core.type_aliases import EngineName, ProfileName, RunId, RunnerName
+from typewiz.data_validation import require_non_negative_int
 
 CONFIG_VERSION: Final[int] = 0
 FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)
@@ -549,7 +539,7 @@ def _engine_settings_from_model(model: EngineSettingsModel) -> EngineSettings:
     return settings
 
 
-def _path_override_from_model(path: Path, model: PathOverrideModel) -> PathOverride:
+def path_override_from_model(path: Path, model: PathOverrideModel) -> PathOverride:
     override = PathOverride(path=path)
     override.engine_settings = {
         EngineName(name): _engine_settings_from_model(settings_model)
@@ -563,7 +553,7 @@ def _path_override_from_model(path: Path, model: PathOverrideModel) -> PathOverr
     return override
 
 
-def _model_to_dataclass(model: AuditConfigModel) -> AuditConfig:
+def model_to_dataclass(model: AuditConfigModel) -> AuditConfig:
     data = model.model_dump(mode="python")
     engine_settings_models = model.engine_settings
     plugin_args_raw: dict[str, list[str]] = data.get("plugin_args", {}) or {}
@@ -586,7 +576,7 @@ def _model_to_dataclass(model: AuditConfigModel) -> AuditConfig:
     return audit
 
 
-def _ratchet_from_model(model: RatchetConfigModel) -> RatchetConfig:
+def ratchet_from_model(model: RatchetConfigModel) -> RatchetConfig:
     payload = model.model_dump(mode="python")
     payload["runs"] = [RunId(item) for item in cast("Sequence[str]", payload.get("runs", []))]
     payload["severities"] = [
@@ -594,105 +584,3 @@ def _ratchet_from_model(model: RatchetConfigModel) -> RatchetConfig:
         for item in cast("Sequence[str]", payload.get("severities", []))
     ]
     return RatchetConfig(**payload)
-
-
-def resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:
-    for field_name in ("manifest_path", "dashboard_json", "dashboard_markdown", "dashboard_html"):
-        value = getattr(audit, field_name)
-        if value is None:
-            continue
-        if not value.is_absolute():
-            resolved = (base_dir / value).resolve()
-            setattr(audit, field_name, resolved)
-    for settings in audit.engine_settings.values():
-        if settings.config_file and not settings.config_file.is_absolute():
-            settings.config_file = (base_dir / settings.config_file).resolve()
-        for profile in settings.profiles.values():
-            if profile.config_file and not profile.config_file.is_absolute():
-                profile.config_file = (base_dir / profile.config_file).resolve()
-    for override in audit.path_overrides:
-        if not override.path.is_absolute():
-            override.path = (base_dir / override.path).resolve()
-        for settings in override.engine_settings.values():
-            if settings.config_file and not settings.config_file.is_absolute():
-                settings.config_file = (override.path / settings.config_file).resolve()
-            for profile in settings.profiles.values():
-                if profile.config_file and not profile.config_file.is_absolute():
-                    profile.config_file = (override.path / profile.config_file).resolve()
-
-
-def _resolve_ratchet_paths(base_dir: Path, ratchet: RatchetConfig) -> None:
-    if ratchet.manifest_path and not ratchet.manifest_path.is_absolute():
-        ratchet.manifest_path = (base_dir / ratchet.manifest_path).resolve()
-    if ratchet.output_path and not ratchet.output_path.is_absolute():
-        ratchet.output_path = (base_dir / ratchet.output_path).resolve()
-
-
-def _discover_path_overrides(root: Path) -> list[PathOverride]:
-    overrides: list[PathOverride] = []
-    visited: set[Path] = set()
-    for filename in FOLDER_CONFIG_FILENAMES:
-        for config_path in sorted(root.rglob(filename)):
-            if not config_path.is_file():
-                continue
-            directory = config_path.parent.resolve()
-            try:
-                raw = toml.loads(config_path.read_text(encoding="utf-8"))
-            except Exception as exc:  # pragma: no cover - IO errors
-                raise ConfigReadError(config_path, exc) from exc
-            try:
-                model = PathOverrideModel.model_validate(raw)
-            except ValidationError as exc:
-                raise DirectoryOverrideValidationError(config_path, exc) from exc
-            override = _path_override_from_model(directory, model)
-            overrides.append(override)
-            visited.add(directory)
-    overrides.sort(key=lambda item: (len(item.path.parts), item.path.as_posix()))
-    return overrides
-
-
-def load_config(explicit_path: Path | None = None) -> Config:
-    search_order: list[Path] = []
-    if explicit_path:
-        search_order.append(explicit_path)
-    else:
-        search_order.extend((Path("typewiz.toml"), Path(".typewiz.toml")))
-
-    for candidate in search_order:
-        if not candidate.exists():
-            continue
-        raw_map: dict[str, object] = toml.loads(candidate.read_text(encoding="utf-8"))
-        tool_obj = raw_map.get("tool")
-        if isinstance(tool_obj, dict):
-            tool_section_any = cast("dict[str, object]", tool_obj).get("typewiz")
-            if isinstance(tool_section_any, dict):
-                raw_map = cast("dict[str, object]", tool_section_any)
-        try:
-            cfg_model = ConfigModel.model_validate(raw_map)
-        except ValidationError as exc:  # pragma: no cover - configuration errors
-            raise InvalidConfigFileError(candidate, exc) from exc
-        audit = _model_to_dataclass(cfg_model.audit)
-        ratchet = _ratchet_from_model(cfg_model.ratchet)
-        root = candidate.parent.resolve()
-        audit.path_overrides = _discover_path_overrides(root)
-        resolve_path_fields(root, audit)
-        _resolve_ratchet_paths(root, ratchet)
-        return Config(audit=audit, ratchet=ratchet)
-
-    root = Path.cwd().resolve()
-    cfg = Config()
-    cfg.audit.runners = [
-        RunnerName(EngineName("pyright")),
-        RunnerName(EngineName("mypy")),
-    ]
-    cfg.audit.path_overrides = _discover_path_overrides(root)
-    resolve_path_fields(root, cfg.audit)
-    _resolve_ratchet_paths(root, cfg.ratchet)
-    return cfg
-
-
-type FolderConfigFilename = Literal["typewiz.dir.toml", ".typewizdir.toml"]
-FOLDER_CONFIG_FILENAMES: Final[tuple[FolderConfigFilename, FolderConfigFilename]] = (
-    "typewiz.dir.toml",
-    ".typewizdir.toml",
-)
