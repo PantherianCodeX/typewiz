@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
     from .core.types import RunResult
-    from .typed_manifest import AggregatedData, FileDiagnostic, FileEntry, FolderEntry
+    from .manifest.typed import AggregatedData, FileDiagnostic, FileEntry, FolderEntry
 
 
 def _default_file_diagnostics() -> list[FileDiagnostic]:

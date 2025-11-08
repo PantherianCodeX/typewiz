@@ -8,18 +8,17 @@ from pathlib import Path
 from typing import cast
 
 from typewiz._internal.utils import consume, detect_tool_versions, normalise_enums_for_json
+from typewiz.core.model_types import clone_override_entries
+from typewiz.core.types import RunResult
 
-from .aggregate import summarise_run
-from .core.model_types import clone_override_entries
-from .core.types import RunResult
-from .manifest_versioning import CURRENT_MANIFEST_VERSION
-from .typed_manifest import (
+from .typed import (
     AggregatedData,
     EngineError,
     EngineOptionsEntry,
     ManifestData,
     RunPayload,
 )
+from .versioning import CURRENT_MANIFEST_VERSION
 
 logger: logging.Logger = logging.getLogger("typewiz")
 
@@ -42,6 +41,8 @@ class ManifestBuilder:
         )
 
     def add_run(self, run: RunResult, *, max_depth: int = 3) -> None:
+        from typewiz.aggregate import summarise_run
+
         logger.debug("Adding run: tool=%s mode=%s", run.tool, run.mode)
         summary: AggregatedData = summarise_run(run, max_depth=max_depth)
         options: EngineOptionsEntry = {

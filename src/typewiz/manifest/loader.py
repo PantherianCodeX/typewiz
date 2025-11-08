@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .manifest_models import validate_manifest_payload
-from .typed_manifest import ManifestData
+from .models import validate_manifest_payload
+from .typed import ManifestData
 
 
 def load_manifest_data(raw: Any) -> ManifestData:

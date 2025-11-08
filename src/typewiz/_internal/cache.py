@@ -28,7 +28,7 @@ from ..core.type_aliases import (
 )
 from ..core.types import Diagnostic
 from ..data_validation import coerce_int, coerce_object_list, coerce_str_list
-from ..typed_manifest import ToolSummary
+from ..manifest.typed import ToolSummary
 
 if TYPE_CHECKING:
     from ..core.model_types import (

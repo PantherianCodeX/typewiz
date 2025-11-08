@@ -23,7 +23,7 @@ from .core.type_aliases import CacheKey, EngineName, PathKey, ProfileName, RelPa
 from .core.types import RunResult
 from .engines import EngineContext, EngineOptions
 from .engines.base import BaseEngine, EngineResult
-from .typed_manifest import ToolSummary
+from .manifest.typed import ToolSummary
 
 
 @dataclass(slots=True)

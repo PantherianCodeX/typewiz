@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from typewiz._internal.utils import JSONValue
 
-from ..typed_manifest import EngineError, ToolSummary
+from ..manifest.typed import EngineError, ToolSummary
 from .model_types import SeverityLevel
 from .type_aliases import Command, RelPath, ToolName
 

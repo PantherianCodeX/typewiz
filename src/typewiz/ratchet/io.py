@@ -10,11 +10,11 @@ from typing import TYPE_CHECKING
 
 from typewiz._internal.utils import normalise_enums_for_json
 
-from ..manifest_loader import load_manifest_data
+from ..manifest.loader import load_manifest_data
 from .models import RatchetModel
 
 if TYPE_CHECKING:
-    from ..typed_manifest import ManifestData
+    from ..manifest.typed import ManifestData
 
 
 def current_timestamp() -> str:

@@ -25,9 +25,9 @@ Configuration errors (`typewiz.config`):
 Manifest and schema errors:
 
 - `typewiz.manifest_models.ManifestValidationError` — Pydantic validation failure. Code: `TW300`.
-- `typewiz.manifest_versioning.InvalidManifestRunsError` — `runs` must be a list. Code: `TW301`.
-- `typewiz.manifest_versioning.UnsupportedManifestVersionError` — unknown `schemaVersion`. Code: `TW302`.
-- `typewiz.manifest_versioning.InvalidManifestVersionTypeError` — bad `schemaVersion` type. Code: `TW303`.
+- `typewiz.manifest.versioning.InvalidManifestRunsError` — `runs` must be a list. Code: `TW301`.
+- `typewiz.manifest.versioning.UnsupportedManifestVersionError` — unknown `schemaVersion`. Code: `TW302`.
+- `typewiz.manifest.versioning.InvalidManifestVersionTypeError` — bad `schemaVersion` type. Code: `TW303`.
 
 Dashboard errors:
 

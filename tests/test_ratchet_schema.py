@@ -9,14 +9,14 @@ import pytest
 
 from typewiz.core.model_types import SeverityLevel
 from typewiz.core.type_aliases import RelPath
-from typewiz.ratchet.core import build_ratchet_from_manifest
-from typewiz.typed_manifest import (
+from typewiz.manifest.typed import (
     EngineOptionsEntry,
     FileEntry,
     ManifestData,
     RunPayload,
     RunSummary,
 )
+from typewiz.ratchet.core import build_ratchet_from_manifest
 
 
 class _DiagnosticDict(TypedDict, total=False):

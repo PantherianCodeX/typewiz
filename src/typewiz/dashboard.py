@@ -37,7 +37,8 @@ from .core.summary_types import (
 )
 from .core.type_aliases import CategoryKey, RelPath, RunId
 from .data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
-from .manifest_loader import load_manifest_data
+from .manifest.loader import load_manifest_data
+from .manifest.typed import ManifestData, ToolSummary
 from .override_utils import format_overrides_block
 from .readiness import (
     CATEGORY_LABELS,
@@ -47,7 +48,6 @@ from .readiness import (
     ReadinessPayload,
     compute_readiness,
 )
-from .typed_manifest import ManifestData, ToolSummary
 
 logger: logging.Logger = logging.getLogger("typewiz.dashboard")
 

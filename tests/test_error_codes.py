@@ -11,7 +11,7 @@ from pydantic_core import PydanticCustomError
 from typewiz._internal.error_codes import error_code_catalog, error_code_for
 from typewiz._internal.exceptions import TypewizError, TypewizTypeError, TypewizValidationError
 from typewiz.config import ConfigValidationError
-from typewiz.manifest_models import ManifestValidationError
+from typewiz.manifest.models import ManifestValidationError
 
 
 def test_error_code_for_known_hierarchy() -> None:

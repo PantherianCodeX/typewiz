@@ -22,7 +22,7 @@ from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
 from typewiz.core.type_aliases import BuiltinEngineName, Command, ToolName
 from typewiz.core.types import Diagnostic
 from typewiz.engines.base import EngineResult
-from typewiz.typed_manifest import ToolSummary
+from typewiz.manifest.typed import ToolSummary
 
 logger: logging.Logger = logging.getLogger("typewiz")
 PYRIGHT_NAME: Final[BuiltinEngineName] = "pyright"

@@ -12,7 +12,7 @@ from typewiz.config import AuditConfig
 from typewiz.core.model_types import CategoryMapping, Mode, OverrideEntry
 from typewiz.core.type_aliases import Command, ProfileName, RelPath, ToolName
 from typewiz.core.types import Diagnostic
-from typewiz.typed_manifest import ToolSummary
+from typewiz.manifest.typed import ToolSummary
 
 logger: logging.Logger = logging.getLogger("typewiz.engine")
 

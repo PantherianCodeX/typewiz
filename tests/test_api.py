@@ -15,7 +15,7 @@ from typewiz.core.model_types import Mode, ReadinessStatus, SeverityLevel
 from typewiz.core.type_aliases import EngineName, ProfileName, RunnerName, ToolName
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.typed_manifest import ToolSummary
+from typewiz.manifest.typed import ToolSummary
 
 STUB_TOOL = ToolName("stub")
 

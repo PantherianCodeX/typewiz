@@ -12,7 +12,7 @@ from typing import Any, Protocol, cast
 from typewiz._internal.error_codes import error_code_for
 from typewiz._internal.utils import consume
 from typewiz.core.model_types import ManifestAction
-from typewiz.manifest_models import (
+from typewiz.manifest.models import (
     ManifestValidationError,
     manifest_json_schema,
     validate_manifest_payload,

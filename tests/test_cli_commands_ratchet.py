@@ -12,10 +12,10 @@ from typewiz.cli.commands.ratchet import RatchetContext, handle_info, handle_ini
 from typewiz.config import RatchetConfig
 from typewiz.core.model_types import SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import RunId
-from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
+from typewiz.manifest.typed import ManifestData
+from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 from typewiz.ratchet.models import RatchetModel, RatchetRunBudgetModel
 from typewiz.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
-from typewiz.typed_manifest import ManifestData
 
 
 def _make_context(

@@ -19,8 +19,8 @@ from ..config import (
     UnsupportedConfigVersionError,
 )
 from ..dashboard import DashboardTypeError
-from ..manifest_models import ManifestValidationError
-from ..manifest_versioning import (
+from ..manifest.models import ManifestValidationError
+from ..manifest.versioning import (
     InvalidManifestRunsError,
     InvalidManifestVersionTypeError,
     UnsupportedManifestVersionError,

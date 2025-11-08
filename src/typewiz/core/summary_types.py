@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TypedDict
 
-from ..typed_manifest import EngineOptionsEntry, ToolSummary
+from ..manifest.typed import EngineOptionsEntry, ToolSummary
 from .model_types import ReadinessStatus, SeverityLevel
 from .type_aliases import CategoryKey, CategoryName, Command, RunId
 

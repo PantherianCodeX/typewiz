@@ -58,7 +58,7 @@ from typewiz.core.summary_types import (
 from typewiz.core.type_aliases import CategoryKey, EngineName, RelPath, RunId, RunnerName, ToolName
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.manifest_versioning import CURRENT_MANIFEST_VERSION
+from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 
 _print_summary = print_summary
 _print_readiness_summary = print_readiness_summary

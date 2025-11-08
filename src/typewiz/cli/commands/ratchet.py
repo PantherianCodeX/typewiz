@@ -30,6 +30,7 @@ from typewiz.cli.helpers import (
 from typewiz.config import RatchetConfig, load_config
 from typewiz.core.model_types import DataFormat, RatchetAction, SignaturePolicy
 from typewiz.core.type_aliases import RunId
+from typewiz.manifest.typed import ManifestData
 from typewiz.ratchet import (
     apply_auto_update as ratchet_apply_auto_update,
 )
@@ -48,7 +49,6 @@ from typewiz.ratchet import (
 )
 from typewiz.ratchet.io import current_timestamp
 from typewiz.ratchet.io import load_manifest as load_ratchet_manifest
-from typewiz.typed_manifest import ManifestData
 
 
 @dataclass(slots=True)

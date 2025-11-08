@@ -25,7 +25,7 @@ from .core.type_aliases import RelPath
 from .dashboard import build_summary, render_markdown
 from .engines import EngineContext, resolve_engines
 from .html_report import render_html
-from .manifest import ManifestBuilder
+from .manifest.builder import ManifestBuilder
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from .core.summary_types import SummaryData
     from .core.types import RunResult
     from .engines.base import BaseEngine
-    from .typed_manifest import ManifestData
+    from .manifest.typed import ManifestData
 
 logger: logging.Logger = logging.getLogger("typewiz")
 
