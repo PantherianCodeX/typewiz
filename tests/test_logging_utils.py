@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Generator
 
-from pytest import CaptureFixture
+from pytest import CaptureFixture, fixture
 
-from typewiz._internal.logging_utils import configure_logging
+from typewiz._internal.logging_utils import LOG_LEVELS, configure_logging
 from typewiz.core.model_types import LogComponent, Mode
 
 
@@ -46,3 +47,28 @@ def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str
     exception_payload = json.loads(lines[-1])
     assert exception_payload["message"] == "broken"
     assert "exc_info" in exception_payload
+
+
+def test_configure_logging_respects_level(capsys: CaptureFixture[str]) -> None:
+    assert LOG_LEVELS == ("debug", "info", "warning", "error")
+    configure_logging("text", log_level="warning")
+    logger = logging.getLogger("typewiz")
+    logger.info("ignored")
+    logger.warning("recorded")
+    captured = capsys.readouterr()
+    combined = captured.out + captured.err
+    assert "ignored" not in combined
+    assert "recorded" in combined
+
+
+@fixture(autouse=True)
+def reset_typewiz_logging() -> Generator[None, None, None]:
+    logger = logging.getLogger("typewiz")
+    handlers = list(logger.handlers)
+    level = logger.level
+    propagate = logger.propagate
+    yield
+    logger.handlers.clear()
+    logger.handlers.extend(handlers)
+    logger.setLevel(level)
+    logger.propagate = propagate

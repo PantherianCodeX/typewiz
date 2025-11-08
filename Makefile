@@ -151,8 +151,8 @@ pytest.verbose: ## Run pytest verbosely
 pytest.failfast: ## Run pytest, stopping on first failure
 	$(PYTEST) -x
 
-pytest.cov: ## Run pytest with coverage on src/typewiz (90% gate)
-	$(PYTEST) --cov=src/typewiz --cov-report=term --cov-fail-under=90
+pytest.cov: ## Run pytest with coverage on src/typewiz (95% gate)
+	$(PYTEST) --cov=src/typewiz --cov-report=term --cov-fail-under=95
 
 pytest.clean: ## Clean pytest cache
 	rm -rf .pytest_cache

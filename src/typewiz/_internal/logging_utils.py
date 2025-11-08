@@ -14,6 +14,12 @@ LOG_FORMATS: Final[tuple[Literal["text", "json"], ...]] = cast(
     tuple[Literal["text", "json"], ...],
     tuple(format_.value for format_ in LogFormat),
 )
+LOG_LEVELS: Final[tuple[Literal["debug", "info", "warning", "error"], ...]] = (
+    "debug",
+    "info",
+    "warning",
+    "error",
+)
 
 
 class JSONLogFormatter(logging.Formatter):
@@ -48,7 +54,22 @@ def _coerce_log_format(log_format: LogFormat | str) -> LogFormat:
     return LogFormat.from_str(log_format)
 
 
-def configure_logging(log_format: LogFormat | str) -> None:
+def _coerce_log_level(level: str | int) -> int:
+    if isinstance(level, int):
+        return level
+    value = str(level).strip().lower()
+    match value:
+        case "debug":
+            return logging.DEBUG
+        case "warning":
+            return logging.WARNING
+        case "error":
+            return logging.ERROR
+        case _:
+            return logging.INFO
+
+
+def configure_logging(log_format: LogFormat | str, *, log_level: str | int = "info") -> None:
     """Configure Typewiz logging according to the requested format."""
 
     selected_format = _coerce_log_format(log_format)
@@ -61,7 +82,7 @@ def configure_logging(log_format: LogFormat | str) -> None:
     root_logger = logging.getLogger("typewiz")
     root_logger.handlers.clear()
     root_logger.addHandler(handler)
-    root_logger.setLevel(logging.INFO)
+    root_logger.setLevel(_coerce_log_level(log_level))
     root_logger.propagate = False
 
     # Ensure child loggers inherit the configured handler/level.
@@ -72,7 +93,7 @@ def configure_logging(log_format: LogFormat | str) -> None:
         "typewiz.engine.registry",
         "typewiz.dashboard",
     ):
-        logging.getLogger(child).setLevel(logging.INFO)
+        logging.getLogger(child).setLevel(_coerce_log_level(log_level))
 
 
 class StructuredLogExtra(TypedDict, total=False):
@@ -85,4 +106,4 @@ class StructuredLogExtra(TypedDict, total=False):
     exit_code: int
 
 
-__all__ = ["LOG_FORMATS", "StructuredLogExtra", "configure_logging"]
+__all__ = ["LOG_FORMATS", "LOG_LEVELS", "StructuredLogExtra", "configure_logging"]

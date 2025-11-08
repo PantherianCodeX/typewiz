@@ -2,6 +2,56 @@
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "typewiz"
+version = "0.1.0"
+description = "Python typing diagnostics aggregator with pluggable runners"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.12"
+license = "LicenseRef-Proprietary"
+authors = [{ name = "PantherianCodeX" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Build Tools",
+]
+dependencies = [
+  "pyright>=1.1.407,<2.0.0",
+  "mypy>=1.18.2,<2.0.0",
+  "pydantic>=2.12.4,<3.0.0",
+  "pre-commit>=4.3.0,<5.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/PantherianCodeX/typewiz"
+Documentation = "https://github.com/PantherianCodeX/typewiz"
+"Issue Tracker" = "https://github.com/PantherianCodeX/typewiz/issues"
+
+[project.scripts]
+typewiz = "typewiz.cli:main"
+typing-inspector = "typewiz.cli:main"
+
+[project.optional-dependencies]
+tests = [
+  "pytest>=8.4.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+license-files = ["LICENSE", "NOTICE"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["typewiz*"]
+
+[tool.setuptools.package-data]
+typewiz = ["py.typed"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import logging
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -73,7 +72,6 @@ def test_run_pyright_records_tool_summary(tmp_path: Path, monkeypatch: pytest.Mo
 def test_run_pyright_logs_mismatch(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
     diagnostics = [
         {
@@ -91,12 +89,19 @@ def test_run_pyright_logs_mismatch(
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     consume((tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8"))
     _patch_run_command(monkeypatch, payload)
+    warnings: list[str] = []
 
-    with caplog.at_level(logging.WARNING):
-        result = run_pyright(tmp_path, mode=Mode.CURRENT, command=["pyright", "--outputjson"])
+    def fake_warning(message: str, *args: object, **kwargs: object) -> None:
+        if args:
+            warnings.append(message % args)
+        else:
+            warnings.append(message)
 
-    warnings = [record for record in caplog.records if record.levelno == logging.WARNING]
-    assert any("pyright summary mismatch" in record.message for record in warnings)
+    monkeypatch.setattr("typewiz.engines.execution.logger.warning", fake_warning)
+
+    result = run_pyright(tmp_path, mode=Mode.CURRENT, command=["pyright", "--outputjson"])
+
+    assert any("pyright summary mismatch" in warning for warning in warnings)
     assert result.tool_summary == {"errors": 0, "warnings": 2, "information": 0, "total": 2}
     assert len(result.diagnostics) == 1
     assert result.diagnostics[0].severity is SeverityLevel.WARNING

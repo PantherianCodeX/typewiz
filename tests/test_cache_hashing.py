@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 
+from typewiz._internal import cache as cache_module
 from typewiz._internal.cache import collect_file_hashes
 from typewiz._internal.utils import consume
 from typewiz.core.model_types import FileHashPayload
@@ -101,3 +102,58 @@ def test_collect_file_hashes_honours_worker_env(
 
     assert recorded["workers"] == 4
     assert list(hashes.keys()) == [PathKey("worker.py")]
+
+
+def test_collect_file_hashes_filters_gitignored_paths(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    project_root = tmp_path / "project"
+    repo_root = tmp_path
+    project_root.mkdir()
+    _write(project_root / "keep.py", "print('keep')")
+    _write(project_root / "skip.py", "print('skip')")
+
+    def fake_repo_root(_: Path) -> Path:
+        return repo_root
+
+    def fake_git_list_files(_: Path) -> set[str]:
+        return {"project/keep.py", "outside.py"}
+
+    monkeypatch.setattr(cache_module, "_git_repo_root", fake_repo_root)
+    monkeypatch.setattr(cache_module, "_git_list_files", fake_git_list_files)
+
+    hashes, truncated = collect_file_hashes(
+        project_root,
+        paths=["."],
+        respect_gitignore=True,
+        hash_workers=0,
+    )
+    assert not truncated
+    assert list(hashes.keys()) == [PathKey("keep.py")]
+
+
+def test_collect_file_hashes_enforces_bytes_budget(tmp_path: Path) -> None:
+    _write(tmp_path / "one.py", "print('1')")
+    _write(tmp_path / "two.py", "print('2')")
+    hashes, truncated = collect_file_hashes(
+        tmp_path,
+        paths=["one.py", "two.py"],
+        max_bytes=5,
+        hash_workers=0,
+    )
+    assert truncated is True
+    assert hashes == {}
+
+
+def test_collect_file_hashes_stops_after_max_files(tmp_path: Path) -> None:
+    _write(tmp_path / "one.py", "print('1')")
+    _write(tmp_path / "two.py", "print('2')")
+    hashes, truncated = collect_file_hashes(
+        tmp_path,
+        paths=["."],
+        max_files=1,
+        hash_workers=0,
+    )
+    assert truncated is True
+    assert len(hashes) == 1

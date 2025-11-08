@@ -25,7 +25,7 @@ def _load_error_codes(src_path: Path) -> Iterable[str]:
     if str(src_path) not in sys.path:
         sys.path.insert(0, str(src_path))
     # Import lazily after path injection to avoid ModuleNotFoundError
-    from typewiz._internal.error_codes import error_code_catalog  # type: ignore
+    from typewiz._internal.error_codes import error_code_catalog
 
     return error_code_catalog().values()
 

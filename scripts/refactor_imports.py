@@ -52,7 +52,7 @@ def _module_name_from_path(path: Path, root: Path) -> str | None:
         return None
     parts[-1] = _strip_suffix(parts[-1])
     if parts[-1] == "__init__":
-        parts.pop()
+        _ = parts.pop()
     if not parts:
         return None
     return ".".join(parts)

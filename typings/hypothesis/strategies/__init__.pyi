@@ -58,6 +58,8 @@ def text(
     min_size: int | None = ...,
     max_size: int | None = ...,
 ) -> SearchStrategy[str]: ...
+def one_of(*strategies: SearchStrategy[Any]) -> SearchStrategy[Any]: ...
+def none() -> SearchStrategy[None]: ...
 
 __all__ = [
     "SearchStrategy",
@@ -70,6 +72,8 @@ __all__ = [
     "integers",
     "just",
     "lists",
+    "none",
+    "one_of",
     "sampled_from",
     "text",
 ]

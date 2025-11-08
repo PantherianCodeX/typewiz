@@ -31,7 +31,7 @@ This project uses strict typing and automated hooks to keep quality high.
 - Formatting and imports: Ruff (formatter + I rules)
 - Linting: Ruff (with autofix)
 - Typing: pyright (strict) and mypy (strict)
-- Tests: `make pytest.cov` (pytest under the hood, 90% coverage gate)
+- Tests: `make pytest.cov` (pytest under the hood, 95% coverage gate)
 - Error code sync: `make check.error-codes`
 
 If any hook fails, fix the issues and commit again.
@@ -55,7 +55,7 @@ Settings applied by `.vscode/settings.json`:
 make ci.check            # run lint, type checks, tests (coverage gate)
 make all.lint            # lint + format check (Ruff)
 make type                # mypy + pyright (strict)
-make pytest.cov          # pytest with coverage ≥90%
+make pytest.cov          # pytest with coverage ≥95%
 make check.error-codes   # ensure error code registry matches docs
 make verifytypes         # pyright --verifytypes for public typing
 make hooks.update        # autoupdate pre-commit hook versions

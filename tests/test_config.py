@@ -6,20 +6,28 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from pydantic import ValidationError
 
 import typewiz.config as config_module
+import typewiz.config.models as config_models
 from typewiz._internal.utils import consume
 from typewiz.audit.options import merge_audit_configs
 from typewiz.config import (
     AuditConfig,
     AuditConfigModel,
+    ConfigFieldChoiceError,
+    ConfigFieldTypeError,
+    ConfigReadError,
     EngineProfile,
     EngineProfileModel,
     EngineSettings,
     EngineSettingsModel,
+    InvalidConfigFileError,
     PathOverride,
     RatchetConfig,
     RatchetConfigModel,
+    UnknownEngineProfileError,
+    UnsupportedConfigVersionError,
     load_config,
 )
 from typewiz.core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
@@ -235,6 +243,58 @@ signature = "ignore"
     assert cfg.ratchet.signature is SignaturePolicy.IGNORE
 
 
+def test_directory_override_validation_error_message(tmp_path: Path) -> None:
+    error = config_models.DirectoryOverrideValidationError(tmp_path, ValueError("boom"))
+    assert str(error).startswith(f"Invalid typewiz directory override in {tmp_path}")
+
+
+def test_engine_profile_model_requires_string_inherit() -> None:
+    invalid_value: object = object()
+    with pytest.raises(ValidationError, match="inherit must be a string"):
+        _ = EngineProfileModel(inherit=cast(str, invalid_value))
+
+
+def test_engine_settings_model_requires_string_default_profile() -> None:
+    invalid_value: object = object()
+    with pytest.raises(ValidationError, match="default_profile must be a string"):
+        _ = EngineSettingsModel(default_profile=cast(str, invalid_value))
+
+
+def test_audit_config_model_coerces_limits_and_fail_on() -> None:
+    model = AuditConfigModel.model_validate({"max_depth": "5", "fail_on": "errors"})
+    assert model.max_depth == 5
+    assert model.fail_on is FailOnPolicy.ERRORS
+    with pytest.raises(ValidationError, match="fail_on must be one of"):
+        _ = AuditConfigModel.model_validate({"fail_on": "unknown"})
+    with pytest.raises(ValidationError, match="fail_on must be a string"):
+        _ = AuditConfigModel.model_validate({"fail_on": 123})
+
+
+def test_audit_config_model_coerces_plugin_args_non_dict() -> None:
+    model = AuditConfigModel.model_validate({"plugin_args": ["not-a-dict"]})
+    assert model.plugin_args == {}
+
+
+def test_ratchet_config_model_coerces_targets_and_signature() -> None:
+    model = RatchetConfigModel.model_validate({
+        "targets": {"error": "4", "warn": True, "bad": "x"},
+        "signature": "warn",
+    })
+    assert model.targets["error"] == 4
+    assert model.targets["warn"] == 1
+    assert "bad" not in model.targets
+    assert model.signature is SignaturePolicy.WARN
+    with pytest.raises(ValidationError, match="ratchet\\.signature must be one of"):
+        _ = RatchetConfigModel.model_validate({"signature": "invalid"})
+    with pytest.raises(ValidationError, match="ratchet\\.signature must be a string"):
+        _ = RatchetConfigModel.model_validate({"signature": 123})
+
+
+def test_config_model_rejects_unknown_version() -> None:
+    with pytest.raises(ValidationError, match="Unsupported config_version"):
+        _ = config_models.ConfigModel(config_version=999)
+
+
 def test_ensure_list_variants() -> None:
     assert ensure_list(None) is None
     assert ensure_list("  item  ") == ["item"]
@@ -347,6 +407,62 @@ def test_ratchet_config_runs_coerced_to_run_id() -> None:
     model = RatchetConfigModel.model_validate({"runs": ["pyright:current", "  mypy:full  "]})
     assert model.runs == [RunId("pyright:current"), RunId("mypy:full")]
     config = RatchetConfig(
-        runs=cast(list[RunId], ["pyright:current ", RunId("mypy:full")]),
+        runs=[RunId("pyright:current "), RunId("mypy:full")],
     )
     assert config.runs == [RunId("pyright:current"), RunId("mypy:full")]
+
+
+def test_ensure_list_behaviour() -> None:
+    assert ensure_list(" value ") == ["value"]
+    assert ensure_list(["a", "b"]) == ["a", "b"]
+    assert ensure_list(123) == []
+    assert ensure_list(None) is None
+
+
+def test_ratchet_config_post_init_strips_runs() -> None:
+    cfg = RatchetConfig(runs=[RunId("pyright:current"), RunId("")])
+    assert cfg.runs == [RunId("pyright:current")]
+
+
+def test_audit_config_post_init_coerces_keys() -> None:
+    cfg = AuditConfig(
+        plugin_args={EngineName("pyright"): ["--foo"]},
+        active_profiles={EngineName("pyright"): ProfileName("strict")},
+    )
+    assert list(cfg.plugin_args) == [EngineName("pyright")]
+    assert cfg.active_profiles == {EngineName("pyright"): ProfileName("strict")}
+
+
+def test_audit_config_model_coercions() -> None:
+    model = AuditConfigModel.model_validate({
+        "fail_on": "warnings",
+        "plugin_args": {"pyright": ["--foo", "--foo"]},
+        "engines": {
+            "pyright": {
+                "profiles": {"strict": {"plugin_args": ["--strict"]}},
+            }
+        },
+        "active_profiles": {"pyright": "strict"},
+        "full_paths": "src",
+    })
+    assert model.fail_on is FailOnPolicy.WARNINGS
+    assert model.plugin_args == {"pyright": ["--foo"]}
+    assert model.full_paths == ["src"]
+
+
+def test_audit_config_model_invalid_fail_on() -> None:
+    with pytest.raises(ValidationError) as excinfo:
+        _ = AuditConfigModel.model_validate({"fail_on": "unsupported"})
+    assert "fail_on must be one of" in str(excinfo.value)
+
+
+def test_config_exception_messages(tmp_path: Path) -> None:
+    assert "must be one of" in str(ConfigFieldChoiceError("field", ("a", "b")))
+    assert "must be a string" in str(ConfigFieldTypeError("field"))
+    assert "default_profile" in str(ConfigFieldChoiceError("default_profile", ("strict",)))
+    assert "Unknown profile" in str(UnknownEngineProfileError("pyright", "strict"))
+    assert "Unsupported config_version" in str(UnsupportedConfigVersionError(2, 0))
+    assert "Unable to read" in str(ConfigReadError(tmp_path / "cfg.toml", OSError("boom")))
+    assert "Invalid typewiz" in str(
+        InvalidConfigFileError(tmp_path / "cfg.toml", ValueError("bad"))
+    )

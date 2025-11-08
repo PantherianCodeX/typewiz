@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import Path
 from typing import Any, TypedDict, cast
 
 from typewiz.core.model_types import SeverityLevel, SignaturePolicy
@@ -22,6 +23,7 @@ from typewiz.ratchet import (
     compare_manifest_to_ratchet,
     refresh_signatures,
 )
+from typewiz.ratchet.models import RatchetModel
 from typewiz.ratchet.policies import compare_signatures
 
 EXPECTED_ERROR_AFTER_UPDATE = 2
@@ -261,3 +263,69 @@ def test_compare_signatures_respects_policy() -> None:
     assert warn_check.should_warn()
     fail_check = compare_signatures({"hash": "abc"}, {"hash": "xyz"}, SignaturePolicy.FAIL)
     assert fail_check.should_fail()
+
+
+def test_compare_manifest_to_ratchet_skips_missing_runs() -> None:
+    ratchet_model = RatchetModel.model_validate({
+        "generatedAt": "2025-01-01T00:00:00Z",
+        "manifestPath": None,
+        "projectRoot": None,
+        "runs": {
+            "pyright:current": {
+                "severities": [SeverityLevel.ERROR.value],
+                "paths": {},
+            }
+        },
+    })
+    manifest = cast(ManifestData, {"runs": []})
+    report = compare_manifest_to_ratchet(manifest=manifest, ratchet=ratchet_model, runs=None)
+    assert report.runs == []
+
+
+def test_apply_auto_update_skips_missing_manifest_runs() -> None:
+    ratchet_model = RatchetModel.model_validate({
+        "generatedAt": "2025-01-01T00:00:00Z",
+        "manifestPath": None,
+        "projectRoot": None,
+        "runs": {
+            "pyright:current": {
+                "severities": [SeverityLevel.ERROR.value],
+                "paths": {
+                    "src/foo.py": {"severities": {SeverityLevel.ERROR.value: 1}},
+                },
+            }
+        },
+    })
+    manifest = cast(ManifestData, {"runs": []})
+    updated = apply_auto_update(
+        manifest=manifest,
+        ratchet=ratchet_model,
+        runs=None,
+        generated_at="2025-01-02T00:00:00Z",
+    )
+    assert updated.runs == ratchet_model.runs
+
+
+def test_refresh_signatures_handles_subset_and_missing_manifest(tmp_path: Path) -> None:
+    ratchet_model = RatchetModel.model_validate({
+        "generatedAt": "2025-01-01T00:00:00Z",
+        "manifestPath": str(tmp_path / "typing_audit.json"),
+        "projectRoot": str(tmp_path),
+        "runs": {
+            "pyright:current": {
+                "severities": [SeverityLevel.ERROR.value],
+                "paths": {},
+            },
+            "mypy:current": {
+                "severities": [SeverityLevel.ERROR.value],
+                "paths": {},
+            },
+        },
+    })
+    refreshed = refresh_signatures(
+        manifest=cast(ManifestData, {"runs": []}),
+        ratchet=ratchet_model,
+        runs=[RunId("pyright:current")],
+        generated_at="2025-02-01T00:00:00Z",
+    )
+    assert refreshed.runs.keys() == ratchet_model.runs.keys()

@@ -210,7 +210,7 @@ Typewiz is distributed under the **Typewiz Software License Agreement (Proprieta
 - **License keys:** Set `TYPEWIZ_LICENSE_KEY=<your-key>` in the environment to suppress the evaluation banner and unlock licensed features.
 
 See [`LICENSE`](./LICENSE) and [`TERMS.md`](./TERMS.md) for the full agreement and summary.
-For commercial licensing or extended evaluations, contact **pantheriancodex@pm.me**.
+For commercial licensing or extended evaluations, contact **<pantheriancodex@pm.me>**.
 
 Historical OSS releases prior to the commercial reset remain available under their original terms in the legacy repository history.
 
@@ -597,7 +597,7 @@ Use the Makefile to run common workflows with consistent settings:
   - `make pytest.all` or `make tests.all` – Run pytest
   - `make pytest.verbose` or `make tests.verbose`
   - `make pytest.failfast` or `make tests.failfast`
-  - `make pytest.cov` or `make tests.cov` – Run tests with coverage (enforces ≥90%)
+  - `make pytest.cov` or `make tests.cov` – Run tests with coverage (enforces ≥95%)
 - Benchmarks
   - `make bench` – Run readiness/aggregate benchmarks (skips if `pytest-benchmark` is unavailable)
 

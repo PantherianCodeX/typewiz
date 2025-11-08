@@ -34,7 +34,7 @@ from typewiz.core.model_types import (
 )
 from typewiz.core.summary_types import SummaryData
 from typewiz.license import maybe_emit_evaluation_notice
-from typewiz.logging import LOG_FORMATS, configure_logging
+from typewiz.logging import LOG_FORMATS, LOG_LEVELS, configure_logging
 from typewiz.runtime import consume
 from typewiz.services.dashboard import (
     load_summary_from_manifest,
@@ -128,7 +128,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command is None:
         parser.error("No command provided.")
-    _initialize_logging(args.log_format)
+    _initialize_logging(args.log_format, args.log_level)
     handler = _command_handlers().get(args.command)
     if handler is None:
         parser.error(f"Unknown command {args.command}")
@@ -147,6 +147,13 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=LOG_FORMATS,
         default="text",
         help="Select logging output format (human-readable text or structured JSON).",
+    )
+    _register_argument(
+        parser,
+        "--log-level",
+        choices=LOG_LEVELS,
+        default="info",
+        help="Set verbosity of logged events.",
     )
     _register_argument(
         parser,
@@ -274,9 +281,9 @@ def _register_readiness_command(subparsers: Any) -> None:
     )
 
 
-def _initialize_logging(log_format: str) -> None:
+def _initialize_logging(log_format: str, log_level: str) -> None:
     with suppress(Exception):  # best-effort logger init
-        configure_logging(LogFormat.from_str(log_format))
+        configure_logging(LogFormat.from_str(log_format), log_level=log_level)
 
 
 def _command_handlers() -> dict[str, CommandHandler]:

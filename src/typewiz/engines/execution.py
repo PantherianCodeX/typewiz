@@ -108,7 +108,7 @@ def run_pyright(
             or parsed_warnings != tool_summary.get("warnings", parsed_warnings)
             or parsed_total != tool_summary.get("total", parsed_total)
         ):
-            logging.warning(
+            logger.warning(
                 "pyright summary mismatch: parsed=%s/%s/%s tool=%s/%s/%s",
                 parsed_errors,
                 parsed_warnings,
@@ -116,6 +116,7 @@ def run_pyright(
                 tool_summary.get("errors"),
                 tool_summary.get("warnings"),
                 tool_summary.get("total"),
+                extra={"component": LogComponent.ENGINE, "tool": "pyright"},
             )
     engine_result = EngineResult(
         engine=PYRIGHT_TOOL,

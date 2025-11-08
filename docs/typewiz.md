@@ -33,6 +33,8 @@ Options:
 - `--summary {compact,expanded,full}` – choose the CLI summary layout (`full` expands and shows every field).
 - `--summary-fields profile,paths,overrides` – comma-separated extras to display alongside the summary (ignored when `--summary full` is used).
 - `--dashboard-view overview` – set the default tab for HTML output (`overview`, `engines`, `hotspots`, or `runs`).
+- `--log-format {text,json}` – control the logging format. JSON mode emits structured records with `component`, `tool`, `mode`, `duration_ms`, `cached`, and `exit_code` metadata; text mode keeps it human-friendly for terminals.
+- `--log-level {debug,info,warning,error}` – set verbosity. `debug` surfaces command wiring and cache decisions, `info` covers high-level progress/status (default), and `warning`/`error` suppress routine notices.
 - `--hash-workers auto|N` – bound the number of threads used while fingerprinting files.
 - `--dry-run` – execute engines and print summaries without writing manifests or dashboards.
 

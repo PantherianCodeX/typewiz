@@ -12,7 +12,7 @@ from typewiz.audit.options import merge_audit_configs
 from typewiz.audit.paths import normalise_paths
 from typewiz.cache import EngineCache
 from typewiz.config import AuditConfig, Config, load_config
-from typewiz.core.model_types import Mode, SeverityLevel
+from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
 from typewiz.core.type_aliases import RelPath
 from typewiz.dashboard import build_summary, render_html, render_markdown
 from typewiz.engines import EngineContext, resolve_engines
@@ -86,7 +86,7 @@ def _prepare_audit_inputs(
     engines = resolve_engines(audit_config.runners)
     tool_versions = detect_tool_versions([engine.name for engine in engines])
     cache = EngineCache(root)
-    return cfg, _AuditInputs(
+    inputs = _AuditInputs(
         root=root,
         audit_config=audit_config,
         full_paths_normalised=full_paths_normalised,
@@ -94,6 +94,16 @@ def _prepare_audit_inputs(
         tool_versions=tool_versions,
         cache=cache,
     )
+
+    logger.debug(
+        "Audit inputs resolved root=%s full_paths=%s runners=%s tool_versions=%s",
+        root,
+        [str(path) for path in full_paths_normalised],
+        [engine.name for engine in engines],
+        tool_versions,
+        extra={"component": LogComponent.CLI},
+    )
+    return cfg, inputs
 
 
 def _iterate_modes(audit_config: AuditConfig) -> list[Mode]:
@@ -131,6 +141,16 @@ def _run_engines(inputs: _AuditInputs) -> tuple[list[RunResult], bool]:
             runs.append(run_result)
             if truncated:
                 truncated_any = True
+    if truncated_any:
+        logger.warning(
+            "Fingerprint truncated across one or more runs",
+            extra={"component": LogComponent.CACHE},
+        )
+    else:
+        logger.debug(
+            "Fingerprint scan completed without truncation",
+            extra={"component": LogComponent.CACHE},
+        )
     inputs.cache.save()
     return runs, truncated_any
 
@@ -235,6 +255,19 @@ def run_audit(  # noqa: PLR0913
         persist_outputs=persist_outputs,
     )
     error_count, warning_count = _compute_run_totals(runs)
+    logger.info(
+        "Audit complete: %s runs (%s errors, %s warnings)",
+        len(runs),
+        error_count,
+        warning_count,
+        extra={
+            "component": LogComponent.CLI,
+            "counts": {
+                SeverityLevel.ERROR: error_count,
+                SeverityLevel.WARNING: warning_count,
+            },
+        },
+    )
 
     return AuditResult(
         manifest=manifest,

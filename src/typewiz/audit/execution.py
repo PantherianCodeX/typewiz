@@ -488,9 +488,33 @@ def execute_engine_mode(  # noqa: PLR0913
             mode_paths=mode_paths,
         ), truncated
 
+    cache_miss_extra: StructuredLogExtra = {
+        "component": LogComponent.CACHE,
+        "tool": engine.name,
+        "mode": mode,
+        "cached": False,
+    }
+    logger.info(
+        "Cache miss for %s:%s",
+        engine.name,
+        mode,
+        extra=cache_miss_extra,
+    )
+
     try:
         result = engine.run(context, mode_paths)
     except Exception as exc:
+        logger.error(
+            "Engine %s:%s failed",
+            engine.name,
+            mode,
+            exc_info=True,
+            extra={
+                "component": LogComponent.ENGINE,
+                "tool": engine.name,
+                "mode": mode,
+            },
+        )
         run_result = RunResult(
             tool=ToolName(engine.name),
             mode=mode,

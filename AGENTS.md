@@ -49,7 +49,7 @@
 **Testing Standards**
 
 - Tests are mandatory for all user-visible code paths and bug fixes. Include good/bad/edge cases.
-- Use `pytest` with coverage gate ≥90% (`make pytest.cov`). Property-based tests via Hypothesis for invariants (`tests/test_prop_*.py` patterns are encouraged).
+- Use `pytest` with coverage gate ≥95% (`make pytest.cov`). Property-based tests via Hypothesis for invariants (`tests/test_prop_*.py` patterns are encouraged).
 - Test types of failures: invalid inputs, boundary conditions, concurrency/ordering where relevant, and golden/snapshot outputs when appropriate.
 - Avoid network, time, and filesystem flakiness; use `tmp_path`, dependency injection, and deterministic seeds. No sleeps; use fakes.
 - Keep tests isolated, fast, and readable. Prefer explicit fixtures in `tests/conftest.py` and factory helpers over complex fixtures.
@@ -65,7 +65,7 @@
 - `make ci.check` — lint, type, tests (coverage gate). CI parity.
 - `make lint` / `make fix` — Ruff lint/format (check or autofix).
 - `make type` — mypy + pyright strict. `make verifytypes` validates public typing.
-- `make pytest.cov` — tests with coverage ≥90%.
+- `make pytest.cov` — tests with coverage ≥95%.
 - `make typewiz.dashboard` — build typing dashboards. `make typewiz.clean` clears cache.
 - `make check.error-codes` — ensure exception code registry matches docs.
 
@@ -88,6 +88,19 @@
 
 - Install pre-commit (`make ci.precommit.install`) and ensure hooks pass locally. Small, focused PRs with thorough tests and type-safety are required.
 - Do not bypass typing/lint/test gates. If a temporary `# type: ignore` is unavoidable, justify it inline and add a follow-up issue.
+- Keep automated checks in sync with the following special requirements:
+
+## Code Changes
+
+Always execute the following at the end of a code change **completion**:
+Run `mypy`, `pyright`, `ruff`, and `pytest` and clear all errors without taking shortcuts.
+Git commit once all are passing.
+
+## GIT Commit
+
+Git commit should only be executed after all typing/linting/testing has passed and only with expressed user consent.
+If the commit contains code from beyond your scope, only commit your scope.
+**IF DIRECTED TO COMMIT ALL** then investigate all changes on the repo and always git commit with a detailed, multi-line message that summarizes all code changes and when applicable the impacts or outcomes.
 
 **Quick Start**
 
@@ -95,4 +108,4 @@
 - `pip install -r requirements-dev.txt`
 - `make ci.check`
 
-Non-negotiables: strict typing (mypy/pyright), Ruff lint/format, 90%+ coverage, `.venv` usage, Make targets, Pydantic for internal schemas, JSON Schema for external, separation of orchestration from helpers. If uncertain, prefer smaller, well-typed components with tests.
+Non-negotiables: strict typing (mypy/pyright), Ruff lint/format, ≥95% coverage, `.venv` usage, Make targets, Pydantic for internal schemas, JSON Schema for external, separation of orchestration from helpers. If uncertain, prefer smaller, well-typed components with tests.
