@@ -9,11 +9,11 @@ from typing import ClassVar, Final, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
-from typewiz._internal.collection_utils import dedupe_preserve
-from typewiz._internal.exceptions import TypewizValidationError
+from typewiz.collections import dedupe_preserve
 from typewiz.config.validation import require_non_negative_int
 from typewiz.core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import EngineName, ProfileName, RunId, RunnerName
+from typewiz.exceptions import TypewizValidationError
 
 CONFIG_VERSION: Final[int] = 0
 FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)

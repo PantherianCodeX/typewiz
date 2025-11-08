@@ -8,8 +8,13 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Final, cast
 
-from typewiz._internal.logging_utils import StructuredLogExtra
-from typewiz._internal.utils import (
+from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
+from typewiz.core.type_aliases import BuiltinEngineName, Command, ToolName
+from typewiz.core.types import Diagnostic
+from typewiz.engines.base import EngineResult
+from typewiz.logging import StructuredLogExtra
+from typewiz.manifest.typed import ToolSummary
+from typewiz.runtime import (
     JSONValue,
     as_int,
     as_list,
@@ -18,11 +23,6 @@ from typewiz._internal.utils import (
     require_json,
     run_command,
 )
-from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
-from typewiz.core.type_aliases import BuiltinEngineName, Command, ToolName
-from typewiz.core.types import Diagnostic
-from typewiz.engines.base import EngineResult
-from typewiz.manifest.typed import ToolSummary
 
 logger: logging.Logger = logging.getLogger("typewiz")
 PYRIGHT_NAME: Final[BuiltinEngineName] = "pyright"

@@ -6,8 +6,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import cast
 
-from typewiz._internal.collection_utils import dedupe_preserve
-from typewiz._internal.utils import JSONValue
+from typewiz.collections import dedupe_preserve
+from typewiz.runtime import JSONValue
 
 
 @dataclass(slots=True)

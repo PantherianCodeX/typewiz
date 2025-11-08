@@ -8,8 +8,8 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from typewiz._internal.utils import ROOT_MARKERS
 from typewiz.core.type_aliases import RelPath
+from typewiz.runtime import ROOT_MARKERS
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

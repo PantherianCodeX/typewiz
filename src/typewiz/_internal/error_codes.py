@@ -5,9 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import NewType
 
-from typewiz._internal.exceptions import TypewizError, TypewizTypeError, TypewizValidationError
-
-from ..config import (
+from typewiz.config import (
     ConfigFieldChoiceError,
     ConfigFieldTypeError,
     ConfigReadError,
@@ -18,14 +16,16 @@ from ..config import (
     UnknownEngineProfileError,
     UnsupportedConfigVersionError,
 )
-from ..dashboard import DashboardTypeError
-from ..manifest.models import ManifestValidationError
-from ..manifest.versioning import (
+from typewiz.dashboard import DashboardTypeError
+from typewiz.manifest.models import ManifestValidationError
+from typewiz.manifest.versioning import (
     InvalidManifestRunsError,
     InvalidManifestVersionTypeError,
     UnsupportedManifestVersionError,
 )
-from ..readiness.views import ReadinessValidationError
+from typewiz.readiness.views import ReadinessValidationError
+
+from .exceptions import TypewizError, TypewizTypeError, TypewizValidationError
 
 ErrorCode = NewType("ErrorCode", str)
 

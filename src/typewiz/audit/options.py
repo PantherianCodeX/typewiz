@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import cast
 
-from typewiz._internal.collection_utils import dedupe_preserve, merge_preserve
+from typewiz.collections import dedupe_preserve, merge_preserve
 from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from typewiz.config.validation import coerce_object_list
 from typewiz.core.categories import coerce_category_key

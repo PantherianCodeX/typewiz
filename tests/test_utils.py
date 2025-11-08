@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import cast
@@ -59,8 +60,8 @@ def test_resolve_project_root_raises_for_missing_path(tmp_path: Path) -> None:
 
 
 def test_default_full_paths_detects_python_directories(tmp_path: Path) -> None:
-    tests_dir = tmp_path / "tests"
-    (tests_dir / "sample.py").parent.mkdir(parents=True, exist_ok=True)
+    tests_dir = tmp_path / "tests" / "nested"
+    tests_dir.mkdir(parents=True)
     consume((tests_dir / "sample.py").write_text("print('ok')\n", encoding="utf-8"))
 
     paths = default_full_paths(tmp_path)
@@ -69,6 +70,17 @@ def test_default_full_paths_detects_python_directories(tmp_path: Path) -> None:
 
 def test_default_full_paths_falls_back_to_current_directory(tmp_path: Path) -> None:
     assert default_full_paths(tmp_path) == ["."]
+
+
+def test_resolve_project_root_handles_file_inputs(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    consume((workspace / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8"))
+    target = workspace / "pkg" / "module.py"
+    target.parent.mkdir(parents=True)
+    consume(target.write_text("print('file')\n", encoding="utf-8"))
+
+    assert resolve_project_root(target) == workspace
 
 
 def test_normalise_enums_for_json_converts_keys_and_nested_values() -> None:
@@ -166,6 +178,20 @@ def test_run_command_enforces_allowlist() -> None:
     assert "ok" in result.stdout
     with pytest.raises(ValueError):
         _ = run_command([sys.executable, "-c", "print('blocked')"], allowed={"python"})
+
+
+def test_run_command_requires_arguments() -> None:
+    with pytest.raises(ValueError):
+        _ = run_command([])
+    with pytest.raises(TypeError):
+        _ = run_command([""])
+
+
+def test_run_command_logs_warning_on_failure(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.WARNING)
+    result = run_command([sys.executable, "-c", "import sys; sys.exit(1)"])
+    assert result.exit_code != 0
+    assert any("Command failed" in record.message for record in caplog.records)
 
 
 def test_detect_tool_versions_parses_outputs(monkeypatch: pytest.MonkeyPatch) -> None:

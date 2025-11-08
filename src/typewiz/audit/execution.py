@@ -10,18 +10,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from typewiz._internal.cache import CachedRun, EngineCache, collect_file_hashes, fingerprint_path
-from typewiz._internal.collection_utils import merge_preserve
-from typewiz._internal.logging_utils import StructuredLogExtra
 from typewiz.audit.options import normalise_category_mapping, prepare_category_mapping
 from typewiz.audit.paths import fingerprint_targets as build_fingerprint_targets
 from typewiz.audit.paths import normalise_override_entries, normalise_paths, relative_override_path
+from typewiz.cache import CachedRun, EngineCache, collect_file_hashes, fingerprint_path
+from typewiz.collections import merge_preserve
 from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from typewiz.core.model_types import FileHashPayload, LogComponent, Mode, OverrideEntry
 from typewiz.core.type_aliases import CacheKey, EngineName, PathKey, ProfileName, RelPath, ToolName
 from typewiz.core.types import RunResult
 from typewiz.engines import EngineContext, EngineOptions
 from typewiz.engines.base import BaseEngine, EngineResult
+from typewiz.logging import StructuredLogExtra
 from typewiz.manifest.typed import ToolSummary
 
 

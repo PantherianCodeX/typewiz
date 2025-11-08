@@ -9,7 +9,7 @@ from collections.abc import Callable
 from functools import lru_cache
 from typing import Final
 
-from ..core.model_types import LicenseMode
+from typewiz.core.model_types import LicenseMode
 
 LICENSE_KEY_ENV: Final[str] = "TYPEWIZ_LICENSE_KEY"
 SUPPORT_EMAIL: Final[str] = "pantheriancodex@pm.me"

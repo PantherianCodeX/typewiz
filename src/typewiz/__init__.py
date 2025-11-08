@@ -9,7 +9,7 @@ tracking.
 
 from __future__ import annotations
 
-from typewiz._internal.exceptions import (
+from typewiz.exceptions import (
     TypewizError,
     TypewizTypeError,
     TypewizValidationError,

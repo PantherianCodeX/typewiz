@@ -16,9 +16,8 @@ from typing import TYPE_CHECKING, Final, Literal, TypedDict, cast
 from typewiz._internal.utils import JSONValue, consume, file_lock, normalise_enums_for_json
 from typewiz.config.validation import coerce_int, coerce_object_list, coerce_str_list
 from typewiz.core.categories import coerce_category_key
-
-from ..core.model_types import SeverityLevel, clone_override_entries
-from ..core.type_aliases import (
+from typewiz.core.model_types import SeverityLevel, clone_override_entries
+from typewiz.core.type_aliases import (
     CacheKey,
     CategoryKey,
     CategoryName,
@@ -27,11 +26,11 @@ from ..core.type_aliases import (
     RelPath,
     ToolName,
 )
-from ..core.types import Diagnostic
-from ..manifest.typed import ToolSummary
+from typewiz.core.types import Diagnostic
+from typewiz.manifest.typed import ToolSummary
 
 if TYPE_CHECKING:
-    from ..core.model_types import (
+    from typewiz.core.model_types import (
         CategoryMapping,
         DiagnosticPayload,
         FileHashPayload,

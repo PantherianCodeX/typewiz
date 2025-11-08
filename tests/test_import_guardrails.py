@@ -7,6 +7,9 @@ CLI_ROOT = Path("src/typewiz/cli")
 DOMAIN_ROOTS = [
     Path("src/typewiz/core"),
     Path("src/typewiz/dashboard"),
+    Path("src/typewiz/audit"),
+    Path("src/typewiz/engines"),
+    Path("src/typewiz/config"),
     Path("src/typewiz/manifest"),
     Path("src/typewiz/ratchet"),
     Path("src/typewiz/readiness"),

@@ -146,18 +146,18 @@ under the hood), so temporary or vendor folders aren’t touched unless you opt 
 
 ```bash
 # quick ad-hoc mapping
-python scripts/refactor_imports.py --map typewiz.logging_utils=typewiz._internal.logging_utils --map typewiz.exceptions=typewiz._internal.exceptions
+python scripts/refactor_imports.py --map typewiz.logging_utils=typewiz.logging --map typewiz._internal.exceptions=typewiz.exceptions
 
 # store large migrations in a file
 cat > mappings.txt <<'EOF'
-typewiz.logging_utils=typewiz._internal.logging_utils
-typewiz.exceptions=typewiz._internal.exceptions
+typewiz.logging_utils=typewiz.logging
+typewiz._internal.exceptions=typewiz.exceptions
 EOF
 python scripts/refactor_imports.py --mapping-file mappings.txt --apply
 
 # insert missing imports or update __all__ entries
 python scripts/refactor_imports.py \
-  --ensure-import src/typewiz/api.py:typewiz._internal.utils:new_helper \
+  --ensure-import src/typewiz/api.py:typewiz.runtime:new_helper \
   --export-map run_audit=execute_audit \
   --apply
 ```
