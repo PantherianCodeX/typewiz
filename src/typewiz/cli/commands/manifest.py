@@ -4,18 +4,14 @@
 from __future__ import annotations
 
 import argparse
-import importlib
 import json
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, Protocol
 
-from typewiz._internal.error_codes import error_code_for
-from typewiz._internal.utils import consume
 from typewiz.core.model_types import ManifestAction
-from typewiz.manifest.models import (
-    ManifestValidationError,
+from typewiz.services.manifest import (
     manifest_json_schema,
-    validate_manifest_payload,
+    validate_manifest_file,
 )
 
 from ..helpers import echo, register_argument
@@ -76,50 +72,18 @@ def register_manifest_command(subparsers: SubparserRegistry) -> None:
     )
 
 
-def _validate_schema(schema_path: Path | None, payload: dict[str, object]) -> bool:
-    schema_payload: dict[str, Any] | None
-    if schema_path is not None:
-        schema_payload = json.loads(schema_path.read_text(encoding="utf-8"))
-    else:
-        schema_payload = manifest_json_schema()
-
-    if schema_payload is None:
-        return True
-    try:
-        jsonschema_module = importlib.import_module("jsonschema")
-    except ModuleNotFoundError:
-        if schema_path is not None:
-            echo("[typewiz] jsonschema module not available; skipping schema validation")
-        return True
-
-    validator = jsonschema_module.Draft7Validator(schema_payload)
-    errors = sorted(validator.iter_errors(payload), key=lambda err: err.path)
-    if not errors:
-        return True
-    for err in errors:
-        loc = "/".join(str(part) for part in err.path)
-        echo(f"[typewiz] schema error at /{loc}: {err.message}")
-    return False
-
-
 def _handle_validate(args: argparse.Namespace) -> int:
-    manifest_path: Path = args.path
-    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-    try:
-        consume(validate_manifest_payload(payload))
-    except ManifestValidationError as exc:
-        code = error_code_for(exc)
-        for err in exc.validation_error.errors():
-            location = ".".join(str(part) for part in err.get("loc", ())) or "<root>"
-            message = err.get("msg", "invalid value")
-            echo(f"[typewiz] ({code}) validation error at {location}: {message}")
-        return 2
-
-    if not _validate_schema(args.schema, cast("dict[str, object]", payload)):
-        return 2
-
-    echo("[typewiz] manifest is valid")
-    return 0
+    result = validate_manifest_file(args.path, schema_path=args.schema)
+    for err in result.payload_errors:
+        echo(f"[typewiz] ({err.code}) validation error at {err.location}: {err.message}")
+    for message in result.schema_errors:
+        echo(message)
+    for warning in result.warnings:
+        echo(warning)
+    if result.is_valid:
+        echo("[typewiz] manifest is valid")
+        return 0
+    return 2
 
 
 def _handle_schema(args: argparse.Namespace) -> int:
