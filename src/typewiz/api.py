@@ -22,9 +22,8 @@ from .audit_paths import normalise_paths
 from .config import AuditConfig, Config, load_config
 from .core.model_types import Mode, SeverityLevel
 from .core.type_aliases import RelPath
-from .dashboard import build_summary, render_markdown
+from .dashboard import build_summary, render_html, render_markdown
 from .engines import EngineContext, resolve_engines
-from .html_report import render_html
 from .manifest.builder import ManifestBuilder
 
 if TYPE_CHECKING:

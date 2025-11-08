@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Final, cast
 from .category_utils import coerce_category_key
 from .core.model_types import RecommendationCode, SeverityLevel
 from .core.type_aliases import CategoryKey, CategoryName, RuleName
-from .readiness import CATEGORY_PATTERNS
+from .readiness.compute import CATEGORY_PATTERNS
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping

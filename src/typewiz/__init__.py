@@ -24,8 +24,7 @@ from .api import AuditResult, run_audit
 from .config import AuditConfig, Config, load_config
 from .core.summary_types import SummaryData
 from .core.types import Diagnostic, RunResult
-from .dashboard import build_summary, load_manifest, render_markdown
-from .html_report import render_html
+from .dashboard import build_summary, load_manifest, render_html, render_markdown
 from .manifest.typed import ToolSummary
 from .ratchet import (
     apply_auto_update as ratchet_apply_auto_update,

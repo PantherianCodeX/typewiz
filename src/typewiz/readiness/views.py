@@ -8,23 +8,23 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TypedDict, cast
 
-from .category_utils import CATEGORY_DISPLAY_ORDER, coerce_category_key
-from .core.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
-from .core.summary_types import (
+from typewiz.category_utils import CATEGORY_DISPLAY_ORDER, coerce_category_key
+from typewiz.core.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
+from typewiz.core.summary_types import (
     ReadinessOptionEntry,
     ReadinessStrictEntry,
     SummaryData,
     SummaryTabs,
 )
-from .core.type_aliases import CategoryKey, CategoryName
-from .data_validation import (
+from typewiz.core.type_aliases import CategoryKey, CategoryName
+from typewiz.data_validation import (
     coerce_int,
     coerce_mapping,
     coerce_object_list,
     coerce_optional_str_list,
     coerce_str,
 )
-from .readiness import DEFAULT_CLOSE_THRESHOLD, ReadinessOptions
+from typewiz.readiness.compute import DEFAULT_CLOSE_THRESHOLD, ReadinessOptions
 
 
 @dataclass(frozen=True, slots=True)

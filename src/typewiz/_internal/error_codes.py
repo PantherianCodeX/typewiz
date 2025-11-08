@@ -25,7 +25,7 @@ from ..manifest.versioning import (
     InvalidManifestVersionTypeError,
     UnsupportedManifestVersionError,
 )
-from ..readiness_views import ReadinessValidationError
+from ..readiness.views import ReadinessValidationError
 
 ErrorCode = NewType("ErrorCode", str)
 

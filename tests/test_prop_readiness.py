@@ -17,7 +17,7 @@ from typewiz.core.summary_types import (
     SummaryTabs,
 )
 from typewiz.core.type_aliases import CategoryKey
-from typewiz.readiness_views import (
+from typewiz.readiness.views import (
     FileReadinessPayload,
     FolderReadinessPayload,
     collect_readiness_view,

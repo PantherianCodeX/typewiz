@@ -7,7 +7,12 @@ from typing import cast
 from typewiz.core.model_types import ReadinessStatus
 from typewiz.core.summary_types import ReadinessOptionsPayload
 from typewiz.core.type_aliases import CategoryName
-from typewiz.readiness import CATEGORY_PATTERNS, ReadinessEntry, ReadinessOptions, compute_readiness
+from typewiz.readiness.compute import (
+    CATEGORY_PATTERNS,
+    ReadinessEntry,
+    ReadinessOptions,
+    compute_readiness,
+)
 
 
 def test_compute_readiness_ready_bucket() -> None:

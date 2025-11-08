@@ -43,7 +43,7 @@ from typewiz.core.summary_types import (
     SummaryData,
 )
 from typewiz.core.type_aliases import RelPath, RunId
-from typewiz.readiness_views import FolderReadinessPayload
+from typewiz.readiness.views import FolderReadinessPayload
 
 
 def test_parse_comma_separated_strips_entries() -> None:

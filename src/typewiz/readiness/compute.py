@@ -6,10 +6,14 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Final, TypedDict, cast
 
-from .category_utils import CATEGORY_NAMES
-from .core.model_types import ReadinessStatus
-from .core.summary_types import ReadinessOptionEntry, ReadinessOptionsPayload, ReadinessStrictEntry
-from .core.type_aliases import CategoryKey, CategoryName
+from typewiz.category_utils import CATEGORY_NAMES
+from typewiz.core.model_types import ReadinessStatus
+from typewiz.core.summary_types import (
+    ReadinessOptionEntry,
+    ReadinessOptionsPayload,
+    ReadinessStrictEntry,
+)
+from typewiz.core.type_aliases import CategoryKey, CategoryName
 
 DEFAULT_CLOSE_THRESHOLD: Final[int] = 3
 STRICT_CLOSE_THRESHOLD: Final[int] = 3

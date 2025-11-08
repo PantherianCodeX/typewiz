@@ -35,7 +35,7 @@ Dashboard errors:
 
 Readiness errors:
 
-- `typewiz.readiness_views.ReadinessValidationError` — readiness payload contained invalid data. Code: `TW201`.
+- `typewiz.readiness.views.ReadinessValidationError` — readiness payload contained invalid data. Code: `TW201`.
 
 Usage tips:
 

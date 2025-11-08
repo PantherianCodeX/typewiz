@@ -25,8 +25,8 @@ omit = [
     "src/typewiz/__main__.py",
     "src/typewiz/engines/*",
     "src/typewiz/_internal/utils.py",
-    "src/typewiz/html_report.py",
+    "src/typewiz/dashboard/render_html.py",
     "src/typewiz/_internal/cache.py",
     "src/typewiz/manifest/builder.py",
-    "src/typewiz/readiness.py",
+    "src/typewiz/readiness/compute.py",
 ]

@@ -37,7 +37,7 @@ from typewiz.core.model_types import (
 )
 from typewiz.core.summary_types import SummaryData
 from typewiz.dashboard import build_summary, load_manifest, render_markdown
-from typewiz.html_report import render_html
+from typewiz.dashboard.render_html import render_html
 
 SUMMARY_FIELD_CHOICES = _SUMMARY_FIELD_CHOICES
 logger: logging.Logger = logging.getLogger("typewiz.cli")

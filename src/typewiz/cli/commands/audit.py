@@ -15,23 +15,7 @@ from typewiz._internal.utils import (
     resolve_project_root,
 )
 from typewiz.api import run_audit
-from typewiz.config import AuditConfig, Config, load_config
-from typewiz.core.summary_types import SummaryData
-from typewiz.core.type_aliases import EngineName, ProfileName
-from typewiz.dashboard import build_summary, render_markdown
-from typewiz.html_report import render_html
-
-from ...core.model_types import (
-    DashboardView,
-    FailOnPolicy,
-    Mode,
-    ReadinessLevel,
-    ReadinessStatus,
-    SeverityLevel,
-    SummaryField,
-    SummaryStyle,
-)
-from ..helpers import (
+from typewiz.cli.helpers import (
     SUMMARY_FIELD_CHOICES,
     collect_plugin_args,
     collect_profile_args,
@@ -42,7 +26,22 @@ from ..helpers import (
     print_summary,
     register_argument,
 )
-from ..helpers.io import echo as _echo
+from typewiz.cli.helpers.io import echo as _echo
+from typewiz.config import AuditConfig, Config, load_config
+from typewiz.core.model_types import (
+    DashboardView,
+    FailOnPolicy,
+    Mode,
+    ReadinessLevel,
+    ReadinessStatus,
+    SeverityLevel,
+    SummaryField,
+    SummaryStyle,
+)
+from typewiz.core.summary_types import SummaryData
+from typewiz.core.type_aliases import EngineName, ProfileName
+from typewiz.dashboard import build_summary, render_markdown
+from typewiz.dashboard.render_html import render_html
 
 
 class SubparserRegistry(Protocol):

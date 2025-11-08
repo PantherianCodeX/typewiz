@@ -26,13 +26,13 @@ from typewiz.core.types import RunResult
 from typewiz.data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
 from typewiz.formatting import render_table_rows, stringify
 from typewiz.override_utils import format_override_inline, override_detail_lines
-from typewiz.readiness_views import (
+from typewiz.readiness.views import (
     FileReadinessPayload,
     FolderReadinessPayload,
     ReadinessValidationError,
     ReadinessViewResult,
 )
-from typewiz.readiness_views import collect_readiness_view as _collect_readiness_view
+from typewiz.readiness.views import collect_readiness_view as _collect_readiness_view
 
 from .io import echo
 

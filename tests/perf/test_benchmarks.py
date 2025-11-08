@@ -13,7 +13,7 @@ from typewiz.aggregate import summarise_run
 from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.core.type_aliases import ToolName
 from typewiz.core.types import Diagnostic, RunResult
-from typewiz.readiness import ReadinessEntry, compute_readiness
+from typewiz.readiness.compute import ReadinessEntry, compute_readiness
 
 PYRIGHT_TOOL = ToolName("pyright")
 
