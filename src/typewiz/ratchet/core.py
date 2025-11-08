@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import cast
 
 from typewiz._internal.utils import JSONValue, normalise_enums_for_json
+from typewiz.core.categories import coerce_category_key
 
-from ..category_utils import coerce_category_key
 from ..core.model_types import DEFAULT_SEVERITIES, Mode, SeverityLevel
 from ..core.type_aliases import CategoryKey, RunId, ToolName
 from ..data_validation import coerce_int, coerce_mapping, coerce_object_list

@@ -1,10 +1,10 @@
-# Copyright (c) 2024 PantherianCodeX
+"""Category metadata used throughout Typewiz."""
 
 from __future__ import annotations
 
 from typing import Final, TypeGuard
 
-from .core.type_aliases import CategoryKey, CategoryName
+from typewiz.core.type_aliases import CategoryKey, CategoryName
 
 CATEGORY_DISPLAY_ORDER: Final[tuple[CategoryKey, ...]] = (
     "unknownChecks",

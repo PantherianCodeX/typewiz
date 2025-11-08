@@ -299,6 +299,7 @@ def _determine_insertion_index(lines: list[str]) -> int:
         parsed = ast.parse(joined)
     except SyntaxError:
         parsed = None
+    docstring_offset = 0
     if parsed and parsed.body:
         doc_node = parsed.body[0]
         if (
@@ -307,10 +308,11 @@ def _determine_insertion_index(lines: list[str]) -> int:
             and isinstance(doc_node.value.value, str)
         ):
             insert_idx = doc_node.end_lineno or doc_node.lineno
+            docstring_offset = 1
     insert_idx = max(insert_idx, 0)
     idx = insert_idx
     if parsed:
-        for node in parsed.body:
+        for node in parsed.body[docstring_offset:]:
             if isinstance(node, ast.ImportFrom) and node.module == "__future__":
                 idx = max(idx, node.end_lineno or node.lineno)
             else:

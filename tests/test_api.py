@@ -92,7 +92,7 @@ def test_run_audit_programmatic(
         return [StubEngine(fake_run_result)]
 
     monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_stub)
-    monkeypatch.setattr("typewiz.api.resolve_engines", _resolve_stub)
+    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve_stub)
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
@@ -188,7 +188,7 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
         return [engine]
 
     monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_recording)
-    monkeypatch.setattr("typewiz.api.resolve_engines", _resolve_recording)
+    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve_recording)
     # ensure compatibility with new API method
     (tmp_path / "src").mkdir(parents=True, exist_ok=True)
     (tmp_path / "extra").mkdir(parents=True, exist_ok=True)
@@ -267,7 +267,7 @@ def test_run_audit_respects_folder_overrides(
         return [engine]
 
     monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_folder)
-    monkeypatch.setattr("typewiz.api.resolve_engines", _resolve_folder)
+    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve_folder)
 
     root_config = tmp_path / "typewiz.toml"
     consume(
@@ -383,7 +383,7 @@ def test_run_audit_cache_preserves_tool_summary(
         return [engine]
 
     monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_cache)
-    monkeypatch.setattr("typewiz.api.resolve_engines", _resolve_cache)
+    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve_cache)
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     consume((tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8"))

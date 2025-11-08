@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Final, TypedDict, cast
 
-from typewiz.category_utils import CATEGORY_NAMES
+from typewiz.core.categories import CATEGORY_NAMES
 from typewiz.core.model_types import ReadinessStatus
 from typewiz.core.summary_types import (
     ReadinessOptionEntry,

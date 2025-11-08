@@ -8,7 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, cast
 
-from .category_utils import coerce_category_key
+from typewiz.core.categories import coerce_category_key
+
 from .core.model_types import RecommendationCode, SeverityLevel
 from .core.type_aliases import CategoryKey, CategoryName, RuleName
 from .readiness.compute import CATEGORY_PATTERNS

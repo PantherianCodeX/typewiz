@@ -52,7 +52,7 @@ def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: RecordingE
         return [engine]
 
     monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve)
-    monkeypatch.setattr("typewiz.api.resolve_engines", _resolve)
+    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve)
 
 
 def _sample_manifest() -> ManifestData:

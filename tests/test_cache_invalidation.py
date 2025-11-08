@@ -45,7 +45,7 @@ def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: RecordingE
         return [engine]
 
     monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve)
-    monkeypatch.setattr("typewiz.api.resolve_engines", _resolve)
+    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve)
 
 
 def _prepare_workspace(tmp_path: Path) -> None:
@@ -65,7 +65,7 @@ def test_cache_invalidation_on_tool_version_change(
     def _versions_v1(_: Sequence[str]) -> dict[str, str]:
         return {"stub": "1.0"}
 
-    monkeypatch.setattr("typewiz.api.detect_tool_versions", _versions_v1)
+    monkeypatch.setattr("typewiz.audit.api.detect_tool_versions", _versions_v1)
     override = AuditConfig(full_paths=["src"], runners=[STUB_RUNNER])
     consume(run_audit(project_root=tmp_path, override=override))
     assert engine.invocations.count(Mode.FULL) == 1
@@ -74,7 +74,7 @@ def test_cache_invalidation_on_tool_version_change(
     def _versions_v2(_: Sequence[str]) -> dict[str, str]:
         return {"stub": "2.0"}
 
-    monkeypatch.setattr("typewiz.api.detect_tool_versions", _versions_v2)
+    monkeypatch.setattr("typewiz.audit.api.detect_tool_versions", _versions_v2)
     consume(run_audit(project_root=tmp_path, override=override))
     assert engine.invocations.count(Mode.FULL) == 2
 

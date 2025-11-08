@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typewiz.audit_config_utils import normalise_category_mapping, prepare_category_mapping
+from typewiz.audit.options import normalise_category_mapping, prepare_category_mapping
 
 
 def test_prepare_category_mapping_filters_invalid_keys() -> None:

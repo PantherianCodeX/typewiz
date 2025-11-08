@@ -1,0 +1,87 @@
+"""JSON helpers shared across the project."""
+
+from __future__ import annotations
+
+import json
+from enum import Enum
+from typing import cast
+
+__all__ = [
+    "JSONList",
+    "JSONMapping",
+    "JSONValue",
+    "as_int",
+    "as_list",
+    "as_mapping",
+    "as_str",
+    "normalise_enums_for_json",
+    "require_json",
+]
+
+type JSONValue = str | int | float | bool | None | dict[str, "JSONValue"] | list["JSONValue"]
+type JSONMapping = dict[str, JSONValue]
+type JSONList = list[JSONValue]
+
+
+def require_json(payload: str, fallback: str | None = None) -> JSONMapping:
+    data_str = payload.strip() or (fallback or "")
+    if not data_str:
+        message = "Expected JSON output but received empty string"
+        raise ValueError(message)
+    return cast(JSONMapping, json.loads(data_str))
+
+
+def as_mapping(value: object) -> JSONMapping:
+    return cast(JSONMapping, value) if isinstance(value, dict) else {}
+
+
+def as_list(value: object) -> JSONList:
+    return cast(JSONList, value) if isinstance(value, list) else []
+
+
+def as_str(value: object, default: str = "") -> str:
+    if isinstance(value, str):
+        return value
+    return default
+
+
+def as_int(value: object, default: int = 0) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    return default
+
+
+def normalise_enums_for_json(value: object) -> JSONValue:
+    """Recursively convert Enum keys/values to their string payloads for JSON serialisation."""
+
+    def _convert(obj: object) -> JSONValue:
+        if isinstance(obj, Enum):
+            return cast(JSONValue, obj.value)
+        if isinstance(obj, dict):
+            mapping_obj = cast(dict[object, object], obj)
+            result: dict[str, JSONValue] = {}
+            for key, raw_val in mapping_obj.items():
+                if isinstance(key, Enum):
+                    norm_key: str = str(key.value)
+                elif isinstance(key, str):
+                    norm_key = key
+                else:
+                    norm_key = str(key)
+                result[norm_key] = _convert(raw_val)
+            return cast(JSONValue, result)
+        if isinstance(obj, list):
+            list_obj = cast(list[object], obj)
+            return cast(JSONValue, [_convert(item) for item in list_obj])
+        if isinstance(obj, tuple):
+            tuple_obj = cast(tuple[object, ...], obj)
+            return cast(JSONValue, [_convert(item) for item in tuple_obj])
+        if isinstance(obj, (str, int, float, bool)) or obj is None:
+            return cast(JSONValue, obj)
+        return cast(JSONValue, str(obj))
+
+    return _convert(value)

@@ -2,12 +2,29 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import cast
 
 import pytest
 
-from typewiz._internal.utils import consume, normalise_enums_for_json, resolve_project_root
+from typewiz._internal.utils import (
+    CommandOutput,
+    as_int,
+    as_list,
+    as_mapping,
+    as_str,
+    consume,
+    default_full_paths,
+    detect_tool_versions,
+    file_lock,
+    normalise_enums_for_json,
+    require_json,
+    resolve_project_root,
+    run_command,
+)
+from typewiz._internal.utils import locks as locks_mod
+from typewiz._internal.utils import versions as versions_mod
 from typewiz.core.model_types import ReadinessStatus, SeverityLevel
 
 
@@ -35,6 +52,19 @@ def test_resolve_project_root_defaults_to_cwd_when_no_markers(
     assert resolve_project_root() == tmp_path.resolve()
 
 
+def test_default_full_paths_detects_python_directories(tmp_path: Path) -> None:
+    tests_dir = tmp_path / "tests"
+    (tests_dir / "sample.py").parent.mkdir(parents=True, exist_ok=True)
+    consume((tests_dir / "sample.py").write_text("print('ok')\n", encoding="utf-8"))
+
+    paths = default_full_paths(tmp_path)
+    assert "tests" in paths
+
+
+def test_default_full_paths_falls_back_to_current_directory(tmp_path: Path) -> None:
+    assert default_full_paths(tmp_path) == ["."]
+
+
 def test_normalise_enums_for_json_converts_keys_and_nested_values() -> None:
     payload = {
         ReadinessStatus.READY: {
@@ -57,3 +87,48 @@ def test_normalise_enums_for_json_converts_keys_and_nested_values() -> None:
     assert isinstance(nested_raw, list) and nested_raw
     first_nested = cast(dict[str, object], nested_raw[0])
     assert first_nested.get("severity") == "error"
+
+
+def test_require_json_uses_fallback_payload() -> None:
+    data = require_json(" ", fallback='{"ok": 1}')
+    assert data == {"ok": 1}
+
+
+def test_json_cast_helpers_handle_defaults() -> None:
+    assert as_mapping({"a": 1}) == {"a": 1}
+    assert as_list([1, 2]) == [1, 2]
+    assert as_str(3, default="x") == "x"
+    assert as_int("42") == 42
+    assert as_int("oops", default=5) == 5
+
+
+def test_file_lock_supports_fallback_branch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    lock_path = tmp_path / "lock"
+    with file_lock(lock_path):
+        consume(lock_path.write_text("locked\n", encoding="utf-8"))
+
+    monkeypatch.setattr(locks_mod, "fcntl_module", None)
+    monkeypatch.setattr(locks_mod, "msvcrt_module", None)
+    with file_lock(lock_path):
+        consume(lock_path.write_text("fallback\n", encoding="utf-8"))
+
+
+def test_run_command_enforces_allowlist() -> None:
+    result = run_command([sys.executable, "-c", "print('ok')"], allowed={sys.executable})
+    assert "ok" in result.stdout
+    with pytest.raises(ValueError):
+        _ = run_command([sys.executable, "-c", "print('blocked')"], allowed={"python"})
+
+
+def test_detect_tool_versions_parses_outputs(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _fake_run_command(args: list[str], **_: object) -> CommandOutput:
+        payload = "pyright 1.2.3" if args[0] == "pyright" else "mypy 1.5.0"
+        return CommandOutput(args=args, stdout=payload, stderr="", exit_code=0, duration_ms=0.1)
+
+    monkeypatch.setattr(versions_mod, "run_command", _fake_run_command)
+    monkeypatch.setattr(versions_mod, "python_executable", lambda: sys.executable)
+
+    versions = detect_tool_versions(["pyright", "mypy", "pyright"])
+    assert versions == {"pyright": "1.2.3", "mypy": "1.5.0"}

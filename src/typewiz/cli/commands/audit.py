@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from typewiz._internal.utils import default_full_paths, resolve_project_root
-from typewiz.api import run_audit
 from typewiz.cli.helpers import (
     SUMMARY_FIELD_CHOICES,
     collect_plugin_args,
@@ -36,6 +35,7 @@ from typewiz.core.model_types import (
 from typewiz.core.summary_types import SummaryData
 from typewiz.core.type_aliases import EngineName, ProfileName
 from typewiz.dashboard import build_summary
+from typewiz.services.audit import run_audit
 from typewiz.services.dashboard import emit_dashboard_outputs, load_summary_from_manifest
 
 

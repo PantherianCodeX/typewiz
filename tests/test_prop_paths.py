@@ -7,7 +7,7 @@ from pathlib import Path
 import hypothesis.strategies as st
 from hypothesis import HealthCheck, given, settings
 
-from typewiz.audit_paths import normalise_paths
+from typewiz.audit.paths import normalise_paths
 
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])

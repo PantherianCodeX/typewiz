@@ -8,7 +8,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TypedDict, cast
 
-from typewiz.category_utils import CATEGORY_DISPLAY_ORDER, coerce_category_key
+from typewiz.core.categories import CATEGORY_DISPLAY_ORDER, coerce_category_key
 from typewiz.core.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
 from typewiz.core.summary_types import (
     ReadinessOptionEntry,

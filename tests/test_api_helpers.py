@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import override
 
 from typewiz._internal.utils import consume
-from typewiz.audit_config_utils import merge_engine_settings_map
-from typewiz.audit_execution import apply_engine_paths, resolve_engine_options
-from typewiz.audit_paths import (
+from typewiz.audit.execution import apply_engine_paths, resolve_engine_options
+from typewiz.audit.options import merge_engine_settings_map
+from typewiz.audit.paths import (
     fingerprint_targets,
     normalise_override_entries,
     normalise_paths,

@@ -11,7 +11,7 @@ from typing import cast
 
 from typewiz._internal.exceptions import TypewizTypeError
 from typewiz._internal.utils import JSONValue
-from typewiz.category_utils import coerce_category_key
+from typewiz.core.categories import coerce_category_key
 from typewiz.core.model_types import (
     CategoryMapping,
     OverrideEntry,

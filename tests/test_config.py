@@ -9,7 +9,7 @@ import pytest
 
 import typewiz.config as config_module
 from typewiz._internal.utils import consume
-from typewiz.audit_config_utils import merge_audit_configs
+from typewiz.audit.options import merge_audit_configs
 from typewiz.config import (
     AuditConfig,
     AuditConfigModel,
