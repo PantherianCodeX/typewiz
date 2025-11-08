@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PantherianCodeX
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from html import escape
 from typing import Any, Final, cast
 
+from typewiz.common.override_utils import get_override_components
 from typewiz.core.model_types import (
     DashboardView,
     OverrideEntry,
@@ -22,7 +23,6 @@ from typewiz.core.summary_types import (
     SummaryTabs,
 )
 from typewiz.core.type_aliases import CategoryKey
-from typewiz.override_utils import get_override_components
 from typewiz.readiness.compute import CATEGORY_LABELS
 
 _TAB_ORDER: Final[tuple[SummaryTabName, ...]] = tuple(SummaryTabName)

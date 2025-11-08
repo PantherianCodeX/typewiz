@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PantherianCodeX
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
 from .base import BaseEngine, EngineContext, EngineOptions, EngineResult
 from .registry import resolve_engines

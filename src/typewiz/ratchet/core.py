@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PantherianCodeX
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 """Core ratchet algorithms for building, comparing, and updating budgets."""
 
 from __future__ import annotations

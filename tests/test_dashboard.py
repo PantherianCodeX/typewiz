@@ -1,6 +1,6 @@
 # mypy: ignore-errors
 # pyright: reportPrivateUsage=false
-# Copyright (c) 2024 PantherianCodeX
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
 from __future__ import annotations
 

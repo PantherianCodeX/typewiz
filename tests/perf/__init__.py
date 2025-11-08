@@ -1,3 +1,3 @@
-# Copyright (c) 2024 PantherianCodeX
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
 """Performance benchmarking suite for Typewiz."""

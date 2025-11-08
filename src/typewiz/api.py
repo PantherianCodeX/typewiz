@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PantherianCodeX
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
 """Public API façade for Typewiz orchestration helpers."""
 

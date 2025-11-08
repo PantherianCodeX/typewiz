@@ -4,8 +4,8 @@ from collections.abc import Sequence
 
 from typewiz.collections import dedupe_preserve
 
-from .core.model_types import OverrideEntry
-from .core.type_aliases import RelPath
+from ..core.model_types import OverrideEntry
+from ..core.type_aliases import RelPath
 
 
 def get_override_components(
@@ -71,3 +71,11 @@ def override_detail_lines(entry: OverrideEntry) -> tuple[str, list[str]]:
     if not details:
         details.append("no explicit changes")
     return path, details
+
+
+__all__ = [
+    "get_override_components",
+    "format_override_inline",
+    "format_overrides_block",
+    "override_detail_lines",
+]

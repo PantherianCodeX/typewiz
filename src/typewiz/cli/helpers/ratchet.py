@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PantherianCodeX
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 """Helper utilities for ratchet CLI commands."""
 
 from __future__ import annotations

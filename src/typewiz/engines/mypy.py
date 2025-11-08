@@ -6,11 +6,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
+from typewiz._internal.utils import python_executable
 from typewiz.core.model_types import CategoryMapping, Mode
 from typewiz.core.type_aliases import Command, RelPath
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
 from typewiz.engines.execution import run_mypy
-from typewiz.runtime import python_executable
 
 
 class MypyEngine(BaseEngine):

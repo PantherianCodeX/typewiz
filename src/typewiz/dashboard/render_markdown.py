@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import cast
 
+from typewiz.common.override_utils import format_overrides_block
 from typewiz.config.validation import coerce_mapping
 from typewiz.core.model_types import OverrideEntry, ReadinessStatus, SeverityLevel, SummaryTabName
 from typewiz.core.summary_types import (
@@ -11,7 +12,6 @@ from typewiz.core.summary_types import (
     ReadinessTab,
     SummaryData,
 )
-from typewiz.override_utils import format_overrides_block
 from typewiz.readiness.compute import CATEGORY_LABELS
 
 

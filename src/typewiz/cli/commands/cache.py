@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PantherianCodeX
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 """Cache management commands for the Typewiz CLI."""
 
 from __future__ import annotations

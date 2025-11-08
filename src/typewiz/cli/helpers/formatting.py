@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PantherianCodeX
+# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 """Formatting and presentation helpers for the Typewiz CLI."""
 
 from __future__ import annotations
@@ -7,6 +7,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Literal, TypedDict, cast
 
+from typewiz.common.override_utils import format_override_inline, override_detail_lines
 from typewiz.config.validation import (
     coerce_int,
     coerce_mapping,
@@ -33,7 +34,6 @@ from typewiz.core.summary_types import (
 from typewiz.core.type_aliases import RelPath, RunId
 from typewiz.core.types import RunResult
 from typewiz.error_codes import error_code_for
-from typewiz.override_utils import format_override_inline, override_detail_lines
 from typewiz.readiness.views import ReadinessValidationError, ReadinessViewResult
 from typewiz.runtime import JSONValue, normalise_enums_for_json
 from typewiz.services.readiness import (
