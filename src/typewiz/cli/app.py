@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import pathlib
 from collections.abc import Sequence
@@ -15,7 +14,7 @@ from typing import Final
 from typewiz import __version__ as TYPEWIZ_VERSION
 from typewiz._internal.license import maybe_emit_evaluation_notice
 from typewiz._internal.logging_utils import LOG_FORMATS, configure_logging
-from typewiz._internal.utils import consume, normalise_enums_for_json
+from typewiz._internal.utils import consume
 from typewiz.cli.commands import audit as audit_command
 from typewiz.cli.commands import cache as cache_command
 from typewiz.cli.commands import engines as engines_command
@@ -36,8 +35,10 @@ from typewiz.core.model_types import (
     SeverityLevel,
 )
 from typewiz.core.summary_types import SummaryData
-from typewiz.dashboard import build_summary, load_manifest, render_markdown
-from typewiz.dashboard.render_html import render_html
+from typewiz.services.dashboard import (
+    load_summary_from_manifest,
+    render_dashboard_summary,
+)
 
 SUMMARY_FIELD_CHOICES = _SUMMARY_FIELD_CHOICES
 logger: logging.Logger = logging.getLogger("typewiz.cli")
@@ -276,16 +277,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         return audit_command.execute_audit(args)
 
     if args.command == "dashboard":
-        manifest = load_manifest(args.manifest)
-        summary = build_summary(manifest)
+        summary = load_summary_from_manifest(args.manifest)
         dashboard_format = DashboardFormat.from_str(args.format)
-        if dashboard_format is DashboardFormat.JSON:
-            rendered = json.dumps(normalise_enums_for_json(summary), indent=2) + "\n"
-        elif dashboard_format is DashboardFormat.MARKDOWN:
-            rendered = render_markdown(summary)
-        else:
-            view_choice = DashboardView.from_str(args.view)
-            rendered = render_html(summary, default_view=view_choice.value)
+        view_choice = DashboardView.from_str(args.view)
+        rendered = render_dashboard_summary(
+            summary,
+            format=dashboard_format,
+            default_view=view_choice,
+        )
 
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -301,8 +300,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return manifest_command.execute_manifest(args)
 
     if args.command == "readiness":
-        manifest = load_manifest(args.manifest)
-        summary_map: SummaryData = build_summary(manifest)
+        summary_map: SummaryData = load_summary_from_manifest(args.manifest)
         level_choice = ReadinessLevel.from_str(args.level)
         statuses = (
             [ReadinessStatus.from_str(status) for status in args.statuses]

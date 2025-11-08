@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from typewiz._internal.utils import normalise_enums_for_json
-from typewiz.core.model_types import DashboardView
+from typewiz.core.model_types import DashboardFormat, DashboardView
 from typewiz.core.summary_types import SummaryData
 from typewiz.dashboard import build_summary, load_manifest, render_markdown
 from typewiz.dashboard.render_html import render_html
@@ -17,6 +17,24 @@ def _ensure_parent(path: Path) -> None:
 def load_summary_from_manifest(manifest_path: Path) -> SummaryData:
     manifest = load_manifest(manifest_path)
     return build_summary(manifest)
+
+
+def render_dashboard_summary(
+    summary: SummaryData,
+    *,
+    format: DashboardFormat,
+    default_view: DashboardView | str,
+) -> str:
+    view = (
+        default_view
+        if isinstance(default_view, DashboardView)
+        else DashboardView.from_str(default_view)
+    )
+    if format is DashboardFormat.JSON:
+        return _format_json(normalise_enums_for_json(summary))
+    if format is DashboardFormat.MARKDOWN:
+        return render_markdown(summary)
+    return render_html(summary, default_view=view.value)
 
 
 def emit_dashboard_outputs(
@@ -50,4 +68,8 @@ def _format_json(payload: Any) -> str:
     return json.dumps(payload, indent=2) + "\n"
 
 
-__all__ = ["emit_dashboard_outputs", "load_summary_from_manifest"]
+__all__ = [
+    "emit_dashboard_outputs",
+    "load_summary_from_manifest",
+    "render_dashboard_summary",
+]

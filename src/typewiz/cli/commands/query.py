@@ -16,7 +16,7 @@ from typewiz.core.model_types import (
     SeverityLevel,
 )
 from typewiz.core.summary_types import SummaryData
-from typewiz.dashboard import build_summary, load_manifest
+from typewiz.services.dashboard import load_summary_from_manifest
 
 from ..helpers import (
     echo,
@@ -243,8 +243,7 @@ def _register_common_manifest_argument(parser: argparse.ArgumentParser) -> None:
 
 
 def _load_summary(manifest_path: Path) -> SummaryData:
-    manifest = load_manifest(manifest_path)
-    return build_summary(manifest)
+    return load_summary_from_manifest(manifest_path)
 
 
 def _render_payload(data: object, fmt: DataFormat) -> None:

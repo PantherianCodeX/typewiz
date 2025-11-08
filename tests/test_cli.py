@@ -29,6 +29,8 @@ from typewiz.cli.helpers.formatting import (
 )
 from typewiz.config import Config
 from typewiz.core.model_types import (
+    DashboardFormat,
+    DashboardView,
     Mode,
     OverrideEntry,
     ReadinessLevel,
@@ -894,19 +896,25 @@ def test_cli_audit_full_outputs(
     def _run_audit_stub(**_: object) -> AuditResult:
         return audit_result
 
-    def _render_markdown(_: object) -> str:
-        return "markdown"
-
-    def _render_html(_: object, default_view: str) -> str:
-        assert default_view in {"engines", "overview", "hotspots", "readiness", "runs"}
+    def _render_dashboard(
+        summary_arg: SummaryData,
+        *,
+        format: DashboardFormat,
+        default_view: DashboardView | str,
+    ) -> str:
+        assert summary_arg is summary
+        if format is DashboardFormat.JSON:
+            return json.dumps(summary_arg)
+        if format is DashboardFormat.MARKDOWN:
+            return "markdown"
+        view_value = default_view.value if isinstance(default_view, DashboardView) else default_view
+        assert view_value in {"engines", "overview", "hotspots", "readiness", "runs"}
         return "<html>"
 
     monkeypatch.setattr("typewiz.cli.commands.audit.load_config", _load_config)
     monkeypatch.setattr("typewiz.cli.commands.audit.resolve_project_root", _resolve_root)
     monkeypatch.setattr("typewiz.cli.commands.audit.default_full_paths", _default_paths)
     monkeypatch.setattr("typewiz.cli.commands.audit.run_audit", _run_audit_stub)
-    monkeypatch.setattr("typewiz.services.dashboard.render_markdown", _render_markdown)
-    monkeypatch.setattr("typewiz.services.dashboard.render_html", _render_html)
 
     def _fake_build_summary(data: object) -> SummaryData:
         if isinstance(data, dict):
@@ -923,6 +931,19 @@ def test_cli_audit_full_outputs(
     monkeypatch.setattr(
         "typewiz.cli.commands.audit.load_summary_from_manifest",
         _load_prev_summary,
+    )
+
+    def _render_audit_dashboard(
+        summary_arg: SummaryData,
+        *,
+        format: DashboardFormat,
+        default_view: DashboardView | str,
+    ) -> str:
+        return _render_dashboard(summary_arg, format=format, default_view=default_view)
+
+    monkeypatch.setattr(
+        "typewiz.services.dashboard.render_dashboard_summary",
+        _render_audit_dashboard,
     )
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
@@ -979,19 +1000,32 @@ def test_cli_dashboard_outputs(
 
     summary = _empty_summary()
 
-    def _build_summary(_: object) -> SummaryData:
+    def _load_summary(_: Path) -> SummaryData:
         return summary
 
-    def _render_markdown(_: object) -> str:
-        return "markdown"
-
-    def _render_html(_: object, default_view: str) -> str:
-        assert default_view in {"overview", "engines", "hotspots", "readiness", "runs"}
+    def _render_dashboard_cli(
+        summary_arg: SummaryData,
+        *,
+        format: DashboardFormat,
+        default_view: DashboardView | str,
+    ) -> str:
+        assert summary_arg is summary
+        if format is DashboardFormat.JSON:
+            return json.dumps(summary_arg)
+        if format is DashboardFormat.MARKDOWN:
+            return "markdown"
+        view_value = default_view.value if isinstance(default_view, DashboardView) else default_view
+        assert view_value in {"overview", "engines", "hotspots", "readiness", "runs"}
         return "<html>"
 
-    monkeypatch.setattr("typewiz.cli.app.build_summary", _build_summary)
-    monkeypatch.setattr("typewiz.cli.app.render_markdown", _render_markdown)
-    monkeypatch.setattr("typewiz.cli.app.render_html", _render_html)
+    monkeypatch.setattr(
+        "typewiz.services.dashboard.load_summary_from_manifest",
+        _load_summary,
+    )
+    monkeypatch.setattr(
+        "typewiz.services.dashboard.render_dashboard_summary",
+        _render_dashboard_cli,
+    )
 
     exit_code_json = main(["dashboard", "--manifest", str(manifest_path)])
     assert exit_code_json == 0
