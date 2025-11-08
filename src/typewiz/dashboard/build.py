@@ -9,8 +9,12 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import cast
 
-from typewiz._internal.exceptions import TypewizTypeError
-from typewiz._internal.utils import JSONValue
+from typewiz.config.validation import (
+    coerce_int,
+    coerce_mapping,
+    coerce_object_list,
+    coerce_str_list,
+)
 from typewiz.core.categories import coerce_category_key
 from typewiz.core.model_types import (
     CategoryMapping,
@@ -35,7 +39,7 @@ from typewiz.core.summary_types import (
     SummaryTabs,
 )
 from typewiz.core.type_aliases import CategoryKey, RelPath, RunId
-from typewiz.data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
+from typewiz.exceptions import TypewizTypeError
 from typewiz.manifest.loader import load_manifest_data
 from typewiz.manifest.typed import ManifestData, ToolSummary
 from typewiz.readiness.compute import (
@@ -45,6 +49,7 @@ from typewiz.readiness.compute import (
     ReadinessPayload,
     compute_readiness,
 )
+from typewiz.runtime import JSONValue
 
 logger: logging.Logger = logging.getLogger("typewiz.dashboard")
 
@@ -182,7 +187,7 @@ def _validate_readiness_tab(raw: Mapping[object, object]) -> ReadinessTab:
     )
 
 
-def build_summary(manifest: ManifestData) -> SummaryData:
+def build_summary(manifest: ManifestData) -> SummaryData:  # noqa: C901, PLR0912, PLR0915
     runs_raw = manifest.get("runs")
     run_entries: list[dict[str, JSONValue]] = (
         [

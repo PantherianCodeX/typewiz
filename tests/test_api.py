@@ -10,12 +10,32 @@ import pytest
 
 from typewiz import AuditConfig, Config, run_audit
 from typewiz._internal.utils import consume
+from typewiz.api import (
+    build_summary as api_build_summary,
+)
+from typewiz.api import (
+    render_dashboard_summary,
+    validate_manifest_file,
+)
+from typewiz.api import (
+    render_html as api_render_html,
+)
+from typewiz.api import (
+    render_markdown as api_render_markdown,
+)
 from typewiz.config import EngineProfile, EngineSettings
-from typewiz.core.model_types import Mode, ReadinessStatus, SeverityLevel
+from typewiz.core.model_types import (
+    DashboardFormat,
+    DashboardView,
+    Mode,
+    ReadinessStatus,
+    SeverityLevel,
+)
 from typewiz.core.type_aliases import EngineName, ProfileName, RunnerName, ToolName
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.manifest.typed import ToolSummary
+from typewiz.manifest.typed import ManifestData, ToolSummary
+from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 
 STUB_TOOL = ToolName("stub")
 
@@ -419,6 +439,34 @@ def test_run_audit_cache_preserves_tool_summary(
     assert "toolSummary" in cached_manifest_full
     cached_tool_summary = cached_manifest_full["toolSummary"]
     assert "errors" in cached_tool_summary and cached_tool_summary["errors"] == 1
+
+
+def test_api_exposes_dashboard_and_manifest_helpers(tmp_path: Path) -> None:
+    manifest: ManifestData = {
+        "projectRoot": str(tmp_path),
+        "generatedAt": "now",
+        "schemaVersion": CURRENT_MANIFEST_VERSION,
+        "runs": [],
+    }
+    summary = api_build_summary(manifest)
+    markdown = api_render_markdown(summary)
+    assert isinstance(markdown, str) and markdown
+    html = api_render_html(summary)
+    assert "<html" in html.lower()
+    rendered = render_dashboard_summary(
+        summary,
+        format=DashboardFormat.JSON,
+        default_view=DashboardView.OVERVIEW,
+    )
+    assert '"tabs"' in rendered
+
+    manifest_path = tmp_path / "manifest.json"
+    _ = manifest_path.write_text(
+        f'{{"schemaVersion": "{CURRENT_MANIFEST_VERSION}", "runs": []}}',
+        encoding="utf-8",
+    )
+    validation = validate_manifest_file(manifest_path)
+    assert validation.is_valid
 
 
 STUB = EngineName("stub")

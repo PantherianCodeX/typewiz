@@ -11,10 +11,9 @@ from typing import cast
 import pytest
 
 from typewiz._internal.utils import consume
+from typewiz.api import build_summary, load_manifest, render_html, render_markdown
 from typewiz.core.summary_types import SummaryData
 from typewiz.core.type_aliases import RunId
-from typewiz.dashboard import build_summary, load_manifest, render_markdown
-from typewiz.dashboard.render_html import render_html
 from typewiz.manifest.models import ManifestValidationError
 from typewiz.manifest.typed import FileEntry, FolderEntry, ManifestData, RunPayload
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION

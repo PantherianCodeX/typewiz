@@ -84,7 +84,7 @@ def _merge_base_paths(
     return include_raw, exclude_raw
 
 
-def _initial_option_state(
+def _initial_option_state(  # noqa: PLR0913
     project_root: Path,
     audit_config: AuditConfig,
     engine_name: EngineName,
@@ -273,7 +273,7 @@ def _fingerprint_targets_for_run(
     )
 
 
-def _prepare_cache_inputs(
+def _prepare_cache_inputs(  # noqa: PLR0913
     *,
     engine: BaseEngine,
     mode: Mode,
@@ -440,7 +440,7 @@ def resolve_engine_options(
     )
 
 
-def execute_engine_mode(
+def execute_engine_mode(  # noqa: PLR0913
     *,
     engine: BaseEngine,
     mode: Mode,

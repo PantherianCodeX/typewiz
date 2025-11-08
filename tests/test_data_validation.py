@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from typewiz._internal.utils import consume
-from typewiz.data_validation import (
+from typewiz.config.validation import (
     coerce_float,
     coerce_int,
     coerce_mapping,
@@ -39,7 +38,7 @@ def test_coerce_optional_str_handles_empty() -> None:
 def test_require_non_negative_int_rejects_negative() -> None:
     assert require_non_negative_int("6", context="count") == 6
     with pytest.raises(ValueError):
-        consume(require_non_negative_int(-5, context="count"))
+        _ = require_non_negative_int(-5, context="count")
 
 
 def test_coerce_float_parses_values() -> None:

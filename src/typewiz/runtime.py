@@ -6,6 +6,7 @@ from typewiz._internal.utils import (
     JSONValue,
     consume,
     default_full_paths,
+    detect_tool_versions,
     normalise_enums_for_json,
     resolve_project_root,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "JSONValue",
     "consume",
     "default_full_paths",
+    "detect_tool_versions",
     "normalise_enums_for_json",
     "resolve_project_root",
 ]

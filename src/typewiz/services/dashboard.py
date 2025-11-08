@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from typewiz._internal.utils import normalise_enums_for_json
 from typewiz.core.model_types import DashboardFormat, DashboardView
 from typewiz.core.summary_types import SummaryData
 from typewiz.dashboard import build_summary, load_manifest, render_markdown
 from typewiz.dashboard.render_html import render_html
+from typewiz.runtime import normalise_enums_for_json
 
 
 def _ensure_parent(path: Path) -> None:

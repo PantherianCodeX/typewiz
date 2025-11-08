@@ -202,7 +202,7 @@ def _split_rel_path(rel_path: str) -> tuple[str, ...]:
     return parts
 
 
-def _update_file_summary(
+def _update_file_summary(  # noqa: PLR0913
     summary: FileSummary,
     *,
     severity: SeverityLevel,

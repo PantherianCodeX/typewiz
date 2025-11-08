@@ -33,7 +33,7 @@ def collect_readiness_view(
     )
 
 
-def format_readiness_summary(
+def format_readiness_summary(  # noqa: PLR0913
     summary: SummaryData,
     *,
     level: ReadinessLevel,

@@ -52,6 +52,12 @@ def test_resolve_project_root_defaults_to_cwd_when_no_markers(
     assert resolve_project_root() == tmp_path.resolve()
 
 
+def test_resolve_project_root_raises_for_missing_path(tmp_path: Path) -> None:
+    missing = tmp_path / "absent"
+    with pytest.raises(FileNotFoundError):
+        _ = resolve_project_root(missing)
+
+
 def test_default_full_paths_detects_python_directories(tmp_path: Path) -> None:
     tests_dir = tmp_path / "tests"
     (tests_dir / "sample.py").parent.mkdir(parents=True, exist_ok=True)
@@ -115,6 +121,46 @@ def test_file_lock_supports_fallback_branch(
         consume(lock_path.write_text("fallback\n", encoding="utf-8"))
 
 
+def test_file_lock_prefers_fcntl(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    class DummyFcntl:
+        LOCK_EX = 1
+        LOCK_UN = 2
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.calls: list[int] = []
+
+        def flock(self, _fd: int, operation: int) -> None:
+            self.calls.append(operation)
+
+    dummy = DummyFcntl()
+    monkeypatch.setattr(locks_mod, "fcntl_module", dummy)
+    monkeypatch.setattr(locks_mod, "msvcrt_module", None)
+    with file_lock(tmp_path / "fcntl.lock"):
+        pass
+    assert dummy.calls == [dummy.LOCK_EX, dummy.LOCK_UN]
+
+
+def test_file_lock_handles_msvcrt_branch(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    class DummyMsvcrt:
+        LK_LOCK = 1
+        LK_UNLCK = 2
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.operations: list[int] = []
+
+        def locking(self, _fd: int, mode: int, _size: int) -> None:
+            self.operations.append(mode)
+
+    dummy = DummyMsvcrt()
+    monkeypatch.setattr(locks_mod, "fcntl_module", None)
+    monkeypatch.setattr(locks_mod, "msvcrt_module", dummy)
+    with file_lock(tmp_path / "msvcrt.lock"):
+        pass
+    assert dummy.operations == [dummy.LK_LOCK, dummy.LK_UNLCK]
+
+
 def test_run_command_enforces_allowlist() -> None:
     result = run_command([sys.executable, "-c", "print('ok')"], allowed={sys.executable})
     assert "ok" in result.stdout
@@ -132,3 +178,14 @@ def test_detect_tool_versions_parses_outputs(monkeypatch: pytest.MonkeyPatch) ->
 
     versions = detect_tool_versions(["pyright", "mypy", "pyright"])
     assert versions == {"pyright": "1.2.3", "mypy": "1.5.0"}
+
+
+def test_detect_tool_versions_swallows_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _fail_run_command(*_: object, **__: object) -> CommandOutput:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(versions_mod, "run_command", _fail_run_command)
+    monkeypatch.setattr(versions_mod, "python_executable", lambda: sys.executable)
+
+    versions = detect_tool_versions(["pyright"])
+    assert versions == {}

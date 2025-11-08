@@ -11,9 +11,9 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 
 from typewiz._internal.collection_utils import dedupe_preserve
 from typewiz._internal.exceptions import TypewizValidationError
+from typewiz.config.validation import require_non_negative_int
 from typewiz.core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import EngineName, ProfileName, RunId, RunnerName
-from typewiz.data_validation import require_non_negative_int
 
 CONFIG_VERSION: Final[int] = 0
 FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)

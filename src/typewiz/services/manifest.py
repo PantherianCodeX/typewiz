@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from typewiz._internal.error_codes import error_code_for
+from typewiz.error_codes import error_code_for
 from typewiz.manifest.models import (
     ManifestValidationError,
     manifest_json_schema,

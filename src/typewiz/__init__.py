@@ -14,17 +14,26 @@ from typewiz._internal.exceptions import (
     TypewizTypeError,
     TypewizValidationError,
 )
-from typewiz._internal.license import (
-    LICENSE_KEY_ENV,
-    has_commercial_license,
-    license_mode,
-)
+from typewiz.license import LICENSE_KEY_ENV, has_commercial_license, license_mode
 
-from .api import AuditResult, run_audit
+from .api import (
+    AuditResult,
+    ManifestPayloadError,
+    ManifestValidationResult,
+    build_summary,
+    emit_dashboard_outputs,
+    load_manifest,
+    load_summary_from_manifest,
+    manifest_json_schema,
+    render_dashboard_summary,
+    render_html,
+    render_markdown,
+    run_audit,
+    validate_manifest_file,
+)
 from .config import AuditConfig, Config, load_config
 from .core.summary_types import SummaryData
 from .core.types import Diagnostic, RunResult
-from .dashboard import build_summary, load_manifest, render_html, render_markdown
 from .manifest.typed import ToolSummary
 from .ratchet import (
     apply_auto_update as ratchet_apply_auto_update,
@@ -46,6 +55,8 @@ __all__ = [
     "Config",
     "Diagnostic",
     "LICENSE_KEY_ENV",
+    "ManifestPayloadError",
+    "ManifestValidationResult",
     "RunResult",
     "SummaryData",
     "ToolSummary",
@@ -55,15 +66,20 @@ __all__ = [
     "build_summary",
     "has_commercial_license",
     "license_mode",
+    "emit_dashboard_outputs",
     "load_config",
     "load_manifest",
+    "load_summary_from_manifest",
+    "manifest_json_schema",
     "ratchet_apply_auto_update",
     "ratchet_build",
     "ratchet_compare",
     "ratchet_refresh",
+    "render_dashboard_summary",
     "render_html",
     "render_markdown",
     "run_audit",
+    "validate_manifest_file",
 ]
 
 __version__ = "0.1.0"

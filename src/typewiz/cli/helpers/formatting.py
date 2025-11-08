@@ -7,6 +7,12 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Literal, TypedDict, cast
 
+from typewiz.config.validation import (
+    coerce_int,
+    coerce_mapping,
+    coerce_object_list,
+    coerce_str_list,
+)
 from typewiz.core.model_types import (
     DataFormat,
     HotspotKind,
@@ -21,7 +27,6 @@ from typewiz.core.model_types import (
 from typewiz.core.summary_types import SummaryData
 from typewiz.core.type_aliases import RelPath, RunId
 from typewiz.core.types import RunResult
-from typewiz.data_validation import coerce_int, coerce_mapping, coerce_object_list, coerce_str_list
 from typewiz.error_codes import error_code_for
 from typewiz.formatting import render_table_rows, stringify
 from typewiz.override_utils import format_override_inline, override_detail_lines
@@ -161,7 +166,7 @@ def parse_summary_fields(
     return fields
 
 
-def _print_run_summary(
+def _print_run_summary(  # noqa: C901, PLR0912
     run: RunResult,
     *,
     fields: set[SummaryField],
@@ -256,7 +261,7 @@ def collect_readiness_view(
         raise SystemExit(message) from exc
 
 
-def print_readiness_summary(
+def print_readiness_summary(  # noqa: PLR0913
     summary: SummaryData,
     *,
     level: ReadinessLevel,
@@ -436,7 +441,7 @@ def query_runs(
     return records
 
 
-def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:
+def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:  # noqa: C901
     """Build the payload for ``typewiz query engines``."""
     runs = summary["tabs"]["engines"]["runSummary"]
     records: list[EngineEntry] = []

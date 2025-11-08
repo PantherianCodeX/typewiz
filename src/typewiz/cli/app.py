@@ -115,7 +115,7 @@ def write_config_template(path: pathlib.Path, *, force: bool) -> int:
     return 0
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:  # noqa: C901, PLR0912, PLR0915
     maybe_emit_evaluation_notice(lambda message: _echo(message, err=True))
     parser = argparse.ArgumentParser(
         prog="typewiz",

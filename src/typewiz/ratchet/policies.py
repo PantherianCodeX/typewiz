@@ -6,7 +6,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from typewiz._internal.utils import JSONValue
+from typewiz.runtime import JSONValue
 
 from ..core.model_types import SignaturePolicy
 

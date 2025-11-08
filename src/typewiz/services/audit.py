@@ -12,7 +12,7 @@ from typewiz.config import AuditConfig, Config
 __all__ = ["AuditResult", "run_audit"]
 
 
-def run_audit(
+def run_audit(  # noqa: PLR0913
     *,
     project_root: Path | None = None,
     config: Config | None = None,

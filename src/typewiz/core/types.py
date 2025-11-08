@@ -6,7 +6,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from typewiz._internal.utils import JSONValue
+from typewiz.runtime import JSONValue
 
 from ..manifest.typed import EngineError, ToolSummary
 from .model_types import SeverityLevel

@@ -163,7 +163,7 @@ def _category_status_map(categories: CategoryCountMap) -> CategoryStatusMap:
     return status_map
 
 
-def _append_option_buckets(
+def _append_option_buckets(  # noqa: PLR0913
     options: ReadinessOptionsMap,
     entry_path: str,
     category_status: CategoryStatusMap,

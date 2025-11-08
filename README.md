@@ -432,6 +432,35 @@ print(result.summary["topFolders"][:3])
 manifest = result.manifest
 ```
 
+### Public API (`typewiz.api`)
+
+The `typewiz.api` module re-exports the high-level orchestration helpers so you can script audits,
+dashboards, and manifest validation without digging into internal packages.
+
+```python
+from pathlib import Path
+
+from typewiz import AuditConfig
+from typewiz.api import (
+    build_summary,
+    render_markdown,
+    run_audit,
+    validate_manifest_file,
+)
+
+audit = AuditConfig(full_paths=["src"])
+result = run_audit(project_root=Path.cwd(), override=audit, build_summary_output=True)
+
+# Render a markdown summary (build one if the audit skipped it)
+summary = result.summary or build_summary(result.manifest)
+print(render_markdown(summary))
+
+# Validate the manifest output (JSON Schema if `jsonschema` is installed)
+manifest_path = Path("typing_audit_manifest.json")
+validation = validate_manifest_file(manifest_path)
+assert validation.is_valid, validation.payload_errors
+```
+
 ### Dashboards
 
 Render dashboards from any manifest:
@@ -489,9 +518,10 @@ Typewiz includes a Pydantic-backed manifest validator and a CLI to emit the JSON
 
   `typewiz manifest schema --output schemas/typing-manifest.schema.json`
 
-Programmatic validation is available via `typewiz.manifest_models.validate_manifest_payload`.
-Validation errors raise `TypewizValidationError` with access to the underlying Pydantic
-`ValidationError` for detailed diagnostics.
+Programmatic validation is available via `typewiz.api.validate_manifest_file` (payload plus optional
+JSON Schema) or the lower-level `typewiz.manifest_models.validate_manifest_payload`. Validation errors
+raise `TypewizValidationError` with access to the underlying Pydantic `ValidationError` for detailed
+diagnostics.
 
 ### Exception Reference
 

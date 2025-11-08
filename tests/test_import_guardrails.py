@@ -4,6 +4,14 @@ import ast
 from pathlib import Path
 
 CLI_ROOT = Path("src/typewiz/cli")
+DOMAIN_ROOTS = [
+    Path("src/typewiz/core"),
+    Path("src/typewiz/dashboard"),
+    Path("src/typewiz/manifest"),
+    Path("src/typewiz/ratchet"),
+    Path("src/typewiz/readiness"),
+    Path("src/typewiz/services"),
+]
 
 
 def _collect_internal_imports(source: Path) -> list[str]:
@@ -28,3 +36,13 @@ def test_cli_does_not_import_internal_modules() -> None:
         if imports:
             offenders[path] = imports
     assert not offenders, f"CLI modules must not import typewiz._internal: {offenders}"
+
+
+def test_domain_modules_use_public_shims() -> None:
+    offenders: dict[Path, list[str]] = {}
+    for root in DOMAIN_ROOTS:
+        for path in root.rglob("*.py"):
+            imports = _collect_internal_imports(path)
+            if imports:
+                offenders[path] = imports
+    assert not offenders, f"Domain modules must use shims instead of typewiz._internal: {offenders}"

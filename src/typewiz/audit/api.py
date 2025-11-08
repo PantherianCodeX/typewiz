@@ -135,7 +135,7 @@ def _run_engines(inputs: _AuditInputs) -> tuple[list[RunResult], bool]:
     return runs, truncated_any
 
 
-def _persist_manifest_and_dashboards(
+def _persist_manifest_and_dashboards(  # noqa: PLR0913
     *,
     inputs: _AuditInputs,
     runs: list[RunResult],
@@ -208,7 +208,7 @@ def _compute_run_totals(runs: list[RunResult]) -> tuple[int, int]:
     return error_count, warning_count
 
 
-def run_audit(
+def run_audit(  # noqa: PLR0913
     *,
     project_root: Path | None = None,
     config: Config | None = None,

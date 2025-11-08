@@ -8,6 +8,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TypedDict, cast
 
+from typewiz.config.validation import (
+    coerce_int,
+    coerce_mapping,
+    coerce_object_list,
+    coerce_optional_str_list,
+    coerce_str,
+)
 from typewiz.core.categories import CATEGORY_DISPLAY_ORDER, coerce_category_key
 from typewiz.core.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
 from typewiz.core.summary_types import (
@@ -17,13 +24,6 @@ from typewiz.core.summary_types import (
     SummaryTabs,
 )
 from typewiz.core.type_aliases import CategoryKey, CategoryName
-from typewiz.data_validation import (
-    coerce_int,
-    coerce_mapping,
-    coerce_object_list,
-    coerce_optional_str_list,
-    coerce_str,
-)
 from typewiz.readiness.compute import DEFAULT_CLOSE_THRESHOLD, ReadinessOptions
 
 
@@ -141,7 +141,7 @@ def _coerce_option_entries(value: object) -> list[ReadinessOptionEntry]:
     return entries
 
 
-def _build_strict_entry(raw: Mapping[str, object]) -> ReadinessStrictEntry:
+def _build_strict_entry(raw: Mapping[str, object]) -> ReadinessStrictEntry:  # noqa: C901
     entry: ReadinessStrictEntry = {}
     path = raw.get("path")
     if isinstance(path, str):

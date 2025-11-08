@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
-from typewiz._internal.utils import consume, detect_tool_versions, normalise_enums_for_json
 from typewiz.core.model_types import clone_override_entries
 from typewiz.core.types import RunResult
+from typewiz.runtime import consume, detect_tool_versions, normalise_enums_for_json
 
 from .typed import (
     AggregatedData,

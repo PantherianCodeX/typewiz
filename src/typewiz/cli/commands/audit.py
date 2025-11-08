@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
+from typewiz.api import build_summary
 from typewiz.cli.helpers import (
     SUMMARY_FIELD_CHOICES,
     collect_plugin_args,
@@ -33,7 +34,6 @@ from typewiz.core.model_types import (
 )
 from typewiz.core.summary_types import SummaryData
 from typewiz.core.type_aliases import EngineName, ProfileName
-from typewiz.dashboard import build_summary
 from typewiz.runtime import default_full_paths, resolve_project_root
 from typewiz.services.audit import run_audit
 from typewiz.services.dashboard import emit_dashboard_outputs, load_summary_from_manifest
@@ -377,7 +377,7 @@ def _emit_dashboard_outputs(args: argparse.Namespace, summary: SummaryData) -> N
     )
 
 
-def execute_audit(args: argparse.Namespace) -> int:
+def execute_audit(args: argparse.Namespace) -> int:  # noqa: C901
     """Execute the ``typewiz audit`` command."""
     config = load_config(args.config)
     project_root = resolve_project_root(args.project_root)

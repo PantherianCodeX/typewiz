@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
 
@@ -99,6 +100,38 @@ class RatchetRunReport:
         limit: int | None = None,
         summary_only: bool = False,
     ) -> list[str]:
+        lines = [self._status_line(ignore_signature)]
+        if summary_only:
+            lines.append(self._summary_line())
+            return lines
+
+        lines.extend(
+            self._format_finding_block(
+                title="Violations",
+                findings=self.violations,
+                limit=limit,
+                formatter=self._format_violation_line,
+            )
+        )
+        lines.extend(
+            self._format_finding_block(
+                title="Improvements",
+                findings=self.improvements,
+                limit=limit,
+                formatter=self._format_improvement_line,
+            )
+        )
+        if not ignore_signature and self.has_signature_mismatch():
+            expected_hash = (
+                self.expected_signature.get("hash") if self.expected_signature else "<none>"
+            )
+            actual_hash = self.actual_signature.get("hash") if self.actual_signature else "<none>"
+            lines.append(
+                "  Engine signature mismatch:" + f" expected={expected_hash} actual={actual_hash}"
+            )
+        return lines
+
+    def _status_line(self, ignore_signature: bool) -> str:
         status_parts: list[str] = []
         if self.violations:
             status_parts.append("violations")
@@ -109,58 +142,55 @@ class RatchetRunReport:
         if not status_parts:
             status_parts.append("clean")
         status = ",".join(status_parts)
-        lines = [f"[typewiz] ratchet run={self.run_id} status={status}"]
-        if summary_only:
-            summary_line = (
-                "  summary: violations={violations} improvements={improvements} signature={signature}"
-            ).format(
-                violations=len(self.violations),
-                improvements=len(self.improvements),
-                signature="ok" if self.signature_matches else "mismatch",
-            )
-            lines.append(summary_line)
-            return lines
+        status_line = f"[typewiz] ratchet run={self.run_id} status={status}"
+        return status_line
 
-        def _slice(values: list[RatchetFinding]) -> list[RatchetFinding]:
-            if limit is not None and limit > 0:
-                return values[:limit]
-            return values
+    def _summary_line(self) -> str:
+        signature = "ok" if self.signature_matches else "mismatch"
+        summary_line = (
+            f"  summary: violations={len(self.violations)}"
+            f" improvements={len(self.improvements)}"
+            f" signature={signature}"
+        )
+        return summary_line
 
-        if self.violations:
-            lines.append("  Violations:")
-            lines.extend([
-                (
-                    "    "
-                    + f"{finding.path} [{finding.severity.value}] "
-                    + f"actual={finding.actual} allowed={finding.allowed} delta=+{finding.delta}"
-                )
-                for finding in _slice(self.violations)
-            ])
-        else:
-            lines.append("  Violations: none")
-
-        if self.improvements:
-            lines.append("  Improvements:")
-            lines.extend([
-                (
-                    "    "
-                    + f"{finding.path} [{finding.severity.value}] "
-                    + f"previous={finding.allowed} current={finding.actual} delta={finding.delta}"
-                )
-                for finding in _slice(self.improvements)
-            ])
-        else:
-            lines.append("  Improvements: none")
-
-        if not ignore_signature and self.has_signature_mismatch():
-            expected_hash = (
-                self.expected_signature.get("hash") if self.expected_signature else "<none>"
-            )
-            actual_hash = self.actual_signature.get("hash") if self.actual_signature else "<none>"
-            lines.append(
-                "  Engine signature mismatch:" + f" expected={expected_hash} actual={actual_hash}"
-            )
+    def _format_finding_block(
+        self,
+        *,
+        title: str,
+        findings: list[RatchetFinding],
+        limit: int | None,
+        formatter: Callable[[RatchetFinding], str],
+    ) -> list[str]:
+        if not findings:
+            return [f"  {title}: none"]
+        lines = [f"  {title}:"]
+        for finding in self._slice_findings(findings, limit):
+            lines.append("    " + formatter(finding))
         return lines
+
+    @staticmethod
+    def _slice_findings(
+        findings: list[RatchetFinding],
+        limit: int | None,
+    ) -> list[RatchetFinding]:
+        if limit is not None and limit > 0:
+            return findings[:limit]
+        return findings
+
+    @staticmethod
+    def _format_violation_line(finding: RatchetFinding) -> str:
+        return (
+            f"{finding.path} [{finding.severity.value}] "
+            f"actual={finding.actual} allowed={finding.allowed} delta=+{finding.delta}"
+        )
+
+    @staticmethod
+    def _format_improvement_line(finding: RatchetFinding) -> str:
+        return (
+            f"{finding.path} [{finding.severity.value}] "
+            f"previous={finding.allowed} current={finding.actual} delta={finding.delta}"
+        )
 
 
 @dataclass(slots=True)

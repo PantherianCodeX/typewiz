@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from enum import StrEnum
 from typing import Final, TypedDict, cast
 
-from typewiz._internal.utils import JSONValue
+from typewiz.runtime import JSONValue
 
 from .type_aliases import CategoryKey, RelPath
 

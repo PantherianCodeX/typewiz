@@ -124,7 +124,7 @@ type.verify: ## Verify public typing completeness via pyright
 verifytypes: ## Alias for type.verify (pyright --verifytypes)
 	@$(MAKE) type.verify
 
-typing.run: typing.baseline typing.strict ## Run baseline then strict checks
+typing.run: typing.baseline typing.strict type.verify ## Run baseline then strict checks plus public typing
 
 typing.baseline: ## Run pyright then mypy checks
 	$(PYRIGHT) -p pyrightconfig.json

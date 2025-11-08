@@ -24,7 +24,7 @@ from .models import (
 )
 
 
-def resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:
+def resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:  # noqa: C901, PLR0912
     for field_name in ("manifest_path", "dashboard_json", "dashboard_markdown", "dashboard_html"):
         value = getattr(audit, field_name)
         if value is None:

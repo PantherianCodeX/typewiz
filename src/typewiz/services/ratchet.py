@@ -113,7 +113,7 @@ def _ensure_can_write(path: Path, *, force: bool) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
-def init_ratchet(
+def init_ratchet(  # noqa: PLR0913
     *,
     manifest: ManifestData,
     runs: Sequence[RunId] | None,
@@ -168,7 +168,7 @@ def check_ratchet(
     )
 
 
-def update_ratchet(
+def update_ratchet(  # noqa: PLR0913
     *,
     manifest: ManifestData,
     ratchet_path: Path | None,
@@ -211,7 +211,7 @@ def update_ratchet(
     )
 
 
-def rebaseline_ratchet(
+def rebaseline_ratchet(  # noqa: PLR0913
     *,
     manifest: ManifestData,
     ratchet_path: Path | None,
@@ -236,7 +236,7 @@ def rebaseline_ratchet(
     return RatchetRebaselineResult(refreshed=refreshed, output_path=output_path)
 
 
-def describe_ratchet(
+def describe_ratchet(  # noqa: PLR0913
     *,
     manifest_path: Path,
     ratchet_path: Path | None,

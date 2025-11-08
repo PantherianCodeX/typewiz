@@ -34,7 +34,7 @@ _TAB_LABELS: Final[dict[SummaryTabName, str]] = {
 }
 
 
-def render_html(
+def render_html(  # noqa: C901, PLR0912, PLR0915
     summary: SummaryData,
     *,
     default_view: DashboardView | str = DashboardView.OVERVIEW.value,
