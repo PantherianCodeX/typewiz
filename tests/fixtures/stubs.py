@@ -148,9 +148,7 @@ class RecordingEngine:
             profile=context.engine_options.profile,
         )
         self.invocations.append(invocation)
-        exit_code = (
-            self._full_exit_code if context.mode is Mode.FULL else self._current_exit_code
-        )
+        exit_code = self._full_exit_code if context.mode is Mode.FULL else self._current_exit_code
         tool_summary = (
             cast(ToolSummary, dict(self._tool_summary_on_full))
             if context.mode is Mode.FULL and self._tool_summary_on_full is not None

@@ -378,52 +378,52 @@ def _rewrite_exports(content: str, export_map: dict[str, str]) -> tuple[str, boo
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Rewrite import statements")
-    parser.add_argument(
+    _ = parser.add_argument(
         "--root",
         default="src",
         help="Root directory to scan for Python files (default: src)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--map",
         dest="mappings",
         action="append",
         default=[],
         help="Mapping entry in the form old.module=new.module (repeatable)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--mapping-file",
         dest="mapping_files",
         action="append",
         default=[],
         help="Optional file containing mapping definitions (one 'old=new' per line)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--apply",
         action="store_true",
         help="Actually write changes (default: dry-run)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--ensure-import",
         dest="ensure_imports",
         action="append",
         default=[],
         help="Ensure an import exists in the given file. Format: path:module:symbol1,symbol2",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--export-map",
         dest="export_mappings",
         action="append",
         default=[],
         help="Rename entries inside __all__ blocks (old=new, repeatable)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--use-git",
         dest="use_git",
         action="store_true",
         default=True,
         help="Use 'git ls-files' to discover Python files (respects gitignore)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--no-use-git",
         dest="use_git",
         action="store_false",
@@ -467,7 +467,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 continue
             _mark(path)
             if args.apply:
-                path.write_text(new_content, encoding="utf-8")
+                _ = path.write_text(new_content, encoding="utf-8")
 
     if export_map:
         for path in _iter_python_files(root, args.use_git):
@@ -477,7 +477,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 continue
             _mark(path)
             if args.apply:
-                path.write_text(new_content, encoding="utf-8")
+                _ = path.write_text(new_content, encoding="utf-8")
 
     for ensure_entry in ensure_imports:
         if not ensure_entry.path.exists():
@@ -491,7 +491,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             continue
         _mark(ensure_entry.path)
         if args.apply:
-            ensure_entry.path.write_text(new_content, encoding="utf-8")
+            _ = ensure_entry.path.write_text(new_content, encoding="utf-8")
 
     if not changed_files:
         print("No imports needed rewriting.")
