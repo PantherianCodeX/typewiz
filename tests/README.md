@@ -14,21 +14,24 @@ tests/
 
 ## Running Tests
 
-| Goal | Command |
-| --- | --- |
-| Full CI-equivalent run | `make ci.check` |
-| Lint + typing gates | `make lint && make type` |
-| Coverage-focused pytest run | `make pytest.cov` |
-| Unit tests only | `pytest tests/unit` |
-| Integration workflows | `pytest tests/integration` |
-| Property-based suites | `pytest tests/property_based` |
-| Performance benchmarks | `pytest tests/performance` |
+Use the dedicated Make targets to match the subsets executed in CI:
+
+| Suite / Goal | Make target | Equivalent pytest command |
+| --- | --- | --- |
+| Full CI-equivalent run | `make ci.check` | `PYTHONPATH=src pytest --cov=src/typewiz ...` |
+| Lint + typing gates | `make lint && make type` | n/a |
+| Coverage-focused pytest run | `make pytest.cov` | `pytest --cov=src/typewiz --cov-report=term --cov-fail-under=95` |
+| Unit tests (fast suites under `tests/unit`) | `make pytest.unit` | `pytest tests/unit` |
+| Integration workflows | `make pytest.integration` | `pytest tests/integration` |
+| Property-based suites | `make pytest.property` | `pytest tests/property_based` |
+| Performance benchmarks | `make pytest.performance` | `pytest tests/performance` |
 
 Additional tips:
 
 - Activate the repo virtualenv first: `source .venv/bin/activate`.
 - Narrow scope with `pytest tests/unit/engines -k "builder"` or `pytest tests/property_based -m slow` once markers land in later phases.
 - Pass `--maxfail=1` locally for quick iterations.
+- CI's `quality` workflow job maps directly to these `make pytest.<category>` targets, so re-running the same subset locally reproduces any failure.
 
 ## Writing Tests
 

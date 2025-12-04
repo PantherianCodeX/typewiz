@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [lint, type, tests]
+        task: [lint, type, tests-unit, tests-integration, tests-property, tests-performance]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,6 +77,8 @@ jobs:
 
       - name: Run task
         run: |
+          # Each matrix entry maps to a dedicated make target so developers can rerun the same subset locally
+          # via `make pytest.<category>` (see tests/README.md for the full matrix of suites).
           case "${{ matrix.task }}" in
             lint)
               make lint
@@ -85,8 +87,17 @@ jobs:
             type)
               make type
               ;;
-            tests)
-              make pytest.all
+            tests-unit)
+              make pytest.unit
+              ;;
+            tests-integration)
+              make pytest.integration
+              ;;
+            tests-property)
+              make pytest.property
+              ;;
+            tests-performance)
+              make pytest.performance
               ;;
           esac
 

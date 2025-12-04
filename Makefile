@@ -45,8 +45,8 @@ TYPEWIZ_LIMIT ?= 20
   all.test all.lint all.type all.format all.fix \
   lint lint.ruff lint.format format fix \
   type type.mypy type.pyright type.verify typing.run typing.baseline typing.strict typing.ci \
-  pytest.all pytest.verbose pytest.failfast pytest.cov pytest.clean \
-  tests.all tests.verbose tests.failfast tests.cov tests.clean \
+  pytest.all pytest.verbose pytest.failfast pytest.unit pytest.integration pytest.property pytest.performance pytest.cov pytest.clean \
+  tests.all tests.verbose tests.failfast tests.unit tests.integration tests.property tests.performance tests.cov tests.clean \
   sec.lint sec.bandit \
   bench \
   verifytypes \
@@ -151,6 +151,18 @@ pytest.verbose: ## Run pytest verbosely
 pytest.failfast: ## Run pytest, stopping on first failure
 	$(PYTEST) -x
 
+pytest.unit: ## Run only unit suites (tests/unit)
+	$(PYTEST) -q tests/unit
+
+pytest.integration: ## Run only integration suites (tests/integration)
+	$(PYTEST) -q tests/integration
+
+pytest.property: ## Run only property-based suites (tests/property_based)
+	$(PYTEST) -q tests/property_based
+
+pytest.performance: ## Run only performance suites (tests/performance)
+	$(PYTEST) -q tests/performance
+
 pytest.cov: ## Run pytest with coverage on src/typewiz (95% gate)
 	$(PYTEST) --cov=src/typewiz --cov-report=term --cov-fail-under=95
 
@@ -230,9 +242,21 @@ tests.verbose: ## Alias for pytest.verbose
 tests.failfast: ## Alias for pytest.failfast
 	@$(MAKE) pytest.failfast
 
+tests.unit: ## Alias for pytest.unit
+	@$(MAKE) pytest.unit
+
+tests.integration: ## Alias for pytest.integration
+	@$(MAKE) pytest.integration
+
+tests.property: ## Alias for pytest.property
+	@$(MAKE) pytest.property
+
+tests.performance: ## Alias for pytest.performance
+	@$(MAKE) pytest.performance
+
 ##@ Benchmarks
 bench: ## Run performance benchmarks (requires pytest-benchmark plugin)
-	$(PYTEST) tests/perf/test_benchmarks.py --benchmark-only
+	$(PYTEST) tests/performance/benchmarks --benchmark-only
 
 ##@ Hooks
 hooks.update: ## Update pre-commit hooks to latest versions
