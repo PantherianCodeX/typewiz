@@ -12,7 +12,8 @@ from typing import Any
 
 import pytest
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "refactor_imports.py"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+MODULE_PATH = REPO_ROOT / "scripts" / "refactor_imports.py"
 SPEC = importlib.util.spec_from_file_location("refactor_imports", MODULE_PATH)
 assert SPEC and SPEC.loader
 _module = importlib.util.module_from_spec(SPEC)

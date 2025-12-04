@@ -13,6 +13,8 @@ from typewiz._internal.exceptions import TypewizError, TypewizTypeError, Typewiz
 from typewiz.config import ConfigValidationError
 from typewiz.manifest.models import ManifestValidationError
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
 
 def test_error_code_for_known_hierarchy() -> None:
     assert error_code_for(TypewizError("x")) == "TW000"
@@ -49,8 +51,7 @@ def test_error_code_catalog_uniqueness() -> None:
 
 def test_error_code_documentation_is_in_sync() -> None:
     catalog = error_code_catalog()
-    repo_root = Path(__file__).resolve().parents[1]
-    doc_path = repo_root / "docs" / "EXCEPTIONS.md"
+    doc_path = REPO_ROOT / "docs" / "EXCEPTIONS.md"
     content = doc_path.read_text(encoding="utf-8")
     documented_codes = set(re.findall(r"TW\d{3}", content))
     registry_codes = set(catalog.values())

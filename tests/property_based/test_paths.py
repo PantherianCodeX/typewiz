@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import hypothesis.strategies as st
 from hypothesis import HealthCheck, given, settings
 
+from tests.property_based.strategies import path_parts
 from typewiz.audit.paths import normalise_paths
 
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-@given(parts=st.lists(st.from_regex(r"[a-zA-Z0-9_/]+", fullmatch=True), min_size=1, max_size=5))
+@given(parts=path_parts())
 def test_h_normalise_paths_dedup_and_posix(parts: list[str], tmp_path: Path) -> None:
     # Build directories for each path under tmp_path
     raw_inputs: list[str] = []

@@ -9,13 +9,14 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import HealthCheck, assume, given, settings
 
+from tests.property_based.strategies import path_strings, severity_counts
 from typewiz._internal.utils import consume
 from typewiz.manifest.models import ManifestValidationError, validate_manifest_payload
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 
 
 def _run_payloads() -> st.SearchStrategy[dict[str, Any]]:
-    severity = st.integers(min_value=0, max_value=10)
+    severity = severity_counts(10)
     summary: st.SearchStrategy[dict[str, Any]] = st.fixed_dictionaries(
         {
             "errors": severity,
@@ -26,7 +27,7 @@ def _run_payloads() -> st.SearchStrategy[dict[str, Any]]:
     )
     file_entry: st.SearchStrategy[dict[str, Any]] = st.fixed_dictionaries(
         {
-            "path": st.text(min_size=1, max_size=20),
+            "path": path_strings(),
             "errors": severity,
             "warnings": severity,
             "information": severity,
@@ -35,7 +36,7 @@ def _run_payloads() -> st.SearchStrategy[dict[str, Any]]:
     )
     folder_entry: st.SearchStrategy[dict[str, Any]] = st.fixed_dictionaries(
         {
-            "path": st.text(min_size=1, max_size=20),
+            "path": path_strings(),
             "depth": st.integers(min_value=1, max_value=5),
             "errors": severity,
             "warnings": severity,

@@ -7,6 +7,7 @@ from typing import cast
 import hypothesis.strategies as st
 from hypothesis import given
 
+from tests.property_based.strategies import path_strings, severity_counts
 from typewiz.core.model_types import ReadinessLevel, ReadinessStatus
 from typewiz.core.summary_types import (
     ReadinessOptionEntry,
@@ -31,21 +32,21 @@ def _status() -> st.SearchStrategy[ReadinessStatus]:
 def _folder_entry() -> st.SearchStrategy[ReadinessOptionEntry]:
     return st.builds(
         ReadinessOptionEntry,
-        path=st.text(min_size=1, max_size=20),
-        count=st.integers(min_value=0, max_value=50),
-        errors=st.integers(min_value=0, max_value=50),
-        warnings=st.integers(min_value=0, max_value=50),
+        path=path_strings(),
+        count=severity_counts(50),
+        errors=severity_counts(50),
+        warnings=severity_counts(50),
     )
 
 
 def _strict_entry() -> st.SearchStrategy[ReadinessStrictEntry]:
     return st.builds(
         ReadinessStrictEntry,
-        path=st.text(min_size=1, max_size=20),
-        diagnostics=st.integers(min_value=0, max_value=100),
-        errors=st.integers(min_value=0, max_value=100),
-        warnings=st.integers(min_value=0, max_value=100),
-        information=st.integers(min_value=0, max_value=100),
+        path=path_strings(),
+        diagnostics=severity_counts(100),
+        errors=severity_counts(100),
+        warnings=severity_counts(100),
+        information=severity_counts(100),
     )
 
 

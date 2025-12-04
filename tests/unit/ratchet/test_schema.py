@@ -20,6 +20,8 @@ from typewiz.manifest.typed import (
 )
 from typewiz.ratchet.core import build_ratchet_from_manifest
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
 
 class _DiagnosticDict(TypedDict, total=False):
     line: int
@@ -30,7 +32,7 @@ class _DiagnosticDict(TypedDict, total=False):
 
 
 def _schema_path() -> Path:
-    return Path(__file__).parents[1] / "schemas" / "ratchet.schema.json"
+    return REPO_ROOT / "schemas" / "ratchet.schema.json"
 
 
 def _load_schema() -> dict[str, object]:

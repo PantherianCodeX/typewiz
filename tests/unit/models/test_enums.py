@@ -5,8 +5,6 @@ from __future__ import annotations
 from typing import Protocol, cast
 
 import pytest
-from hypothesis import given
-from hypothesis import strategies as st
 
 from typewiz.core.model_types import (
     DashboardFormat,
@@ -91,12 +89,6 @@ def test_summary_tab_name_invalid() -> None:
 )
 def test_severity_level_coerce_handles_synonyms(value: str, expected: SeverityLevel) -> None:
     assert SeverityLevel.coerce(value) is expected
-
-
-@given(st.one_of(st.text(), st.integers(), st.none()))
-def test_severity_level_coerce_falls_back_to_information(noise: object) -> None:
-    result = SeverityLevel.coerce(noise)
-    assert isinstance(result, SeverityLevel)
 
 
 def test_severity_level_coerce_plural_and_alias() -> None:

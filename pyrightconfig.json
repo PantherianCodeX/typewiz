@@ -3,6 +3,10 @@
     "src",
     "tests"
   ],
+  "extraPaths": [
+    "src",
+    "tests"
+  ],
   "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.12",
@@ -41,7 +45,13 @@
   "reportUnnecessaryContains": "error",
   "reportUnnecessaryIsInstance": "error",
   "executionEnvironments": [
-    { "root": "tests" },
+    {
+      "root": "tests",
+      "extraPaths": [
+        ".",
+        "src"
+      ]
+    },
     { "root": "src" }
   ]
 }

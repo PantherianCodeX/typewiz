@@ -11,299 +11,28 @@ from typing import cast
 
 import pytest
 
+from tests.fixtures.builders import build_cli_manifest, build_empty_summary
+from tests.fixtures.stubs import StubEngine
 from typewiz._internal.utils import consume
 from typewiz.api import AuditResult
-from typewiz.cli.app import main, write_config_template
-from typewiz.cli.commands.audit import normalise_modes_tuple
-from typewiz.cli.helpers import (
-    collect_plugin_args,
-    collect_profile_args,
-    normalise_modes,
-    parse_summary_fields,
-)
-from typewiz.cli.helpers.formatting import (
-    SUMMARY_FIELD_CHOICES,
-    print_readiness_summary,
-    print_summary,
-    query_readiness,
-)
+from typewiz.cli.app import main
 from typewiz.config import Config
 from typewiz.core.model_types import (
     DashboardFormat,
     DashboardView,
     Mode,
     OverrideEntry,
-    ReadinessLevel,
-    ReadinessStatus,
     SeverityLevel,
-    SummaryField,
-    SummaryStyle,
 )
-from typewiz.core.summary_types import (
-    CountsByCategory,
-    CountsByRule,
-    CountsBySeverity,
-    EnginesTab,
-    HotspotsTab,
-    OverviewTab,
-    ReadinessOptionEntry,
-    ReadinessOptionsPayload,
-    ReadinessStrictEntry,
-    ReadinessTab,
-    RunsTab,
-    SummaryData,
-    SummaryFileEntry,
-    SummaryFolderEntry,
-    SummaryRunEntry,
-    SummaryTabs,
-)
-from typewiz.core.type_aliases import CategoryKey, EngineName, RelPath, RunId, RunnerName, ToolName
+from typewiz.core.summary_types import SummaryData
+from typewiz.core.type_aliases import EngineName, RelPath, RunnerName, ToolName
 from typewiz.core.types import Diagnostic, RunResult
-from typewiz.engines.base import EngineContext, EngineResult
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 
-_print_summary = print_summary
-_print_readiness_summary = print_readiness_summary
-_query_readiness = query_readiness
-_write_config_template = write_config_template
-_normalise_modes_cli = normalise_modes_tuple
 STUB_TOOL = ToolName("stub")
 PYRIGHT_ENGINE = EngineName("pyright")
 PYRIGHT_RUNNER = RunnerName(PYRIGHT_ENGINE)
 PYRIGHT_TOOL = ToolName("pyright")
-
-
-def _write_manifest(tmp_path: Path) -> Path:
-    manifest: dict[str, object] = {
-        "generatedAt": "2025-11-05T00:00:00Z",
-        "projectRoot": str(tmp_path),
-        "schemaVersion": CURRENT_MANIFEST_VERSION,
-        "runs": [
-            {
-                "tool": "pyright",
-                "mode": "current",
-                "command": ["pyright", "--project"],
-                "exitCode": 1,
-                "durationMs": 12,
-                "summary": {
-                    "errors": 4,
-                    "warnings": 2,
-                    "information": 0,
-                    "total": 6,
-                    "severityBreakdown": {"error": 4, "warning": 2},
-                    "ruleCounts": {"reportGeneralTypeIssues": 4},
-                    "categoryCounts": {"unknownChecks": 4},
-                },
-                "engineOptions": {
-                    "profile": "strict",
-                    "configFile": "pyrightconfig.json",
-                    "pluginArgs": ["--strict"],
-                    "include": [RelPath("src")],
-                    "exclude": [RelPath("tests")],
-                    "overrides": [{"path": "src", "profile": "strict"}],
-                    "categoryMapping": {"unknownChecks": ["reportGeneralTypeIssues"]},
-                },
-                "perFolder": [
-                    {
-                        "path": "src",
-                        "depth": 1,
-                        "errors": 3,
-                        "warnings": 2,
-                        "information": 0,
-                        "codeCounts": {"reportGeneralTypeIssues": 4},
-                        "categoryCounts": {"unknownChecks": 4},
-                        "recommendations": ["add type annotations"],
-                    },
-                ],
-                "perFile": [
-                    {
-                        "path": "src/app.py",
-                        "errors": 3,
-                        "warnings": 0,
-                        "information": 0,
-                        "diagnostics": [
-                            {
-                                "line": 10,
-                                "column": 4,
-                                "severity": "error",
-                                "code": "reportGeneralTypeIssues",
-                                "message": "strict mode failure",
-                            },
-                        ],
-                    },
-                    {
-                        "path": "src/utils.py",
-                        "errors": 0,
-                        "warnings": 2,
-                        "information": 0,
-                        "diagnostics": [
-                            {
-                                "line": 20,
-                                "column": 2,
-                                "severity": "warning",
-                                "code": "reportUnknownVariableType",
-                                "message": "graduated warning",
-                            },
-                        ],
-                    },
-                ],
-            },
-            {
-                "tool": "mypy",
-                "mode": "full",
-                "command": ["mypy", "--strict"],
-                "exitCode": 0,
-                "durationMs": 15,
-                "summary": {
-                    "errors": 0,
-                    "warnings": 1,
-                    "information": 1,
-                    "total": 2,
-                    "severityBreakdown": {"warning": 1, "information": 1},
-                    "ruleCounts": {"attr-defined": 1},
-                    "categoryCounts": {"general": 1},
-                },
-                "engineOptions": {
-                    "profile": "baseline",
-                    "configFile": "mypy.ini",
-                    "pluginArgs": [],
-                    "include": [RelPath("src")],
-                    "exclude": [],
-                    "overrides": [],
-                    "categoryMapping": {},
-                },
-                "perFolder": [
-                    {
-                        "path": "src",
-                        "depth": 1,
-                        "errors": 0,
-                        "warnings": 1,
-                        "information": 1,
-                        "codeCounts": {"attr-defined": 1},
-                        "categoryCounts": {"general": 1},
-                        "recommendations": [],
-                    },
-                ],
-                "perFile": [
-                    {
-                        "path": "src/app.py",
-                        "errors": 0,
-                        "warnings": 1,
-                        "information": 1,
-                        "diagnostics": [
-                            {
-                                "line": 30,
-                                "column": 6,
-                                "severity": "warning",
-                                "code": "attr-defined",
-                                "message": "attr-defined warning",
-                            },
-                            {
-                                "line": 32,
-                                "column": 1,
-                                "severity": "information",
-                                "code": "note",
-                                "message": "note",
-                            },
-                        ],
-                    },
-                ],
-            },
-        ],
-    }
-    manifest_path = tmp_path / "manifest.json"
-    consume(manifest_path.write_text(json.dumps(manifest), encoding="utf-8"))
-    return manifest_path
-
-
-def _empty_summary() -> SummaryData:
-    run_summary: dict[RunId, SummaryRunEntry] = {}
-    severity_totals: CountsBySeverity = {}
-    category_totals: CountsByCategory = {}
-    top_rules: CountsByRule = {}
-    overview: OverviewTab = {
-        "severityTotals": severity_totals,
-        "categoryTotals": category_totals,
-        "runSummary": run_summary,
-    }
-    engines: EnginesTab = {"runSummary": run_summary}
-    top_folders: list[SummaryFolderEntry] = []
-    top_files: list[SummaryFileEntry] = []
-    hotspots: HotspotsTab = {
-        "topRules": top_rules,
-        "topFolders": top_folders,
-        "topFiles": top_files,
-        "ruleFiles": {},
-    }
-    readiness: ReadinessTab = {
-        "strict": {
-            ReadinessStatus.READY: [],
-            ReadinessStatus.CLOSE: [],
-            ReadinessStatus.BLOCKED: [],
-        },
-        "options": {},
-    }
-    runs: RunsTab = {"runSummary": run_summary}
-    tabs: SummaryTabs = {
-        "overview": overview,
-        "engines": engines,
-        "hotspots": hotspots,
-        "readiness": readiness,
-        "runs": runs,
-    }
-    summary: SummaryData = {
-        "generatedAt": "now",
-        "projectRoot": ".",
-        "runSummary": run_summary,
-        "severityTotals": severity_totals,
-        "categoryTotals": category_totals,
-        "topRules": top_rules,
-        "topFolders": top_folders,
-        "topFiles": top_files,
-        "ruleFiles": {},
-        "tabs": tabs,
-    }
-    return summary
-
-
-class StubEngine:
-    def __init__(self, result: RunResult, expected_profile: str | None = None) -> None:
-        super().__init__()
-        self.name = "stub"
-        self._result = result
-        self.expected_profile = expected_profile
-        self.invocations: list[tuple[Mode, list[str], list[str]]] = []
-
-    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
-        if self.expected_profile is not None:
-            assert context.engine_options.profile == self.expected_profile
-        self.invocations.append(
-            (context.mode, list(context.engine_options.plugin_args), list(paths)),
-        )
-        tool_name = ToolName(self.name)
-        if context.mode is Mode.FULL:
-            return EngineResult(
-                engine=tool_name,
-                mode=context.mode,
-                command=["stub", *paths],
-                exit_code=0,
-                duration_ms=0.2,
-                diagnostics=[],
-            )
-        return EngineResult(
-            engine=tool_name,
-            mode=context.mode,
-            command=list(self._result.command),
-            exit_code=self._result.exit_code,
-            duration_ms=self._result.duration_ms,
-            diagnostics=list(self._result.diagnostics),
-        )
-
-    def category_mapping(self) -> dict[str, list[str]]:
-        return {}
-
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
-        return []
 
 
 def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: StubEngine) -> None:
@@ -514,7 +243,7 @@ def test_cli_readiness_details_and_severity(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    manifest_path = _write_manifest(tmp_path)
+    manifest_path = build_cli_manifest(tmp_path)
     exit_code = main(
         [
             "readiness",
@@ -838,13 +567,13 @@ def test_cli_audit_full_outputs(
     cfg = Config()
     cfg.audit.runners = [PYRIGHT_RUNNER]
 
-    summary = _empty_summary()
+    summary = build_empty_summary()
     summary["tabs"]["overview"]["severityTotals"] = {
         SeverityLevel.ERROR: 0,
         SeverityLevel.WARNING: 0,
         SeverityLevel.INFORMATION: 1,
     }
-    prev_summary = _empty_summary()
+    prev_summary = build_empty_summary()
     prev_summary["tabs"]["overview"]["severityTotals"] = {
         SeverityLevel.ERROR: 0,
         SeverityLevel.WARNING: 0,
@@ -998,7 +727,7 @@ def test_cli_dashboard_outputs(
         ),
     )
 
-    summary = _empty_summary()
+    summary = build_empty_summary()
 
     def _load_summary(_: Path) -> SummaryData:
         return summary
@@ -1137,7 +866,7 @@ def test_cli_manifest_unknown_action(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_cli_query_overview_table(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    manifest_path = _write_manifest(tmp_path)
+    manifest_path = build_cli_manifest(tmp_path)
     exit_code = main(
         [
             "query",
@@ -1156,7 +885,7 @@ def test_cli_query_overview_table(tmp_path: Path, capsys: pytest.CaptureFixture[
 
 
 def test_cli_query_hotspots_json(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    manifest_path = _write_manifest(tmp_path)
+    manifest_path = build_cli_manifest(tmp_path)
     exit_code = main(
         [
             "query",
@@ -1193,7 +922,7 @@ def test_cli_query_hotspots_json(tmp_path: Path, capsys: pytest.CaptureFixture[s
 
 
 def test_cli_query_readiness_file_table(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    manifest_path = _write_manifest(tmp_path)
+    manifest_path = build_cli_manifest(tmp_path)
     exit_code = main(
         [
             "query",
@@ -1218,7 +947,7 @@ def test_cli_query_readiness_folder_json(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    manifest_path = _write_manifest(tmp_path)
+    manifest_path = build_cli_manifest(tmp_path)
     exit_code = main(
         [
             "query",
@@ -1234,7 +963,7 @@ def test_cli_query_readiness_folder_json(
 
 
 def test_cli_query_runs_filters(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    manifest_path = _write_manifest(tmp_path)
+    manifest_path = build_cli_manifest(tmp_path)
     exit_code = main(
         [
             "query",
@@ -1256,7 +985,7 @@ def test_cli_query_runs_filters(tmp_path: Path, capsys: pytest.CaptureFixture[st
 
 
 def test_cli_query_runs_empty(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    manifest_path = _write_manifest(tmp_path)
+    manifest_path = build_cli_manifest(tmp_path)
     exit_code = main(
         [
             "query",
@@ -1275,7 +1004,7 @@ def test_cli_query_runs_empty(tmp_path: Path, capsys: pytest.CaptureFixture[str]
 
 
 def test_cli_query_engines_table(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    manifest_path = _write_manifest(tmp_path)
+    manifest_path = build_cli_manifest(tmp_path)
     exit_code = main(
         [
             "query",
@@ -1293,7 +1022,7 @@ def test_cli_query_engines_table(tmp_path: Path, capsys: pytest.CaptureFixture[s
 
 
 def test_cli_query_rules_limit(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    manifest_path = _write_manifest(tmp_path)
+    manifest_path = build_cli_manifest(tmp_path)
     exit_code = main(
         [
             "query",
@@ -1312,224 +1041,6 @@ def test_cli_query_rules_limit(tmp_path: Path, capsys: pytest.CaptureFixture[str
     assert data[0]["rule"]
     assert data[0]["count"] >= 1
     assert "paths" in data[0]
-
-
-def test_parse_summary_fields_variants() -> None:
-    fields = parse_summary_fields(" profile , , plugin-args ", valid_fields=SUMMARY_FIELD_CHOICES)
-    assert fields == [SummaryField.PROFILE, SummaryField.PLUGIN_ARGS]
-
-    all_fields = parse_summary_fields("all", valid_fields=SUMMARY_FIELD_CHOICES)
-    assert all_fields == sorted(SUMMARY_FIELD_CHOICES, key=lambda field: field.value)
-
-    with pytest.raises(SystemExit):
-        consume(parse_summary_fields("profile,unknown", valid_fields=SUMMARY_FIELD_CHOICES))
-
-
-def test_collect_plugin_args_variants() -> None:
-    result = collect_plugin_args(["pyright=--strict", "pyright:--warnings", "mypy = --strict "])
-    assert result == {"pyright": ["--strict", "--warnings"], "mypy": ["--strict"]}
-
-    with pytest.raises(SystemExit):
-        consume(collect_plugin_args(["pyright"]))
-    with pytest.raises(SystemExit):
-        consume(collect_plugin_args(["=--oops"]))
-    with pytest.raises(SystemExit):
-        consume(collect_plugin_args(["pyright="]))
-
-
-def test_collect_profile_args_variants() -> None:
-    profiles = collect_profile_args(["pyright=strict", "mypy=baseline"])
-    assert profiles == {"pyright": "strict", "mypy": "baseline"}
-
-    with pytest.raises(SystemExit):
-        consume(collect_profile_args(["pyright"]))
-    with pytest.raises(SystemExit):
-        consume(collect_profile_args(["pyright="]))
-
-
-def test_normalise_modes_variants() -> None:
-    default_selection = _normalise_modes_cli(None)
-    assert default_selection == (False, True, True)
-
-    current_only = _normalise_modes_cli(["current"])
-    assert current_only == (True, True, False)
-
-    with pytest.raises(SystemExit):
-        consume(_normalise_modes_cli(["unknown"]))
-
-    assert normalise_modes(None) == []
-    assert normalise_modes(["current", "full"]) == [Mode.CURRENT, Mode.FULL]
-
-
-def test_write_config_template(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    target = tmp_path / "typewiz.toml"
-    consume(target.write_text("original", encoding="utf-8"))
-    result = _write_config_template(target, force=False)
-    assert result == 1
-    assert target.read_text(encoding="utf-8") == "original"
-    output = capsys.readouterr().out
-    assert "[typewiz] Refusing to overwrite" in output
-
-    result_force = _write_config_template(target, force=True)
-    assert result_force == 0
-    assert "[typewiz] Wrote starter config" in capsys.readouterr().out
-    assert "[audit]" in target.read_text(encoding="utf-8")
-
-
-def test_print_readiness_summary_variants(capsys: pytest.CaptureFixture[str]) -> None:
-    summary = _empty_summary()
-    readiness_tab = summary["tabs"]["readiness"]
-    readiness_tab["options"] = cast(
-        dict[CategoryKey, ReadinessOptionsPayload],
-        {
-            "unknownChecks": {
-                "threshold": 0,
-                "buckets": {
-                    ReadinessStatus.READY: cast(
-                        tuple[ReadinessOptionEntry, ...],
-                        ({"path": "pkg", "count": "not-a-number"},),
-                    ),
-                    ReadinessStatus.CLOSE: (),
-                    ReadinessStatus.BLOCKED: cast(
-                        tuple[ReadinessOptionEntry, ...],
-                        ({"path": "pkg", "count": 2},),
-                    ),
-                },
-            },
-        },
-    )
-    readiness_tab["strict"] = cast(
-        dict[ReadinessStatus, list[ReadinessStrictEntry]],
-        {
-            ReadinessStatus.READY: [{"path": "pkg/module.py", "diagnostics": 0}],
-            ReadinessStatus.CLOSE: [],
-            ReadinessStatus.BLOCKED: [{"path": "pkg/other.py", "diagnostics": "3"}],
-        },
-    )
-
-    _print_readiness_summary(
-        summary,
-        level=ReadinessLevel.FOLDER,
-        statuses=[ReadinessStatus.BLOCKED, ReadinessStatus.CLOSE],
-        limit=5,
-    )
-    output_folder = capsys.readouterr().out
-    assert "[typewiz] readiness folder status=blocked" in output_folder
-    assert "pkg: 2" in output_folder
-    assert "<none>" in output_folder
-
-    _print_readiness_summary(
-        summary,
-        level=ReadinessLevel.FILE,
-        statuses=[ReadinessStatus.READY, ReadinessStatus.BLOCKED],
-        limit=1,
-    )
-    output_file = capsys.readouterr().out
-    assert "pkg/module.py: 0" in output_file
-    assert "pkg/other.py: 3" in output_file
-
-    _print_readiness_summary(
-        summary,
-        level=ReadinessLevel.FOLDER,
-        statuses=None,
-        limit=0,
-    )
-    fallback_output = capsys.readouterr().out
-    assert "[typewiz] readiness folder status=blocked" in fallback_output
-
-
-def test_query_readiness_invalid_data_raises() -> None:
-    summary = _empty_summary()
-    readiness_tab = summary["tabs"]["readiness"]
-    readiness_tab["strict"] = {
-        ReadinessStatus.BLOCKED: [
-            {
-                "path": "pkg/module",
-                "diagnostics": -1,
-                "errors": 0,
-                "warnings": 0,
-                "information": 0,
-            },
-        ],
-    }
-    with pytest.raises(SystemExit):
-        consume(
-            _query_readiness(
-                summary,
-                level=ReadinessLevel.FILE,
-                statuses=[ReadinessStatus.BLOCKED],
-                limit=5,
-            ),
-        )
-
-
-def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    diag = Diagnostic(
-        tool=PYRIGHT_TOOL,
-        severity=SeverityLevel.ERROR,
-        path=tmp_path / "pkg" / "module.py",
-        line=1,
-        column=1,
-        code="reportGeneralTypeIssues",
-        message="boom",
-    )
-
-    override_entry: OverrideEntry = {
-        "path": "pkg",
-        "profile": "strict",
-        "pluginArgs": ["--warnings"],
-        "include": [RelPath("src")],
-        "exclude": [RelPath("tests")],
-    }
-    run_expanded = RunResult(
-        tool=PYRIGHT_TOOL,
-        mode=Mode.CURRENT,
-        command=["pyright", "--project"],
-        exit_code=0,
-        duration_ms=0.1,
-        diagnostics=[diag],
-        profile=None,
-        config_file=None,
-        plugin_args=["--strict"],
-        include=[RelPath("pkg")],
-        exclude=[],
-        overrides=[override_entry],
-    )
-    run_present = RunResult(
-        tool=PYRIGHT_TOOL,
-        mode=Mode.FULL,
-        command=["pyright", "."],
-        exit_code=0,
-        duration_ms=0.1,
-        diagnostics=[],
-        profile="strict",
-        config_file=tmp_path / "pyrightconfig.json",
-        plugin_args=[],
-        include=[],
-        exclude=[RelPath("legacy")],
-        overrides=[override_entry],
-    )
-
-    _print_summary(
-        [run_expanded, run_present],
-        [
-            SummaryField.PROFILE,
-            SummaryField.CONFIG,
-            SummaryField.PLUGIN_ARGS,
-            SummaryField.PATHS,
-            SummaryField.OVERRIDES,
-        ],
-        SummaryStyle.EXPANDED,
-    )
-    expanded_out = capsys.readouterr().out
-    assert "override pkg" in expanded_out
-    assert "profile: —" in expanded_out
-    assert "config: —" in expanded_out
-
-    _print_summary([run_present], [SummaryField.OVERRIDES], SummaryStyle.COMPACT)
-    compact_out = capsys.readouterr().out
-    assert "overrides" in compact_out
-    assert "pyright:full exit=0" in compact_out
 
 
 def test_cli_manifest_validate_accepts_minimal_payload(
