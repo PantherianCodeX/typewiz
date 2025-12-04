@@ -1,5 +1,7 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Integration tests for Workflows CLI Workflows."""
+
 from __future__ import annotations
 
 import json

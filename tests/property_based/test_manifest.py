@@ -1,5 +1,7 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Property-based tests for Manifest."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping

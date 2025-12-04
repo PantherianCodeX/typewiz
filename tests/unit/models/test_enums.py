@@ -1,5 +1,7 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Unit tests for Models Enums."""
+
 from __future__ import annotations
 
 from typing import Protocol, cast

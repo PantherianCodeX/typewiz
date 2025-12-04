@@ -1,5 +1,7 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Unit tests for Misc Internal Package."""
+
 from __future__ import annotations
 
 import importlib

@@ -1,5 +1,7 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Property-based tests for Enums."""
+
 from __future__ import annotations
 
 import pytest

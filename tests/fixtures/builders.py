@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -30,18 +31,20 @@ from typewiz.core.summary_types import (
     SummaryRunEntry,
     SummaryTabs,
 )
-from typewiz.core.type_aliases import CategoryName, RelPath, RunId, ToolName
+from typewiz.core.type_aliases import CategoryKey, CategoryName, RelPath, RunId, ToolName
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 from typewiz.readiness.compute import ReadinessEntry
 
 __all__ = [
     "TestDataBuilder",
+    "build_diagnostic",
     "build_cli_manifest",
     "build_empty_summary",
     "build_cli_run_result",
     "build_cli_summary",
     "build_readiness_entries",
+    "build_readiness_summary",
     "build_sample_run",
     "build_sample_summary",
 ]
@@ -502,6 +505,7 @@ class TestDataBuilder:
 
 
 _DEFAULT_TEST_DATA_BUILDER = TestDataBuilder()
+DEFAULT_READINESS_CATEGORY: CategoryKey = "unknownChecks"
 
 
 def build_sample_summary() -> SummaryData:
@@ -714,4 +718,54 @@ def build_empty_summary() -> SummaryData:
         "ruleFiles": {},
         "tabs": tabs,
     }
+    return summary
+
+
+def build_diagnostic(
+    *,
+    tool: ToolName | None = None,
+    severity: SeverityLevel = SeverityLevel.ERROR,
+    path: Path | str = "src/app.py",
+    line: int = 1,
+    column: int = 1,
+    code: str = "reportGeneralTypeIssues",
+    message: str = "example diagnostic",
+) -> Diagnostic:
+    """Return a Diagnostic populated with sensible defaults for CLI-oriented tests."""
+    diag_tool = tool or ToolName("pyright")
+    diag_path = Path(path)
+    return Diagnostic(
+        tool=diag_tool,
+        severity=severity,
+        path=diag_path,
+        line=line,
+        column=column,
+        code=code,
+        message=message,
+    )
+
+
+def build_readiness_summary(
+    *,
+    option_entries: Mapping[ReadinessStatus, Sequence[ReadinessOptionEntry]] | None = None,
+    strict_entries: Mapping[ReadinessStatus, Sequence[ReadinessStrictEntry]] | None = None,
+    category: CategoryKey = DEFAULT_READINESS_CATEGORY,
+    threshold: int = 0,
+) -> SummaryData:
+    """Return SummaryData populated with the supplied readiness entries."""
+    summary = build_empty_summary()
+    readiness_tab = summary["tabs"]["readiness"]
+    if option_entries is not None:
+        readiness_tab["options"] = {
+            category: {
+                "threshold": threshold,
+                "buckets": {
+                    status: tuple(entries) for status, entries in option_entries.items()
+                },
+            },
+        }
+    if strict_entries is not None:
+        readiness_tab["strict"] = {
+            status: list(entries) for status, entries in strict_entries.items()
+        }
     return summary

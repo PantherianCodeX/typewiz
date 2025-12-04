@@ -1,5 +1,7 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Unit tests for Config Validation."""
+
 from __future__ import annotations
 
 import pytest

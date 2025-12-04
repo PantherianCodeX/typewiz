@@ -1,6 +1,8 @@
 # pyright: reportPrivateUsage=false
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Unit tests for Misc Dashboard."""
+
 from __future__ import annotations
 
 import copy

@@ -1,5 +1,7 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Unit tests for Misc Aggregate."""
+
 from __future__ import annotations
 
 from pathlib import Path

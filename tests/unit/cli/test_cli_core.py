@@ -1,5 +1,7 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Unit tests exercising CLI helper normalization and formatting behavior."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,7 +9,7 @@ from typing import cast
 
 import pytest
 
-from tests.fixtures.builders import build_empty_summary
+from tests.fixtures.builders import build_diagnostic, build_readiness_summary
 from typewiz._internal.utils import consume
 from typewiz.cli.app import write_config_template
 from typewiz.cli.commands.audit import normalise_modes_tuple
@@ -28,183 +30,39 @@ from typewiz.core.model_types import (
     OverrideEntry,
     ReadinessLevel,
     ReadinessStatus,
-    SeverityLevel,
     SummaryField,
     SummaryStyle,
 )
-from typewiz.core.summary_types import (
-    ReadinessOptionEntry,
-    ReadinessOptionsPayload,
-    ReadinessStrictEntry,
-)
-from typewiz.core.type_aliases import CategoryKey, RelPath, ToolName
-from typewiz.core.types import Diagnostic, RunResult
+from typewiz.core.summary_types import ReadinessOptionEntry, ReadinessStrictEntry, SummaryData
+from typewiz.core.type_aliases import RelPath, ToolName
+from typewiz.core.types import RunResult
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
 
 PYRIGHT_TOOL = ToolName("pyright")
+ALL_SUMMARY_FIELDS = sorted(SUMMARY_FIELD_CHOICES, key=lambda field: field.value)
 
 
-def test_parse_summary_fields_variants() -> None:
-    fields = parse_summary_fields(" profile , , plugin-args ", valid_fields=SUMMARY_FIELD_CHOICES)
-    assert fields == [SummaryField.PROFILE, SummaryField.PLUGIN_ARGS]
-
-    all_fields = parse_summary_fields("all", valid_fields=SUMMARY_FIELD_CHOICES)
-    assert all_fields == sorted(SUMMARY_FIELD_CHOICES, key=lambda field: field.value)
-
-    with pytest.raises(SystemExit):
-        consume(parse_summary_fields("profile,unknown", valid_fields=SUMMARY_FIELD_CHOICES))
-
-
-def test_collect_plugin_args_variants() -> None:
-    result = collect_plugin_args(["pyright=--strict", "pyright:--warnings", "mypy = --strict "])
-    assert result == {"pyright": ["--strict", "--warnings"], "mypy": ["--strict"]}
-
-    with pytest.raises(SystemExit):
-        consume(collect_plugin_args(["pyright"]))
-    with pytest.raises(SystemExit):
-        consume(collect_plugin_args(["=--oops"]))
-    with pytest.raises(SystemExit):
-        consume(collect_plugin_args(["pyright="]))
-
-
-def test_collect_profile_args_variants() -> None:
-    profiles = collect_profile_args(["pyright=strict", "mypy=baseline"])
-    assert profiles == {"pyright": "strict", "mypy": "baseline"}
-
-    with pytest.raises(SystemExit):
-        consume(collect_profile_args(["pyright"]))
-    with pytest.raises(SystemExit):
-        consume(collect_profile_args(["pyright="]))
-
-
-def test_normalise_modes_variants() -> None:
-    default_selection = normalise_modes_tuple(None)
-    assert default_selection == (False, True, True)
-
-    current_only = normalise_modes_tuple(["current"])
-    assert current_only == (True, True, False)
-
-    with pytest.raises(SystemExit):
-        consume(normalise_modes_tuple(["unknown"]))
-
-    assert normalise_modes(None) == []
-    assert normalise_modes(["current", "full"]) == [Mode.CURRENT, Mode.FULL]
-
-
-def test_write_config_template(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    target = tmp_path / "typewiz.toml"
-    consume(target.write_text("original", encoding="utf-8"))
-    result = write_config_template(target, force=False)
-    assert result == 1
-    assert target.read_text(encoding="utf-8") == "original"
-    output = capsys.readouterr().out
-    assert "[typewiz] Refusing to overwrite" in output
-
-    result_force = write_config_template(target, force=True)
-    assert result_force == 0
-    assert "[typewiz] Wrote starter config" in capsys.readouterr().out
-    assert "[audit]" in target.read_text(encoding="utf-8")
-
-
-def test_print_readiness_summary_variants(capsys: pytest.CaptureFixture[str]) -> None:
-    summary = build_empty_summary()
-    readiness_tab = summary["tabs"]["readiness"]
-    readiness_tab["options"] = cast(
-        dict[CategoryKey, ReadinessOptionsPayload],
+def _sample_readiness_summary() -> SummaryData:
+    option_entries = cast(
+        dict[ReadinessStatus, list[ReadinessOptionEntry]],
         {
-            "unknownChecks": {
-                "threshold": 0,
-                "buckets": {
-                    ReadinessStatus.READY: cast(
-                        tuple[ReadinessOptionEntry, ...],
-                        ({"path": "pkg", "count": "not-a-number"},),
-                    ),
-                    ReadinessStatus.CLOSE: (),
-                    ReadinessStatus.BLOCKED: cast(
-                        tuple[ReadinessOptionEntry, ...],
-                        ({"path": "pkg", "count": 2},),
-                    ),
-                },
-            },
+            ReadinessStatus.READY: [{"path": "pkg", "count": "not-a-number"}],
+            ReadinessStatus.BLOCKED: [{"path": "pkg", "count": 2}],
         },
     )
-    readiness_tab["strict"] = cast(
+    strict_entries = cast(
         dict[ReadinessStatus, list[ReadinessStrictEntry]],
         {
             ReadinessStatus.READY: [{"path": "pkg/module.py", "diagnostics": 0}],
-            ReadinessStatus.CLOSE: [],
             ReadinessStatus.BLOCKED: [{"path": "pkg/other.py", "diagnostics": "3"}],
         },
     )
-
-    print_readiness_summary(
-        summary,
-        level=ReadinessLevel.FOLDER,
-        statuses=[ReadinessStatus.BLOCKED, ReadinessStatus.CLOSE],
-        limit=5,
-    )
-    output_folder = capsys.readouterr().out
-    assert "[typewiz] readiness folder status=blocked" in output_folder
-    assert "pkg: 2" in output_folder
-    assert "<none>" in output_folder
-
-    print_readiness_summary(
-        summary,
-        level=ReadinessLevel.FILE,
-        statuses=[ReadinessStatus.READY, ReadinessStatus.BLOCKED],
-        limit=1,
-    )
-    output_file = capsys.readouterr().out
-    assert "pkg/module.py: 0" in output_file
-    assert "pkg/other.py: 3" in output_file
-
-    print_readiness_summary(
-        summary,
-        level=ReadinessLevel.FOLDER,
-        statuses=None,
-        limit=0,
-    )
-    fallback_output = capsys.readouterr().out
-    assert "[typewiz] readiness folder status=blocked" in fallback_output
+    return build_readiness_summary(option_entries=option_entries, strict_entries=strict_entries)
 
 
-def test_query_readiness_invalid_data_raises() -> None:
-    summary = build_empty_summary()
-    readiness_tab = summary["tabs"]["readiness"]
-    readiness_tab["strict"] = {
-        ReadinessStatus.BLOCKED: [
-            {
-                "path": "pkg/module",
-                "diagnostics": -1,
-                "errors": 0,
-                "warnings": 0,
-                "information": 0,
-            },
-        ],
-    }
-    with pytest.raises(SystemExit):
-        consume(
-            query_readiness(
-                summary,
-                level=ReadinessLevel.FILE,
-                statuses=[ReadinessStatus.BLOCKED],
-                limit=5,
-            ),
-        )
-
-
-def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    diag = Diagnostic(
-        tool=PYRIGHT_TOOL,
-        severity=SeverityLevel.ERROR,
-        path=tmp_path / "pkg" / "module.py",
-        line=1,
-        column=1,
-        code="reportGeneralTypeIssues",
-        message="boom",
-    )
-
+def _build_cli_runs(tmp_path: Path) -> tuple[RunResult, RunResult]:
+    diagnostic = build_diagnostic(path=tmp_path / "pkg" / "module.py")
     override_entry: OverrideEntry = {
         "path": "pkg",
         "profile": "strict",
@@ -218,7 +76,7 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
         command=["pyright", "--project"],
         exit_code=0,
         duration_ms=0.1,
-        diagnostics=[diag],
+        diagnostics=[diagnostic],
         profile=None,
         config_file=None,
         plugin_args=["--strict"],
@@ -240,7 +98,257 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
         exclude=[RelPath("legacy")],
         overrides=[override_entry],
     )
+    return run_expanded, run_present
 
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (" profile , , plugin-args ", [SummaryField.PROFILE, SummaryField.PLUGIN_ARGS]),
+        ("all", ALL_SUMMARY_FIELDS),
+    ],
+)
+def test_parse_summary_fields_normalises_input(
+    raw: str, expected: list[SummaryField]
+) -> None:
+    # Arrange
+    valid_fields = SUMMARY_FIELD_CHOICES
+
+    # Act
+    result = parse_summary_fields(raw, valid_fields=valid_fields)
+
+    # Assert
+    assert result == expected
+
+
+def test_parse_summary_fields_rejects_unknown_value() -> None:
+    # Arrange
+    raw = "profile,unknown"
+
+    # Act / Assert
+    with pytest.raises(SystemExit):
+        consume(parse_summary_fields(raw, valid_fields=SUMMARY_FIELD_CHOICES))
+
+
+def test_collect_plugin_args_merges_entries() -> None:
+    # Arrange
+    entries = ["pyright=--strict", "pyright:--warnings", "mypy = --strict "]
+
+    # Act
+    result = collect_plugin_args(entries)
+
+    # Assert
+    assert result == {"pyright": ["--strict", "--warnings"], "mypy": ["--strict"]}
+
+
+@pytest.mark.parametrize(
+    "entries",
+    [
+        ["pyright"],
+        ["=--oops"],
+        ["pyright="],
+    ],
+)
+def test_collect_plugin_args_rejects_invalid_entries(entries: list[str]) -> None:
+    # Act / Assert
+    with pytest.raises(SystemExit):
+        consume(collect_plugin_args(entries))
+
+
+def test_collect_profile_args_records_mappings() -> None:
+    # Arrange
+    profile_args = ["pyright=strict", "mypy=baseline"]
+
+    # Act
+    profiles = collect_profile_args(profile_args)
+
+    # Assert
+    assert profiles == {"pyright": "strict", "mypy": "baseline"}
+
+
+@pytest.mark.parametrize("entries", [["pyright"], ["pyright="]])
+def test_collect_profile_args_rejects_invalid_entries(entries: list[str]) -> None:
+    # Act / Assert
+    with pytest.raises(SystemExit):
+        consume(collect_profile_args(entries))
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (None, (False, True, True)),
+        (["current"], (True, True, False)),
+    ],
+)
+def test_normalise_modes_tuple_handles_cli_flags(
+    raw: list[str] | None, expected: tuple[bool, bool, bool]
+) -> None:
+    # Act
+    result = normalise_modes_tuple(raw)
+
+    # Assert
+    assert result == expected
+
+
+def test_normalise_modes_tuple_rejects_unknown_value() -> None:
+    # Arrange
+    raw = ["unknown"]
+
+    # Act / Assert
+    with pytest.raises(SystemExit):
+        consume(normalise_modes_tuple(raw))
+
+
+def test_normalise_modes_returns_modes_for_values() -> None:
+    # Arrange
+    requested = ["current", "full"]
+
+    # Act
+    modes = normalise_modes(requested)
+
+    # Assert
+    assert modes == [Mode.CURRENT, Mode.FULL]
+
+
+def test_normalise_modes_returns_empty_when_not_requested() -> None:
+    # Act
+    modes = normalise_modes(None)
+
+    # Assert
+    assert modes == []
+
+
+def test_write_config_template_preserves_existing_file(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Arrange
+    target = tmp_path / "typewiz.toml"
+    consume(target.write_text("original", encoding="utf-8"))
+
+    # Act
+    exit_code = write_config_template(target, force=False)
+
+    # Assert
+    assert exit_code == 1
+    assert target.read_text(encoding="utf-8") == "original"
+    output = capsys.readouterr().out
+    assert "[typewiz] Refusing to overwrite" in output
+
+
+def test_write_config_template_overwrites_when_forced(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Arrange
+    target = tmp_path / "typewiz.toml"
+    consume(target.write_text("original", encoding="utf-8"))
+
+    # Act
+    exit_code = write_config_template(target, force=True)
+
+    # Assert
+    assert exit_code == 0
+    assert "[typewiz] Wrote starter config" in capsys.readouterr().out
+    assert "[audit]" in target.read_text(encoding="utf-8")
+
+
+def test_print_readiness_summary_reports_folder_entries(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Arrange
+    summary = _sample_readiness_summary()
+
+    # Act
+    print_readiness_summary(
+        summary,
+        level=ReadinessLevel.FOLDER,
+        statuses=[ReadinessStatus.BLOCKED, ReadinessStatus.CLOSE],
+        limit=5,
+    )
+
+    # Assert
+    output = capsys.readouterr().out
+    assert "[typewiz] readiness folder status=blocked" in output
+    assert "pkg: 2" in output
+    assert "<none>" in output
+
+
+def test_print_readiness_summary_reports_file_entries(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Arrange
+    summary = _sample_readiness_summary()
+
+    # Act
+    print_readiness_summary(
+        summary,
+        level=ReadinessLevel.FILE,
+        statuses=[ReadinessStatus.READY, ReadinessStatus.BLOCKED],
+        limit=1,
+    )
+
+    # Assert
+    output = capsys.readouterr().out
+    assert "pkg/module.py: 0" in output
+    assert "pkg/other.py: 3" in output
+
+
+def test_print_readiness_summary_defaults_to_blocked_when_limit_zero(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Arrange
+    summary = _sample_readiness_summary()
+
+    # Act
+    print_readiness_summary(
+        summary,
+        level=ReadinessLevel.FOLDER,
+        statuses=None,
+        limit=0,
+    )
+
+    # Assert
+    output = capsys.readouterr().out
+    assert "[typewiz] readiness folder status=blocked" in output
+
+
+def test_query_readiness_invalid_data_raises() -> None:
+    # Arrange
+    summary = build_readiness_summary(
+        strict_entries={
+            ReadinessStatus.BLOCKED: [
+                {
+                    "path": "pkg/module",
+                    "diagnostics": -1,
+                    "errors": 0,
+                    "warnings": 0,
+                    "information": 0,
+                },
+            ],
+        },
+    )
+
+    # Act / Assert
+    with pytest.raises(SystemExit):
+        consume(
+            query_readiness(
+                summary,
+                level=ReadinessLevel.FILE,
+                statuses=[ReadinessStatus.BLOCKED],
+                limit=5,
+            ),
+        )
+
+
+def test_print_summary_expanded_style_includes_overrides(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Arrange
+    run_expanded, run_present = _build_cli_runs(tmp_path)
+
+    # Act
     print_summary(
         [run_expanded, run_present],
         [
@@ -252,12 +360,25 @@ def test_print_summary_styles(tmp_path: Path, capsys: pytest.CaptureFixture[str]
         ],
         SummaryStyle.EXPANDED,
     )
-    expanded_out = capsys.readouterr().out
-    assert "override pkg" in expanded_out
-    assert "profile: —" in expanded_out
-    assert "config: —" in expanded_out
 
+    # Assert
+    output = capsys.readouterr().out
+    assert "override pkg" in output
+    assert "profile: —" in output
+    assert "config: —" in output
+
+
+def test_print_summary_compact_style_includes_overrides(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Arrange
+    _, run_present = _build_cli_runs(tmp_path)
+
+    # Act
     print_summary([run_present], [SummaryField.OVERRIDES], SummaryStyle.COMPACT)
-    compact_out = capsys.readouterr().out
-    assert "overrides" in compact_out
-    assert "pyright:full exit=0" in compact_out
+
+    # Assert
+    output = capsys.readouterr().out
+    assert "overrides" in output
+    assert "pyright:full exit=0" in output
