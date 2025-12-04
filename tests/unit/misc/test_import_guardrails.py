@@ -5,6 +5,10 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.unit
+
 CLI_ROOT = Path("src/typewiz/cli")
 DOMAIN_ROOTS = [
     Path("src/typewiz/core"),

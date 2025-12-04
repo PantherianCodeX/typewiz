@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
 from pytest import MonkeyPatch
 
 from typewiz._internal import license as license_mod
 from typewiz.core.model_types import LicenseMode
+
+pytestmark = pytest.mark.unit
 
 
 def _reset_license(monkeypatch: MonkeyPatch) -> None:

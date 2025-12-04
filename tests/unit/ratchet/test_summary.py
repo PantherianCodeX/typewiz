@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.core.type_aliases import RunId
 from typewiz.ratchet.models import EngineSignaturePayloadWithHash
 from typewiz.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
+
+pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
 
 
 def _signature_payload(hash_value: str) -> EngineSignaturePayloadWithHash:

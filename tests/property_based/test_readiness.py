@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import cast
 
 import hypothesis.strategies as st
+import pytest
 from hypothesis import given
 
 from tests.property_based.strategies import path_strings, severity_counts
@@ -23,6 +24,8 @@ from typewiz.readiness.views import (
     FolderReadinessPayload,
     collect_readiness_view,
 )
+
+pytestmark = pytest.mark.property
 
 
 def _status() -> st.SearchStrategy[ReadinessStatus]:

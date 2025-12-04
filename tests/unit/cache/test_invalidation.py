@@ -14,6 +14,8 @@ from typewiz.config import AuditConfig, Config, EngineSettings
 from typewiz.core.model_types import Mode
 from typewiz.core.type_aliases import EngineName, RunnerName
 
+pytestmark = pytest.mark.unit
+
 
 def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: RecordingEngine) -> None:
     def _resolve(_: Sequence[str]) -> list[RecordingEngine]:

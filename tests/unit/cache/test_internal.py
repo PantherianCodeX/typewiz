@@ -15,6 +15,8 @@ from typewiz.core.model_types import FileHashPayload, Mode, SeverityLevel
 from typewiz.core.type_aliases import PathKey, RelPath, ToolName
 from typewiz.core.types import Diagnostic
 
+pytestmark = pytest.mark.unit
+
 
 def _make_diagnostic(path: Path) -> Diagnostic:
     return Diagnostic(

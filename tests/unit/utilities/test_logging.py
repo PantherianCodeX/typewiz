@@ -8,10 +8,13 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
+import pytest
 from pytest import CaptureFixture, MonkeyPatch, fixture
 
 from typewiz._internal.logging_utils import LOG_LEVELS, configure_logging, structured_extra
 from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
+
+pytestmark = pytest.mark.unit
 
 
 def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str]) -> None:

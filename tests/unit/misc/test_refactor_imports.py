@@ -12,6 +12,8 @@ from typing import Any
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MODULE_PATH = REPO_ROOT / "scripts" / "refactor_imports.py"
 SPEC = importlib.util.spec_from_file_location("refactor_imports", MODULE_PATH)

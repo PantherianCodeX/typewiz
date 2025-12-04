@@ -13,6 +13,8 @@ from typewiz.core.type_aliases import RelPath, ToolName
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.manifest.builder import ManifestBuilder
 
+pytestmark = pytest.mark.unit
+
 
 def _make_run(tmp_path: Path) -> RunResult:
     diagnostic = Diagnostic(

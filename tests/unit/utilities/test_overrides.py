@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import cast
 
+import pytest
+
 from typewiz.common.override_utils import (
     format_override_inline,
     format_overrides_block,
@@ -11,6 +13,8 @@ from typewiz.common.override_utils import (
     override_detail_lines,
 )
 from typewiz.core.model_types import OverrideEntry
+
+pytestmark = pytest.mark.unit
 
 
 def test_get_override_components_normalises_values() -> None:

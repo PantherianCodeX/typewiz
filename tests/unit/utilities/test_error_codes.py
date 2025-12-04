@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
 from pydantic import ValidationError
 from pydantic_core import PydanticCustomError
 
@@ -12,6 +13,8 @@ from typewiz._internal.error_codes import error_code_catalog, error_code_for
 from typewiz._internal.exceptions import TypewizError, TypewizTypeError, TypewizValidationError
 from typewiz.config import ConfigValidationError
 from typewiz.manifest.models import ManifestValidationError
+
+pytestmark = pytest.mark.unit
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 

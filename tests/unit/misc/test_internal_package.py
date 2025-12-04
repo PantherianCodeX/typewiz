@@ -8,6 +8,8 @@ import pytest
 
 import typewiz._internal as internal
 
+pytestmark = pytest.mark.unit
+
 
 def test_internal_lazy_imports_cache_module() -> None:
     cache_mod = internal.__getattr__("cache")

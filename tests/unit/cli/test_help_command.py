@@ -9,6 +9,8 @@ import pytest
 
 from typewiz.cli.commands.help import execute_help
 
+pytestmark = [pytest.mark.unit, pytest.mark.cli]
+
 
 def _write_topic(topics_dir: Path, name: str, content: str) -> None:
     file_path = topics_dir / f"{name}.md"

@@ -21,6 +21,8 @@ from typewiz.engines.registry import (
     resolve_engines,
 )
 
+pytestmark = [pytest.mark.unit, pytest.mark.engine]
+
 
 @pytest.fixture(autouse=True)
 def clear_engine_caches() -> Generator[None, None, None]:

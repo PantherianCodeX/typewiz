@@ -11,6 +11,8 @@ import pytest
 from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.engines.execution import run_mypy, run_pyright
 
+pytestmark = [pytest.mark.unit, pytest.mark.engine]
+
 
 class _CommandResult:
     def __init__(self, *, stdout: str = "", stderr: str = "", exit_code: int = 0) -> None:

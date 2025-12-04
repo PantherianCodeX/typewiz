@@ -14,6 +14,8 @@ from typewiz.engines.base import EngineContext, EngineOptions, EngineResult
 from typewiz.engines.builtin.mypy import MypyEngine
 from typewiz.engines.builtin.pyright import PyrightEngine
 
+pytestmark = [pytest.mark.unit, pytest.mark.engine]
+
 
 def _make_context(
     project_root: Path,

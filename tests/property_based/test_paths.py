@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from hypothesis import HealthCheck, given, settings
 
 from tests.property_based.strategies import path_parts
 from typewiz.audit.paths import normalise_paths
+
+pytestmark = pytest.mark.property
 
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])

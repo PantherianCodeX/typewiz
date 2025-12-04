@@ -12,6 +12,8 @@ from typewiz._internal.utils import CommandOutput, consume
 from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.engines.execution import run_pyright
 
+pytestmark = pytest.mark.unit
+
 
 def _command_output(payload: Mapping[str, object], *, exit_code: int = 1) -> CommandOutput:
     return CommandOutput(

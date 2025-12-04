@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import cast
 
+import pytest
+
 from typewiz.core.model_types import ReadinessStatus
 from typewiz.core.summary_types import ReadinessOptionsPayload
 from typewiz.core.type_aliases import CategoryName
@@ -13,6 +15,8 @@ from typewiz.readiness.compute import (
     ReadinessOptions,
     compute_readiness,
 )
+
+pytestmark = pytest.mark.unit
 
 
 def test_compute_readiness_ready_bucket() -> None:

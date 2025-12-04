@@ -67,3 +67,20 @@ lint.select = ["E", "F", "I", "UP", "B", "C", "CPY", "PLR0912", "PLR0913", "PLR0
 
 [tool.coverage.run]
 source = ["src/typewiz"]
+
+[tool.pytest.ini_options]
+minversion = "8.4"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "-v",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning",
+]

@@ -26,6 +26,8 @@ from typewiz.manifest.models import (
 from typewiz.manifest.typed import ManifestData
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 
+pytestmark = pytest.mark.unit
+
 
 def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: RecordingEngine) -> None:
     def _resolve(_: Sequence[str]) -> list[RecordingEngine]:

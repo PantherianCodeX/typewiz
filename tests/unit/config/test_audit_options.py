@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from typewiz.audit.options import normalise_category_mapping, prepare_category_mapping
+
+pytestmark = pytest.mark.unit
 
 
 def test_prepare_category_mapping_filters_invalid_keys() -> None:

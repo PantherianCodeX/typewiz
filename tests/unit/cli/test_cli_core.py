@@ -40,6 +40,8 @@ from typewiz.core.summary_types import (
 from typewiz.core.type_aliases import CategoryKey, RelPath, ToolName
 from typewiz.core.types import Diagnostic, RunResult
 
+pytestmark = [pytest.mark.unit, pytest.mark.cli]
+
 PYRIGHT_TOOL = ToolName("pyright")
 
 

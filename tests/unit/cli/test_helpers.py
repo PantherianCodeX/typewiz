@@ -38,6 +38,8 @@ from typewiz.core.summary_types import SummaryData
 from typewiz.core.types import RunResult
 from typewiz.readiness.views import FolderReadinessPayload
 
+pytestmark = [pytest.mark.unit, pytest.mark.cli]
+
 
 def test_parse_comma_separated_strips_entries() -> None:
     assert parse_comma_separated("foo, bar ,,,baz") == ["foo", "bar", "baz"]

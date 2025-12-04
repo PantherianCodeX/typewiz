@@ -29,6 +29,8 @@ from typewiz.core.type_aliases import EngineName, RelPath, RunnerName, ToolName
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 
+pytestmark = [pytest.mark.integration, pytest.mark.cli]
+
 STUB_TOOL = ToolName("stub")
 PYRIGHT_ENGINE = EngineName("pyright")
 PYRIGHT_RUNNER = RunnerName(PYRIGHT_ENGINE)

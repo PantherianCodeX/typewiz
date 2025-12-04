@@ -6,6 +6,8 @@ import runpy
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 
 def test_main_module_invokes_cli(monkeypatch: pytest.MonkeyPatch) -> None:
     called: dict[str, object] = {}

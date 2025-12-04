@@ -8,6 +8,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, TypedDict, cast
 
+import pytest
+
 from typewiz.core.model_types import SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import RelPath, RunId
 from typewiz.manifest.typed import (
@@ -25,6 +27,8 @@ from typewiz.ratchet import (
 )
 from typewiz.ratchet.models import RatchetModel
 from typewiz.ratchet.policies import compare_signatures
+
+pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
 
 EXPECTED_ERROR_AFTER_UPDATE = 2
 EXPECTED_ALLOWED_BASELINE = 1

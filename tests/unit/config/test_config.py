@@ -33,6 +33,8 @@ from typewiz.config import (
 from typewiz.core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import EngineName, ProfileName, RunId, RunnerName
 
+pytestmark = pytest.mark.unit
+
 ensure_list = config_module.ensure_list
 resolve_path_fields = config_module.resolve_path_fields
 

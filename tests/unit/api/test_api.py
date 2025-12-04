@@ -27,6 +27,8 @@ from typewiz.core.types import Diagnostic, RunResult
 from typewiz.manifest.typed import ManifestData, ToolSummary
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 
+pytestmark = pytest.mark.unit
+
 STUB_TOOL = ToolName("stub")
 
 

@@ -14,6 +14,8 @@ from typewiz._internal.utils import consume
 from typewiz.core.model_types import FileHashPayload
 from typewiz.core.type_aliases import PathKey
 
+pytestmark = pytest.mark.unit
+
 
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

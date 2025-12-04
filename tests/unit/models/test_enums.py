@@ -31,6 +31,8 @@ from typewiz.core.model_types import (
 )
 from typewiz.core.type_aliases import RelPath
 
+pytestmark = pytest.mark.unit
+
 
 class _SupportsFromStr(Protocol):
     @classmethod

@@ -12,6 +12,8 @@ from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 from typewiz.ratchet.io import current_timestamp, load_manifest, load_ratchet, write_ratchet
 from typewiz.ratchet.models import RatchetModel
 
+pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
+
 
 def _sample_model(tmp_path: Path) -> RatchetModel:
     return RatchetModel.model_validate({

@@ -20,6 +20,8 @@ from typewiz.manifest.typed import (
 )
 from typewiz.ratchet.core import build_ratchet_from_manifest
 
+pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 

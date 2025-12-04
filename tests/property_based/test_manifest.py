@@ -14,6 +14,8 @@ from typewiz._internal.utils import consume
 from typewiz.manifest.models import ManifestValidationError, validate_manifest_payload
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 
+pytestmark = pytest.mark.property
+
 
 def _run_payloads() -> st.SearchStrategy[dict[str, Any]]:
     severity = severity_counts(10)

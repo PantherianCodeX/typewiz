@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.core.type_aliases import ToolName
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.manifest.aggregate import summarise_run
+
+pytestmark = pytest.mark.unit
 
 PYRIGHT_TOOL = ToolName("pyright")
 

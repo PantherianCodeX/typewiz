@@ -7,6 +7,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
+import pytest
+
 from typewiz._internal.utils import consume
 from typewiz.audit.execution import apply_engine_paths, resolve_engine_options
 from typewiz.audit.options import merge_engine_settings_map
@@ -20,6 +22,8 @@ from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverr
 from typewiz.core.model_types import CategoryMapping
 from typewiz.core.type_aliases import EngineName, ProfileName, RelPath
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+
+pytestmark = pytest.mark.unit
 
 
 def test_merge_engine_settings_map_merges_profiles(tmp_path: Path) -> None:

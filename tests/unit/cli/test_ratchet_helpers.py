@@ -25,6 +25,8 @@ from typewiz.cli.helpers.ratchet import (
 from typewiz.core.model_types import SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import RunId
 
+pytestmark = [pytest.mark.unit, pytest.mark.cli, pytest.mark.ratchet]
+
 
 def test_parse_target_entries_supports_global_and_scoped() -> None:
     entries = ["error=1", "pyright:current.warning=2"]

@@ -9,6 +9,8 @@ import pytest
 
 from typewiz.cli.commands import cache as cache_cmd
 
+pytestmark = [pytest.mark.unit, pytest.mark.cli]
+
 
 def test_handle_clear_removes_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     target = tmp_path / ".typewiz_cache"

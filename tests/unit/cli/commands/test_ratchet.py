@@ -34,6 +34,8 @@ from typewiz.services.ratchet import (
     RatchetUpdateResult,
 )
 
+pytestmark = [pytest.mark.unit, pytest.mark.cli, pytest.mark.ratchet]
+
 
 def _make_context(
     project_root: Path,

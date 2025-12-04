@@ -18,6 +18,8 @@ from typewiz.services.ratchet import (
     RatchetPathRequiredError,
 )
 
+pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
+
 
 def _manifest(tmp_path: Path) -> ManifestData:
     return cast(

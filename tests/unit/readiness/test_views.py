@@ -26,6 +26,8 @@ from typewiz.readiness.views import (
     collect_readiness_view,
 )
 
+pytestmark = pytest.mark.unit
+
 
 def _make_summary() -> SummaryData:
     strict_blocked: list[ReadinessStrictEntry] = [

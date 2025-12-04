@@ -11,6 +11,8 @@ from typewiz.core.type_aliases import ToolName
 from typewiz.core.types import Diagnostic
 from typewiz.engines.base import EngineResult
 
+pytestmark = [pytest.mark.unit, pytest.mark.engine]
+
 
 class _StubLogger:
     def __init__(self) -> None:

@@ -28,6 +28,8 @@ from typewiz._internal.utils import locks as locks_mod
 from typewiz._internal.utils import versions as versions_mod
 from typewiz.core.model_types import ReadinessStatus, SeverityLevel
 
+pytestmark = pytest.mark.unit
+
 
 def test_resolve_project_root_prefers_local_markers(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"

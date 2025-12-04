@@ -21,6 +21,8 @@ from typewiz.core.model_types import (
 from typewiz.core.type_aliases import ToolName
 from typewiz.core.types import Diagnostic, RunResult
 
+pytestmark = pytest.mark.unit
+
 STUB_TOOL = ToolName("stub")
 
 

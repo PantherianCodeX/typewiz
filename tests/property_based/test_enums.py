@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
 from hypothesis import given
 
 from tests.property_based.strategies import arbitrary_cli_noise
 from typewiz.core.model_types import SeverityLevel
+
+pytestmark = pytest.mark.property
 
 
 @given(arbitrary_cli_noise())

@@ -28,6 +28,8 @@ from typewiz.manifest.typed import FileEntry, FolderEntry, ManifestData, RunPayl
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 from typewiz.runtime import JSONValue
 
+pytestmark = pytest.mark.unit
+
 
 def test_render_markdown_snapshot(
     sample_summary: SummaryData,

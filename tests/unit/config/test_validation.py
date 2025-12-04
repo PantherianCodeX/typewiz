@@ -16,6 +16,8 @@ from typewiz.config.validation import (
     require_non_negative_int,
 )
 
+pytestmark = pytest.mark.unit
+
 
 def test_coerce_str_handles_non_string() -> None:
     assert coerce_str(None, default="fallback") == "fallback"

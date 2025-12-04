@@ -5,7 +5,11 @@ from __future__ import annotations
 from argparse import Namespace
 from pathlib import Path
 
+import pytest
+
 from typewiz.cli.commands import manifest as manifest_cmd
+
+pytestmark = [pytest.mark.unit, pytest.mark.cli]
 
 
 def test_handle_schema_writes_requested_path(tmp_path: Path) -> None:
