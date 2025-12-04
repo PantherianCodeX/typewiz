@@ -4,25 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import cast
 
 import pytest
 
+from tests.fixtures.stubs import AuditStubEngine, RecordingEngine
 from typewiz import AuditConfig, Config, run_audit
 from typewiz._internal.utils import consume
-from typewiz.api import (
-    build_summary as api_build_summary,
-)
-from typewiz.api import (
-    render_dashboard_summary,
-    validate_manifest_file,
-)
-from typewiz.api import (
-    render_html as api_render_html,
-)
-from typewiz.api import (
-    render_markdown as api_render_markdown,
-)
+from typewiz.api import build_summary as api_build_summary
+from typewiz.api import render_dashboard_summary, validate_manifest_file
+from typewiz.api import render_html as api_render_html
+from typewiz.api import render_markdown as api_render_markdown
 from typewiz.config import EngineProfile, EngineSettings
 from typewiz.core.model_types import (
     DashboardFormat,
@@ -33,48 +24,10 @@ from typewiz.core.model_types import (
 )
 from typewiz.core.type_aliases import EngineName, ProfileName, RunnerName, ToolName
 from typewiz.core.types import Diagnostic, RunResult
-from typewiz.engines.base import EngineContext, EngineResult
 from typewiz.manifest.typed import ManifestData, ToolSummary
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 
 STUB_TOOL = ToolName("stub")
-
-
-class StubEngine:
-    def __init__(self, result: RunResult) -> None:
-        super().__init__()
-        self.name = "stub"
-        self._result = result
-
-    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
-        if context.mode is Mode.CURRENT:
-            return EngineResult(
-                engine=STUB_TOOL,
-                mode=context.mode,
-                command=["stub", "current"],
-                exit_code=0,
-                duration_ms=0.1,
-                diagnostics=[],
-            )
-        return EngineResult(
-            engine=STUB_TOOL,
-            mode=context.mode,
-            command=list(self._result.command),
-            exit_code=self._result.exit_code,
-            duration_ms=self._result.duration_ms,
-            diagnostics=list(self._result.diagnostics),
-            tool_summary=(
-                cast(ToolSummary, dict(self._result.tool_summary))
-                if self._result.tool_summary is not None
-                else None
-            ),
-        )
-
-    def category_mapping(self) -> dict[str, list[str]]:
-        return {"unknownChecks": ["reportGeneralTypeIssues"]}
-
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
-        return []
 
 
 @pytest.fixture
@@ -108,8 +61,8 @@ def test_run_audit_programmatic(
     tmp_path: Path,
     fake_run_result: RunResult,
 ) -> None:
-    def _resolve_stub(_: Sequence[str]) -> list[StubEngine]:
-        return [StubEngine(fake_run_result)]
+    def _resolve_stub(_: Sequence[str]) -> list[AuditStubEngine]:
+        return [AuditStubEngine(fake_run_result)]
 
     monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_stub)
     monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve_stub)
@@ -167,41 +120,6 @@ def test_run_audit_programmatic(
 
 
 def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    class RecordingEngine:
-        name = "stub"
-
-        def __init__(self) -> None:
-            super().__init__()
-            self.invocations: list[tuple[str, list[str], list[str], str | None]] = []
-
-        def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
-            self.invocations.append(
-                (
-                    context.mode,
-                    list(context.engine_options.plugin_args),
-                    list(paths),
-                    context.engine_options.profile,
-                ),
-            )
-            return EngineResult(
-                engine=ToolName(self.name),
-                mode=context.mode,
-                command=["stub", str(context.mode)],
-                exit_code=0,
-                duration_ms=0.1,
-                diagnostics=[],
-            )
-
-        def category_mapping(self) -> dict[str, list[str]]:
-            return {}
-
-        def fingerprint_targets(
-            self,
-            context: EngineContext,
-            paths: Sequence[str],
-        ) -> Sequence[str]:
-            return []
-
     engine = RecordingEngine()
 
     def _resolve_recording(_: Sequence[str]) -> list[RecordingEngine]:
@@ -229,13 +147,12 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     result = run_audit(project_root=tmp_path, config=config, build_summary_output=False)
 
     assert len(engine.invocations) == 2
-    modes = {mode for mode, _, _, _ in engine.invocations}
+    modes = {invocation.mode for invocation in engine.invocations}
     assert modes == {Mode.CURRENT, Mode.FULL}
-    full_invocation = next(entry for entry in engine.invocations if entry[0] is Mode.FULL)
-    _, args, paths, profile_name = full_invocation
-    assert args == ["--base", "--engine", "--strict"]
-    assert sorted(paths) == ["extra", "src"]
-    assert profile_name == STRICT_PROFILE
+    full_invocation = next(inv for inv in engine.invocations if inv.mode is Mode.FULL)
+    assert full_invocation.plugin_args == ["--base", "--engine", "--strict"]
+    assert sorted(full_invocation.paths) == ["extra", "src"]
+    assert full_invocation.profile == STRICT_PROFILE
 
     assert {run.profile for run in result.runs} == {STRICT_PROFILE}
     assert all(run.plugin_args == ["--base", "--engine", "--strict"] for run in result.runs)
@@ -253,34 +170,6 @@ def test_run_audit_respects_folder_overrides(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    class RecordingEngine:
-        name = "stub"
-
-        def __init__(self) -> None:
-            super().__init__()
-            self.invocations: list[EngineContext] = []
-
-        def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
-            self.invocations.append(context)
-            return EngineResult(
-                engine=ToolName(self.name),
-                mode=context.mode,
-                command=["stub", context.mode],
-                exit_code=0,
-                duration_ms=0.1,
-                diagnostics=[],
-            )
-
-        def category_mapping(self) -> dict[str, list[str]]:
-            return {}
-
-        def fingerprint_targets(
-            self,
-            context: EngineContext,
-            paths: Sequence[str],
-        ) -> Sequence[str]:
-            return []
-
     engine = RecordingEngine()
 
     def _resolve_folder(_: Sequence[str]) -> list[RecordingEngine]:
@@ -326,7 +215,8 @@ exclude = ["legacy"]
     result = run_audit(project_root=tmp_path, config=None, build_summary_output=False)
 
     assert engine.invocations
-    full_context = next(ctx for ctx in engine.invocations if ctx.mode is Mode.FULL)
+    full_invocation = next(inv for inv in engine.invocations if inv.mode is Mode.FULL)
+    full_context = full_invocation.context
     assert full_context.engine_options.profile == "strict"
     assert "--billing" in full_context.engine_options.plugin_args
     assert any("packages/billing" in path for path in full_context.engine_options.include)
@@ -364,40 +254,12 @@ def test_run_audit_cache_preserves_tool_summary(
         ),
     ]
 
-    class RecordingEngine:
-        name = "stub"
-
-        def __init__(self) -> None:
-            super().__init__()
-            self.invocations: list[Mode] = []
-
-        def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
-            self.invocations.append(context.mode)
-            return EngineResult(
-                engine=ToolName(self.name),
-                mode=context.mode,
-                command=["stub", str(context.mode)],
-                exit_code=1 if context.mode is Mode.FULL else 0,
-                duration_ms=0.5,
-                diagnostics=list(diagnostics),
-                tool_summary=(
-                    {"errors": 1, "warnings": 0, "information": 0, "total": 1}
-                    if context.mode is Mode.FULL
-                    else None
-                ),
-            )
-
-        def category_mapping(self) -> dict[str, list[str]]:
-            return {}
-
-        def fingerprint_targets(
-            self,
-            context: EngineContext,
-            paths: Sequence[str],
-        ) -> Sequence[str]:
-            return []
-
-    engine = RecordingEngine()
+    engine = RecordingEngine(
+        diagnostics=diagnostics,
+        tool_summary_on_full={"errors": 1, "warnings": 0, "information": 0, "total": 1},
+        full_exit_code=1,
+        current_exit_code=0,
+    )
 
     def _resolve_cache(_: Sequence[str]) -> list[RecordingEngine]:
         return [engine]
@@ -411,7 +273,7 @@ def test_run_audit_cache_preserves_tool_summary(
     override = AuditConfig(full_paths=["pkg"], runners=[STUB_RUNNER])
 
     first = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
-    assert engine.invocations.count(Mode.FULL) == 1
+    assert sum(1 for inv in engine.invocations if inv.mode is Mode.FULL) == 1
     first_full = next(run for run in first.runs if run.mode is Mode.FULL)
     assert first_full.cached is False
     assert first_full.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
@@ -428,7 +290,7 @@ def test_run_audit_cache_preserves_tool_summary(
 
     second = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
     # cache hit should avoid new invocations
-    assert engine.invocations.count(Mode.FULL) == 1
+    assert sum(1 for inv in engine.invocations if inv.mode is Mode.FULL) == 1
     cached_full = next(run for run in second.runs if run.mode is Mode.FULL)
     assert cached_full.cached is True
     assert cached_full.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}

@@ -5,13 +5,16 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import cast
 
 from typewiz.core.model_types import Mode
 from typewiz.core.type_aliases import ToolName
-from typewiz.core.types import RunResult
+from typewiz.core.types import Diagnostic, RunResult
 from typewiz.engines.base import EngineContext, EngineResult
+from typewiz.manifest.typed import ToolSummary
 
-__all__ = ["StubEngine"]
+__all__ = ["AuditStubEngine", "EngineInvocation", "RecordingEngine", "StubEngine"]
 
 
 class StubEngine:
@@ -53,6 +56,118 @@ class StubEngine:
 
     def category_mapping(self) -> dict[str, list[str]]:
         return {}
+
+    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+        return []
+
+
+class AuditStubEngine:
+    """Stub used by API tests to emulate full/current runs."""
+
+    name: str
+
+    def __init__(self, result: RunResult) -> None:
+        super().__init__()
+        self.name = "stub"
+        self._result = result
+
+    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+        tool_name = ToolName(self.name)
+        if context.mode is Mode.CURRENT:
+            return EngineResult(
+                engine=tool_name,
+                mode=context.mode,
+                command=["stub", "current"],
+                exit_code=0,
+                duration_ms=0.1,
+                diagnostics=[],
+            )
+        tool_summary = (
+            cast(ToolSummary, dict(self._result.tool_summary))
+            if self._result.tool_summary is not None
+            else None
+        )
+        return EngineResult(
+            engine=tool_name,
+            mode=context.mode,
+            command=list(self._result.command),
+            exit_code=self._result.exit_code,
+            duration_ms=self._result.duration_ms,
+            diagnostics=list(self._result.diagnostics),
+            tool_summary=tool_summary,
+        )
+
+    def category_mapping(self) -> dict[str, list[str]]:
+        return {"unknownChecks": ["reportGeneralTypeIssues"]}
+
+    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+        return []
+
+
+@dataclass(slots=True)
+class EngineInvocation:
+    """Record of a single engine invocation."""
+
+    context: EngineContext
+    plugin_args: list[str]
+    paths: list[str]
+    profile: str | None
+
+    @property
+    def mode(self) -> Mode:
+        return self.context.mode
+
+
+class RecordingEngine:
+    """Engine stub that records invocations and replays canned diagnostics."""
+
+    name = "stub"
+
+    def __init__(
+        self,
+        *,
+        diagnostics: Sequence[Diagnostic] | None = None,
+        tool_summary_on_full: ToolSummary | None = None,
+        full_exit_code: int = 0,
+        current_exit_code: int = 0,
+        category_mapping: dict[str, list[str]] | None = None,
+    ) -> None:
+        super().__init__()
+        self._diagnostics = list(diagnostics or [])
+        self._tool_summary_on_full = tool_summary_on_full
+        self._full_exit_code = full_exit_code
+        self._current_exit_code = current_exit_code
+        self._category_mapping = category_mapping or {}
+        self.invocations: list[EngineInvocation] = []
+
+    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+        invocation = EngineInvocation(
+            context=context,
+            plugin_args=list(context.engine_options.plugin_args),
+            paths=list(paths),
+            profile=context.engine_options.profile,
+        )
+        self.invocations.append(invocation)
+        exit_code = (
+            self._full_exit_code if context.mode is Mode.FULL else self._current_exit_code
+        )
+        tool_summary = (
+            cast(ToolSummary, dict(self._tool_summary_on_full))
+            if context.mode is Mode.FULL and self._tool_summary_on_full is not None
+            else None
+        )
+        return EngineResult(
+            engine=ToolName(self.name),
+            mode=context.mode,
+            command=["stub", str(context.mode)],
+            exit_code=exit_code,
+            duration_ms=0.1,
+            diagnostics=list(self._diagnostics),
+            tool_summary=tool_summary,
+        )
+
+    def category_mapping(self) -> dict[str, list[str]]:
+        return dict(self._category_mapping)
 
     def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
         return []

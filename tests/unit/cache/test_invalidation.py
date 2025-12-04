@@ -7,37 +7,12 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixtures.stubs import RecordingEngine
 from typewiz._internal.utils import consume
 from typewiz.api import run_audit
 from typewiz.config import AuditConfig, Config, EngineSettings
 from typewiz.core.model_types import Mode
-from typewiz.core.type_aliases import EngineName, RunnerName, ToolName
-from typewiz.engines.base import EngineContext, EngineResult
-
-
-class RecordingEngine:
-    name = "stub"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.invocations: list[Mode] = []
-
-    def run(self, context: EngineContext, paths: list[str]) -> EngineResult:
-        self.invocations.append(context.mode)
-        return EngineResult(
-            engine=ToolName(self.name),
-            mode=context.mode,
-            command=["stub", str(context.mode)],
-            exit_code=0,
-            duration_ms=0.1,
-            diagnostics=[],
-        )
-
-    def category_mapping(self) -> dict[str, list[str]]:
-        return {}
-
-    def fingerprint_targets(self, context: EngineContext, paths: list[str]) -> list[str]:
-        return []
+from typewiz.core.type_aliases import EngineName, RunnerName
 
 
 def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: RecordingEngine) -> None:
@@ -51,6 +26,10 @@ def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: RecordingE
 def _prepare_workspace(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir(parents=True, exist_ok=True)
     consume((tmp_path / "src" / "mod.py").write_text("x = 1\n", encoding="utf-8"))
+
+
+def _full_invocation_count(engine: RecordingEngine) -> int:
+    return sum(1 for invocation in engine.invocations if invocation.mode is Mode.FULL)
 
 
 def test_cache_invalidation_on_tool_version_change(
@@ -68,7 +47,7 @@ def test_cache_invalidation_on_tool_version_change(
     monkeypatch.setattr("typewiz.audit.api.detect_tool_versions", _versions_v1)
     override = AuditConfig(full_paths=["src"], runners=[STUB_RUNNER])
     consume(run_audit(project_root=tmp_path, override=override))
-    assert engine.invocations.count(Mode.FULL) == 1
+    assert _full_invocation_count(engine) == 1
 
     # Second run with version 2.0 should bypass cache
     def _versions_v2(_: Sequence[str]) -> dict[str, str]:
@@ -76,7 +55,7 @@ def test_cache_invalidation_on_tool_version_change(
 
     monkeypatch.setattr("typewiz.audit.api.detect_tool_versions", _versions_v2)
     consume(run_audit(project_root=tmp_path, override=override))
-    assert engine.invocations.count(Mode.FULL) == 2
+    assert _full_invocation_count(engine) == 2
 
 
 def test_cache_invalidation_on_config_change(
@@ -100,12 +79,12 @@ def test_cache_invalidation_on_config_change(
     )
 
     consume(run_audit(project_root=tmp_path, config=config))
-    assert engine.invocations.count(Mode.FULL) == 1
+    assert _full_invocation_count(engine) == 1
 
     # Modify config; cache key should change
     consume(cfg_file.write_text("a=2\n", encoding="utf-8"))
     consume(run_audit(project_root=tmp_path, config=config))
-    assert engine.invocations.count(Mode.FULL) == 2
+    assert _full_invocation_count(engine) == 2
 
 
 def test_cache_invalidation_on_plugin_args_change(
@@ -118,7 +97,7 @@ def test_cache_invalidation_on_plugin_args_change(
 
     base = AuditConfig(full_paths=["src"], runners=[STUB_RUNNER])
     consume(run_audit(project_root=tmp_path, override=base))
-    assert engine.invocations.count(Mode.FULL) == 1
+    assert _full_invocation_count(engine) == 1
 
     # Add a plugin arg which participates in the cache key; expect a miss
     override = AuditConfig(
@@ -127,7 +106,7 @@ def test_cache_invalidation_on_plugin_args_change(
         plugin_args={STUB: ["--flag"]},
     )
     consume(run_audit(project_root=tmp_path, override=override))
-    assert engine.invocations.count(Mode.FULL) == 2
+    assert _full_invocation_count(engine) == 2
 
 
 STUB = EngineName("stub")

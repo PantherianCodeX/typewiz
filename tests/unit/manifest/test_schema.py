@@ -10,13 +10,13 @@ from typing import Any, cast
 
 import pytest
 
+from tests.fixtures.stubs import RecordingEngine
 from typewiz._internal.utils import consume
 from typewiz.api import run_audit
 from typewiz.cli import main
 from typewiz.config import AuditConfig
-from typewiz.core.model_types import CategoryMapping, Mode
-from typewiz.core.type_aliases import EngineName, RunnerName, ToolName
-from typewiz.engines.base import EngineContext, EngineResult
+from typewiz.core.model_types import Mode
+from typewiz.core.type_aliases import EngineName, RunnerName
 from typewiz.manifest.loader import load_manifest_data
 from typewiz.manifest.models import (
     ManifestValidationError,
@@ -25,26 +25,6 @@ from typewiz.manifest.models import (
 )
 from typewiz.manifest.typed import ManifestData
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
-
-
-class RecordingEngine:
-    name = "stub"
-
-    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
-        return EngineResult(
-            engine=ToolName(self.name),
-            mode=context.mode,
-            command=["stub", str(context.mode)],
-            exit_code=0,
-            duration_ms=0.1,
-            diagnostics=[],
-        )
-
-    def category_mapping(self) -> CategoryMapping:
-        return {}
-
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
-        return []
 
 
 def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: RecordingEngine) -> None:

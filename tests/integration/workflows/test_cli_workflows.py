@@ -43,29 +43,6 @@ def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: StubEngine
     monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve)
 
 
-@pytest.fixture
-def fake_run(tmp_path: Path) -> RunResult:
-    (tmp_path / "pkg").mkdir(exist_ok=True)
-    diag = Diagnostic(
-        tool=STUB_TOOL,
-        severity=SeverityLevel.ERROR,
-        path=tmp_path / "pkg" / "module.py",
-        line=1,
-        column=1,
-        code="reportGeneralTypeIssues",
-        message="oops",
-        raw={},
-    )
-    return RunResult(
-        tool=STUB_TOOL,
-        mode=Mode.CURRENT,
-        command=["stub"],
-        exit_code=1,
-        duration_ms=1.0,
-        diagnostics=[diag],
-    )
-
-
 def test_cli_audit(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

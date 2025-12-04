@@ -4,4 +4,19 @@
 
 from __future__ import annotations
 
-# Placeholder for fixtures that will arrive in later phases.
+import pytest
+
+from tests.fixtures.builders import TestDataBuilder
+from typewiz.core.summary_types import SummaryData
+
+
+@pytest.fixture(scope="session")
+def test_data_builder() -> TestDataBuilder:
+    """Provide a reusable test data builder for unit tests."""
+    return TestDataBuilder()
+
+
+@pytest.fixture
+def sample_summary(test_data_builder: TestDataBuilder) -> SummaryData:
+    """Return the canonical summary payload used across unit tests."""
+    return test_data_builder.build_sample_summary()
