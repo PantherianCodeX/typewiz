@@ -298,7 +298,7 @@ class TestDataBuilder:
 
         return {
             "generatedAt": self.generated_at,
-            "projectRoot": str(self.project_root),
+            "projectRoot": self.project_root.as_posix(),
             "runSummary": run_summary,
             "severityTotals": severity_totals,
             "categoryTotals": category_totals,
@@ -342,7 +342,7 @@ class TestDataBuilder:
         run_id = RunId("pyright:current")
         summary: SummaryData = {
             "generatedAt": self.generated_at,
-            "projectRoot": str(self.project_root),
+            "projectRoot": self.project_root.as_posix(),
             "severityTotals": severity_totals,
             "categoryTotals": category_totals,
             "runSummary": {},

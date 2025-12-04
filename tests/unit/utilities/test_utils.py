@@ -128,13 +128,19 @@ def test_file_lock_supports_fallback_branch(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     lock_path = tmp_path / "lock"
-    with file_lock(lock_path):
-        consume(lock_path.write_text("locked\n", encoding="utf-8"))
+    data_path = tmp_path / "data.txt"
 
+    # Test with platform-specific locking
+    with file_lock(lock_path):
+        consume(data_path.write_text("locked\n", encoding="utf-8"))
+
+    # Test fallback when no locking modules available
     monkeypatch.setattr(locks_mod, "fcntl_module", None)
     monkeypatch.setattr(locks_mod, "msvcrt_module", None)
     with file_lock(lock_path):
-        consume(lock_path.write_text("fallback\n", encoding="utf-8"))
+        consume(data_path.write_text("fallback\n", encoding="utf-8"))
+
+    assert data_path.read_text(encoding="utf-8") == "fallback\n"
 
 
 def test_file_lock_prefers_fcntl(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

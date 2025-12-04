@@ -219,4 +219,5 @@ def test_relative_key_handles_external_paths(tmp_path: Path) -> None:
     key_inside = cache_module._relative_key(tmp_path, tmp_path / "pkg/app.py")
     key_outside = cache_module._relative_key(tmp_path, outside)
     assert str(key_inside) == "pkg/app.py"
-    assert key_outside.startswith("/")
+    # External paths should be absolute - starts with / on Unix or drive letter on Windows
+    assert Path(key_outside).is_absolute() or key_outside.startswith("/")
