@@ -108,9 +108,7 @@ def _build_cli_runs(tmp_path: Path) -> tuple[RunResult, RunResult]:
         ("all", ALL_SUMMARY_FIELDS),
     ],
 )
-def test_parse_summary_fields_normalises_input(
-    raw: str, expected: list[SummaryField]
-) -> None:
+def test_parse_summary_fields_normalises_input(raw: str, expected: list[SummaryField]) -> None:
     # Arrange
     valid_fields = SUMMARY_FIELD_CHOICES
 

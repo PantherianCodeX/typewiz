@@ -38,6 +38,10 @@ MANIFEST_PATH ?= $(TYPING_REPORT_DIR)/typing_audit.json
 TYPEWIZ_STATUSES ?= blocked ready
 TYPEWIZ_LEVEL ?= folder
 TYPEWIZ_LIMIT ?= 20
+# NOTE: pyright --verifytypes only works when the package has been pip-installed (requires network).
+# Sandbox environments cannot perform that install today, so keep the gate opt-in.
+VERIFYTYPES_ENABLED ?= 0
+VERIFYTYPES_PACKAGE ?= typewiz
 
 .PHONY: \
   help %.help \
@@ -118,8 +122,12 @@ type.mypy: ## Run mypy (strict)
 type.pyright: ## Run pyright using repo config
 	$(PYRIGHT) -p pyrightconfig.json
 
-type.verify: ## Verify public typing completeness via pyright
-	PYTHONPATH=src $(PYRIGHT) --verifytypes typewiz --ignoreexternal
+type.verify: ## Verify public typing completeness via pyright (opt-in via VERIFYTYPES_ENABLED=1)
+ifeq ($(VERIFYTYPES_ENABLED),1)
+	PYTHONPATH=src $(PYRIGHT) --verifytypes $(VERIFYTYPES_PACKAGE) --ignoreexternal
+else
+	@echo "[skip] pyright --verifytypes requires $(VERIFYTYPES_PACKAGE) to be pip-installed; set VERIFYTYPES_ENABLED=1 after installing it."
+endif
 
 verifytypes: ## Alias for type.verify (pyright --verifytypes)
 	@$(MAKE) type.verify

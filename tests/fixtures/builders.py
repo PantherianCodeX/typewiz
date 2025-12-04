@@ -759,9 +759,7 @@ def build_readiness_summary(
         readiness_tab["options"] = {
             category: {
                 "threshold": threshold,
-                "buckets": {
-                    status: tuple(entries) for status, entries in option_entries.items()
-                },
+                "buckets": {status: tuple(entries) for status, entries in option_entries.items()},
             },
         }
     if strict_entries is not None:
