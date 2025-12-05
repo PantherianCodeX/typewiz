@@ -148,9 +148,9 @@ def test_build_readiness_options_parses_payload() -> None:
 
 
 def test_validate_readiness_tab_requires_mappings() -> None:
-    with pytest.raises(DashboardTypeError, match="readiness.strict"):
+    with pytest.raises(DashboardTypeError, match=r"readiness\.strict"):
         dashboard_build._validate_readiness_tab({"strict": "bad", "options": {}})
-    with pytest.raises(DashboardTypeError, match="readiness.options"):
+    with pytest.raises(DashboardTypeError, match=r"readiness\.options"):
         dashboard_build._validate_readiness_tab({"strict": {"ready": []}, "options": "bad"})
 
 
@@ -189,7 +189,7 @@ def test_build_readiness_section_logs_invalid_payload(monkeypatch: pytest.Monkey
 def test_coerce_status_key_accepts_enum_and_rejects_other_types() -> None:
     status = ReadinessStatus.CLOSE
     assert dashboard_build._coerce_status_key(status) is status
-    with pytest.raises(DashboardTypeError, match="readiness.strict"):
+    with pytest.raises(DashboardTypeError, match=r"readiness\.strict"):
         _ = dashboard_build._coerce_status_key(123)
 
 
@@ -219,7 +219,8 @@ def test_parse_manifest_overrides_filters_invalid_entries() -> None:
         {"path": "src", "profile": "baseline", "pluginArgs": ["--strict"], "include": ["src"], "exclude": ["tests"]},
         "invalid",
     ])
-    assert overrides and overrides[0]["path"] == "src"
+    assert overrides
+    assert overrides[0]["path"] == "src"
 
 
 def test_parse_category_mapping_filters_invalid_keys_and_cleans_values() -> None:
@@ -274,7 +275,7 @@ def test_update_file_metrics_skips_zero_counters_and_handles_diagnostics() -> No
     assert rule_counts["E1"]["src/app.py"] == 1
 
 
-def test_consume_run_ignores_incomplete_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_consume_run_ignores_incomplete_payload() -> None:
     state = _new_summary_state()
     incomplete = {"tool": "pyright"}  # missing mode and summary
     dashboard_build._consume_run(incomplete, state=state)
@@ -282,7 +283,7 @@ def test_consume_run_ignores_incomplete_payload(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_build_readiness_options_rejects_non_mappings() -> None:
-    with pytest.raises(DashboardTypeError, match="readiness.options"):
+    with pytest.raises(DashboardTypeError, match=r"readiness\.options"):
         _ = dashboard_build._build_readiness_options({"general": "bad"})
     with pytest.raises(DashboardTypeError, match=r"buckets"):
         _ = dashboard_build._build_readiness_options({"general": {"buckets": "bad"}})

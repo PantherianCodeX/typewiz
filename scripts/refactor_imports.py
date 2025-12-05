@@ -521,6 +521,105 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _validate_root(root: Path, parser: argparse.ArgumentParser) -> None:
+    if not root.exists():
+        parser.error(f"Root directory {root} does not exist")
+
+
+def _require_action(
+    mapping_dict: dict[str, str],
+    export_map: dict[str, str],
+    ensure_imports: list[EnsureImport],
+    parser: argparse.ArgumentParser,
+) -> None:
+    if mapping_dict or export_map or ensure_imports:
+        return
+    parser.error("Provide at least one --map/--mapping-file/--ensure-import/--export-map action")
+
+
+def _mark_path(path: Path, seen: set[Path], changed: list[Path]) -> None:
+    resolved = path.resolve()
+    if resolved in seen:
+        return
+    seen.add(resolved)
+    changed.append(resolved)
+
+
+def _rewrite_mapping_files(
+    root: Path,
+    *,
+    use_git: bool,
+    mapping_dict: dict[str, str],
+    seen_paths: set[Path],
+    changed_files: list[Path],
+    apply: bool,
+) -> None:
+    if not mapping_dict:
+        return
+    for path in _iter_python_files(root, use_git=use_git):
+        content = path.read_text(encoding="utf-8")
+        module_name = _module_name_from_path(path, root)
+        new_content, changed = rewrite_content(content, mapping_dict, module_name)
+        if not changed:
+            continue
+        _mark_path(path, seen_paths, changed_files)
+        if apply:
+            _ = path.write_text(new_content, encoding="utf-8")
+
+
+def _rewrite_export_files(
+    root: Path,
+    *,
+    use_git: bool,
+    export_map: dict[str, str],
+    seen_paths: set[Path],
+    changed_files: list[Path],
+    apply: bool,
+) -> None:
+    if not export_map:
+        return
+    for path in _iter_python_files(root, use_git=use_git):
+        content = path.read_text(encoding="utf-8")
+        new_content, changed = _rewrite_exports(content, export_map)
+        if not changed:
+            continue
+        _mark_path(path, seen_paths, changed_files)
+        if apply:
+            _ = path.write_text(new_content, encoding="utf-8")
+
+
+def _ensure_import_files(
+    ensure_imports: list[EnsureImport],
+    seen_paths: set[Path],
+    changed_files: list[Path],
+    *,
+    apply: bool,
+) -> None:
+    for ensure_entry in ensure_imports:
+        if not ensure_entry.path.exists():
+            print(f"Skipping missing file {ensure_entry.path}")
+            continue
+        content = ensure_entry.path.read_text(encoding="utf-8")
+        new_content, changed = _ensure_import_in_content(content, ensure_entry.module, ensure_entry.symbols)
+        if not changed:
+            continue
+        _mark_path(ensure_entry.path, seen_paths, changed_files)
+        if apply:
+            _ = ensure_entry.path.write_text(new_content, encoding="utf-8")
+
+
+def _report_changes(changed_files: list[Path], *, apply: bool) -> None:
+    action = "Updated" if apply else "Would update"
+    for file_path in changed_files:
+        try:
+            rel = file_path.relative_to(Path.cwd())
+        except ValueError:
+            rel = file_path
+        print(f"{action}: {rel}")
+    if not apply:
+        print("Dry-run complete; re-run with --apply to write changes.")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry point for rewriting imports across the repository.
 
@@ -536,72 +635,44 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     root = Path(args.root).resolve()
-    if not root.exists():
-        parser.error(f"Root directory {root} does not exist")
+    _validate_root(root, parser)
 
     mapping_dict = _build_mapping_dict(args)
     export_map = _parse_export_map(args.export_mappings)
     ensure_imports = _parse_ensure_import_entries(args.ensure_imports, root)
-
-    if not (mapping_dict or export_map or ensure_imports):
-        parser.error("Provide at least one --map/--mapping-file/--ensure-import/--export-map action")
+    _require_action(mapping_dict, export_map, ensure_imports, parser)
 
     seen_paths: set[Path] = set()
     changed_files: list[Path] = []
 
-    def _mark(path: Path) -> None:
-        resolved = path.resolve()
-        if resolved in seen_paths:
-            return
-        seen_paths.add(resolved)
-        changed_files.append(resolved)
-
-    if mapping_dict:
-        for path in _iter_python_files(root, use_git=args.use_git):
-            content = path.read_text(encoding="utf-8")
-            module_name = _module_name_from_path(path, root)
-            new_content, changed = rewrite_content(content, mapping_dict, module_name)
-            if not changed:
-                continue
-            _mark(path)
-            if args.apply:
-                _ = path.write_text(new_content, encoding="utf-8")
-
-    if export_map:
-        for path in _iter_python_files(root, use_git=args.use_git):
-            content = path.read_text(encoding="utf-8")
-            new_content, changed = _rewrite_exports(content, export_map)
-            if not changed:
-                continue
-            _mark(path)
-            if args.apply:
-                _ = path.write_text(new_content, encoding="utf-8")
-
-    for ensure_entry in ensure_imports:
-        if not ensure_entry.path.exists():
-            print(f"Skipping missing file {ensure_entry.path}")
-            continue
-        content = ensure_entry.path.read_text(encoding="utf-8")
-        new_content, changed = _ensure_import_in_content(content, ensure_entry.module, ensure_entry.symbols)
-        if not changed:
-            continue
-        _mark(ensure_entry.path)
-        if args.apply:
-            _ = ensure_entry.path.write_text(new_content, encoding="utf-8")
+    _rewrite_mapping_files(
+        root=root,
+        use_git=args.use_git,
+        mapping_dict=mapping_dict,
+        seen_paths=seen_paths,
+        changed_files=changed_files,
+        apply=args.apply,
+    )
+    _rewrite_export_files(
+        root=root,
+        use_git=args.use_git,
+        export_map=export_map,
+        seen_paths=seen_paths,
+        changed_files=changed_files,
+        apply=args.apply,
+    )
+    _ensure_import_files(
+        ensure_imports=ensure_imports,
+        seen_paths=seen_paths,
+        changed_files=changed_files,
+        apply=args.apply,
+    )
 
     if not changed_files:
         print("No imports needed rewriting.")
         return 0
 
-    action = "Updated" if args.apply else "Would update"
-    for file_path in changed_files:
-        try:
-            rel = file_path.relative_to(Path.cwd())
-        except ValueError:
-            rel = file_path
-        print(f"{action}: {rel}")
-    if not args.apply:
-        print("Dry-run complete; re-run with --apply to write changes.")
+    _report_changes(changed_files, apply=args.apply)
     return 0
 
 

@@ -831,9 +831,10 @@ def test_cli_manifest_validate_with_jsonschema(
         def __init__(self, schema: object) -> None:
             super().__init__()
             self.schema = schema
+            self.errors: list[object] = []
 
         def iter_errors(self, _data: object) -> list[object]:
-            return []
+            return list(self.errors)
 
     dummy_module = types.SimpleNamespace(Draft7Validator=DummyValidator)
     monkeypatch.setitem(sys.modules, "jsonschema", dummy_module)

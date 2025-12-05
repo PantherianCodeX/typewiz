@@ -119,9 +119,8 @@ type: type.mypy type.pyright ## Run mypy + pyright
 type.mypy: ## Run mypy (strict)
 	$(MYPY) --no-incremental
 
-type.pyright: ## Run pyright using repo config
-	$(PYRIGHT) -p pyrightconfig.json
-	$(PYRIGHT) -p pyrightconfig.tests.json
+type.pyright: ## Run pyright using repo config from pyproject.toml
+	$(PYRIGHT)
 
 type.verify: ## Verify public typing completeness via pyright (opt-in via VERIFYTYPES_ENABLED=1)
 ifeq ($(VERIFYTYPES_ENABLED),1)
@@ -136,8 +135,8 @@ verifytypes: ## Alias for type.verify (pyright --verifytypes)
 typing.run: typing.baseline typing.strict type.verify ## Run baseline then strict checks plus public typing
 
 typing.baseline: ## Run pyright then mypy checks
-	$(PYRIGHT) -p pyrightconfig.json
-	$(PYRIGHT) -p pyrightconfig.tests.json
+	$(PYRIGHT)
+	$(MYPY) --no-incremental
 	$(MYPY) --no-incremental
 
 typing.strict: ## Enforce strict gates (ruff + mypy strict again)

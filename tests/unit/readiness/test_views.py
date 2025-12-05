@@ -4,13 +4,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
+from tests.fixtures.builders import build_readiness_summary
 from typewiz.core.categories import CategoryName
 from typewiz.core.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
-from typewiz.core.summary_types import SummaryData
 from typewiz.readiness.compute import DEFAULT_CLOSE_THRESHOLD, ReadinessOptions
 from typewiz.readiness.views import (
+    ReadinessValidationError,
     _build_option_entry,
     _build_strict_entry,
     _coerce_option_entries,
@@ -27,11 +30,11 @@ from typewiz.readiness.views import (
     _normalise_file_entry,
     _normalise_severity_filters,
     _normalise_status_filters,
-    ReadinessValidationError,
     collect_readiness_view,
 )
 
-from tests.fixtures.builders import build_readiness_summary
+if TYPE_CHECKING:
+    from typewiz.core.summary_types import SummaryData
 
 
 def test_coerce_status_handles_invalid_values() -> None:
@@ -44,7 +47,8 @@ def test_build_option_entry_and_entries_helper() -> None:
     built = _build_option_entry(entry)
     assert built["path"] == "src"
     entries = _coerce_option_entries([entry, "ignore"])
-    assert entries and entries[0]["path"] == "src"
+    assert entries
+    assert entries[0]["path"] == "src"
 
 
 def test_build_strict_entry_appends_notes() -> None:
@@ -106,19 +110,19 @@ def test_coerce_strict_map_with_entries() -> None:
 
 def test_normalise_file_entry_rejects_negative_counts() -> None:
     entry = {"path": "src", "diagnostics": -1, "errors": 0, "warnings": 0, "information": 0}
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="diagnostics must be non-negative"):
         _normalise_file_entry(entry)
     entry["diagnostics"] = 1
     entry["errors"] = -1
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="errors must be non-negative"):
         _normalise_file_entry(entry)
     entry["errors"] = 0
     entry["warnings"] = -1
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="warnings must be non-negative"):
         _normalise_file_entry(entry)
     entry["warnings"] = 0
     entry["information"] = -1
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="information must be non-negative"):
         _normalise_file_entry(entry)
 
 

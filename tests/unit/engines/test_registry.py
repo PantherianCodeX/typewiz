@@ -42,12 +42,13 @@ class DummyEngine:
     """Minimal engine stub used to simulate installed entry points."""
 
     name = "dummy"
+    DEFAULT_FINGERPRINT_TARGETS: tuple[str, ...] = ()
 
     def run(self, context: EngineContext, paths: list[RelPath]) -> None:  # pragma: no cover
         raise NotImplementedError
 
     def fingerprint_targets(self, _context: EngineContext, _paths: list[RelPath]) -> list[str]:
-        return []
+        return list(self.DEFAULT_FINGERPRINT_TARGETS)
 
 
 @dataclass

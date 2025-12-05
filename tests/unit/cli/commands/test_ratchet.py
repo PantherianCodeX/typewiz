@@ -344,19 +344,22 @@ def test_handle_check_outputs_table_lines(
         def __init__(self) -> None:
             super().__init__()
             self.calls: list[tuple[bool, int | None, bool]] = []
+            self.payload: dict[str, object] = {}
+            self.signature_mismatch: bool = False
+            self.violations: bool = False
 
         def format_lines(self, *, ignore_signature: bool, limit: int | None, summary_only: bool) -> list[str]:
             self.calls.append((ignore_signature, limit, summary_only))
             return ["line-a", "line-b"]
 
         def to_payload(self) -> dict[str, object]:
-            return {}
+            return dict(self.payload)
 
         def has_signature_mismatch(self) -> bool:
-            return False
+            return self.signature_mismatch
 
         def has_violations(self) -> bool:
-            return False
+            return self.violations
 
     stub_report = StubReport()
 

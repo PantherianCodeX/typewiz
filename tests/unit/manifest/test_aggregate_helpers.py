@@ -9,12 +9,12 @@ from collections import Counter
 from typewiz.core.model_types import RecommendationCode, SeverityLevel
 from typewiz.core.type_aliases import RuleName
 from typewiz.manifest.aggregate import (
-    _Categoriser,
-    _canonical_category_mapping,
-    _split_rel_path,
-    _update_file_summary,
     FileSummary,
     FolderSummary,
+    _canonical_category_mapping,
+    _Categoriser,
+    _split_rel_path,
+    _update_file_summary,
 )
 
 

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from typewiz.core.model_types import Mode
 from typewiz.core.type_aliases import ToolName
@@ -24,6 +24,9 @@ class StubEngine:
     """Simple engine stub that records invocations."""
 
     name: str
+
+    DEFAULT_CATEGORY_MAPPING: ClassVar[dict[str, list[str]]] = {}
+    DEFAULT_FINGERPRINT_TARGETS: ClassVar[tuple[str, ...]] = ()
 
     def __init__(self, result: RunResult, expected_profile: str | None = None) -> None:
         """Initialise the stub with a canned ``RunResult`` outcome."""
@@ -59,16 +62,19 @@ class StubEngine:
         )
 
     def category_mapping(self) -> dict[str, list[str]]:
-        return {}
+        return dict(self.DEFAULT_CATEGORY_MAPPING)
 
     def fingerprint_targets(self, _context: EngineContext, _paths: Sequence[str]) -> Sequence[str]:
-        return []
+        return list(self.DEFAULT_FINGERPRINT_TARGETS)
 
 
 class AuditStubEngine:
     """Stub used by API tests to emulate full/current runs."""
 
     name: str
+
+    DEFAULT_CATEGORY_MAPPING: ClassVar[dict[str, list[str]]] = {"unknownChecks": ["reportGeneralTypeIssues"]}
+    DEFAULT_FINGERPRINT_TARGETS: ClassVar[tuple[str, ...]] = ()
 
     def __init__(self, result: RunResult) -> None:
         """Prime the stub engine with a single ``RunResult`` payload."""
@@ -101,10 +107,10 @@ class AuditStubEngine:
         )
 
     def category_mapping(self) -> dict[str, list[str]]:
-        return {"unknownChecks": ["reportGeneralTypeIssues"]}
+        return dict(self.DEFAULT_CATEGORY_MAPPING)
 
     def fingerprint_targets(self, _context: EngineContext, _paths: Sequence[str]) -> Sequence[str]:
-        return []
+        return list(self.DEFAULT_FINGERPRINT_TARGETS)
 
 
 @dataclass(slots=True)
@@ -134,6 +140,7 @@ class RecordingEngine:
         full_exit_code: int = 0,
         current_exit_code: int = 0,
         category_mapping: dict[str, list[str]] | None = None,
+        fingerprint_targets: Sequence[str] | None = None,
     ) -> None:
         """Set up the recording engine with canned diagnostics and metadata."""
         super().__init__()
@@ -142,6 +149,7 @@ class RecordingEngine:
         self._full_exit_code = full_exit_code
         self._current_exit_code = current_exit_code
         self._category_mapping = category_mapping or {}
+        self._fingerprint_targets = tuple(fingerprint_targets or ())
         self.invocations: list[EngineInvocation] = []
 
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
@@ -172,4 +180,4 @@ class RecordingEngine:
         return dict(self._category_mapping)
 
     def fingerprint_targets(self, _context: EngineContext, _paths: Sequence[str]) -> Sequence[str]:
-        return []
+        return list(self._fingerprint_targets)

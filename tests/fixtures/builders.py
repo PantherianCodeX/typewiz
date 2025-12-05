@@ -151,7 +151,8 @@ class TestDataBuilder:
             "tabs": tabs,
         }
 
-    def _build_sample_overrides(self) -> tuple[OverrideEntry, OverrideEntry]:
+    @staticmethod
+    def _build_sample_overrides() -> tuple[OverrideEntry, OverrideEntry]:
         """Return the canonical overrides used across sample summaries."""
         pyright_override: OverrideEntry = {
             "path": "apps/platform",
@@ -163,8 +164,8 @@ class TestDataBuilder:
         }
         return pyright_override, mypy_override
 
+    @staticmethod
     def _build_sample_run_summary(
-        self,
         *,
         pyright_override: OverrideEntry,
         mypy_override: OverrideEntry,
@@ -208,7 +209,8 @@ class TestDataBuilder:
             },
         }
 
-    def _build_sample_readiness_tab(self) -> ReadinessTab:
+    @staticmethod
+    def _build_sample_readiness_tab() -> ReadinessTab:
         """Generate readiness data used by dashboard and CLI tests.
 
         Returns:
@@ -340,8 +342,8 @@ class TestDataBuilder:
             },
         }
 
+    @staticmethod
     def _build_sample_tabs(  # noqa: PLR0913  # JUSTIFIED: test data builder requires explicit, keyword-only inputs for readability across many callers
-        self,
         *,
         severity_totals: CountsBySeverity,
         category_totals: CountsByCategory,
@@ -513,7 +515,8 @@ class TestDataBuilder:
         run.exclude = [RelPath("tests")]
         return run
 
-    def build_readiness_entries(self, count: int = 200) -> list[ReadinessEntry]:
+    @staticmethod
+    def build_readiness_entries(count: int = 200) -> list[ReadinessEntry]:
         """Generate readiness entries that stress readiness computation.
 
         Args:
