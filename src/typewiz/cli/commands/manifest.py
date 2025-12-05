@@ -7,7 +7,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Never, NoReturn, Protocol
+from typing import TYPE_CHECKING, Never, NoReturn
 
 from typewiz.cli.helpers import echo, register_argument
 from typewiz.core.model_types import ManifestAction
@@ -16,11 +16,8 @@ from typewiz.services.manifest import (
     validate_manifest_file,
 )
 
-
-class SubparserRegistry(Protocol):
-    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
-        """Register a CLI subcommand on an argparse subparser collection."""
-        ...  # pragma: no cover - Protocol helper
+if TYPE_CHECKING:
+    from typewiz.cli.types import SubparserCollection
 
 
 def _raise_unknown_manifest_action(action: Never) -> NoReturn:
@@ -28,7 +25,7 @@ def _raise_unknown_manifest_action(action: Never) -> NoReturn:
     raise SystemExit(msg)
 
 
-def register_manifest_command(subparsers: SubparserRegistry) -> None:
+def register_manifest_command(subparsers: SubparserCollection) -> None:
     """Register the ``typewiz manifest`` command."""
     manifest_cmd = subparsers.add_parser(
         "manifest",

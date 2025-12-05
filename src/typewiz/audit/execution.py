@@ -244,7 +244,9 @@ def _build_cache_flags(
         cache_flags.append(f"config={cfg_path.as_posix()}")
         try:
             fingerprint = fingerprint_path(cfg_path)
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except (OSError, ValueError) as exc:  # pragma: no cover - filesystem/hash errors
+            # OSError: file not found, permissions, etc.
+            # ValueError: hash computation errors
             logger.debug(
                 "Unable to fingerprint config %s: %s",
                 cfg_path,
@@ -380,7 +382,9 @@ def _path_matches(candidate: RelPath, pattern: RelPath) -> bool:
         return False
     candidate_norm = str(candidate).rstrip("/")
     pattern_norm = str(pattern).rstrip("/")
-    return candidate_norm == pattern_norm or (pattern_norm and candidate_norm.startswith(f"{pattern_norm}/"))
+    if not pattern_norm:
+        return False
+    return candidate_norm == pattern_norm or candidate_norm.startswith(f"{pattern_norm}/")
 
 
 def apply_engine_paths(

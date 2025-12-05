@@ -7,7 +7,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from typewiz.api import build_summary
 from typewiz.cli.helpers import (
@@ -41,17 +41,12 @@ from typewiz.services.dashboard import emit_dashboard_outputs, load_summary_from
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from typewiz.cli.types import SubparserCollection
     from typewiz.core.summary_types import SummaryData
     from typewiz.core.types import RunResult
 
 
-class SubparserRegistry(Protocol):
-    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
-        """Register a CLI subcommand on an argparse subparser collection."""
-        ...  # pragma: no cover - Protocol helper
-
-
-def register_audit_command(subparsers: SubparserRegistry) -> None:
+def register_audit_command(subparsers: SubparserCollection) -> None:
     """Register the ``typewiz audit`` command and return the configured parser."""
     audit = subparsers.add_parser(
         "audit",

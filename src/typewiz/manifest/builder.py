@@ -157,7 +157,10 @@ class ManifestBuilder:
             versions = detect_tool_versions(tools)
             if versions:
                 self.data["toolVersions"] = versions
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except (OSError, ValueError, RuntimeError) as exc:  # pragma: no cover - tool version detection errors
+            # OSError: subprocess/filesystem errors
+            # ValueError: invalid tool names or version parsing
+            # RuntimeError: tool execution failures
             logger.debug(
                 "Failed to detect tool versions: %s",
                 exc,

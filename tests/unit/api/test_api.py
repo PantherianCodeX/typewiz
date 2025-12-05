@@ -293,14 +293,10 @@ def test_run_audit_cache_preserves_tool_summary(
     cache_path = tmp_path / ".typewiz_cache" / "cache.json"
     assert cache_path.exists()
     assert not (tmp_path / ".typewiz_cache.json").exists()
-    first_manifest = first.manifest
-    assert "runs" in first_manifest
-    first_runs = first_manifest["runs"]
-    first_manifest_full = next(run for run in first_runs if run["mode"] == "full")
-    assert "toolSummary" in first_manifest_full
-    tool_summary = first_manifest_full["toolSummary"]
-    assert "total" in tool_summary
-    assert tool_summary["total"] == 1
+    runs_first = first.manifest.get("runs") or []
+    first_manifest_full = next(run for run in runs_first if run.get("mode") == "full")
+    tool_summary = first_manifest_full.get("toolSummary") or {}
+    assert tool_summary.get("total") == 1
 
     second = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
     # cache hit should avoid new invocations
@@ -308,14 +304,10 @@ def test_run_audit_cache_preserves_tool_summary(
     cached_full = next(run for run in second.runs if run.mode is Mode.FULL)
     assert cached_full.cached is True
     assert cached_full.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
-    second_manifest = second.manifest
-    assert "runs" in second_manifest
-    second_runs = second_manifest["runs"]
-    cached_manifest_full = next(run for run in second_runs if run["mode"] == "full")
-    assert "toolSummary" in cached_manifest_full
-    cached_tool_summary = cached_manifest_full["toolSummary"]
-    assert "errors" in cached_tool_summary
-    assert cached_tool_summary["errors"] == 1
+    runs_second = second.manifest.get("runs") or []
+    cached_manifest_full = next(run for run in runs_second if run.get("mode") == "full")
+    cached_tool_summary = cached_manifest_full.get("toolSummary") or {}
+    assert cached_tool_summary.get("errors") == 1
 
 
 def test_api_exposes_dashboard_and_manifest_helpers(tmp_path: Path) -> None:
@@ -333,7 +325,7 @@ def test_api_exposes_dashboard_and_manifest_helpers(tmp_path: Path) -> None:
     assert "<html" in html.lower()
     rendered = render_dashboard_summary(
         summary,
-        format=DashboardFormat.JSON,
+        output_format=DashboardFormat.JSON,
         default_view=DashboardView.OVERVIEW,
     )
     assert '"tabs"' in rendered

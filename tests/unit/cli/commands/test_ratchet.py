@@ -51,7 +51,7 @@ class _DispatchScenario:
     expects_args: bool
 
 
-def _make_context(
+def _make_context(  # noqa: PLR0913  # JUSTIFIED: helper mirrors RatchetContext fields for clarity in tests
     project_root: Path,
     *,
     manifest_payload: ManifestData | None = None,
@@ -197,7 +197,8 @@ def test_handle_init_defaults_output_path(
                 "runs": {},
             },
         )
-        return RatchetInitResult(model=dummy_model, output_path=kwargs["output_path"])
+        output_path = cast("Path", kwargs["output_path"])
+        return RatchetInitResult(model=dummy_model, output_path=output_path)
 
     monkeypatch.setattr(ratchet_cmd, "init_ratchet", fake_init_ratchet)
     context = _make_context(tmp_path, ratchet_path=None)
@@ -325,7 +326,8 @@ def test_handle_check_returns_error_when_service_fails(tmp_path: Path, monkeypat
     context = _make_context(tmp_path)
 
     def boom(**_: object) -> RatchetCheckResult:
-        raise RatchetServiceError("failure")
+        msg = "failure"
+        raise RatchetServiceError(msg)
 
     monkeypatch.setattr(ratchet_cmd, "check_ratchet", boom)
     args = Namespace(format="json")
@@ -450,7 +452,7 @@ def test_handle_rebaseline_reports_service_error(tmp_path: Path, monkeypatch: py
     assert exit_code == 1
 
 
-def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: C901  # JUSTIFIED: high-level wiring test exercises many stubbed collaborators in one integration-style flow
     # Lightweight stubs to avoid touching the filesystem or real configs.
     fake_config = Config()
 
@@ -479,6 +481,8 @@ def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) 
         configured: Path | None,
         require_exists: bool,
     ) -> Path:
+        assert explicit is None
+        assert configured is None
         assert require_exists is False
         return tmp_root / "ratchet.json"
 
@@ -543,18 +547,18 @@ def test_register_ratchet_command_builds_subcommands(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "scenario",
     [
-        _DispatchScenario(RatchetAction.INIT.value, "handle_init", expect_args=True),
-        _DispatchScenario(RatchetAction.CHECK.value, "handle_check", expect_args=True),
-        _DispatchScenario(RatchetAction.UPDATE.value, "handle_update", expect_args=True),
+        _DispatchScenario(RatchetAction.INIT.value, "handle_init", expects_args=True),
+        _DispatchScenario(RatchetAction.CHECK.value, "handle_check", expects_args=True),
+        _DispatchScenario(RatchetAction.UPDATE.value, "handle_update", expects_args=True),
         _DispatchScenario(
             RatchetAction.REBASELINE_SIGNATURE.value,
             "handle_rebaseline",
-            expect_args=True,
+            expects_args=True,
         ),
-        _DispatchScenario(RatchetAction.INFO.value, "handle_info", expect_args=False),
+        _DispatchScenario(RatchetAction.INFO.value, "handle_info", expects_args=False),
     ],
 )
-def test_execute_ratchet_dispatches_actions(
+def test_execute_ratchet_dispatches_actions(  # noqa: C901  # JUSTIFIED: dispatch table wired once and exercised via parametrisation for multiple actions
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     scenario: _DispatchScenario,

@@ -27,6 +27,8 @@ from typewiz.manifest.models import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from typewiz.runtime import JSONValue
+
 logger: logging.Logger = logging.getLogger("typewiz.services.manifest")
 
 
@@ -140,7 +142,7 @@ def _validate_payload(payload: dict[str, object]) -> list[ManifestPayloadError]:
         List of validation errors, empty if validation succeeds.
     """
     try:
-        _ = validate_manifest_payload(payload)
+        _ = validate_manifest_payload(cast("JSONValue", payload))
     except ManifestValidationError as exc:
         code = error_code_for(exc)
         errors: list[ManifestPayloadError] = []

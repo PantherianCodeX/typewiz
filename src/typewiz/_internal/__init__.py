@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import importlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     logging_utils: ModuleType
     utils: ModuleType
 
-_EXPOSED_MODULES = [
+_EXPOSED_MODULES: Final[tuple[str, ...]] = (
     "cache",
     "collection_utils",
     "error_codes",
@@ -26,12 +26,12 @@ _EXPOSED_MODULES = [
     "license",
     "logging_utils",
     "utils",
-]
-__all__ = list(_EXPOSED_MODULES)
+)
+__all__ = list(_EXPOSED_MODULES)  # pyright: ignore[reportUnsupportedDunderAll]  # JUSTIFIED: dynamic re-export module; exports are fully enumerated and stable
 
 
 def __getattr__(name: str) -> ModuleType:
-    if name not in __all__:
+    if name not in _EXPOSED_MODULES:
         message = f"module 'typewiz._internal' has no attribute '{name}'"
         raise AttributeError(message)
     module = importlib.import_module(f"{__name__}.{name}")
@@ -40,4 +40,4 @@ def __getattr__(name: str) -> ModuleType:
 
 
 def __dir__() -> list[str]:
-    return sorted(__all__)
+    return sorted(_EXPOSED_MODULES)

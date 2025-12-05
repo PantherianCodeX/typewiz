@@ -73,6 +73,7 @@ def test_collect_file_hashes_reuses_baseline(
 
     def record_fingerprint(path: Path) -> FileHashPayload:
         fingerprint_called["value"] = True
+        assert path.name == "sample.py"
         return {"hash": "stub", "mtime": 0, "size": 0}
 
     monkeypatch.setattr("typewiz._internal.cache._fingerprint", record_fingerprint)

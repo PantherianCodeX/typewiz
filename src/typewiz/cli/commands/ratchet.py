@@ -8,7 +8,7 @@ import argparse
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Never, NoReturn, Protocol
+from typing import TYPE_CHECKING, Never, NoReturn
 
 from typewiz.cli.helpers import (
     DEFAULT_RATCHET_FILENAME,
@@ -45,6 +45,7 @@ from typewiz.services.ratchet import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from typewiz.cli.types import SubparserCollection
     from typewiz.core.type_aliases import RunId
     from typewiz.manifest.typed import ManifestData
 
@@ -97,18 +98,12 @@ def _handle_service_error(exc: RatchetServiceError) -> int:
     return 1
 
 
-class SubparserRegistry(Protocol):
-    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
-        """Register a CLI subcommand on an argparse subparser collection."""
-        ...  # pragma: no cover - stub helper
-
-
 def _raise_unknown_ratchet_action(action: Never) -> NoReturn:
     msg = f"Unknown ratchet action: {action}"
     raise SystemExit(msg)
 
 
-def register_ratchet_command(subparsers: SubparserRegistry) -> None:
+def register_ratchet_command(subparsers: SubparserCollection) -> None:
     """Attach the ratchet command and subcommands to the CLI."""
     ratchet = subparsers.add_parser(
         "ratchet",
@@ -199,7 +194,7 @@ def execute_ratchet(args: argparse.Namespace) -> int:
     _raise_unknown_ratchet_action(action)
 
 
-def _register_init_parser(subparsers: SubparserRegistry) -> None:
+def _register_init_parser(subparsers: SubparserCollection) -> None:
     """Register the 'ratchet init' subcommand parser.
 
     Configures the init subcommand with argument groups for inputs, budget settings,
@@ -261,7 +256,7 @@ def _register_init_parser(subparsers: SubparserRegistry) -> None:
     )
 
 
-def _register_check_parser(subparsers: SubparserRegistry) -> None:
+def _register_check_parser(subparsers: SubparserCollection) -> None:
     """Register the 'ratchet check' subcommand parser.
 
     Configures the check subcommand with argument groups for inputs, display options,
@@ -330,7 +325,7 @@ def _register_check_parser(subparsers: SubparserRegistry) -> None:
     )
 
 
-def _register_update_parser(subparsers: SubparserRegistry) -> None:
+def _register_update_parser(subparsers: SubparserCollection) -> None:
     """Register the 'ratchet update' subcommand parser.
 
     Configures the update subcommand with argument groups for inputs, budget settings,
@@ -414,7 +409,7 @@ def _register_update_parser(subparsers: SubparserRegistry) -> None:
     )
 
 
-def _register_rebaseline_parser(subparsers: SubparserRegistry) -> None:
+def _register_rebaseline_parser(subparsers: SubparserCollection) -> None:
     """Register the 'ratchet rebaseline-signature' subcommand parser.
 
     Configures the rebaseline-signature subcommand with argument groups for inputs and
@@ -468,7 +463,7 @@ def _register_rebaseline_parser(subparsers: SubparserRegistry) -> None:
     )
 
 
-def _register_info_parser(subparsers: SubparserRegistry) -> None:
+def _register_info_parser(subparsers: SubparserCollection) -> None:
     """Register the 'ratchet info' subcommand parser.
 
     Configures the info subcommand with arguments for inputs discovery. This command

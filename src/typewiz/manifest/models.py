@@ -8,14 +8,11 @@ compatible with the existing ``manifest.typed`` TypedDict definitions.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Annotated, ClassVar, cast
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, cast
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
-from pydantic.fields import FieldInfo
 from pydantic_core import PydanticCustomError
-
-from typewiz.runtime import JSONValue
 
 from .versioning import (
     CURRENT_MANIFEST_VERSION,
@@ -30,33 +27,46 @@ from .versioning import (
 if TYPE_CHECKING:
     from typewiz.core.model_types import Mode, SeverityLevel
     from typewiz.core.type_aliases import CategoryKey, Command, RelPath
+    from typewiz.runtime import JSONValue
 
     from .typed import ManifestData
 
 STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(extra="forbid", populate_by_name=True)
 
 
-def alias_field(camel_name: str, **field_kwargs: object) -> FieldInfo:
+def alias_field(
+    camel_name: str,
+    *,
+    default: object = ...,
+    default_factory: Callable[[], object] | None = None,
+) -> Any:  # noqa: ANN401 # JUSTIFIED: Must return Any to work with Pydantic field annotations
     """Return a Field configured with matching validation and serialization aliases.
 
     Args:
         camel_name: Canonical camelCase field name in the manifest schema.
-        **field_kwargs: Additional keyword arguments to forward to ``pydantic.Field``.
+        default: Default value for the field (use ... for required fields).
+        default_factory: Factory function to generate default values.
 
     Returns:
         FieldInfo configured to deserialize/serialize the camelCase name while
         exposing a snake_case attribute on the model.
+
+    Note:
+        Returns Any to satisfy mypy's expectation for Pydantic Field usage in class
+        annotations. At runtime, this returns a FieldInfo instance.
     """
     aliases = AliasChoices(camel_name)
-    field = cast(
-        "FieldInfo",
-        Field(
-            **field_kwargs,
+    if default_factory is not None:
+        return Field(
+            default_factory=default_factory,
             validation_alias=aliases,
             serialization_alias=camel_name,
-        ),
+        )
+    return Field(
+        default=default,
+        validation_alias=aliases,
+        serialization_alias=camel_name,
     )
-    return field
 
 
 def _empty_relpath_list() -> list[RelPath]:

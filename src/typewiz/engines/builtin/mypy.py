@@ -37,7 +37,8 @@ class MypyEngine(BaseEngine):
 
     name = "mypy"
 
-    def _args(self, context: EngineContext) -> list[str]:
+    @staticmethod
+    def _args(context: EngineContext) -> list[str]:
         """Extract additional command-line arguments from context.
 
         Args:
@@ -60,6 +61,7 @@ class MypyEngine(BaseEngine):
         Returns:
             Path | None: Path to the configuration file if found, None otherwise.
         """
+        _ = self
         if context.engine_options.config_file:
             return context.engine_options.config_file
         candidate = context.project_root / "mypy.ini"
@@ -117,7 +119,8 @@ class MypyEngine(BaseEngine):
         return run_mypy(context.project_root, mode=context.mode, command=command)
 
     @override
-    def category_mapping(self) -> CategoryMapping:
+    @staticmethod
+    def category_mapping() -> CategoryMapping:
         """Provide mypy-specific diagnostic category mappings.
 
         Maps TypeWiz diagnostic categories to mypy error code patterns for

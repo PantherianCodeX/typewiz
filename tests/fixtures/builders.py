@@ -169,7 +169,12 @@ class TestDataBuilder:
         pyright_override: OverrideEntry,
         mypy_override: OverrideEntry,
     ) -> dict[RunId, SummaryRunEntry]:
-        """Construct the run summary shared across tabs."""
+        """Construct the run summary shared across tabs.
+
+        Returns:
+            Mapping from ``RunId`` to synthetic ``SummaryRunEntry`` payloads
+            used by dashboard and CLI workflow tests.
+        """
         return {
             RunId("pyright:current"): {
                 "command": ["pyright", "--outputjson"],
@@ -204,7 +209,12 @@ class TestDataBuilder:
         }
 
     def _build_sample_readiness_tab(self) -> ReadinessTab:
-        """Generate readiness data used by dashboard and CLI tests."""
+        """Generate readiness data used by dashboard and CLI tests.
+
+        Returns:
+            ``ReadinessTab`` payload containing strict and per-option
+            readiness data for a representative project.
+        """
 
         def _bucket(
             ready: list[ReadinessOptionEntry],
@@ -330,7 +340,7 @@ class TestDataBuilder:
             },
         }
 
-    def _build_sample_tabs(
+    def _build_sample_tabs(  # noqa: PLR0913  # JUSTIFIED: test data builder requires explicit, keyword-only inputs for readability across many callers
         self,
         *,
         severity_totals: CountsBySeverity,
@@ -342,7 +352,12 @@ class TestDataBuilder:
         rule_files: dict[str, list[RulePathEntry]],
         readiness_tab: ReadinessTab,
     ) -> SummaryTabs:
-        """Assemble SummaryTabs shared across CLI/dashboard tests."""
+        """Assemble SummaryTabs shared across CLI/dashboard tests.
+
+        Returns:
+            Complete ``SummaryTabs`` mapping for use in CLI and dashboard
+            integration tests.
+        """
         return {
             "overview": {
                 "severityTotals": severity_totals,

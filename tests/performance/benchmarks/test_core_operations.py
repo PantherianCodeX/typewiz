@@ -4,8 +4,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 import pytest
 
@@ -13,12 +12,17 @@ from tests.fixtures.builders import TestDataBuilder
 from typewiz.manifest.aggregate import summarise_run
 from typewiz.readiness.compute import ReadinessEntry, compute_readiness
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 pytestmark = [pytest.mark.benchmark, pytest.mark.slow]
 
 pytest.importorskip("pytest_benchmark")
 
 
 class BenchmarkRunner(Protocol):
+    """Protocol for pytest-benchmark's ``benchmark`` fixture."""
+
     def __call__(self, func: Callable[[], object], /, *args: object, **kwargs: object) -> object:
         """Callable interface exposed by pytest-benchmark fixtures."""
 

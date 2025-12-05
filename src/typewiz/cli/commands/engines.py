@@ -5,20 +5,17 @@
 from __future__ import annotations
 
 import argparse
-from typing import Protocol
+from typing import TYPE_CHECKING
 
 from typewiz.cli.helpers import echo, register_argument, render_data
 from typewiz.core.model_types import DataFormat
 from typewiz.engines.registry import describe_engines
 
-
-class SubparserRegistry(Protocol):
-    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
-        """Register a CLI subcommand on an argparse subparser collection."""
-        ...  # pragma: no cover - Protocol helper
+if TYPE_CHECKING:
+    from typewiz.cli.types import SubparserCollection
 
 
-def register_engines_command(subparsers: SubparserRegistry) -> None:
+def register_engines_command(subparsers: SubparserCollection) -> None:
     """Attach the ``typewiz engines`` command to the CLI."""
     engines = subparsers.add_parser(
         "engines",

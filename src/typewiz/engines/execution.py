@@ -62,7 +62,7 @@ def _make_diag_path(project_root: Path, file_path: str) -> Path:
         return path.resolve()
 
 
-def run_pyright(
+def run_pyright(  # noqa: PLR0914  # JUSTIFIED: function encapsulates pyright invocation, JSON parsing, and diagnostic normalisation in one cohesive unit; splitting further would obscure the flow without reducing complexity
     project_root: Path,
     *,
     mode: Mode,

@@ -10,7 +10,7 @@ import pathlib
 from collections.abc import Callable, Sequence
 from contextlib import suppress
 from textwrap import dedent
-from typing import TYPE_CHECKING, Final, Protocol
+from typing import TYPE_CHECKING, Final
 
 from typewiz import __version__
 from typewiz.cli.commands import audit as audit_command
@@ -41,6 +41,7 @@ from typewiz.services.dashboard import (
 )
 
 if TYPE_CHECKING:
+    from typewiz.cli.types import SubparserCollection
     from typewiz.core.summary_types import SummaryData
 
 SUMMARY_FIELD_CHOICES = _SUMMARY_FIELD_CHOICES
@@ -130,14 +131,6 @@ def write_config_template(path: pathlib.Path, *, force: bool) -> int:
 
 
 CommandHandler = Callable[[argparse.Namespace], int]
-
-
-class SubparserCollection(Protocol):
-    """Protocol describing the subset of ``argparse._SubParsersAction`` we rely on."""
-
-    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
-        """Protocol describing argparse subparser registries."""
-        ...
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -411,7 +404,7 @@ def _execute_dashboard(args: argparse.Namespace) -> int:
     view_choice = DashboardView.from_str(args.view)
     rendered = render_dashboard_summary(
         summary,
-        format=dashboard_format,
+        output_format=dashboard_format,
         default_view=view_choice,
     )
     if args.output:

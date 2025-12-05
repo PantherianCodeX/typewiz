@@ -7,19 +7,16 @@ from __future__ import annotations
 import argparse
 import shutil
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING
 
 from typewiz.cli.helpers import echo, register_argument
 from typewiz.runtime import resolve_project_root
 
-
-class SubparserRegistry(Protocol):
-    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
-        """Register a CLI subcommand on an argparse subparser collection."""
-        ...  # pragma: no cover - Protocol helper
+if TYPE_CHECKING:
+    from typewiz.cli.types import SubparserCollection
 
 
-def register_cache_command(subparsers: SubparserRegistry) -> None:
+def register_cache_command(subparsers: SubparserCollection) -> None:
     """Attach the ``typewiz cache`` command to the CLI."""
     cache = subparsers.add_parser(
         "cache",

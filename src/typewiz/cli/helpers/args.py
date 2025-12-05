@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from typewiz.core.model_types import Mode
 from typewiz.runtime import consume
@@ -21,15 +21,15 @@ class ArgumentRegistrar(Protocol):
     allowing them to be used interchangeably for adding arguments.
     """
 
-    def add_argument(self, *args: object, **kwargs: object) -> argparse.Action:
+    def add_argument(self, *args: Any, **kwargs: Any) -> argparse.Action:  # noqa: ANN401  # JUSTIFIED: Protocol needs Any to match argparse's add_argument signature with contravariance
         """Expose ``ArgumentParser.add_argument`` so helpers can operate generically."""
         ...  # pragma: no cover - runtime behaviour delegated to argparse
 
 
 def register_argument(
-    registrar: ArgumentRegistrar | argparse.ArgumentParser | argparse._ArgumentGroup,
-    *args: object,
-    **kwargs: object,
+    registrar: ArgumentRegistrar,
+    *args: Any,  # noqa: ANN401  # JUSTIFIED: Forwarding to argparse.add_argument which has complex overloads
+    **kwargs: Any,  # noqa: ANN401  # JUSTIFIED: Forwarding to argparse.add_argument which has complex overloads
 ) -> None:
     """Register an argument on a parser/argument group, discarding the action handle."""
     consume(registrar.add_argument(*args, **kwargs))

@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.unit
 
 
-def test_merge_engine_settings_map_merges_profiles(tmp_path: Path) -> None:
+def test_merge_engine_settings_map_merges_profiles() -> None:
     stub = EngineName("stub")
     aux = EngineName("aux")
     strict_profile = ProfileName("strict")
@@ -131,8 +131,9 @@ class MinimalEngine(BaseEngine):
     def fingerprint_targets(self, context: EngineContext, paths: Sequence[RelPath]) -> list[str]:
         return []
 
+    @staticmethod
     @override
-    def category_mapping(self) -> CategoryMapping:
+    def category_mapping() -> CategoryMapping:
         return {"unknownChecks": ["reportGeneralTypeIssues"]}
 
 

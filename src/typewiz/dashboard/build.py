@@ -654,7 +654,7 @@ def _validate_readiness_tab(raw: Mapping[object, object]) -> ReadinessTab:
     )
 
 
-def _build_readiness_options(options_map: Mapping[object, object]) -> dict[CategoryKey, ReadinessOptionsPayload]:
+def _build_readiness_options(options_map: dict[str, JSONValue]) -> dict[CategoryKey, ReadinessOptionsPayload]:
     options_section: dict[CategoryKey, ReadinessOptionsPayload] = {}
     for category_key_raw, bucket_obj in options_map.items():
         if not isinstance(bucket_obj, Mapping):

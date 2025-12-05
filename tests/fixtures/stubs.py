@@ -76,7 +76,7 @@ class AuditStubEngine:
         self.name = "stub"
         self._result = result
 
-    def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+    def run(self, context: EngineContext, _paths: Sequence[str]) -> EngineResult:
         tool_name = ToolName(self.name)
         if context.mode is Mode.CURRENT:
             return EngineResult(

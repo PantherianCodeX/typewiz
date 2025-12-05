@@ -429,7 +429,7 @@ def compare_manifest_to_ratchet(
     """
     run_lookup = _run_by_id(manifest)
     if runs is None:
-        selected_runs: list[RunId] = [RunId(run_id) for run_id in ratchet.runs.keys()]
+        selected_runs: list[RunId] = [RunId(run_id) for run_id in ratchet.runs]
     else:
         selected_runs = _normalise_run_id_values(runs)
     reports: list[RatchetRunReport] = []

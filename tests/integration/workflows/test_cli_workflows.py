@@ -7,7 +7,6 @@ from __future__ import annotations
 import json
 import sys
 import types
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
@@ -31,7 +30,7 @@ from typewiz.core.types import Diagnostic, RunResult
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
     from pathlib import Path
 
     from typewiz.core.summary_types import SummaryData
@@ -46,6 +45,8 @@ PYRIGHT_TOOL = ToolName("pyright")
 
 @dataclass(slots=True)
 class AuditFullOutputsContext:
+    """Container for paths produced by the full audit workflow."""
+
     compare_path: Path
     dashboard_json: Path
     dashboard_md: Path
@@ -61,7 +62,11 @@ def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: StubEngine
 
 
 def _run_cli_command(args: Sequence[str]) -> int:
-    """Invoke the CLI entrypoint with the provided arguments."""
+    """Invoke the CLI entrypoint with the provided arguments.
+
+    Returns:
+        Integer exit code returned by the CLI.
+    """
     return main(list(args))
 
 
@@ -827,7 +832,7 @@ def test_cli_manifest_validate_with_jsonschema(
             super().__init__()
             self.schema = schema
 
-        def iter_errors(self, data: object) -> list[object]:
+        def iter_errors(self, _data: object) -> list[object]:
             return []
 
     dummy_module = types.SimpleNamespace(Draft7Validator=DummyValidator)
@@ -840,7 +845,6 @@ def test_cli_manifest_validate_with_jsonschema(
 
 def test_cli_manifest_validate_runs_type(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     manifest_path = tmp_path / "bad.json"
@@ -865,7 +869,7 @@ def test_cli_manifest_validate_runs_type(
     assert "runs must be a list" in output
 
 
-def test_cli_manifest_unknown_action(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_manifest_unknown_action() -> None:
     manifest_cmd = ["manifest", "unknown"]
     with pytest.raises(SystemExit, match=r".*"):
         consume(main(manifest_cmd))

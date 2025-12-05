@@ -211,4 +211,8 @@ class BaseEngine(Protocol):
             Sequence[str]: List of file paths or globs that affect caching.
                 Empty sequence if no additional fingerprinting is needed.
         """
+        # Default implementation does not use context or paths but keeps a
+        # consistent instance method shape for subclasses.
+        _ = self
+        del context, paths
         return []

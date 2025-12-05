@@ -144,7 +144,7 @@ class RatchetRunReport:
         Returns:
             list[str]: Formatted text lines describing the run report.
         """
-        lines = [self._status_line(ignore_signature)]
+        lines = [self._status_line(ignore_signature=ignore_signature)]
         if summary_only:
             lines.append(self._summary_line())
             return lines
@@ -171,11 +171,11 @@ class RatchetRunReport:
             lines.append("  Engine signature mismatch:" + f" expected={expected_hash} actual={actual_hash}")
         return lines
 
-    def _status_line(self, ignore_signature: bool) -> str:
+    def _status_line(self, *, ignore_signature: bool) -> str:
         """Generate the status line summarizing the run result.
 
         Args:
-            ignore_signature (bool): Whether to ignore signature mismatches.
+            ignore_signature: Whether to ignore signature mismatches.
 
         Returns:
             str: A formatted status line.

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -200,13 +200,13 @@ def test_fingerprint_path_handles_missing_and_unreadable(tmp_path: Path, monkeyp
 
     unreadable = tmp_path / "blocked.py"
     _ = unreadable.write_text("print('x')", encoding="utf-8")
-    original_open = Path.open
+    original_open = cast("Callable[..., TextIOBase]", Path.open)
 
-    def fake_open(self: Path, *args: Any, **kwargs: Any) -> TextIOBase:
+    def fake_open(self: Path, *args: object, **kwargs: object) -> TextIOBase:
         if self == unreadable:
             msg = "denied"
             raise OSError(msg)
-        return cast("TextIOBase", original_open(self, *args, **kwargs))
+        return original_open(self, *args, **kwargs)
 
     monkeypatch.setattr(Path, "open", fake_open)
     assert cache_module._fingerprint(unreadable) == {"unreadable": True}

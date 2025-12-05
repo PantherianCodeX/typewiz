@@ -478,51 +478,62 @@ def _as_mapping(value: object) -> dict[str, Any]:
 READINESS_PREVIEW_LIMIT: Final[int] = 12
 
 
-def _render_readiness_tab(context: _DashboardContext) -> list[str]:
-    h = context.escape
-    readiness = context.readiness
+def _render_readiness_strict_section(
+    h: Callable[[object], str],
+    readiness: ReadinessTab,
+) -> list[str]:
     strict = cast("dict[ReadinessStatus, list[dict[str, object]]]", readiness.get("strict", {}))
     ready_list = strict.get(ReadinessStatus.READY, [])
     close_list = strict.get(ReadinessStatus.CLOSE, [])
     blocked_list = strict.get(ReadinessStatus.BLOCKED, [])
     lines = [
-        '  <section class="tab-pane" data-tab-pane="readiness">',
-        "    <h2>Strict Typing Readiness</h2>",
         '    <div class="metrics">',
         f'      <div class="metric"><strong>{len(ready_list)}</strong>Ready</div>',
         f'      <div class="metric"><strong>{len(close_list)}</strong>Close</div>',
         f'      <div class="metric"><strong>{len(blocked_list)}</strong>Blocked</div>',
         "    </div>",
     ]
+    lines.extend(_render_readiness_strict_entries(h, ready_list, "Strict-ready folders"))
+    lines.extend(_render_readiness_strict_entries(h, close_list, "Close to strict"))
+    lines.extend(_render_readiness_strict_entries(h, blocked_list, "Blocked"))
+    return lines
 
-    def _render_strict_entries(label: str, entries: list[dict[str, object]]) -> None:
-        if not entries:
-            lines.append(f"    <p><strong>{label}:</strong> none</p>")
-            return
-        lines.append(
-            f"    <details open><summary><strong>{label}</strong> ({len(entries)})</summary>",
+
+def _render_readiness_strict_entries(
+    h: Callable[[object], str],
+    entries: list[dict[str, object]],
+    label: str,
+) -> list[str]:
+    lines: list[str] = []
+    if not entries:
+        lines.append(f"    <p><strong>{label}:</strong> none</p>")
+        return lines
+    lines.extend((
+        f"    <details open><summary><strong>{label}</strong> ({len(entries)})</summary>",
+        "      <ul>",
+    ))
+    for entry in entries[:READINESS_PREVIEW_LIMIT]:
+        notes_list = cast("list[str]", entry.get("notes") or entry.get("recommendations") or [])
+        note_text = f" — {', '.join(notes_list)}" if notes_list else ""
+        li = (
+            "        <li><code>"
+            f"{h(str(entry['path']))}</code> "
+            f"(diagnostics={entry.get('diagnostics', 0)}){note_text}</li>"
         )
-        lines.append("      <ul>")
-        for entry in entries[:READINESS_PREVIEW_LIMIT]:
-            notes_list = cast("list[str]", entry.get("notes") or entry.get("recommendations") or [])
-            note_text = f" — {', '.join(notes_list)}" if notes_list else ""
-            li = (
-                "        <li><code>"
-                f"{h(str(entry['path']))}</code> "
-                f"(diagnostics={entry.get('diagnostics', 0)}){note_text}</li>"
-            )
-            lines.append(li)
-        if len(entries) > READINESS_PREVIEW_LIMIT:
-            lines.append(
-                f"        <li>… plus {len(entries) - READINESS_PREVIEW_LIMIT} more</li>",
-            )
-        lines.append("      </ul>")
-        lines.append("    </details>")
+        lines.append(li)
+    if len(entries) > READINESS_PREVIEW_LIMIT:
+        lines.append(
+            f"        <li>… plus {len(entries) - READINESS_PREVIEW_LIMIT} more</li>",
+        )
+    lines.extend(("      </ul>", "    </details>"))
+    return lines
 
-    _render_strict_entries("Strict-ready folders", ready_list)
-    _render_strict_entries("Close to strict", close_list)
-    _render_strict_entries("Blocked", blocked_list)
 
+def _render_readiness_options_section(
+    h: Callable[[object], str],
+    readiness: ReadinessTab,
+) -> list[str]:
+    lines: list[str] = []
     readiness_options = readiness.get("options", {})
     if readiness_options:
         lines.extend((
@@ -553,6 +564,18 @@ def _render_readiness_tab(context: _DashboardContext) -> list[str]:
         lines.extend(["      </tbody></table>", "    </section>"])
     else:
         lines.append("    <p>No readiness data available.</p>")
+    return lines
+
+
+def _render_readiness_tab(context: _DashboardContext) -> list[str]:
+    h = context.escape
+    readiness = context.readiness
+    lines: list[str] = [
+        '  <section class="tab-pane" data-tab-pane="readiness">',
+        "    <h2>Strict Typing Readiness</h2>",
+    ]
+    lines.extend(_render_readiness_strict_section(h, readiness))
+    lines.extend(_render_readiness_options_section(h, readiness))
     lines.append("  </section>")
     return lines
 

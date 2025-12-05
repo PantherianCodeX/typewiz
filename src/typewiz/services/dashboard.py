@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from typewiz.core.model_types import DashboardFormat, DashboardView, LogComponent
 from typewiz.dashboard import build_summary, load_manifest, render_markdown
@@ -22,6 +22,7 @@ from typewiz.runtime import normalise_enums_for_json
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from typewiz._internal.utils import JSONValue
     from typewiz.core.summary_types import SummaryData
 
 logger: logging.Logger = logging.getLogger("typewiz.services.dashboard")
@@ -58,14 +59,14 @@ def load_summary_from_manifest(manifest_path: Path) -> SummaryData:
 def render_dashboard_summary(
     summary: SummaryData,
     *,
-    format: DashboardFormat,
+    output_format: DashboardFormat,
     default_view: DashboardView | str,
 ) -> str:
     """Render a dashboard summary in the specified format.
 
     Args:
         summary: Pre-built summary data to render.
-        format: Output format (JSON, Markdown, or HTML).
+        output_format: Output format (JSON, Markdown, or HTML).
         default_view: Default view for HTML rendering (e.g., "files", "folders").
 
     Returns:
@@ -74,12 +75,12 @@ def render_dashboard_summary(
     view = default_view if isinstance(default_view, DashboardView) else DashboardView.from_str(default_view)
     logger.debug(
         "Rendering dashboard summary (%s)",
-        format.value,
+        output_format.value,
         extra=structured_extra(component=LogComponent.DASHBOARD, details={"view": view.value}),
     )
-    if format is DashboardFormat.JSON:
+    if output_format is DashboardFormat.JSON:
         return _format_json(normalise_enums_for_json(summary))
-    if format is DashboardFormat.MARKDOWN:
+    if output_format is DashboardFormat.MARKDOWN:
         return render_markdown(summary)
     return render_html(summary, default_view=view.value)
 
@@ -129,7 +130,7 @@ def emit_dashboard_outputs(
         )
 
 
-def _format_json(payload: Any) -> str:
+def _format_json(payload: JSONValue) -> str:
     """Format a payload as indented JSON with trailing newline.
 
     Args:

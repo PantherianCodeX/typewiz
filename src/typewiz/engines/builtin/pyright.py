@@ -35,7 +35,8 @@ class PyrightEngine(BaseEngine):
 
     name = "pyright"
 
-    def _args(self, context: EngineContext) -> list[str]:
+    @staticmethod
+    def _args(context: EngineContext) -> list[str]:
         """Extract additional command-line arguments from context.
 
         Args:
@@ -103,7 +104,8 @@ class PyrightEngine(BaseEngine):
         return run_pyright(context.project_root, mode=context.mode, command=command)
 
     @override
-    def category_mapping(self) -> CategoryMapping:
+    @staticmethod
+    def category_mapping() -> CategoryMapping:
         """Provide pyright-specific diagnostic category mappings.
 
         Maps TypeWiz diagnostic categories to pyright error code patterns for

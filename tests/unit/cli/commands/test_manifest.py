@@ -5,11 +5,14 @@
 from __future__ import annotations
 
 from argparse import Namespace
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from typewiz.cli.commands import manifest as manifest_cmd
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
 

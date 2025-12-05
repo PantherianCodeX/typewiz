@@ -6,20 +6,17 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING
 
 from typewiz.cli.helpers import echo, register_argument
+
+if TYPE_CHECKING:
+    from typewiz.cli.types import SubparserCollection
 
 _TOPICS_ROOT = Path(__file__).resolve().parents[4] / "docs" / "cli" / "topics"
 
 
-class SubparserRegistry(Protocol):
-    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
-        """Register a CLI subcommand on an argparse subparser collection."""
-        ...  # pragma: no cover - Protocol helper
-
-
-def register_help_command(subparsers: SubparserRegistry) -> None:
+def register_help_command(subparsers: SubparserCollection) -> None:
     """Register ``typewiz help`` with topic support."""
     help_parser = subparsers.add_parser(
         "help",

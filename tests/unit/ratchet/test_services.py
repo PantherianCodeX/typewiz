@@ -59,10 +59,10 @@ def test_init_ratchet_invokes_builder_and_writer(tmp_path: Path, monkeypatch: py
     manifest = _manifest(tmp_path)
     output_path = tmp_path / "ratchet.json"
     model = _ratchet_model(tmp_path)
-    captured: dict[str, object] = {}
+    captured: dict[str, dict[str, object]] = {}
 
     def fake_build(**kwargs: object) -> RatchetModel:
-        captured["build"] = kwargs
+        captured["build"] = dict(kwargs)
         return model
 
     writes: list[tuple[Path, RatchetModel]] = []

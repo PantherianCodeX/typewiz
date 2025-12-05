@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from .typed import ManifestData
 
 
-def load_manifest_data(raw: Any) -> ManifestData:
+def load_manifest_data(raw: Any) -> ManifestData:  # noqa: ANN401  # JUSTIFIED: Accepts arbitrary input from JSON parsing, validated at runtime
     """Parse manifest payloads using strict validation.
 
     Args:

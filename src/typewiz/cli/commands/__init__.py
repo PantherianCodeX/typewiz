@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from types import ModuleType
 
 _EXPORTED_MODULES: Final[tuple[str, ...]] = ("audit", "cache", "engines", "help", "manifest", "query", "ratchet")
-__all__ = list(_EXPORTED_MODULES)
+__all__ = list(_EXPORTED_MODULES)  # pyright: ignore[reportUnsupportedDunderAll]  # JUSTIFIED: dynamic CLI submodule re-export; module names are statically enumerated
 
 
 def __getattr__(name: str) -> ModuleType:
@@ -24,4 +24,4 @@ def __getattr__(name: str) -> ModuleType:
 
 
 def __dir__() -> list[str]:
-    return sorted(__all__)
+    return sorted(_EXPORTED_MODULES)

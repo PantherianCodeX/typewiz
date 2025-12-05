@@ -271,6 +271,71 @@ def fingerprint_path(path: Path) -> FileHashPayload:
     return _fingerprint(path)
 
 
+def _parse_cache_entry(key_str: str, entry: _EntryJson) -> tuple[CacheKey, CacheEntry] | None:  # noqa: PLR0914  # JUSTIFIED: cache entries mirror on-disk schema; a single helper keeps coercion logic coherent and testable
+    cache_key = CacheKey(key_str)
+    diagnostics_any = entry.get("diagnostics", []) or []
+    file_hashes_any = entry.get("file_hashes", {}) or {}
+    command_any = entry.get("command", []) or []
+    exit_code = entry.get("exit_code", 0)
+    duration_ms = entry.get("duration_ms", 0.0)
+    plugin_args_any = entry.get("plugin_args", []) or []
+    include_any = entry.get("include", []) or []
+    exclude_any = entry.get("exclude", []) or []
+    profile = entry.get("profile")
+    config_file = entry.get("config_file")
+    overrides_any = entry.get("overrides", []) or []
+    category_mapping_any = entry.get("category_mapping", {}) or {}
+    tool_summary_any = entry.get("tool_summary")
+
+    command_list: Command = [str(a) for a in command_any]
+    plugin_args_list: list[str] = [str(a) for a in plugin_args_any]
+    include_list: list[RelPath] = [RelPath(str(i)) for i in include_any]
+    exclude_list: list[RelPath] = [RelPath(str(i)) for i in exclude_any]
+    overrides_list: list[OverrideEntry] = [
+        _normalise_override_entry(cast("Mapping[str, object]", override_raw))
+        for override_raw in coerce_object_list(overrides_any)
+        if isinstance(override_raw, Mapping)
+    ]
+    file_hashes_map: dict[PathKey, FileHashPayload] = {}
+    file_hashes_mapping: Mapping[str, Mapping[str, object]] = file_hashes_any
+    for hash_key, hash_payload in file_hashes_mapping.items():
+        file_hashes_map[PathKey(hash_key)] = _normalise_file_hash_payload(hash_payload)
+    diagnostics_list: list[DiagnosticPayload] = [
+        _normalise_diagnostic_payload(cast("Mapping[str, JSONValue]", diag_raw))
+        for diag_raw in coerce_object_list(diagnostics_any)
+        if isinstance(diag_raw, Mapping)
+    ]
+    exit_code_int = int(exit_code)
+    duration_val = float(duration_ms)
+    tool_summary_normalised: ToolSummary | None
+    if isinstance(tool_summary_any, dict):
+        tool_summary_normalised = ToolSummary(
+            errors=int(tool_summary_any.get("errors", 0)),
+            warnings=int(tool_summary_any.get("warnings", 0)),
+            information=int(tool_summary_any.get("information", 0)),
+            total=int(tool_summary_any.get("total", 0)),
+        )
+    else:
+        tool_summary_normalised = None
+
+    cache_entry = CacheEntry(
+        command=command_list,
+        exit_code=exit_code_int,
+        duration_ms=duration_val,
+        diagnostics=diagnostics_list,
+        file_hashes=file_hashes_map,
+        profile=str(profile) if isinstance(profile, str) and profile.strip() else None,
+        config_file=(str(config_file) if isinstance(config_file, str) and config_file.strip() else None),
+        plugin_args=plugin_args_list,
+        include=include_list,
+        exclude=exclude_list,
+        overrides=overrides_list,
+        category_mapping=_normalise_category_mapping(category_mapping_any),
+        tool_summary=tool_summary_normalised,
+    )
+    return cache_key, cache_entry
+
+
 class EngineCache:
     def __init__(self, project_root: Path) -> None:
         super().__init__()
@@ -292,65 +357,11 @@ class EngineCache:
         payload_entries = payload.get("entries")
         entries: dict[str, _EntryJson] = payload_entries or {}
         for key_str, entry in entries.items():
-            cache_key = CacheKey(key_str)
-            diagnostics_any = entry.get("diagnostics", []) or []
-            file_hashes_any = entry.get("file_hashes", {}) or {}
-            command_any = entry.get("command", []) or []
-            exit_code = entry.get("exit_code", 0)
-            duration_ms = entry.get("duration_ms", 0.0)
-            plugin_args_any = entry.get("plugin_args", []) or []
-            include_any = entry.get("include", []) or []
-            exclude_any = entry.get("exclude", []) or []
-            profile = entry.get("profile")
-            config_file = entry.get("config_file")
-            overrides_any = entry.get("overrides", []) or []
-            category_mapping_any = entry.get("category_mapping", {}) or {}
-            tool_summary_any = entry.get("tool_summary")
-
-            command_list: Command = [str(a) for a in command_any]
-            plugin_args_list: list[str] = [str(a) for a in plugin_args_any]
-            include_list: list[RelPath] = [RelPath(str(i)) for i in include_any]
-            exclude_list: list[RelPath] = [RelPath(str(i)) for i in exclude_any]
-            overrides_list: list[OverrideEntry] = [
-                _normalise_override_entry(cast("Mapping[str, object]", override_raw))
-                for override_raw in coerce_object_list(overrides_any)
-                if isinstance(override_raw, Mapping)
-            ]
-            file_hashes_map: dict[PathKey, FileHashPayload] = {}
-            file_hashes_mapping: Mapping[str, Mapping[str, object]] = file_hashes_any
-            for hash_key, hash_payload in file_hashes_mapping.items():
-                file_hashes_map[PathKey(hash_key)] = _normalise_file_hash_payload(hash_payload)
-            diagnostics_list: list[DiagnosticPayload] = [
-                _normalise_diagnostic_payload(cast("Mapping[str, JSONValue]", diag_raw))
-                for diag_raw in coerce_object_list(diagnostics_any)
-                if isinstance(diag_raw, Mapping)
-            ]
-            exit_code_int = int(exit_code)
-            duration_val = float(duration_ms)
-            self._entries[cache_key] = CacheEntry(
-                command=command_list,
-                exit_code=exit_code_int,
-                duration_ms=duration_val,
-                diagnostics=diagnostics_list,
-                file_hashes=file_hashes_map,
-                profile=str(profile) if isinstance(profile, str) and profile.strip() else None,
-                config_file=(str(config_file) if isinstance(config_file, str) and config_file.strip() else None),
-                plugin_args=plugin_args_list,
-                include=include_list,
-                exclude=exclude_list,
-                overrides=overrides_list,
-                category_mapping=_normalise_category_mapping(category_mapping_any),
-                tool_summary=(
-                    {
-                        "errors": int(tool_summary_any.get("errors", 0)),
-                        "warnings": int(tool_summary_any.get("warnings", 0)),
-                        "information": int(tool_summary_any.get("information", 0)),
-                        "total": int(tool_summary_any.get("total", 0)),
-                    }
-                    if isinstance(tool_summary_any, dict)
-                    else None
-                ),
-            )
+            parsed = _parse_cache_entry(key_str, entry)
+            if parsed is None:
+                continue
+            cache_key, cache_entry = parsed
+            self._entries[cache_key] = cache_entry
 
     def save(self) -> None:
         if not self._dirty:
