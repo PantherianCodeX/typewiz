@@ -23,7 +23,7 @@ from .type_aliases import CategoryKey, RelPath
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from typewiz.json_types import JSONValue
+    from typewiz.json import JSONValue
 
 
 class Mode(StrEnum):

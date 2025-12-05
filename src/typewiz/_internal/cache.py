@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Literal, TypedDict, cast
 
-from typewiz._internal.utils import JSONValue, consume, file_lock, normalise_enums_for_json
+from typewiz._internal.utils import consume, file_lock
 from typewiz._internal.utils.process import CommandOutput, run_command
 from typewiz.config.validation import coerce_int, coerce_object_list, coerce_str_list
 from typewiz.core.categories import coerce_category_key
@@ -28,6 +28,7 @@ from typewiz.core.type_aliases import (
     ToolName,
 )
 from typewiz.core.types import Diagnostic
+from typewiz.json import JSONValue, normalise_enums_for_json
 from typewiz.logging import structured_extra
 from typewiz.manifest.typed import ToolSummary
 

@@ -19,6 +19,7 @@ from typewiz.services.ratchet import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
     from pathlib import Path
 
     from typewiz.manifest.typed import ManifestData
@@ -51,6 +52,59 @@ def _ratchet_model(tmp_path: Path) -> RatchetModel:
                     "targets": {"error": 1},
                 },
             },
+        },
+    )
+
+
+def _detailed_manifest(
+    *,
+    per_file_counts: Mapping[str, int],
+    plugin_args: Sequence[str] | None = None,
+) -> ManifestData:
+    per_file_entries: list[dict[str, object]] = []
+    for path, count in per_file_counts.items():
+        diagnostics = [
+            {"line": 1, "column": 1, "severity": "error", "code": "E1", "message": "error"} for _ in range(count)
+        ]
+        per_file_entries.append({
+            "path": path,
+            "errors": count,
+            "warnings": 0,
+            "information": 0,
+            "diagnostics": diagnostics,
+        })
+    summary: dict[str, object] = {
+        "errors": sum(per_file_counts.values()),
+        "warnings": 0,
+        "information": 0,
+        "total": sum(per_file_counts.values()),
+        "severityBreakdown": {},
+        "ruleCounts": {},
+        "categoryCounts": {},
+    }
+    return cast(
+        "ManifestData",
+        {
+            "generatedAt": "2025-01-01T00:00:00Z",
+            "projectRoot": "/repo",
+            "runs": [
+                {
+                    "tool": "pyright",
+                    "mode": "current",
+                    "command": ["pyright"],
+                    "exitCode": 0,
+                    "durationMs": 1.0,
+                    "summary": summary,
+                    "perFile": per_file_entries,
+                    "perFolder": [],
+                    "engineOptions": {
+                        "profile": "baseline",
+                        "pluginArgs": list(plugin_args or ["--strict"]),
+                        "include": ["src"],
+                        "exclude": [],
+                    },
+                }
+            ],
         },
     )
 
@@ -260,3 +314,166 @@ def test_apply_target_overrides_merges_targets(tmp_path: Path) -> None:
     run_budget = model.runs[RunId("pyright:current")]
     assert run_budget.targets[SeverityLevel.ERROR] == 5
     assert run_budget.targets[SeverityLevel.WARNING] == 3
+
+
+def test_init_rebaseline_check_and_update_flow(tmp_path: Path) -> None:
+    manifest = _detailed_manifest(per_file_counts={"src/foo.py": 1})
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text("", encoding="utf-8")
+    baseline_path = tmp_path / "baseline.json"
+
+    init_result = ratchet_service.init_ratchet(
+        manifest=manifest,
+        runs=None,
+        manifest_path=manifest_path,
+        severities=None,
+        targets=None,
+        output_path=baseline_path,
+        force=True,
+    )
+    assert init_result.output_path == baseline_path
+
+    mismatched_manifest = _detailed_manifest(
+        per_file_counts={"src/foo.py": 2},
+        plugin_args=["--strict", "--verifytypes"],
+    )
+    check_result = ratchet_service.check_ratchet(
+        manifest=mismatched_manifest,
+        ratchet_path=baseline_path,
+        runs=None,
+        signature_policy=SignaturePolicy.WARN,
+    )
+    assert check_result.warn_signature == check_result.report.has_signature_mismatch()
+    assert check_result.exit_code >= 0
+
+    rebaseline_path = tmp_path / "rebaseline.json"
+    rebaseline_result = ratchet_service.rebaseline_ratchet(
+        manifest=mismatched_manifest,
+        ratchet_path=baseline_path,
+        runs=None,
+        generated_at="2025-02-02T00:00:00Z",
+        output_path=rebaseline_path,
+        force=True,
+    )
+    assert rebaseline_result.output_path == rebaseline_path
+    assert rebaseline_path.exists()
+
+    update_result = ratchet_service.update_ratchet(
+        manifest=mismatched_manifest,
+        ratchet_path=rebaseline_path,
+        runs=None,
+        generated_at="2025-03-03T00:00:00Z",
+        target_overrides={"error": 0, "pyright:current.warning": 5},
+        output_path=None,
+        force=True,
+        dry_run=True,
+    )
+    assert not update_result.wrote_file
+    targets = update_result.updated.runs[RunId("pyright:current")].targets
+    assert targets[SeverityLevel.ERROR] == 0
+    assert targets[SeverityLevel.WARNING] == 5
+
+
+def test_ratchet_operations_require_paths(tmp_path: Path) -> None:
+    manifest = _detailed_manifest(per_file_counts={"src/bar.py": 1})
+    with pytest.raises(RatchetPathRequiredError):
+        _ = ratchet_service.check_ratchet(
+            manifest=manifest,
+            ratchet_path=None,
+            runs=None,
+            signature_policy=SignaturePolicy.FAIL,
+        )
+    with pytest.raises(RatchetPathRequiredError):
+        _ = ratchet_service.update_ratchet(
+            manifest=manifest,
+            ratchet_path=None,
+            runs=None,
+            generated_at="now",
+            target_overrides=None,
+            output_path=None,
+            force=True,
+            dry_run=True,
+        )
+    with pytest.raises(RatchetPathRequiredError):
+        _ = ratchet_service.rebaseline_ratchet(
+            manifest=manifest,
+            ratchet_path=None,
+            runs=None,
+            generated_at="now",
+            output_path=tmp_path / "out.json",
+            force=True,
+        )
+
+
+def test_split_target_mapping_and_apply_overrides() -> None:
+    global_targets, per_run = ratchet_service.split_target_mapping({
+        "error": -1,
+        "pyright:current.warning": 2,
+        "pyright:current.error": 3,
+        "   ": 4,
+    })
+    assert global_targets[SeverityLevel.ERROR] == 0
+    assert per_run["pyright:current"][SeverityLevel.WARNING] == 2
+
+    model = RatchetModel.model_validate({
+        "generatedAt": "2025-01-01T00:00:00Z",
+        "manifestPath": None,
+        "projectRoot": None,
+        "runs": {
+            "pyright:current": {
+                "severities": [SeverityLevel.ERROR.value],
+                "paths": {},
+                "targets": {SeverityLevel.ERROR.value: 1},
+            }
+        },
+    })
+    ratchet_service.apply_target_overrides(model, {"error": 5, "pyright:current.warning": 3})
+    targets = model.runs[RunId("pyright:current")].targets
+    assert targets[SeverityLevel.ERROR] == 5
+    assert targets[SeverityLevel.WARNING] == 3
+
+
+def test_describe_ratchet_returns_snapshot(tmp_path: Path) -> None:
+    snapshot = ratchet_service.describe_ratchet(
+        manifest_path=tmp_path / "manifest.json",
+        ratchet_path=None,
+        runs=[RunId("pyright:current")],
+        severities=[SeverityLevel.ERROR],
+        targets={"error": 0},
+        signature_policy=SignaturePolicy.FAIL,
+        limit=10,
+        summary_only=True,
+    )
+    assert snapshot.manifest_path == tmp_path / "manifest.json"
+    assert snapshot.severities == (SeverityLevel.ERROR,)
+    assert snapshot.targets == {"error": 0}
+
+
+def test_update_ratchet_writes_file(tmp_path: Path) -> None:
+    manifest = _detailed_manifest(per_file_counts={"src/baz.py": 1})
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text("", encoding="utf-8")
+    baseline = tmp_path / "baseline.json"
+    ratchet_service.init_ratchet(
+        manifest=manifest,
+        runs=None,
+        manifest_path=manifest_path,
+        severities=None,
+        targets=None,
+        output_path=baseline,
+        force=True,
+    )
+    updated_path = tmp_path / "updated.json"
+    result = ratchet_service.update_ratchet(
+        manifest=manifest,
+        ratchet_path=baseline,
+        runs=None,
+        generated_at="2025-04-04T00:00:00Z",
+        target_overrides=None,
+        output_path=updated_path,
+        force=True,
+        dry_run=False,
+    )
+    assert result.wrote_file
+    assert result.output_path == updated_path
+    assert updated_path.exists()

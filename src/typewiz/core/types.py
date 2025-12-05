@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
+    from typewiz.json import JSONValue
     from typewiz.manifest.typed import EngineError, ToolSummary
-    from typewiz.runtime import JSONValue
 
     from .model_types import CategoryMapping, Mode, OverrideEntry, SeverityLevel
     from .type_aliases import Command, RelPath, ToolName

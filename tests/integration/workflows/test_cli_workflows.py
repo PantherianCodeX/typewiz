@@ -79,7 +79,7 @@ def _make_dashboard_renderer(
 
     def _render_dashboard(summary_arg: SummaryData, **kwargs: object) -> str:
         assert summary_arg is summary
-        output_format = cast("DashboardFormat", kwargs["format"])
+        output_format = cast("DashboardFormat", kwargs.get("output_format"))
         default_view = cast("DashboardView | str", kwargs["default_view"])
         if output_format is DashboardFormat.JSON:
             return json.dumps(summary_arg)

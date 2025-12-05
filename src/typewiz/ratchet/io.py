@@ -8,8 +8,8 @@ import json
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from typewiz.json import normalise_enums_for_json
 from typewiz.manifest.loader import load_manifest_data
-from typewiz.runtime import normalise_enums_for_json
 
 from .models import RatchetModel
 

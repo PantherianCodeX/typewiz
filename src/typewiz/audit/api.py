@@ -17,15 +17,10 @@ from typewiz.config import AuditConfig, Config, load_config
 from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
 from typewiz.dashboard import build_summary, render_html, render_markdown
 from typewiz.engines import EngineContext, resolve_engines
+from typewiz.json import normalise_enums_for_json
 from typewiz.logging import structured_extra
 from typewiz.manifest.builder import ManifestBuilder
-from typewiz.runtime import (
-    consume,
-    default_full_paths,
-    detect_tool_versions,
-    normalise_enums_for_json,
-    resolve_project_root,
-)
+from typewiz.runtime import consume, default_full_paths, detect_tool_versions, resolve_project_root
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

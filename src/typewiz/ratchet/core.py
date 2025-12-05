@@ -15,7 +15,7 @@ from typewiz.config.validation import coerce_int, coerce_mapping, coerce_object_
 from typewiz.core.categories import coerce_category_key
 from typewiz.core.model_types import DEFAULT_SEVERITIES, Mode, SeverityLevel
 from typewiz.core.type_aliases import CategoryKey, RunId, ToolName
-from typewiz.runtime import JSONValue, normalise_enums_for_json
+from typewiz.json import JSONValue, normalise_enums_for_json
 
 from .models import (
     RATCHET_SCHEMA_VERSION,

@@ -26,7 +26,8 @@ from typewiz.cli.helpers import (
 )
 from typewiz.config import RatchetConfig, load_config
 from typewiz.core.model_types import DataFormat, RatchetAction, SignaturePolicy
-from typewiz.runtime import normalise_enums_for_json, resolve_project_root
+from typewiz.json import normalise_enums_for_json
+from typewiz.runtime import resolve_project_root
 from typewiz.services.ratchet import (
     RatchetFileExistsError,
     RatchetPathRequiredError,

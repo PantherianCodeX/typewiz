@@ -5,17 +5,14 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, TypedDict, cast
+from pathlib import Path  # noqa: TC003  # used at runtime by Pydantic
+from typing import Any, ClassVar, Final, Literal, TypedDict, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.core.type_aliases import RunId
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from typewiz.runtime import JSONValue
+from typewiz.json import JSONValue  # noqa: TC001  # used in runtime model annotations
 
 type RatchetSchemaVersion = Literal[1]
 
@@ -249,6 +246,10 @@ class EngineSignaturePayloadWithHash(EngineSignaturePayload, total=False):
     """
 
     hash: str
+
+
+# Ensure Pydantic resolves annotations that rely on pathlib.Path and enums.
+RatchetModel.model_rebuild()
 
 
 __all__ = [

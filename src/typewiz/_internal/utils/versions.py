@@ -53,7 +53,7 @@ def detect_tool_versions(tools: Sequence[str | ToolName]) -> dict[str, str]:
                 ver = _safe_version_from_output(out)
                 if ver:
                     versions[name] = ver
-        except (OSError, TypeError, ValueError) as exc:
+        except (OSError, TypeError, ValueError, RuntimeError) as exc:
             logger.debug(
                 "Failed to detect version for %s: %s",
                 name,

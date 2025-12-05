@@ -16,13 +16,12 @@ from typing import TYPE_CHECKING
 from typewiz.core.model_types import DashboardFormat, DashboardView, LogComponent
 from typewiz.dashboard import build_summary, load_manifest, render_markdown
 from typewiz.dashboard.render_html import render_html
+from typewiz.json import JSONValue, normalise_enums_for_json
 from typewiz.logging import structured_extra
-from typewiz.runtime import normalise_enums_for_json
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from typewiz._internal.utils import JSONValue
     from typewiz.core.summary_types import SummaryData
 
 logger: logging.Logger = logging.getLogger("typewiz.services.dashboard")

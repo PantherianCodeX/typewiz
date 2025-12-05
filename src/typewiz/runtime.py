@@ -8,20 +8,22 @@ from typewiz._internal.utils import (
     ROOT_MARKERS,
     CommandOutput,
     RootMarker,
+    consume,
+    default_full_paths,
+    detect_tool_versions,
+    python_executable,
+    resolve_project_root,
+    run_command,
+)
+from typewiz.json import (
+    JSONValue,
     as_int,
     as_list,
     as_mapping,
     as_str,
-    consume,
-    default_full_paths,
-    detect_tool_versions,
     normalise_enums_for_json,
-    python_executable,
     require_json,
-    resolve_project_root,
-    run_command,
 )
-from typewiz.json_types import JSONValue
 
 __all__ = [
     "ROOT_MARKERS",

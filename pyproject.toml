@@ -68,88 +68,37 @@ preview = true
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "COM812",  # Trailing comma conflicts with formatter
-    "ISC001",  # Implicit string concatenation conflicts with formatter
-    "D100",    # Module docstrings enforced via per-file ignores
-    "D104",    # Package docstrings enforced via per-file ignores
-    "TRY003",  # Detailed error messages improve debuggability
-    "FIX002",  # TODOs tracked externally
-    "TD002",   # TODO authors tracked in git
-    "TD003",   # TODO issue links tracked externally
+    "COM812",  # Trailing comma conflicts with formatter - REQUIRED
+    "ISC001",  # Implicit string concatenation conflicts with formatter - REQUIRED
 ]
 fixable = ["ALL"]
 unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
-# Shared pytest glue modules intentionally bend some import/structure rules.
-"tests/**/conftest.py" = ["E402", "D103", "DOC201", "DOC402", "INP001"]
-# Namespaces inside tests are not importable packages and docstrings add little value.
-"tests/**/__init__.py" = ["D104", "INP001"]
-# Fixture/strategy helpers trade readability for flexibility and often need to reach private helpers.
-"tests/fixtures/**/*.py" = [
-    "D101",
-    "D102",
-    "D103",
-    "PLR0914",
-    "PLR2004",
-    "PLR6301",
-    "PLC2701",
-    "RUF009",
-    "S101",
-    "SLF001",
+# Test files: Core exceptions widely recognized as best practice
+# References:
+# - Ruff docs: https://docs.astral.sh/ruff/configuration/
+# - Stack Overflow: https://stackoverflow.com/questions/68428293/s101-use-of-assert-detected-for-python-tests
+# - Ruff issue #14149: https://github.com/astral-sh/ruff/issues/14149
+# - Ruff issue #16892: https://github.com/astral-sh/ruff/issues/16892 (SLF001 in tests)
+"tests/**/*.py" = [
+    "S101",      # assert statements are fundamental to pytest
+    "SLF001",    # Testing internals requires private member access
+    "PLC2701",   # Tests must import private modules to test them
+    "PLR2004",   # Magic numbers are standard in test data/fixtures
+    "D103",      # Test function docstrings add no value
+    "D102",      # Test method docstrings add no value
+    "INP001",    # Tests don't require __init__.py
 ]
-# Unit tests allow bare asserts and magic values but must still honour typing/pytest rules.
-"tests/unit/**/*.py" = [
-    "D102",
-    "D103",
-    "INP001",
-    "PLR2004",
-    "PLR6301",
-    "PLC2701",
-    "S101",
-]
-# Integration suites frequently exercise subprocesses and private toggles to validate workflows.
-"tests/integration/**/*.py" = [
-    "D102",
-    "D103",
-    "PLR2004",
-    "PLR6301",
-    "PLC2701",
-    "S101",
-    "S603",
-    "S607",
-    "SLF001",
-    "C901",
-    "PLR0914",
-    "PLR0913",
-]
-# Property-based tests rely on assume/reject primitives and relaxed docstrings.
-"tests/property_based/**/*.py" = [
-    "D102",
-    "D103",
-    "PLR2004",
-    "PLR6301",
-    "PLC2701",
-    "S101",
-    "FBT003",
-]
-# Performance runs intentionally access subprocesses and private toggles to benchmark realistic flows.
-"tests/performance/**/*.py" = [
-    "D102",
-    "D103",
-    "PLR2004",
-    "PLR6301",
-    "PLC2701",
-    "S101",
-    "S603",
-    "S607",
-    "SLF001",
-]
-# Focused allowances for test modules that interact with the git CLI extensively.
+# Conftest files: Import after code for fixture registration
+"tests/**/conftest.py" = ["E402"]
+# Integration/performance tests: Subprocess execution required
+"tests/integration/**/*.py" = ["S603", "S607"]
+"tests/performance/**/*.py" = ["S603", "S607"]
+# Specific test file testing git operations
 "tests/unit/misc/test_refactor_imports.py" = ["S404", "S603", "S607"]
-# Cache regression tests introspect internal helpers by design.
-"tests/unit/cache/test_internal.py" = ["SLF001"]
-"scripts/refactor_imports.py" = ["C901", "PLR0912", "PLR0913", "PLR0915", "CPY001", "T201"]
+# Scripts: Utility scripts have different standards
+"scripts/**/*.py" = ["T201"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -215,6 +164,7 @@ python_functions = ["test_*"]
 pythonpath = ["."]
 norecursedirs = [
     ".venv",
+    ".hypothesis",
     "node_modules",
     "__pycache__",
     ".git",
@@ -383,3 +333,114 @@ exclude_dirs = [
     "dist",
 ]
 targets = ["src"]
+
+[tool.pyright]
+include = ["src", "tests"]
+extraPaths = ["src"]
+exclude = [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/node_modules",
+    "**/.venv",
+    "**/build",
+    "**/dist",
+    "**/*.egg-info",
+]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+typeCheckingMode = "strict"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportImportCycles = true
+reportUnusedImport = true
+reportUnusedClass = true
+reportUnusedFunction = true
+reportUnusedVariable = true
+reportDuplicateImport = true
+reportWildcardImportFromLibrary = true
+reportOptionalSubscript = true
+reportOptionalMemberAccess = true
+reportOptionalCall = true
+reportOptionalIterable = true
+reportOptionalContextManager = true
+reportOptionalOperand = true
+reportTypedDictNotRequiredAccess = true
+reportUntypedFunctionDecorator = true
+reportUntypedClassDecorator = true
+reportUntypedBaseClass = true
+reportUntypedNamedTuple = true
+reportPrivateUsage = true
+reportConstantRedefinition = true
+reportIncompatibleMethodOverride = true
+reportIncompatibleVariableOverride = true
+reportInvalidTypeVarUse = true
+reportUnnecessaryIsInstance = true
+reportUnnecessaryCast = true
+reportUnnecessaryComparison = true
+reportUnnecessaryContains = true
+reportAssertAlwaysTrue = true
+reportSelfClsParameterName = true
+reportImplicitStringConcatenation = false
+reportUndefinedVariable = true
+reportUnboundVariable = true
+reportInvalidStubStatement = true
+reportIncompleteStub = true
+reportUnsupportedDunderAll = true
+reportUnusedCallResult = false
+reportUnusedCoroutine = true
+reportUnusedExpression = true
+reportMatchNotExhaustive = true
+reportPropertyTypeMismatch = true
+reportFunctionMemberAccess = true
+reportMissingSuperCall = false
+reportUninitializedInstanceVariable = true
+reportInvalidStringEscapeSequence = true
+reportUnknownParameterType = true
+reportUnknownArgumentType = true
+reportUnknownLambdaType = true
+reportUnknownVariableType = true
+reportUnknownMemberType = true
+reportMissingParameterType = true
+reportMissingTypeArgument = true
+reportCallInDefaultInitializer = true
+reportUnnecessaryTypeIgnoreComment = true
+reportImplicitOverride = true
+reportTypeCommentUsage = "error"
+reportUnreachable = "error"
+reportDeprecated = "error"
+reportArgumentType = true
+reportGeneralTypeIssues = true
+reportAssignmentType = true
+strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
+strictParameterNoneValue = true
+enableTypeIgnoreComments = true
+
+[[tool.pyright.executionEnvironments]]
+root = "scripts"
+extraPaths = ["src"]
+reportPrivateUsage = false
+reportImplicitOverride = false
+
+[[tool.pyright.executionEnvironments]]
+root = "tests"
+extraPaths = [".", "src", "tests"]
+reportPrivateUsage = false
+reportTypedDictNotRequiredAccess = false
+reportUnknownArgumentType = false
+reportUnknownLambdaType = false
+reportUnknownVariableType = false
+reportUnknownMemberType = false
+reportUnknownParameterType = false
+reportUnnecessaryTypeIgnoreComment = false
+reportImplicitOverride = false
+reportArgumentType = false
+reportGeneralTypeIssues = false
+reportAssignmentType = false
+reportMissingImports = false
+
+[[tool.pyright.executionEnvironments]]
+root = "src"

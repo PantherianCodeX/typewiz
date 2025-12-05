@@ -19,16 +19,9 @@ from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
 from typewiz.core.type_aliases import BuiltinEngineName, Command, ToolName
 from typewiz.core.types import Diagnostic
 from typewiz.engines.base import EngineResult
+from typewiz.json import JSONValue, as_int, as_list, as_mapping, as_str, require_json
 from typewiz.logging import StructuredLogExtra, structured_extra
-from typewiz.runtime import (
-    JSONValue,
-    as_int,
-    as_list,
-    as_mapping,
-    as_str,
-    require_json,
-    run_command,
-)
+from typewiz.runtime import run_command
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

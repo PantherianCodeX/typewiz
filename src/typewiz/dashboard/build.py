@@ -61,8 +61,8 @@ from typewiz.readiness.compute import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from typewiz.json import JSONValue
     from typewiz.manifest.typed import EngineOptionsEntry, ManifestData, ToolSummary
-    from typewiz.runtime import JSONValue
 
 logger: logging.Logger = logging.getLogger("typewiz.dashboard")
 

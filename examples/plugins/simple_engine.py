@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from typewiz.core.model_types import SeverityLevel
 from typewiz.core.type_aliases import ToolName
@@ -26,6 +26,7 @@ class SimpleEngine(BaseEngine):
 
     name: str = "simple"
 
+    @override
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
         """Produce a deterministic diagnostic payload for demonstration purposes.
 
@@ -59,6 +60,7 @@ class SimpleEngine(BaseEngine):
             diagnostics=[diag],
         )
 
+    @override
     def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
         """Declare files that influence the engine's cached fingerprint state.
 

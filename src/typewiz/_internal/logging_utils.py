@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final, Literal, SupportsFloat, SupportsInt, TypedDict, Unpack, cast, override
 
-from typewiz._internal.utils.json import normalise_enums_for_json
 from typewiz.core.model_types import LogComponent, LogFormat, Mode, SeverityLevel
+from typewiz.json import normalise_enums_for_json
 
 if TYPE_CHECKING:
     from typewiz.core.type_aliases import RunId, ToolName

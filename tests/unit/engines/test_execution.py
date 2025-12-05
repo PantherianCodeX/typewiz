@@ -66,7 +66,8 @@ def test_run_pyright_parses_payload_and_warns_on_summary_mismatch(
         tool_total: int,
         **kwargs: object,
     ) -> None:
-        assert kwargs == {}
+        # Allow structured logging extras; this test only validates numeric payload.
+        assert not kwargs or set(kwargs.keys()) <= {"extra"}
         captured_warning["payload"] = (
             parsed_errors,
             parsed_warnings,

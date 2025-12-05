@@ -13,7 +13,7 @@ import pytest
 
 from typewiz._internal.utils import consume
 from typewiz.api import build_summary, load_manifest, render_html, render_markdown
-from typewiz.core.model_types import SeverityLevel
+from typewiz.core.model_types import OverrideEntry, SeverityLevel
 from typewiz.core.type_aliases import RelPath, RunId
 from typewiz.dashboard.build import (
     _build_engine_options_payload,
@@ -21,6 +21,16 @@ from typewiz.dashboard.build import (
     _FolderAccumulators,
     _prepare_run_payload,
     _SummaryState,
+)
+from typewiz.dashboard.render_html import (
+    _as_mapping,
+    _coerce_override_list,
+    _coerce_str_list,
+    _format_code_list,
+    _format_override_html,
+    _overview_category_section,
+    _render_readiness_strict_entries,
+    READINESS_PREVIEW_LIMIT,
 )
 from typewiz.manifest.models import ManifestValidationError
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
@@ -30,8 +40,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from typewiz.core.summary_types import SummaryData
+    from typewiz.json import JSONValue
     from typewiz.manifest.typed import FileEntry, FolderEntry, ManifestData, RunPayload
-    from typewiz.runtime import JSONValue
 
 pytestmark = pytest.mark.unit
 
@@ -50,6 +60,109 @@ def test_render_html_snapshot(
 ) -> None:
     output = render_html(sample_summary)
     assert output == snapshot_text("dashboard.html")
+
+
+def test_render_html_includes_category_table_when_data_present(sample_summary: SummaryData) -> None:
+    summary = copy.deepcopy(sample_summary)
+    category_totals = {"general": 2}
+    summary["categoryTotals"] = category_totals
+    summary["tabs"]["overview"]["categoryTotals"] = category_totals
+    html = render_html(summary)
+    assert "<th>Category</th>" in html
+    assert "general" in html
+
+
+def test_render_html_reports_no_rule_paths_when_entries_missing(sample_summary: SummaryData) -> None:
+    summary = copy.deepcopy(sample_summary)
+    summary["ruleFiles"] = {"missing": []}
+    summary["tabs"]["hotspots"]["ruleFiles"] = {"missing": []}
+    html = render_html(summary)
+    assert "No matching paths" in html
+
+
+def test_render_html_reports_no_rule_breakdown_when_empty() -> None:
+    manifest = {
+        "generatedAt": "now",
+        "projectRoot": ".",
+        "schemaVersion": CURRENT_MANIFEST_VERSION,
+        "runs": [],
+    }
+    summary = build_summary(manifest)
+    summary["ruleFiles"] = {}
+    summary["tabs"]["hotspots"]["ruleFiles"] = {}
+    html = render_html(summary)
+    assert "No rule hotspot breakdown available." in html
+
+
+def test_render_html_records_no_runs_for_empty_summary() -> None:
+    manifest = {
+        "generatedAt": "now",
+        "projectRoot": ".",
+        "schemaVersion": CURRENT_MANIFEST_VERSION,
+        "runs": [],
+    }
+    summary = build_summary(manifest)
+    html = render_html(summary)
+    assert "No runs recorded." in html
+
+
+def test_render_html_handles_empty_engine_options(sample_summary: SummaryData) -> None:
+    summary = copy.deepcopy(sample_summary)
+    for entry in summary["tabs"]["engines"]["runSummary"].values():
+        entry["engineOptions"] = {}
+    html = render_html(summary)
+    assert "Include paths: —" in html
+
+
+def test_overview_category_section_handles_empty_mapping() -> None:
+    lines = _overview_category_section({}, lambda value: str(value))
+    assert "No categories recorded" in "\n".join(lines)
+
+
+def test_format_code_list_returns_expected_variants() -> None:
+    escape = lambda value: str(value)
+    assert _format_code_list([], escape) == "—"
+    assert "<code>" in _format_code_list(["only"], escape)
+    assert ", " in _format_code_list(["one", "two"], escape)
+
+
+def test_format_override_html_highlights_details() -> None:
+    override: OverrideEntry = {
+        "path": "src/app.py",
+        "profile": "strict",
+        "pluginArgs": ["--foo"],
+        "include": [RelPath("src")],
+        "exclude": [RelPath("tests")],
+    }
+    html = _format_override_html(override, lambda value: str(value))
+    assert "plugin args" in html
+    assert "include" in html
+    assert "exclude" in html
+
+
+def test_format_override_html_falls_back_to_profile() -> None:
+    override: OverrideEntry = {"path": "src/app.py", "profile": "strict"}
+    html = _format_override_html(override, lambda value: str(value))
+    assert "profile=" in html
+
+
+def test_coerce_str_list_and_overrides_and_mapping_helpers() -> None:
+    assert _coerce_str_list("value") == []
+    assert _coerce_str_list(["a", 1]) == ["a", "1"]
+    assert _coerce_override_list(["nope", {"path": "src"}]) == [{"path": "src"}]
+    assert _as_mapping({"foo": "bar"}) == {"foo": "bar"}
+    assert _as_mapping("not") == {}
+
+
+def test_render_readiness_strict_entries_handles_empty_and_overflow() -> None:
+    h = lambda value: str(value)
+    empty_lines = _render_readiness_strict_entries(h, [], "Label")
+    assert "Label" in "\n".join(empty_lines)
+    entries = [
+        {"path": f"src/file{i}.py", "diagnostics": i, "notes": [str(i)]} for i in range(READINESS_PREVIEW_LIMIT + 2)
+    ]
+    lines = _render_readiness_strict_entries(h, entries, "Label")
+    assert "plus" in "\n".join(lines)
 
 
 def test_build_summary_minimal(tmp_path: Path) -> None:
@@ -126,7 +239,6 @@ def test_build_summary_skips_missing_entries(tmp_path: Path) -> None:
     assert summary["topFiles"] == []
 
 
-@pytest.mark.usefixtures("_snapshot_text")
 def test_render_markdown_handles_empty_runs() -> None:
     manifest: ManifestData = {
         "generatedAt": "now",

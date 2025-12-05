@@ -16,8 +16,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, cast
 
 from typewiz.core.model_types import LogComponent, clone_override_entries
+from typewiz.json import normalise_enums_for_json
 from typewiz.logging import structured_extra
-from typewiz.runtime import consume, detect_tool_versions, normalise_enums_for_json
+from typewiz.runtime import consume, detect_tool_versions
 
 from .aggregate import summarise_run
 from .versioning import CURRENT_MANIFEST_VERSION

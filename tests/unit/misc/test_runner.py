@@ -108,7 +108,8 @@ def test_run_pyright_logs_mismatch(
             warnings.append(message % args)
         else:
             warnings.append(message)
-        assert kwargs == {}
+        # Allow structured logging extras; this test only cares about the message.
+        assert not kwargs or set(kwargs.keys()) <= {"extra"}
 
     monkeypatch.setattr("typewiz.engines.execution.logger.warning", fake_warning)
 

@@ -14,6 +14,10 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, cast
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
 from pydantic_core import PydanticCustomError
 
+from typewiz.core.model_types import Mode, SeverityLevel  # noqa: TC001  # required at runtime by Pydantic
+from typewiz.core.type_aliases import CategoryKey, Command, RelPath  # noqa: TC001  # required at runtime by Pydantic
+from typewiz.json import JSONValue  # noqa: TC001  # used in runtime validation signatures
+
 from .versioning import (
     CURRENT_MANIFEST_VERSION,
     InvalidManifestRunsError,
@@ -25,10 +29,6 @@ from .versioning import (
 )
 
 if TYPE_CHECKING:
-    from typewiz.core.model_types import Mode, SeverityLevel
-    from typewiz.core.type_aliases import CategoryKey, Command, RelPath
-    from typewiz.runtime import JSONValue
-
     from .typed import ManifestData
 
 STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(extra="forbid", populate_by_name=True)
@@ -463,3 +463,7 @@ __all__ = [
     "manifest_to_model",
     "validate_manifest_payload",
 ]
+
+
+# Ensure all forward references and enum fields are fully resolved for Pydantic.
+ManifestModel.model_rebuild()

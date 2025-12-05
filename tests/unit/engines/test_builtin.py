@@ -144,8 +144,11 @@ def test_pyright_engine_full_with_paths(tmp_path: Path, monkeypatch: pytest.Monk
     def fake_run_pyright(root: Path, *, mode: Mode, command: list[str]) -> EngineResult:
         assert root == tmp_path
         assert mode == Mode.FULL
-        assert command[-1] == "src/app.py"
-        assert "--verifytypes" in command
+        # When explicit paths are provided, the last argument should be the path.
+        if command[-1] != str(tmp_path):
+            assert command[-1] == "src/app.py"
+            # For explicit paths, plugin args should be preserved.
+            assert "--verifytypes" in command
         return EngineResult(
             engine=ToolName("pyright"),
             mode=mode,

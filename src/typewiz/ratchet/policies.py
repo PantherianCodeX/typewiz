@@ -12,7 +12,7 @@ from typewiz.core.model_types import SignaturePolicy
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from typewiz.runtime import JSONValue
+    from typewiz.json import JSONValue
 
 
 @dataclass(slots=True)

@@ -27,7 +27,7 @@ from typewiz.manifest.models import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from typewiz.runtime import JSONValue
+    from typewiz.json import JSONValue
 
 logger: logging.Logger = logging.getLogger("typewiz.services.manifest")
 

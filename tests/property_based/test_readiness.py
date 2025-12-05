@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, cast
 
 import hypothesis.strategies as st
 import pytest
-from hypothesis import given
+from hypothesis import HealthCheck, given, settings
 
 from tests.property_based.strategies import path_strings, severity_counts
 from typewiz.core.model_types import ReadinessLevel, ReadinessStatus
@@ -129,6 +129,7 @@ def _readiness_tab() -> st.SearchStrategy[ReadinessTab]:
     return st.builds(_build_tab, strict_map, options_map)
 
 
+@settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(
     _readiness_tab(),
     st.lists(_status(), unique=True, max_size=3),

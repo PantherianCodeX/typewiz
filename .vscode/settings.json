@@ -34,8 +34,8 @@
   ],
   // Disable legacy mypy integration from Python extension
   "python.linting.mypyEnabled": false,
-  // Pylance/pyright reads pyrightconfig.json (include: src)
-  // Don’t override typeCheckingMode here; use repo config
+  // Pylance/pyright reads [tool.pyright] from pyproject.toml
+  // Don't override typeCheckingMode here; use repo config
   // Formatting and linting to match repo tools (Ruff-only)
   "editor.formatOnSave": true,
   "ruff.enable": true,

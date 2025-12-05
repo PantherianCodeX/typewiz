@@ -340,8 +340,6 @@ def update_ratchet(  # noqa: PLR0913
         extra=structured_extra(component=LogComponent.RATCHET, path=ratchet_path),
     )
     ratchet_model = _load_ratchet(ratchet_path)
-    if target_overrides:
-        apply_target_overrides(ratchet_model, target_overrides)
     report = _compare_manifest_to_ratchet(
         manifest=manifest,
         ratchet=ratchet_model,
@@ -353,6 +351,8 @@ def update_ratchet(  # noqa: PLR0913
         runs=runs,
         generated_at=generated_at,
     )
+    if target_overrides:
+        apply_target_overrides(updated, target_overrides)
     write_path = output_path or ratchet_path
     wrote_file = False
     if not dry_run:

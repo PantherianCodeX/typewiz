@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, ClassVar, Final, Literal, cast
+from pathlib import Path  # noqa: TC003  # used at runtime in Pydantic models and dataclasses
+from typing import ClassVar, Final, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
@@ -21,9 +22,6 @@ from typewiz.config.validation import require_non_negative_int
 from typewiz.core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import EngineName, ProfileName, RunId, RunnerName
 from typewiz.exceptions import TypewizValidationError
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 CONFIG_VERSION: Final[int] = 0
 FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)
@@ -766,6 +764,10 @@ class ConfigModel(BaseModel):
         if self.config_version != CONFIG_VERSION:
             raise UnsupportedConfigVersionError(self.config_version, CONFIG_VERSION)
         return self
+
+
+# Ensure Pydantic has resolved all annotations that reference typing and Path.
+ConfigModel.model_rebuild()
 
 
 def _profile_name_or_none(value: str | ProfileName | None) -> ProfileName | None:

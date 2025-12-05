@@ -68,3 +68,13 @@ def test_manifest_builder_adds_run_and_writes(tmp_path: Path, monkeypatch: pytes
     assert payload["fingerprintTruncated"] is True
     assert payload["toolVersions"] == versions
     assert payload["runs"]
+
+
+def test_manifest_builder_includes_engine_error_details(tmp_path: Path) -> None:
+    builder = ManifestBuilder(tmp_path)
+    builder.add_run(_make_run(tmp_path))
+    run_payload = builder.data["runs"][0]
+    engine_err = run_payload.get("engineError", {})
+    assert engine_err["message"] == "crash"
+    assert engine_err["stderr"] == "oops"
+    assert engine_err["exitCode"] == 2

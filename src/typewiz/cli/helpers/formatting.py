@@ -28,8 +28,8 @@ from typewiz.core.model_types import (
 )
 from typewiz.core.type_aliases import RelPath, RunId
 from typewiz.error_codes import error_code_for
+from typewiz.json import JSONValue, normalise_enums_for_json
 from typewiz.readiness.views import ReadinessValidationError, ReadinessViewResult
-from typewiz.runtime import JSONValue, normalise_enums_for_json
 from typewiz.services.readiness import (
     collect_readiness_view as service_collect_readiness_view,
 )

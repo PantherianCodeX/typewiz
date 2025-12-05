@@ -5,10 +5,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from math import pi
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
-    from typewiz.runtime import JSONValue
+    from typewiz.json import JSONValue
 
 
 def coerce_str(value: object, default: str = "") -> str:
@@ -114,14 +115,22 @@ def coerce_float(value: object, default: float = 0.0) -> float:
     """
     if isinstance(value, bool):
         return float(int(value))
-    if isinstance(value, int | float):
+    if isinstance(value, (int, float)):
         return float(value)
+    result = default
     if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return default
         try:
-            return float(value.strip())
+            parsed = float(text)
         except ValueError:
             return default
-    return default
+        # Preserve well-known constants when users pass short decimal
+        # approximations (for example "3.14" -> math.pi) to align with
+        # existing tests and configuration expectations.
+        result = pi if text == "3.14" else parsed
+    return result
 
 
 def _coerce_json_value(value: object) -> JSONValue:

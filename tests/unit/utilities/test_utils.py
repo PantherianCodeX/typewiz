@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import sys
 from typing import TYPE_CHECKING, cast
 
@@ -12,22 +13,17 @@ import pytest
 
 from typewiz._internal.utils import (
     CommandOutput,
-    as_int,
-    as_list,
-    as_mapping,
-    as_str,
     consume,
     default_full_paths,
     detect_tool_versions,
     file_lock,
-    normalise_enums_for_json,
-    require_json,
     resolve_project_root,
     run_command,
 )
 from typewiz._internal.utils import locks as locks_mod
 from typewiz._internal.utils import versions as versions_mod
 from typewiz.core.model_types import ReadinessStatus, SeverityLevel
+from typewiz.json import as_int, as_list, as_mapping, as_str, normalise_enums_for_json, require_json
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -113,6 +109,33 @@ def test_normalise_enums_for_json_converts_keys_and_nested_values() -> None:
     assert nested_raw
     first_nested = cast("dict[str, object]", nested_raw[0])
     assert first_nested.get("severity") == "error"
+
+
+def test_normalise_enums_for_json_handles_non_string_keys_and_tuples() -> None:
+    class DummyKey:
+        def __str__(self) -> str:
+            return "dummy"
+
+    payload = {
+        DummyKey(): SeverityLevel.WARNING,
+        "tuple": (SeverityLevel.INFORMATION, "literal"),
+    }
+    normalised = normalise_enums_for_json(payload)
+    normalised_dict = cast("dict[str, object]", normalised)
+    assert normalised_dict.get("dummy") == "warning"
+    tuple_result = normalised_dict.get("tuple")
+    assert isinstance(tuple_result, list)
+    assert tuple_result[0] == "information"
+    assert tuple_result[1] == "literal"
+
+
+def test_require_json_rejects_empty_input_without_fallback() -> None:
+    with pytest.raises(ValueError, match="Expected JSON output but received empty string"):
+        _ = require_json("   ")
+
+
+def test_as_int_returns_default_for_non_int_or_str() -> None:
+    assert as_int(math.pi, default=-1) == -1
 
 
 def test_require_json_uses_fallback_payload() -> None:
