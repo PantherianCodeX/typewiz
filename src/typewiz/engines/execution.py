@@ -1,19 +1,25 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Execution layer for running type checker engines and parsing their output.
+
+This module contains the implementation functions that actually run mypy and
+pyright as subprocesses, parse their output formats (text for mypy, JSON for
+pyright), and convert the results into structured Diagnostic objects and
+EngineResult instances.
+"""
+
 from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Final, cast
+from typing import TYPE_CHECKING, Final, cast
 
 from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
 from typewiz.core.type_aliases import BuiltinEngineName, Command, ToolName
 from typewiz.core.types import Diagnostic
 from typewiz.engines.base import EngineResult
 from typewiz.logging import StructuredLogExtra, structured_extra
-from typewiz.manifest.typed import ToolSummary
 from typewiz.runtime import (
     JSONValue,
     as_int,
@@ -24,6 +30,11 @@ from typewiz.runtime import (
     run_command,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from typewiz.manifest.typed import ToolSummary
+
 logger: logging.Logger = logging.getLogger("typewiz.engines.execution")
 PYRIGHT_NAME: Final[BuiltinEngineName] = "pyright"
 MYPY_NAME: Final[BuiltinEngineName] = "mypy"
@@ -32,6 +43,18 @@ MYPY_TOOL: Final[ToolName] = ToolName(MYPY_NAME)
 
 
 def _make_diag_path(project_root: Path, file_path: str) -> Path:
+    """Convert a diagnostic file path to a project-relative path.
+
+    Attempts to resolve the file path and make it relative to the project root.
+    If the path is outside the project (ValueError), returns the absolute path.
+
+    Args:
+        project_root: Root directory of the project.
+        file_path: File path from the diagnostic (may be absolute or relative).
+
+    Returns:
+        Path: Resolved path relative to project_root, or absolute if external.
+    """
     path = Path(file_path)
     try:
         return path.resolve().relative_to(project_root)
@@ -45,6 +68,24 @@ def run_pyright(
     mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
+    """Execute pyright and parse its JSON output into diagnostics.
+
+    Runs pyright as a subprocess with the given command, parses the JSON output
+    to extract diagnostics, and constructs an EngineResult with timing information.
+    Also extracts and validates the tool's own summary counts if available.
+
+    Args:
+        project_root: Root directory of the project being analyzed.
+        mode: Execution mode (CURRENT or DELTA).
+        command: Complete pyright command to execute.
+
+    Returns:
+        EngineResult: Structured results including diagnostics and metadata.
+
+    Raises:
+        Various exceptions from run_command or JSON parsing if pyright fails
+        to execute or returns invalid output.
+    """
     start_extra: StructuredLogExtra = structured_extra(
         component=LogComponent.ENGINE,
         tool="pyright",
@@ -75,7 +116,7 @@ def run_pyright(
             "information": ts_info,
             "total": ts_total,
         }
-    except Exception:  # defensive
+    except (TypeError, ValueError, KeyError):
         tool_summary = None
     for item in raw_diags:
         d = as_mapping(item)
@@ -162,8 +203,8 @@ def run_pyright(
 
 _MYPY_LINE: Final[re.Pattern[str]] = re.compile(
     r"^(?P<path>.+?):(?P<line>\d+):(?:(?P<column>\d+):)? "
-    + r"(?P<severity>error|note|warning): (?P<message>.*?)"
-    + r"(?: \[(?P<code>[^\]]+)\])?$"
+    r"(?P<severity>error|note|warning): (?P<message>.*?)"
+    r"(?: \[(?P<code>[^\]]+)\])?$"
 )
 
 
@@ -173,6 +214,24 @@ def run_mypy(
     mode: Mode,
     command: Sequence[str],
 ) -> EngineResult:
+    """Execute mypy and parse its text output into diagnostics.
+
+    Runs mypy as a subprocess with the given command, parses the line-based
+    text output using regex to extract diagnostics, and constructs an
+    EngineResult with timing information. Captures stderr as a pseudo-diagnostic
+    if present (e.g., for configuration errors).
+
+    Args:
+        project_root: Root directory of the project being analyzed.
+        mode: Execution mode (CURRENT or DELTA).
+        command: Complete mypy command to execute.
+
+    Returns:
+        EngineResult: Structured results including diagnostics and metadata.
+
+    Raises:
+        Various exceptions from run_command if mypy fails to execute.
+    """
     start_extra: StructuredLogExtra = structured_extra(
         component=LogComponent.ENGINE,
         tool="mypy",
@@ -206,8 +265,8 @@ def run_mypy(
             ),
         )
     for line in result.stdout.splitlines():
-        line = line.strip()
-        if not line or line.startswith("Found ") or line.startswith("Success:"):
+        line_ = line.strip()
+        if not line_ or line_.startswith(("Found ", "Success:")):
             continue
         match = _MYPY_LINE.match(line)
         if not match:
@@ -236,7 +295,7 @@ def run_mypy(
                 column=int(data.get("column") or 0),
                 code=data.get("code"),
                 message=data["message"].strip(),
-                raw=cast(dict[str, JSONValue], dict(data)),
+                raw=cast("dict[str, JSONValue]", dict(data)),
             ),
         )
     diagnostics.sort(key=lambda d: (str(d.path), d.line, d.column))

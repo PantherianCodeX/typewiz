@@ -6,12 +6,14 @@ from __future__ import annotations
 
 import importlib
 import time
-from collections.abc import Iterator
 from contextlib import contextmanager
-from pathlib import Path
-from typing import Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
 from .common import consume
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from pathlib import Path
 
 __all__ = ["file_lock"]
 
@@ -44,7 +46,6 @@ msvcrt_module = cast("_MsvcrtModule | None", _import_optional("msvcrt"))
 @contextmanager
 def file_lock(path: Path) -> Iterator[None]:
     """Best-effort file lock usable across platforms."""
-
     path = path.resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     if fcntl_module:

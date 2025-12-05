@@ -20,7 +20,7 @@ __all__ = [
     "require_json",
 ]
 
-type JSONValue = str | int | float | bool | None | dict[str, "JSONValue"] | list["JSONValue"]
+type JSONValue = str | int | float | bool | dict[str, JSONValue] | list[JSONValue] | None
 type JSONMapping = dict[str, JSONValue]
 type JSONList = list[JSONValue]
 
@@ -30,15 +30,15 @@ def require_json(payload: str, fallback: str | None = None) -> JSONMapping:
     if not data_str:
         message = "Expected JSON output but received empty string"
         raise ValueError(message)
-    return cast(JSONMapping, json.loads(data_str))
+    return cast("JSONMapping", json.loads(data_str))
 
 
 def as_mapping(value: object) -> JSONMapping:
-    return cast(JSONMapping, value) if isinstance(value, dict) else {}
+    return cast("JSONMapping", value) if isinstance(value, dict) else {}
 
 
 def as_list(value: object) -> JSONList:
-    return cast(JSONList, value) if isinstance(value, list) else []
+    return cast("JSONList", value) if isinstance(value, list) else []
 
 
 def as_str(value: object, default: str = "") -> str:
@@ -59,13 +59,22 @@ def as_int(value: object, default: int = 0) -> int:
 
 
 def normalise_enums_for_json(value: object) -> JSONValue:
-    """Recursively convert Enum keys/values to their string payloads for JSON serialisation."""
+    """Recursively convert Enum keys/values to their string payloads for JSON serialisation.
+
+    Args:
+        value: Arbitrary Python object hierarchy that may include ``Enum``
+            instances, mappings, or sequences.
+
+    Returns:
+        A JSON-compatible structure (built from ``dict``/``list``/primitives)
+        with all enum keys and values replaced by their ``.value`` payloads.
+    """
 
     def _convert(obj: object) -> JSONValue:
         if isinstance(obj, Enum):
-            return cast(JSONValue, obj.value)
+            return cast("JSONValue", obj.value)
         if isinstance(obj, dict):
-            mapping_obj = cast(dict[object, object], obj)
+            mapping_obj = cast("dict[object, object]", obj)
             result: dict[str, JSONValue] = {}
             for key, raw_val in mapping_obj.items():
                 if isinstance(key, Enum):
@@ -75,15 +84,15 @@ def normalise_enums_for_json(value: object) -> JSONValue:
                 else:
                     norm_key = str(key)
                 result[norm_key] = _convert(raw_val)
-            return cast(JSONValue, result)
+            return cast("JSONValue", result)
         if isinstance(obj, list):
-            list_obj = cast(list[object], obj)
-            return cast(JSONValue, [_convert(item) for item in list_obj])
+            list_obj = cast("list[object]", obj)
+            return cast("JSONValue", [_convert(item) for item in list_obj])
         if isinstance(obj, tuple):
-            tuple_obj = cast(tuple[object, ...], obj)
-            return cast(JSONValue, [_convert(item) for item in tuple_obj])
+            tuple_obj = cast("tuple[object, ...]", obj)
+            return cast("JSONValue", [_convert(item) for item in tuple_obj])
         if isinstance(obj, (str, int, float, bool)) or obj is None:
-            return cast(JSONValue, obj)
-        return cast(JSONValue, str(obj))
+            return cast("JSONValue", obj)
+        return cast("JSONValue", str(obj))
 
     return _convert(value)

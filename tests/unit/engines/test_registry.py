@@ -4,9 +4,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Generator
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -23,6 +22,10 @@ from typewiz.engines.registry import (
     resolve_engines,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from pathlib import Path
+
 pytestmark = [pytest.mark.unit, pytest.mark.engine]
 
 
@@ -36,12 +39,14 @@ def clear_engine_caches() -> Generator[None, None, None]:
 
 
 class DummyEngine:
+    """Minimal engine stub used to simulate installed entry points."""
+
     name = "dummy"
 
     def run(self, context: EngineContext, paths: list[RelPath]) -> None:  # pragma: no cover
         raise NotImplementedError
 
-    def fingerprint_targets(self, context: EngineContext, paths: list[RelPath]) -> list[str]:
+    def fingerprint_targets(self, _context: EngineContext, _paths: list[RelPath]) -> list[str]:
         return []
 
 
@@ -66,17 +71,19 @@ class _EntryPoints:
 
 def test_entrypoint_engines_loads_and_validates(monkeypatch: pytest.MonkeyPatch) -> None:
     dummy = DummyEngine()
+
+    def _make_dummy_engine() -> DummyEngine:
+        return DummyEngine()
+
     entry_points = _EntryPoints([
         _EntryPoint("dummy", ENTRY_POINT_GROUP, dummy),
-        _EntryPoint("callable", ENTRY_POINT_GROUP, lambda: DummyEngine()),
+        _EntryPoint("callable", ENTRY_POINT_GROUP, _make_dummy_engine),
     ])
 
     def fake_metadata_entry_points() -> _EntryPoints:
         return entry_points
 
-    monkeypatch.setattr(
-        "typewiz.engines.registry.metadata.entry_points", fake_metadata_entry_points
-    )
+    monkeypatch.setattr("typewiz.engines.registry.metadata.entry_points", fake_metadata_entry_points)
     engines = entrypoint_engines()
     assert EngineName("dummy") in engines
     assert isinstance(engines[EngineName("dummy")], DummyEngine)
@@ -90,9 +97,7 @@ def test_entrypoint_engines_ignores_invalid(monkeypatch: pytest.MonkeyPatch) -> 
     def fake_metadata_entry_points() -> _EntryPoints:
         return entry_points
 
-    monkeypatch.setattr(
-        "typewiz.engines.registry.metadata.entry_points", fake_metadata_entry_points
-    )
+    monkeypatch.setattr("typewiz.engines.registry.metadata.entry_points", fake_metadata_entry_points)
     engines = entrypoint_engines()
     assert engines == {}
 
@@ -114,7 +119,7 @@ def test_resolve_engines_known_and_unknown(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr("typewiz.engines.registry.entrypoint_engines", fake_entrypoint_engines)
     engines = resolve_engines([EngineName("pyright")])
     assert len(engines) == 1
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown engine 'missing'"):
         _ = resolve_engines(["missing"])
 
 

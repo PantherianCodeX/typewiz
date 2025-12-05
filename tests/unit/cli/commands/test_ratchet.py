@@ -5,10 +5,11 @@
 from __future__ import annotations
 
 import argparse
+import tempfile
 from argparse import Namespace
-from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -24,7 +25,6 @@ from typewiz.cli.commands.ratchet import (
 from typewiz.config import Config, RatchetConfig
 from typewiz.core.model_types import RatchetAction, SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import RunId
-from typewiz.manifest.typed import ManifestData
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 from typewiz.ratchet.models import RatchetModel
 from typewiz.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
@@ -36,7 +36,19 @@ from typewiz.services.ratchet import (
     RatchetUpdateResult,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from typewiz.manifest.typed import ManifestData
+
 pytestmark = [pytest.mark.unit, pytest.mark.cli, pytest.mark.ratchet]
+
+
+@dataclass(slots=True)
+class _DispatchScenario:
+    action: str
+    handler_name: str
+    expects_args: bool
 
 
 def _make_context(
@@ -54,7 +66,7 @@ def _make_context(
         manifest_payload
         if manifest_payload is not None
         else cast(
-            ManifestData,
+            "ManifestData",
             {
                 "generatedAt": "2025-01-01T00:00:00Z",
                 "schemaVersion": CURRENT_MANIFEST_VERSION,
@@ -102,9 +114,7 @@ def test_ratchet_context_generated_at_prefers_manifest(tmp_path: Path) -> None:
     assert context.generated_at == "2024-07-01T08:00:00Z"
 
 
-def test_ratchet_context_generated_at_fallback(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_ratchet_context_generated_at_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_timestamp() -> str:
         return "NOW"
 
@@ -118,7 +128,7 @@ def test_handle_init_writes_ratchet_and_applies_targets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     output_path = tmp_path / "ratchet.json"
-    captured_keywords: dict[str, Any] = {}
+    captured_keywords: dict[str, object] = {}
     baseline_model = RatchetModel.model_validate(
         {
             "generatedAt": "2025-01-01T00:00:00Z",
@@ -128,7 +138,7 @@ def test_handle_init_writes_ratchet_and_applies_targets(
         },
     )
 
-    def fake_init_ratchet(**kwargs: Any) -> RatchetInitResult:
+    def fake_init_ratchet(**kwargs: object) -> RatchetInitResult:
         captured_keywords.update(kwargs)
         return RatchetInitResult(model=baseline_model, output_path=output_path)
 
@@ -160,7 +170,7 @@ def test_handle_init_refuses_overwrite_without_force(
 ) -> None:
     output_path = tmp_path / "ratchet.json"
 
-    def fail_init(**_: Any) -> None:
+    def fail_init(**_: object) -> None:
         raise ratchet_cmd.RatchetFileExistsError(output_path)
 
     monkeypatch.setattr(ratchet_cmd, "init_ratchet", fail_init)
@@ -175,9 +185,9 @@ def test_handle_init_defaults_output_path(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: dict[str, Any] = {}
+    captured: dict[str, object] = {}
 
-    def fake_init_ratchet(**kwargs: Any) -> RatchetInitResult:
+    def fake_init_ratchet(**kwargs: object) -> RatchetInitResult:
         captured.update(kwargs)
         dummy_model = RatchetModel.model_validate(
             {
@@ -211,15 +221,13 @@ def test_handle_update_dry_run_skips_write(
             RatchetRunReport(
                 run_id=RunId("pyright:current"),
                 severities=[SeverityLevel.ERROR],
-                violations=[
-                    RatchetFinding(path="pkg", severity=SeverityLevel.ERROR, allowed=1, actual=2)
-                ],
+                violations=[RatchetFinding(path="pkg", severity=SeverityLevel.ERROR, allowed=1, actual=2)],
             ),
         ],
     )
-    captured_kwargs: dict[str, Any] = {}
+    captured_kwargs: dict[str, object] = {}
 
-    def fake_update_ratchet(**kwargs: Any) -> RatchetUpdateResult:
+    def fake_update_ratchet(**kwargs: object) -> RatchetUpdateResult:
         captured_kwargs.update(kwargs)
         dummy_model = RatchetModel.model_validate(
             {
@@ -247,18 +255,15 @@ def test_handle_update_dry_run_skips_write(
     assert "[typewiz] Dry-run mode; ratchet not written." in captured
 
 
-def test_handle_update_returns_error_on_service_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_handle_update_returns_error_on_service_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     context = _make_context(tmp_path)
 
     def boom(**_: object) -> RatchetUpdateResult:
-        raise RatchetServiceError("update failed")
+        msg = "update failed"
+        raise RatchetServiceError(msg)
 
     monkeypatch.setattr(ratchet_cmd, "update_ratchet", boom)
-    args = Namespace(
-        targets=[], dry_run=False, output=None, limit=None, summary_only=False, force=False
-    )
+    args = Namespace(targets=[], dry_run=False, output=None, limit=None, summary_only=False, force=False)
     exit_code = handle_update(context, args)
     assert exit_code == 1
 
@@ -286,9 +291,7 @@ def test_handle_update_reports_written_file(
         )
 
     monkeypatch.setattr(ratchet_cmd, "update_ratchet", fake_update)
-    args = Namespace(
-        targets=[], dry_run=False, output=None, limit=None, summary_only=False, force=False
-    )
+    args = Namespace(targets=[], dry_run=False, output=None, limit=None, summary_only=False, force=False)
     exit_code = handle_update(context, args)
     assert exit_code == 0
     assert "Ratchet updated" in capsys.readouterr().out
@@ -318,9 +321,7 @@ def test_handle_check_outputs_json_and_warns(
     assert "Signature mismatch" in captured.err
 
 
-def test_handle_check_returns_error_when_service_fails(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_handle_check_returns_error_when_service_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     context = _make_context(tmp_path)
 
     def boom(**_: object) -> RatchetCheckResult:
@@ -342,9 +343,7 @@ def test_handle_check_outputs_table_lines(
             super().__init__()
             self.calls: list[tuple[bool, int | None, bool]] = []
 
-        def format_lines(
-            self, *, ignore_signature: bool, limit: int | None, summary_only: bool
-        ) -> list[str]:
+        def format_lines(self, *, ignore_signature: bool, limit: int | None, summary_only: bool) -> list[str]:
             self.calls.append((ignore_signature, limit, summary_only))
             return ["line-a", "line-b"]
 
@@ -361,7 +360,7 @@ def test_handle_check_outputs_table_lines(
 
     def fake_check(**_: object) -> RatchetCheckResult:
         return RatchetCheckResult(
-            report=cast(RatchetReport, stub_report),
+            report=cast("RatchetReport", stub_report),
             ignore_signature=True,
             warn_signature=False,
             exit_code=0,
@@ -377,9 +376,7 @@ def test_handle_check_outputs_table_lines(
     assert stub_report.calls == [(True, 2, True)]
 
 
-def test_handle_info_reports_configuration(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_handle_info_reports_configuration(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     config = RatchetConfig()
     config.targets = {"error": 1}
     context = _make_context(
@@ -402,18 +399,14 @@ def test_handle_info_reports_configuration(
     assert "summary-only: yes" in output
 
 
-def test_handle_info_displays_absence_of_targets(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_handle_info_displays_absence_of_targets(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     context = _make_context(tmp_path, config=RatchetConfig())
     exit_code = handle_info(context)
     assert exit_code == 0
     assert "targets: <none>" in capsys.readouterr().out
 
 
-def test_handle_rebaseline_uses_resolved_output(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_handle_rebaseline_uses_resolved_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     context = _make_context(tmp_path, ratchet_path=tmp_path / "ratchet.json")
     resolved_output = tmp_path / "out" / "ratchet.json"
     captured: dict[str, object] = {}
@@ -441,17 +434,16 @@ def test_handle_rebaseline_uses_resolved_output(
 
 def test_handle_rebaseline_requires_existing_path(tmp_path: Path) -> None:
     context = _make_context(tmp_path, ratchet_path=None)
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = handle_rebaseline(context, Namespace(output=None, force=False))
 
 
-def test_handle_rebaseline_reports_service_error(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_handle_rebaseline_reports_service_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     context = _make_context(tmp_path, ratchet_path=tmp_path / "ratchet.json")
 
     def boom(**_: object) -> RatchetRebaselineResult:
-        raise RatchetServiceError("cannot rebaseline")
+        msg = "cannot rebaseline"
+        raise RatchetServiceError(msg)
 
     monkeypatch.setattr(ratchet_cmd, "rebaseline_ratchet", boom)
     exit_code = handle_rebaseline(context, Namespace(output=None, force=False))
@@ -465,8 +457,10 @@ def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) 
     def fake_load_config(_: object) -> Config:
         return fake_config
 
+    tmp_root = Path(tempfile.gettempdir()) / "typewiz-cli"
+
     def fake_project_root(_: object) -> Path:
-        return Path("/tmp/project")
+        return tmp_root / "project"
 
     def fake_discover_manifest(
         _project_root: Path,
@@ -476,7 +470,7 @@ def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) 
     ) -> Path:
         assert explicit is None
         assert configured is None
-        return Path("/tmp/manifest.json")
+        return tmp_root / "manifest.json"
 
     def fake_discover_ratchet(
         _project_root: Path,
@@ -486,29 +480,30 @@ def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) 
         require_exists: bool,
     ) -> Path:
         assert require_exists is False
-        return Path("/tmp/ratchet.json")
+        return tmp_root / "ratchet.json"
 
     def fake_load_manifest(_path: Path) -> ManifestData:
         return cast(
-            ManifestData,
+            "ManifestData",
             {"generatedAt": "2024-01-01", "schemaVersion": CURRENT_MANIFEST_VERSION, "runs": []},
         )
 
-    def fake_resolve_runs(
-        cli: Sequence[str | RunId] | None, config_runs: Sequence[str | RunId]
-    ) -> list[RunId] | None:
+    def fake_resolve_runs(cli: Sequence[str | RunId] | None, config_runs: Sequence[str | RunId]) -> list[RunId] | None:
         values = cli or config_runs
         if not values:
             return None
         return [RunId(str(value)) for value in values]
 
-    def passthrough_policy(arg: Any, default: SignaturePolicy) -> SignaturePolicy:
+    def passthrough_policy(arg: SignaturePolicy | str | None, default: SignaturePolicy) -> SignaturePolicy:
         if arg is None:
             return default
-        return SignaturePolicy.from_str(str(arg))
+        return arg if isinstance(arg, SignaturePolicy) else SignaturePolicy.from_str(str(arg))
 
-    def passthrough_two(arg: Any, default: Any) -> Any:
+    def passthrough_limit(arg: int | None, default: int | None) -> int | None:
         return arg if arg is not None else default
+
+    def passthrough_summary_only(*, cli_summary: bool, config_summary: bool) -> bool:
+        return cli_summary or config_summary
 
     def fake_echo(*_args: object, **_kwargs: object) -> None:
         return None
@@ -520,13 +515,13 @@ def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(ratchet_cmd, "load_ratchet_manifest", fake_load_manifest)
     monkeypatch.setattr(ratchet_cmd, "resolve_runs", fake_resolve_runs)
     monkeypatch.setattr(ratchet_cmd, "resolve_signature_policy", passthrough_policy)
-    monkeypatch.setattr(ratchet_cmd, "resolve_limit", passthrough_two)
-    monkeypatch.setattr(ratchet_cmd, "resolve_summary_only", passthrough_two)
+    monkeypatch.setattr(ratchet_cmd, "resolve_limit", passthrough_limit)
+    monkeypatch.setattr(ratchet_cmd, "resolve_summary_only", passthrough_summary_only)
     monkeypatch.setattr(ratchet_cmd, "echo", fake_echo)
 
     args = Namespace(action="invalid", manifest=None, ratchet=None)
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = ratchet_cmd.execute_ratchet(args)
 
 
@@ -546,21 +541,23 @@ def test_register_ratchet_command_builds_subcommands(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("action", "handler_name", "expects_args"),
+    "scenario",
     [
-        (RatchetAction.INIT.value, "handle_init", True),
-        (RatchetAction.CHECK.value, "handle_check", True),
-        (RatchetAction.UPDATE.value, "handle_update", True),
-        (RatchetAction.REBASELINE_SIGNATURE.value, "handle_rebaseline", True),
-        (RatchetAction.INFO.value, "handle_info", False),
+        _DispatchScenario(RatchetAction.INIT.value, "handle_init", expect_args=True),
+        _DispatchScenario(RatchetAction.CHECK.value, "handle_check", expect_args=True),
+        _DispatchScenario(RatchetAction.UPDATE.value, "handle_update", expect_args=True),
+        _DispatchScenario(
+            RatchetAction.REBASELINE_SIGNATURE.value,
+            "handle_rebaseline",
+            expect_args=True,
+        ),
+        _DispatchScenario(RatchetAction.INFO.value, "handle_info", expect_args=False),
     ],
 )
 def test_execute_ratchet_dispatches_actions(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    action: str,
-    handler_name: str,
-    expects_args: bool,
+    scenario: _DispatchScenario,
 ) -> None:
     fake_config = Config()
 
@@ -573,9 +570,10 @@ def test_execute_ratchet_dispatches_actions(
     def fake_project_root(_: object) -> Path:
         return tmp_path
 
-    def fake_discover_manifest(
-        project_root: Path, *, explicit: Path | None, configured: Path | None
-    ) -> Path:
+    def fake_discover_manifest(project_root: Path, *, explicit: Path | None, configured: Path | None) -> Path:
+        assert isinstance(project_root, Path)
+        assert explicit is None or isinstance(explicit, Path)
+        assert configured is None or isinstance(configured, Path)
         return manifest_path
 
     def fake_discover_ratchet(
@@ -585,28 +583,30 @@ def test_execute_ratchet_dispatches_actions(
         configured: Path | None,
         require_exists: bool,
     ) -> Path:
+        assert isinstance(project_root, Path)
+        assert explicit is None or isinstance(explicit, Path)
+        assert configured is None or isinstance(configured, Path)
+        assert isinstance(require_exists, bool)
         return tmp_path / "ratchet.json"
 
     def fake_load_manifest(_: Path) -> ManifestData:
-        return cast(
-            ManifestData, {"generatedAt": "2024-01-01", "schemaVersion": CURRENT_MANIFEST_VERSION}
-        )
+        return cast("ManifestData", {"generatedAt": "2024-01-01", "schemaVersion": CURRENT_MANIFEST_VERSION})
 
     def passthrough_runs(
         cli: Sequence[str | RunId] | None, config: Sequence[str | RunId]
     ) -> Sequence[str | RunId] | None:
         return cli or config
 
-    def passthrough_signature_policy(
-        value: str | None, default: SignaturePolicy
-    ) -> SignaturePolicy:
+    def passthrough_signature_policy(value: str | None, default: SignaturePolicy) -> SignaturePolicy:
+        assert value is None or isinstance(value, str)
         return default
 
     def passthrough_limit(value: int | None, default: int | None) -> int | None:
+        assert value is None or isinstance(value, int)
         return default
 
-    def passthrough_summary_only(value: bool, default: bool) -> bool:
-        return default
+    def passthrough_summary_only(*, cli_summary: bool, config_summary: bool) -> bool:
+        return bool(cli_summary) or config_summary
 
     def noop_echo(*_args: object, **_kwargs: object) -> None:
         return None
@@ -632,16 +632,16 @@ def test_execute_ratchet_dispatches_actions(
     def fake_handler_no_args(context: RatchetContext) -> int:
         return fake_handler(context, None)
 
-    if expects_args:
-        monkeypatch.setattr(ratchet_cmd, handler_name, fake_handler)
+    if scenario.expects_args:
+        monkeypatch.setattr(ratchet_cmd, scenario.handler_name, fake_handler)
     else:
-        monkeypatch.setattr(ratchet_cmd, handler_name, fake_handler_no_args)
+        monkeypatch.setattr(ratchet_cmd, scenario.handler_name, fake_handler_no_args)
 
-    args = Namespace(action=action, manifest=None, ratchet=None, summary_only=False)
+    args = Namespace(action=scenario.action, manifest=None, ratchet=None, summary_only=False)
     exit_code = ratchet_cmd.execute_ratchet(args)
     assert exit_code == 7
     assert isinstance(called["context"], RatchetContext)
-    if expects_args:
+    if scenario.expects_args:
         assert isinstance(called["args"], Namespace)
     else:
         assert called["args"] is None

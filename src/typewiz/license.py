@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typewiz._internal.license import (  # noqa: F401 - re-exported surface
+from typewiz._internal.license import (
     LICENSE_KEY_ENV,
     has_commercial_license,
     license_mode,

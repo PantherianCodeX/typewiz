@@ -1,37 +1,35 @@
-# ruff: noqa: UP047
+# ruff: noqa: UP047  # JUSTIFIED: compatibility shim mirrors hypothesis API that still exposes deprecated typing patterns
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
-
-from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Generic, TypeVar
 
-T = TypeVar("T")
-U = TypeVar("U")
+_T = TypeVar("_T")
+_U = TypeVar("_U")
 
-class SearchStrategy(Generic[T]):  # noqa: UP046
-    def map(self, function: Callable[[T], U]) -> SearchStrategy[U]: ...
-    def filter(self, predicate: Callable[[T], bool]) -> SearchStrategy[T]: ...
+class SearchStrategy(Generic[_T]):  # noqa: UP046  # JUSTIFIED: public stub mirrors upstream generic class name
+    def map(self, function: Callable[[_T], _U]) -> SearchStrategy[_U]: ...
+    def filter(self, predicate: Callable[[_T], bool]) -> SearchStrategy[_T]: ...
 
 def builds(
-    callable: Callable[..., T],
+    factory: Callable[..., _T],
     /,
     *args: SearchStrategy[Any],
     **kwargs: SearchStrategy[Any],
-) -> SearchStrategy[T]: ...  # noqa: UP047
-def composite(function: Callable[..., T]) -> Callable[..., SearchStrategy[T]]: ...  # noqa: UP047
+) -> SearchStrategy[_T]: ...
+def composite(function: Callable[..., _T]) -> Callable[..., SearchStrategy[_T]]: ...
 def fixed_dictionaries(
-    mapping: Mapping[str, SearchStrategy[T]],
-) -> SearchStrategy[dict[str, T]]: ...  # noqa: UP047
+    mapping: Mapping[str, SearchStrategy[_T]],
+) -> SearchStrategy[dict[str, _T]]: ...
 def from_regex(pattern: str, *, fullmatch: bool = ...) -> SearchStrategy[str]: ...
 def dictionaries(
-    keys: SearchStrategy[T],
-    values: SearchStrategy[U],
+    keys: SearchStrategy[_T],
+    values: SearchStrategy[_U],
     *,
     min_size: int | None = ...,
     max_size: int | None = ...,
-    dict_class: type[dict[T, U]] | None = ...,
-) -> SearchStrategy[dict[T, U]]: ...  # noqa: UP047
+    dict_class: type[dict[_T, _U]] | None = ...,
+) -> SearchStrategy[dict[_T, _U]]: ...
 def floats(
     *,
     min_value: float | None = ...,
@@ -45,14 +43,14 @@ def integers(
     max_value: int | None = ...,
 ) -> SearchStrategy[int]: ...
 def lists(
-    strategy: SearchStrategy[T],
+    strategy: SearchStrategy[_T],
     *,
     min_size: int | None = ...,
     max_size: int | None = ...,
     unique: bool = ...,
-) -> SearchStrategy[list[T]]: ...  # noqa: UP047
-def just(value: T) -> SearchStrategy[T]: ...  # noqa: UP047
-def sampled_from(values: Sequence[T]) -> SearchStrategy[T]: ...  # noqa: UP047
+) -> SearchStrategy[list[_T]]: ...
+def just(value: _T) -> SearchStrategy[_T]: ...
+def sampled_from(values: Sequence[_T]) -> SearchStrategy[_T]: ...
 def text(
     *,
     min_size: int | None = ...,
@@ -66,8 +64,8 @@ __all__ = [
     "builds",
     "composite",
     "dictionaries",
-    "floats",
     "fixed_dictionaries",
+    "floats",
     "from_regex",
     "integers",
     "just",

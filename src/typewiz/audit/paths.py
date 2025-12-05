@@ -24,7 +24,6 @@ def _as_relative_path(project_root: Path, path: Path) -> RelPath:
 
 def normalise_paths(project_root: Path, raw_paths: Sequence[str]) -> list[RelPath]:
     """Return unique, POSIX-style paths relative to ``project_root``."""
-
     normalised: list[RelPath] = []
     seen: set[str] = set()
     root = project_root.resolve()
@@ -42,7 +41,6 @@ def normalise_paths(project_root: Path, raw_paths: Sequence[str]) -> list[RelPat
 
 def global_fingerprint_paths(project_root: Path) -> list[RelPath]:
     """Return repository-level files that should influence fingerprinting."""
-
     extras: list[str] = []
     for filename in ROOT_MARKERS:
         candidate = project_root / filename
@@ -57,8 +55,19 @@ def fingerprint_targets(
     default_paths: Sequence[str],
     extra: Sequence[str] | None = None,
 ) -> list[RelPath]:
-    """Combine audit paths with fingerprint metadata inputs."""
+    """Combine audit paths with fingerprint metadata inputs.
 
+    Args:
+        project_root: Repository root used to derive relative paths for
+            fingerprint hashing.
+        mode_paths: Paths requested for the current run mode.
+        default_paths: Baseline paths from the audit configuration.
+        extra: Optional additional fingerprint entries (e.g. config fragments).
+
+    Returns:
+        Ordered, deduplicated relative paths whose contents influence cache
+        fingerprints.
+    """
     candidates = list(mode_paths) if mode_paths else list(default_paths)
     candidates.extend(global_fingerprint_paths(project_root))
     if extra:
@@ -80,8 +89,16 @@ def normalise_override_entries(
     override_path: Path,
     entries: Sequence[str],
 ) -> list[RelPath]:
-    """Normalise include/exclude lists when sourced from a path override."""
+    """Normalise include/exclude lists when sourced from a path override.
 
+    Args:
+        project_root: Repository root for relative path computation.
+        override_path: Directory containing the override configuration file.
+        entries: Include/exclude strings supplied within the override.
+
+    Returns:
+        Deduplicated relative paths rooted at ``project_root``.
+    """
     if not entries:
         entries = ["."]
     normalised: list[RelPath] = []
@@ -98,6 +115,14 @@ def normalise_override_entries(
 
 
 def relative_override_path(project_root: Path, override_path: Path) -> RelPath:
-    """Resolve a path override relative to the project root if possible."""
+    """Resolve a path override relative to the project root if possible.
 
+    Args:
+        project_root: Repository root for computing relative locations.
+        override_path: Absolute path to the override file or directory.
+
+    Returns:
+        The override path expressed as a ``RelPath`` relative to
+        ``project_root``.
+    """
     return _as_relative_path(project_root, override_path)

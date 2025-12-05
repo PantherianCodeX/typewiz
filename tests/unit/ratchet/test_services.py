@@ -4,14 +4,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
 from typewiz.core.model_types import SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import RunId
-from typewiz.manifest.typed import ManifestData
 from typewiz.ratchet.models import RatchetModel
 from typewiz.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
 from typewiz.services import ratchet as ratchet_service
@@ -20,12 +18,17 @@ from typewiz.services.ratchet import (
     RatchetPathRequiredError,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from typewiz.manifest.typed import ManifestData
+
 pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
 
 
 def _manifest(tmp_path: Path) -> ManifestData:
     return cast(
-        ManifestData,
+        "ManifestData",
         {
             "generatedAt": "2024-01-01T00:00:00Z",
             "schemaVersion": 1,
@@ -52,15 +55,13 @@ def _ratchet_model(tmp_path: Path) -> RatchetModel:
     )
 
 
-def test_init_ratchet_invokes_builder_and_writer(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_init_ratchet_invokes_builder_and_writer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manifest = _manifest(tmp_path)
     output_path = tmp_path / "ratchet.json"
     model = _ratchet_model(tmp_path)
-    captured: dict[str, Any] = {}
+    captured: dict[str, object] = {}
 
-    def fake_build(**kwargs: Any) -> RatchetModel:
+    def fake_build(**kwargs: object) -> RatchetModel:
         captured["build"] = kwargs
         return model
 
@@ -92,7 +93,7 @@ def test_init_ratchet_requires_force(tmp_path: Path) -> None:
     output_path = tmp_path / "ratchet.json"
     _ = output_path.write_text("{}", encoding="utf-8")
 
-    with pytest.raises(RatchetFileExistsError):
+    with pytest.raises(RatchetFileExistsError, match="Refusing to overwrite existing ratchet"):
         _ = ratchet_service.init_ratchet(
             manifest=manifest,
             runs=None,
@@ -104,9 +105,7 @@ def test_init_ratchet_requires_force(tmp_path: Path) -> None:
         )
 
 
-def test_check_ratchet_warns_on_signature_mismatch(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_check_ratchet_warns_on_signature_mismatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     ratchet_path = tmp_path / "ratchet.json"
     model = _ratchet_model(tmp_path)
 
@@ -123,7 +122,7 @@ def test_check_ratchet_warns_on_signature_mismatch(
     )
     report = RatchetReport(runs=[run_report])
 
-    def fake_compare(**_: Any) -> RatchetReport:
+    def fake_compare(**_: object) -> RatchetReport:
         return report
 
     monkeypatch.setattr(ratchet_service, "_compare_manifest_to_ratchet", fake_compare)
@@ -140,9 +139,7 @@ def test_check_ratchet_warns_on_signature_mismatch(
     assert result.ignore_signature is True
 
 
-def test_update_ratchet_writes_updated_model(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_update_ratchet_writes_updated_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     ratchet_path = tmp_path / "ratchet.json"
     base_model = _ratchet_model(tmp_path)
 
@@ -161,14 +158,14 @@ def test_update_ratchet_writes_updated_model(
         ],
     )
 
-    def fake_update_compare(**_: Any) -> RatchetReport:
+    def fake_update_compare(**_: object) -> RatchetReport:
         return report
 
     monkeypatch.setattr(ratchet_service, "_compare_manifest_to_ratchet", fake_update_compare)
 
     updated_model = _ratchet_model(tmp_path)
 
-    def fake_update_auto(**_: Any) -> RatchetModel:
+    def fake_update_auto(**_: object) -> RatchetModel:
         return updated_model
 
     monkeypatch.setattr(ratchet_service, "_apply_auto_update", fake_update_auto)
@@ -181,10 +178,12 @@ def test_update_ratchet_writes_updated_model(
     monkeypatch.setattr(ratchet_service, "_write_ratchet", fake_update_write)
 
     overrides: dict[str, int] | None = None
+    applied_model: RatchetModel | None = None
 
     def fake_apply_overrides(model: RatchetModel, targets: dict[str, int]) -> None:
-        nonlocal overrides
+        nonlocal overrides, applied_model
         overrides = targets
+        applied_model = model
 
     monkeypatch.setattr(ratchet_service, "apply_target_overrides", fake_apply_overrides)
 
@@ -200,13 +199,14 @@ def test_update_ratchet_writes_updated_model(
     )
 
     assert overrides == {"error": 2}
+    assert applied_model is updated_model
     assert result.output_path == ratchet_path
     assert writes == [(ratchet_path, updated_model)]
     assert result.wrote_file is True
 
 
 def test_update_ratchet_requires_existing_path(tmp_path: Path) -> None:
-    with pytest.raises(RatchetPathRequiredError):
+    with pytest.raises(RatchetPathRequiredError, match="Ratchet path is required"):
         _ = ratchet_service.update_ratchet(
             manifest=_manifest(tmp_path),
             ratchet_path=None,
@@ -229,7 +229,7 @@ def test_rebaseline_ratchet_writes_output(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr(ratchet_service, "_load_ratchet", fake_rebaseline_load)
     refreshed_model = _ratchet_model(tmp_path)
 
-    def fake_rebaseline_refresh(**_: Any) -> RatchetModel:
+    def fake_rebaseline_refresh(**_: object) -> RatchetModel:
         return refreshed_model
 
     monkeypatch.setattr(ratchet_service, "_refresh_signatures", fake_rebaseline_refresh)

@@ -4,10 +4,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from io import TextIOBase
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -16,6 +14,10 @@ from typewiz._internal.cache import EngineCache
 from typewiz.core.model_types import FileHashPayload, Mode, SeverityLevel
 from typewiz.core.type_aliases import PathKey, RelPath, ToolName
 from typewiz.core.types import Diagnostic
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from io import TextIOBase
 
 pytestmark = pytest.mark.unit
 
@@ -128,14 +130,12 @@ def test_engine_cache_round_trip(tmp_path: Path) -> None:
     assert cached.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
     mismatch = reloaded.get(
         key,
-        {PathKey("src/app.py"): cast(FileHashPayload, {"hash": "different"})},
+        {PathKey("src/app.py"): cast("FileHashPayload", {"hash": "different"})},
     )
     assert mismatch is None
 
 
-def test_collect_file_hashes_respects_limits(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_collect_file_hashes_respects_limits(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     src_dir = tmp_path / "src"
     src_dir.mkdir()
     file_a = src_dir / "app.py"
@@ -194,9 +194,7 @@ def test_compute_hashes_with_workers(tmp_path: Path) -> None:
     assert set(hashes) == {PathKey("a.py"), PathKey("b.py")}
 
 
-def test_fingerprint_path_handles_missing_and_unreadable(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_fingerprint_path_handles_missing_and_unreadable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     missing = tmp_path / "missing.py"
     assert cache_module._fingerprint(missing) == {"missing": True}
 
@@ -206,8 +204,9 @@ def test_fingerprint_path_handles_missing_and_unreadable(
 
     def fake_open(self: Path, *args: Any, **kwargs: Any) -> TextIOBase:
         if self == unreadable:
-            raise OSError("denied")
-        return cast(TextIOBase, original_open(self, *args, **kwargs))
+            msg = "denied"
+            raise OSError(msg)
+        return cast("TextIOBase", original_open(self, *args, **kwargs))
 
     monkeypatch.setattr(Path, "open", fake_open)
     assert cache_module._fingerprint(unreadable) == {"unreadable": True}

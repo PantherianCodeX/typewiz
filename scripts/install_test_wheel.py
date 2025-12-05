@@ -1,12 +1,14 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Install a built typewiz wheel inside an isolated throwaway virtualenv."""
+
 from __future__ import annotations
 
 import argparse
 import os
 import pathlib
 import shutil
-import subprocess
+import subprocess  # noqa: S404  # JUSTIFIED: invokes trusted pip/python binaries inside freshly created venv
 import tempfile
 import venv
 
@@ -22,6 +24,12 @@ MISSING_WHEEL_MSG = "No typewiz wheel found in dist/. Run `make package.build` f
 
 
 def main() -> int:
+    """Create a disposable venv and install a built wheel in it.
+
+    Returns:
+        ``0`` after pip installs the provided (or latest) wheel and verifies the
+        package can be imported inside the temporary environment.
+    """
     parser = argparse.ArgumentParser(
         description="Install a built typewiz wheel in an isolated virtualenv",
     )
@@ -48,8 +56,14 @@ def main() -> int:
             pip_path = venv_dir / "bin" / "pip"
             python_path = venv_dir / "bin" / "python"
 
-        _ = subprocess.run([str(pip_path), "install", str(wheel_path)], check=True)  # noqa: S603
-        _ = subprocess.run([str(python_path), "-c", "import typewiz"], check=True)  # noqa: S603
+        _ = subprocess.run(  # noqa: S603  # JUSTIFIED: executes pinned pip within controlled virtualenv
+            [str(pip_path), "install", str(wheel_path)],
+            check=True,
+        )
+        _ = subprocess.run(  # noqa: S603  # JUSTIFIED: validates installed package using dedicated interpreter
+            [str(python_path), "-c", "import typewiz"],
+            check=True,
+        )
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
     return 0

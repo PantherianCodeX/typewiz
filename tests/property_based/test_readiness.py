@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import hypothesis.strategies as st
 import pytest
@@ -20,12 +20,14 @@ from typewiz.core.summary_types import (
     SummaryData,
     SummaryTabs,
 )
-from typewiz.core.type_aliases import CategoryKey
 from typewiz.readiness.views import (
     FileReadinessPayload,
     FolderReadinessPayload,
     collect_readiness_view,
 )
+
+if TYPE_CHECKING:
+    from typewiz.core.type_aliases import CategoryKey
 
 pytestmark = pytest.mark.property
 
@@ -159,7 +161,7 @@ def test_h_collect_readiness_view_shapes(
 
     # Folder view
     folder_view: dict[ReadinessStatus, list[FolderReadinessPayload]] = cast(
-        dict[ReadinessStatus, list[FolderReadinessPayload]],
+        "dict[ReadinessStatus, list[FolderReadinessPayload]]",
         collect_readiness_view(
             summary,
             level=ReadinessLevel.FOLDER,
@@ -180,7 +182,7 @@ def test_h_collect_readiness_view_shapes(
 
     # File view
     file_view: dict[ReadinessStatus, list[FileReadinessPayload]] = cast(
-        dict[ReadinessStatus, list[FileReadinessPayload]],
+        "dict[ReadinessStatus, list[FileReadinessPayload]]",
         collect_readiness_view(
             summary,
             level=ReadinessLevel.FILE,

@@ -59,10 +59,14 @@ def test_summarise_run_typed_output() -> None:
 
     aggregated = summarise_run(run, max_depth=2)
     summary = aggregated["summary"]
-    assert "errors" in summary and summary["errors"] == 1
-    assert "warnings" in summary and summary["warnings"] == 1
-    assert "total" in summary and summary["total"] == 3
-    assert "severityBreakdown" in summary and summary["severityBreakdown"][SeverityLevel.ERROR] == 1
+    assert "errors" in summary
+    assert summary["errors"] == 1
+    assert "warnings" in summary
+    assert summary["warnings"] == 1
+    assert "total" in summary
+    assert summary["total"] == 3
+    assert "severityBreakdown" in summary
+    assert summary["severityBreakdown"][SeverityLevel.ERROR] == 1
     assert any(entry["path"] == "pkg" for entry in aggregated["perFolder"])
     file_entry = aggregated["perFile"][0]
     assert file_entry["diagnostics"][0]["message"].endswith("message")

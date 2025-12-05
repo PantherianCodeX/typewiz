@@ -4,10 +4,14 @@
 
 from __future__ import annotations
 
+import importlib
 import re
 import sys
-from collections.abc import Iterable
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 """
 This script must work whether the package is installed or not. It prepends the
@@ -21,13 +25,11 @@ def _emit(message: str, *, error: bool = False) -> None:
 
 
 def _load_error_codes(src_path: Path) -> Iterable[str]:
-    # Ensure local sources are importable without requiring an installed wheel
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-    # Import lazily after path injection to avoid ModuleNotFoundError
-    from typewiz._internal.error_codes import error_code_catalog
-
-    return error_code_catalog().values()
+    src_str = str(src_path)
+    if src_str not in sys.path:
+        sys.path.insert(0, src_str)
+    module = importlib.import_module("typewiz._internal.error_codes")
+    return module.error_code_catalog().values()
 
 
 def _discover_duplicates(codes: Iterable[str]) -> set[str]:
@@ -42,6 +44,12 @@ def _discover_duplicates(codes: Iterable[str]) -> set[str]:
 
 
 def main() -> int:
+    """Validate that the error-code registry matches the public docs.
+
+    Returns:
+        ``0`` if the registry and documentation list identical codes; ``1`` if
+        duplicate, missing, or orphaned codes are detected.
+    """
     repo_root = Path(__file__).resolve().parents[1]
     src_path = repo_root / "src"
 

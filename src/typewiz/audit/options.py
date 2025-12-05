@@ -11,13 +11,15 @@ settings.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from typewiz.collections import dedupe_preserve, merge_preserve
 from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from typewiz.config.validation import coerce_object_list
 from typewiz.core.categories import coerce_category_key
-from typewiz.core.type_aliases import CategoryKey, EngineName
+
+if TYPE_CHECKING:
+    from typewiz.core.type_aliases import CategoryKey, EngineName
 
 
 def clone_profile(profile: EngineProfile) -> EngineProfile:
@@ -52,7 +54,17 @@ def merge_engine_settings_map(
     base: Mapping[EngineName, EngineSettings],
     override: Mapping[EngineName, EngineSettings],
 ) -> dict[EngineName, EngineSettings]:
-    """Merge engine settings, cloning results to avoid mutating inputs."""
+    """Merge engine settings, cloning results to avoid mutating inputs.
+
+    Args:
+        base: Canonical engine settings sourced from configuration.
+        override: Secondary settings whose values should replace or extend the
+            base mapping.
+
+    Returns:
+        A mutable dictionary combining ``base`` and ``override`` while keeping
+        nested structures deep-copied so callers can safely mutate the result.
+    """
     result = clone_engine_settings_map(base)
     for name, override_settings in override.items():
         if name not in result:
@@ -91,7 +103,15 @@ def merge_engine_settings_map(
 
 
 def clone_path_overrides(overrides: Sequence[PathOverride]) -> list[PathOverride]:
-    """Clone path override records so that callers can mutate safely."""
+    """Clone path override records so that callers can mutate safely.
+
+    Args:
+        overrides: Source override entries that may contain shared references.
+
+    Returns:
+        A deep-copied list of overrides with independent engine settings and
+        profile dictionaries.
+    """
     return [
         PathOverride(
             path=override.path,
@@ -103,7 +123,15 @@ def clone_path_overrides(overrides: Sequence[PathOverride]) -> list[PathOverride
 
 
 def clone_audit_config(source: AuditConfig) -> AuditConfig:
-    """Produce a deep copy of an ``AuditConfig`` instance."""
+    """Produce a deep copy of an ``AuditConfig`` instance.
+
+    Args:
+        source: Configuration to duplicate.
+
+    Returns:
+        A structurally independent ``AuditConfig`` with the same values as
+        ``source``.
+    """
     return AuditConfig(
         manifest_path=source.manifest_path,
         full_paths=list(source.full_paths) if source.full_paths is not None else None,
@@ -124,7 +152,17 @@ def clone_audit_config(source: AuditConfig) -> AuditConfig:
 
 
 def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> AuditConfig:
-    """Merge ``override`` into ``base`` (if supplied) and return a fresh config."""
+    """Merge ``override`` into ``base`` (if supplied) and return a fresh config.
+
+    Args:
+        base: The baseline configuration typically loaded from disk.
+        override: Optional configuration whose values take precedence when
+            provided.
+
+    Returns:
+        A new ``AuditConfig`` representing ``base`` updated with the supplied
+        overrides.
+    """
     base_copy = clone_audit_config(base)
     if override is None:
         return base_copy
@@ -133,14 +171,10 @@ def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> Audi
         manifest_path=override.manifest_path or base_copy.manifest_path,
         full_paths=override.full_paths or base_copy.full_paths,
         max_depth=override.max_depth or base_copy.max_depth,
-        skip_current=(
-            override.skip_current if override.skip_current is not None else base_copy.skip_current
-        ),
+        skip_current=(override.skip_current if override.skip_current is not None else base_copy.skip_current),
         skip_full=override.skip_full if override.skip_full is not None else base_copy.skip_full,
         fail_on=override.fail_on or base_copy.fail_on,
-        hash_workers=(
-            override.hash_workers if override.hash_workers is not None else base_copy.hash_workers
-        ),
+        hash_workers=(override.hash_workers if override.hash_workers is not None else base_copy.hash_workers),
         dashboard_json=override.dashboard_json or base_copy.dashboard_json,
         dashboard_markdown=override.dashboard_markdown or base_copy.dashboard_markdown,
         dashboard_html=override.dashboard_html or base_copy.dashboard_html,
@@ -167,7 +201,15 @@ def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> Audi
 
 
 def prepare_category_mapping(value: object) -> Mapping[CategoryKey, Sequence[str]] | None:
-    """Normalise raw engine category mappings into a predictable structure."""
+    """Normalise raw engine category mappings into a predictable structure.
+
+    Args:
+        value: Arbitrary JSON-like payload returned by an engine.
+
+    Returns:
+        A mapping keyed by ``CategoryKey`` whose values are cleaned string
+        sequences, or ``None`` if the input cannot be interpreted.
+    """
     if value is None or not isinstance(value, Mapping):
         return None
     prepared: dict[CategoryKey, list[str]] = {}
@@ -186,7 +228,15 @@ def prepare_category_mapping(value: object) -> Mapping[CategoryKey, Sequence[str
 def normalise_category_mapping(
     mapping: Mapping[CategoryKey, Sequence[str]] | None,
 ) -> dict[CategoryKey, list[str]]:
-    """Provide a deterministic ordering for category mappings."""
+    """Provide a deterministic ordering for category mappings.
+
+    Args:
+        mapping: Optional mapping of category keys to user-provided labels.
+
+    Returns:
+        A dictionary with sorted, deduplicated label lists suitable for storage
+        inside manifests or cache entries.
+    """
     if mapping is None:
         return {}
     normalised: dict[CategoryKey, list[str]] = {}

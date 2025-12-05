@@ -1,11 +1,15 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Pytest entry point that wires shared fixtures and markers."""
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import pytest
+if TYPE_CHECKING:
+    import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"

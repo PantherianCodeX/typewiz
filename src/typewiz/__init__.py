@@ -49,12 +49,11 @@ from .ratchet import (
 )
 
 __all__ = [
-    "__version__",
+    "LICENSE_KEY_ENV",
     "AuditConfig",
     "AuditResult",
     "Config",
     "Diagnostic",
-    "LICENSE_KEY_ENV",
     "ManifestPayloadError",
     "ManifestValidationResult",
     "RunResult",
@@ -63,10 +62,11 @@ __all__ = [
     "TypewizError",
     "TypewizTypeError",
     "TypewizValidationError",
+    "__version__",
     "build_summary",
+    "emit_dashboard_outputs",
     "has_commercial_license",
     "license_mode",
-    "emit_dashboard_outputs",
     "load_config",
     "load_manifest",
     "load_summary_from_manifest",

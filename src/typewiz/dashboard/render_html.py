@@ -1,11 +1,18 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""HTML rendering module for typewiz dashboards.
+
+This module provides functionality to render dashboard summary data as interactive
+HTML pages. The generated HTML includes tabbed navigation, severity breakdowns,
+hotspot analysis, readiness metrics, and engine configuration details.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from html import escape
-from typing import Any, Final, cast
+from typing import TYPE_CHECKING, Any, Final, cast
 
 from typewiz.common.override_utils import get_override_components
 from typewiz.core.model_types import (
@@ -15,15 +22,17 @@ from typewiz.core.model_types import (
     SeverityLevel,
     SummaryTabName,
 )
-from typewiz.core.summary_types import (
-    HotspotsTab,
-    OverviewTab,
-    ReadinessTab,
-    SummaryData,
-    SummaryTabs,
-)
-from typewiz.core.type_aliases import CategoryKey
 from typewiz.readiness.compute import CATEGORY_LABELS
+
+if TYPE_CHECKING:
+    from typewiz.core.summary_types import (
+        HotspotsTab,
+        OverviewTab,
+        ReadinessTab,
+        SummaryData,
+        SummaryTabs,
+    )
+    from typewiz.core.type_aliases import CategoryKey
 
 _TAB_ORDER: Final[tuple[SummaryTabName, ...]] = tuple(SummaryTabName)
 _TAB_LABELS: Final[dict[SummaryTabName, str]] = {
@@ -37,6 +46,28 @@ _TAB_LABELS: Final[dict[SummaryTabName, str]] = {
 
 @dataclass
 class _DashboardContext:
+    """Context object for HTML dashboard rendering.
+
+    This class extracts and organizes summary data for convenient access during
+    HTML generation. It pre-computes derived fields and provides an HTML escaping
+    helper method.
+
+    Attributes:
+        summary: The complete summary data structure.
+        view_choice: The default dashboard view/tab to display.
+        tabs: Pre-extracted tab data from summary.
+        overview: Pre-extracted overview tab data.
+        severity_totals: Pre-extracted severity breakdown.
+        category_totals: Pre-extracted category breakdown.
+        run_summary: Pre-extracted run summary data.
+        hotspots: Pre-extracted hotspots tab data.
+        readiness: Pre-extracted readiness tab data.
+        engines: Pre-extracted engine details.
+        runs_tab: Pre-extracted run logs tab data.
+        rule_files: Pre-extracted rule-to-files mapping.
+        default_tab: The default tab name as a string.
+    """
+
     summary: SummaryData
     view_choice: DashboardView
     tabs: SummaryTabs = field(init=False)
@@ -56,23 +87,26 @@ class _DashboardContext:
         self.overview = self.tabs[SummaryTabName.OVERVIEW.value]
         self.severity_totals = self.overview["severityTotals"]
         self.category_totals = self.overview.get("categoryTotals", {})
-        self.run_summary = cast(dict[str, dict[str, object]], self.overview["runSummary"])
+        self.run_summary = cast("dict[str, dict[str, object]]", self.overview["runSummary"])
         self.hotspots = self.tabs[SummaryTabName.HOTSPOTS.value]
         self.readiness = self.tabs[SummaryTabName.READINESS.value]
         engines_tab = self.tabs[SummaryTabName.ENGINES.value]
         runs_tab = self.tabs[SummaryTabName.RUNS.value]
-        self.engines = cast(
-            dict[str, dict[str, object]], engines_tab.get("runSummary", self.run_summary)
-        )
-        self.runs_tab = cast(
-            dict[str, dict[str, object]], runs_tab.get("runSummary", self.run_summary)
-        )
-        self.rule_files = cast(
-            dict[str, list[dict[str, object]]], self.hotspots.get("ruleFiles", {})
-        )
+        self.engines = cast("dict[str, dict[str, object]]", engines_tab.get("runSummary", self.run_summary))
+        self.runs_tab = cast("dict[str, dict[str, object]]", runs_tab.get("runSummary", self.run_summary))
+        self.rule_files = cast("dict[str, list[dict[str, object]]]", self.hotspots.get("ruleFiles", {}))
         self.default_tab = self.view_choice.value
 
-    def escape(self, value: object) -> str:
+    @staticmethod
+    def escape(value: object) -> str:
+        """Escape a value for safe HTML output.
+
+        Args:
+            value: The value to escape (will be converted to string).
+
+        Returns:
+            HTML-escaped string safe for inclusion in HTML content.
+        """
         return escape(str(value), quote=True)
 
 
@@ -81,11 +115,21 @@ def render_html(
     *,
     default_view: DashboardView | str = DashboardView.OVERVIEW.value,
 ) -> str:
-    view_choice = (
-        default_view
-        if isinstance(default_view, DashboardView)
-        else DashboardView.from_str(default_view)
-    )
+    """Render dashboard summary data as an interactive HTML page.
+
+    This function generates a complete, self-contained HTML document with tabbed
+    navigation, embedded styles, and interactive JavaScript. The dashboard includes
+    overview metrics, engine details, hotspots analysis, readiness assessment,
+    and run logs.
+
+    Args:
+        summary: Complete dashboard summary data to render.
+        default_view: The tab to show by default (defaults to overview).
+
+    Returns:
+        Complete HTML document as a string, ready to write to a file or serve.
+    """
+    view_choice = default_view if isinstance(default_view, DashboardView) else DashboardView.from_str(default_view)
     context = _DashboardContext(summary=summary, view_choice=view_choice)
 
     parts: list[str] = []
@@ -97,8 +141,7 @@ def render_html(
     parts.extend(_render_readiness_tab(context))
     parts.extend(_render_runs_tab(context))
     parts.extend(_render_script_block())
-    parts.append("</body>")
-    parts.append("</html>")
+    parts.extend(("</body>", "</html>"))
     return "\n".join(parts) + "\n"
 
 
@@ -167,21 +210,9 @@ def _overview_severity_section(severity: Mapping[SeverityLevel, int]) -> list[st
         "    <section>",
         "      <h2>Severity Totals</h2>",
         '      <div class="metrics">',
-        (
-            f'        <div class="metric"><strong>'
-            f"{severity.get(SeverityLevel.ERROR, 0)}</strong>"
-            "Errors</div>"
-        ),
-        (
-            f'        <div class="metric"><strong>'
-            f"{severity.get(SeverityLevel.WARNING, 0)}</strong>"
-            "Warnings</div>"
-        ),
-        (
-            f'        <div class="metric"><strong>'
-            f"{severity.get(SeverityLevel.INFORMATION, 0)}</strong>"
-            "Information</div>"
-        ),
+        (f'        <div class="metric"><strong>{severity.get(SeverityLevel.ERROR, 0)}</strong>Errors</div>'),
+        (f'        <div class="metric"><strong>{severity.get(SeverityLevel.WARNING, 0)}</strong>Warnings</div>'),
+        (f'        <div class="metric"><strong>{severity.get(SeverityLevel.INFORMATION, 0)}</strong>Information</div>'),
         "      </div>",
         "    </section>",
     ]
@@ -219,12 +250,12 @@ def _overview_run_rows(
         cmd = " ".join(escape_fn(part) for part in command_parts)
         rows.append(
             "          <tr>"
-            + f"<td>{escape_fn(key)}</td>"
-            + f"<td>{data.get('errors', 0)}</td>"
-            + f"<td>{data.get('warnings', 0)}</td>"
-            + f"<td>{data.get('information', 0)}</td>"
-            + f"<td>{data.get('total', 0)}</td>"
-            + f"<td><code>{cmd}</code></td></tr>"
+            f"<td>{escape_fn(key)}</td>"
+            f"<td>{data.get('errors', 0)}</td>"
+            f"<td>{data.get('warnings', 0)}</td>"
+            f"<td>{data.get('information', 0)}</td>"
+            f"<td>{data.get('total', 0)}</td>"
+            f"<td><code>{cmd}</code></td></tr>"
         )
     return rows
 
@@ -242,8 +273,7 @@ def _overview_category_section(
     ]
     if categories:
         lines.extend([
-            f"          <tr><td>{escape_fn(key)}</td><td>{value}</td></tr>"
-            for key, value in categories.items()
+            f"          <tr><td>{escape_fn(key)}</td><td>{value}</td></tr>" for key, value in categories.items()
         ])
     else:
         lines.append('          <tr><td colspan="2"><em>No categories recorded</em></td></tr>')
@@ -273,9 +303,11 @@ def _render_engines_tab(context: _DashboardContext) -> list[str]:
             include_paths = _coerce_str_list(options.get("include"))
             exclude_paths = _coerce_str_list(options.get("exclude"))
             overrides = _coerce_override_list(options.get("overrides"))
-            lines.append('    <details class="engine-options" open>')
-            lines.append(f"      <summary><strong>{h(key)}</strong></summary>")
-            lines.append("      <ul>")
+            lines.extend((
+                '    <details class="engine-options" open>',
+                f"      <summary><strong>{h(key)}</strong></summary>",
+                "      <ul>",
+            ))
             if profile is not None:
                 lines.append(f"        <li>Profile: <code>{h(str(profile))}</code></li>")
             if config_file is not None:
@@ -285,16 +317,12 @@ def _render_engines_tab(context: _DashboardContext) -> list[str]:
             include_html = _format_code_list(include_paths, h) if include_paths else "—"
             lines.append("        <li>Include paths: " + include_html + "</li>")
             exclude_html = _format_code_list(exclude_paths, h) if exclude_paths else "—"
-            lines.append("        <li>Exclude paths: " + exclude_html + "</li>")
-            lines.append("        <li>Folder overrides:<ul>")
+            lines.extend(("        <li>Exclude paths: " + exclude_html + "</li>", "        <li>Folder overrides:<ul>"))
             if overrides:
-                for entry in overrides:
-                    lines.append(f"          <li>{_format_override_html(entry, h)}</li>")
+                lines.extend(f"          <li>{_format_override_html(entry, h)}</li>" for entry in overrides)
             else:
                 lines.append("          <li><em>None</em></li>")
-            lines.append("        </ul></li>")
-            lines.append("      </ul>")
-            lines.append("    </details>")
+            lines.extend(("        </ul></li>", "      </ul>", "    </details>"))
     else:
         lines.append("    <p>No engine data recorded.</p>")
     lines.append("  </section>")
@@ -427,7 +455,7 @@ def _render_rule_file_details(context: _DashboardContext) -> list[str]:
 
 def _coerce_str_list(value: object) -> list[str]:
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        items = cast(Sequence[object], value)
+        items = cast("Sequence[object]", value)
         return [str(item) for item in items]
     return []
 
@@ -435,22 +463,25 @@ def _coerce_str_list(value: object) -> list[str]:
 def _coerce_override_list(value: object) -> list[OverrideEntry]:
     entries: list[OverrideEntry] = []
     if isinstance(value, Sequence):
-        for entry in cast(Sequence[object], value):
-            if isinstance(entry, dict):
-                entries.append(cast(OverrideEntry, entry))
+        entries.extend(
+            cast("OverrideEntry", entry) for entry in cast("Sequence[object]", value) if isinstance(entry, dict)
+        )
     return entries
 
 
 def _as_mapping(value: object) -> dict[str, Any]:
     if isinstance(value, dict):
-        return cast(dict[str, Any], value)
-    return cast(dict[str, Any], {})
+        return cast("dict[str, Any]", value)
+    return cast("dict[str, Any]", {})
+
+
+READINESS_PREVIEW_LIMIT: Final[int] = 12
 
 
 def _render_readiness_tab(context: _DashboardContext) -> list[str]:
     h = context.escape
     readiness = context.readiness
-    strict = cast(dict[ReadinessStatus, list[dict[str, object]]], readiness.get("strict", {}))
+    strict = cast("dict[ReadinessStatus, list[dict[str, object]]]", readiness.get("strict", {}))
     ready_list = strict.get(ReadinessStatus.READY, [])
     close_list = strict.get(ReadinessStatus.CLOSE, [])
     blocked_list = strict.get(ReadinessStatus.BLOCKED, [])
@@ -472,8 +503,8 @@ def _render_readiness_tab(context: _DashboardContext) -> list[str]:
             f"    <details open><summary><strong>{label}</strong> ({len(entries)})</summary>",
         )
         lines.append("      <ul>")
-        for entry in entries[:12]:
-            notes_list = cast(list[str], entry.get("notes") or entry.get("recommendations") or [])
+        for entry in entries[:READINESS_PREVIEW_LIMIT]:
+            notes_list = cast("list[str]", entry.get("notes") or entry.get("recommendations") or [])
             note_text = f" — {', '.join(notes_list)}" if notes_list else ""
             li = (
                 "        <li><code>"
@@ -481,8 +512,10 @@ def _render_readiness_tab(context: _DashboardContext) -> list[str]:
                 f"(diagnostics={entry.get('diagnostics', 0)}){note_text}</li>"
             )
             lines.append(li)
-        if len(entries) > 12:
-            lines.append(f"        <li>… plus {len(entries) - 12} more</li>")
+        if len(entries) > READINESS_PREVIEW_LIMIT:
+            lines.append(
+                f"        <li>… plus {len(entries) - READINESS_PREVIEW_LIMIT} more</li>",
+            )
         lines.append("      </ul>")
         lines.append("    </details>")
 
@@ -492,16 +525,14 @@ def _render_readiness_tab(context: _DashboardContext) -> list[str]:
 
     readiness_options = readiness.get("options", {})
     if readiness_options:
-        lines.append("    <section>")
-        lines.append("      <h3>Per-option readiness</h3>")
-        lines.append(
-            (
-                "      <table><thead><tr><th>Option</th><th>Ready</th>"
-                "<th>Close</th><th>Blocked</th><th>Close threshold</th></tr>"
-                "</thead><tbody>"
-            ),
-        )
-        label_lookup = cast(dict[str, str], CATEGORY_LABELS)
+        lines.extend((
+            "    <section>",
+            "      <h3>Per-option readiness</h3>",
+            "      <table><thead><tr><th>Option</th><th>Ready</th>"
+            "<th>Close</th><th>Blocked</th><th>Close threshold</th></tr>"
+            "</thead><tbody>",
+        ))
+        label_lookup = cast("dict[str, str]", CATEGORY_LABELS)
         for category, payload in readiness_options.items():
             label_key = str(category)
             label = label_lookup.get(label_key, label_key)
@@ -538,10 +569,7 @@ def _render_runs_tab(context: _DashboardContext) -> list[str]:
             lines.extend(
                 [
                     '    <details class="run-log" open>',
-                    (
-                        f"      <summary><strong>{h(key)}</strong> · command: "
-                        f"<code>{cmd}</code></summary>"
-                    ),
+                    (f"      <summary><strong>{h(key)}</strong> · command: <code>{cmd}</code></summary>"),
                     "      <ul>",
                     f"        <li>Errors: {data.get('errors', 0)}</li>",
                     f"        <li>Warnings: {data.get('warnings', 0)}</li>",

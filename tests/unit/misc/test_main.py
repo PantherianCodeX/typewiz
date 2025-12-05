@@ -19,7 +19,7 @@ def test_main_module_invokes_cli(monkeypatch: pytest.MonkeyPatch) -> None:
         return 5
 
     monkeypatch.setattr("typewiz.cli.main", fake_main)
-    with pytest.raises(SystemExit) as excinfo:
+    with pytest.raises(SystemExit, match=r".*") as excinfo:
         _ = runpy.run_module("typewiz.__main__", run_name="__main__")
     assert excinfo.value.code == 5
     assert called["hit"] is True

@@ -1,5 +1,13 @@
 # Copyright (c) 2024 PantherianCodeX
 
+"""Aggregate and summarize type checking diagnostics from run results.
+
+This module processes raw diagnostic data from type checking tools and aggregates
+it into structured summaries at the file and folder levels. It categorizes issues,
+tracks counts by severity and rule, and generates recommendations for typing
+improvements.
+"""
+
 from __future__ import annotations
 
 import operator
@@ -21,11 +29,29 @@ if TYPE_CHECKING:
 
 
 def _default_file_diagnostics() -> list[FileDiagnostic]:
+    """Create default empty list for file diagnostics.
+
+    Returns:
+        Empty list of FileDiagnostic objects.
+    """
     return []
 
 
 @dataclass(slots=True)
 class FileSummary:
+    """Summary of type checking diagnostics for a single file.
+
+    Tracks error counts by severity level and stores individual diagnostic
+    messages for detailed reporting.
+
+    Attributes:
+        path: Relative path to the file being summarized.
+        errors: Count of error-level diagnostics.
+        warnings: Count of warning-level diagnostics.
+        information: Count of information-level diagnostics.
+        diagnostics: List of individual diagnostic entries.
+    """
+
     path: str
     errors: int = 0
     warnings: int = 0
@@ -34,15 +60,41 @@ class FileSummary:
 
 
 def _default_counter_str() -> Counter[str]:
+    """Create default empty Counter for string keys.
+
+    Returns:
+        Empty Counter with string keys.
+    """
     return Counter()
 
 
 def _default_counter_category() -> Counter[CategoryKey]:
+    """Create default empty Counter for category keys.
+
+    Returns:
+        Empty Counter with CategoryKey keys.
+    """
     return Counter()
 
 
 @dataclass(slots=True)
 class FolderSummary:
+    """Summary of type checking diagnostics for a folder.
+
+    Aggregates diagnostic counts and categorizes issues for all files within
+    a folder at a specific depth. Generates recommendations based on the
+    issue profile.
+
+    Attributes:
+        path: Relative path to the folder being summarized.
+        depth: Depth level in the folder hierarchy (1 = top level).
+        errors: Count of error-level diagnostics.
+        warnings: Count of warning-level diagnostics.
+        information: Count of information-level diagnostics.
+        code_counts: Counter of diagnostic codes (e.g., "attr-defined").
+        category_counts: Counter of issue categories (e.g., "unknownChecks").
+    """
+
     path: str
     depth: int
     errors: int = 0
@@ -52,16 +104,36 @@ class FolderSummary:
     category_counts: Counter[CategoryKey] = field(default_factory=_default_counter_category)
 
     def _unknown_count(self) -> int:
+        """Calculate count of unknown-type related issues.
+
+        Returns:
+            Number of unknown-type issues in this folder.
+        """
         if self.category_counts:
             return self.category_counts.get("unknownChecks", 0)
         return sum(count for code, count in self.code_counts.items() if "unknown" in code.lower())
 
     def _optional_count(self) -> int:
+        """Calculate count of optional-check related issues.
+
+        Returns:
+            Number of optional-check issues in this folder.
+        """
         if self.category_counts:
             return self.category_counts.get("optionalChecks", 0)
         return sum(count for code, count in self.code_counts.items() if "optional" in code.lower())
 
     def to_folder_entry(self) -> FolderEntry:
+        """Convert this summary to a FolderEntry TypedDict.
+
+        Generates recommendations based on the diagnostic profile:
+        - Strict-ready if no issues
+        - Suggestions for enabling unknown/optional checks
+        - Top 3 most common rules with counts
+
+        Returns:
+            FolderEntry dictionary containing all summary data and recommendations.
+        """
         total = self.errors + self.warnings + self.information
         unknown = self._unknown_count()
         optional = self._optional_count()
@@ -100,10 +172,19 @@ class FolderSummary:
 
 
 def _canonical_category_mapping(
-    mapping: Mapping[CategoryKey, Iterable[str]]
-    | Mapping[CategoryName, Iterable[str]]
-    | Mapping[str, Iterable[str]],
+    mapping: Mapping[CategoryKey, Iterable[str]] | Mapping[CategoryName, Iterable[str]] | Mapping[str, Iterable[str]],
 ) -> dict[CategoryKey, tuple[str, ...]]:
+    """Normalize and deduplicate category mapping patterns.
+
+    Converts category keys to canonical form, lowercases all patterns,
+    and removes duplicates while preserving order.
+
+    Args:
+        mapping: Dictionary mapping category keys/names to pattern lists.
+
+    Returns:
+        Canonical mapping with CategoryKey keys and deduplicated lowercase pattern tuples.
+    """
     canonical: dict[CategoryKey, tuple[str, ...]] = {}
     for key, raw_values in mapping.items():
         category_key = coerce_category_key(key)
@@ -139,6 +220,14 @@ _FALLBACK_CATEGORY_LOOKUPS: Final[tuple[tuple[CategoryKey, tuple[str, ...]], ...
 def _build_category_lookup(
     mapping: Mapping[CategoryKey, Iterable[str]],
 ) -> tuple[tuple[CategoryKey, tuple[str, ...]], ...]:
+    """Build tuple of category-pattern pairs for fast lookup.
+
+    Args:
+        mapping: Dictionary mapping category keys to pattern iterables.
+
+    Returns:
+        Tuple of (category, patterns) pairs with empty patterns filtered out.
+    """
     lookups: list[tuple[CategoryKey, tuple[str, ...]]] = []
     for category, patterns in mapping.items():
         cleaned = tuple(pattern for pattern in patterns if pattern)
@@ -148,14 +237,35 @@ def _build_category_lookup(
 
 
 class _Categoriser:
+    """Categorizes diagnostic codes into semantic categories.
+
+    Uses custom and fallback pattern matching with caching for performance.
+    """
+
     __slots__ = ("_cache", "_custom_lookup")
 
     def __init__(self, mapping: Mapping[CategoryKey, Iterable[str]]) -> None:
+        """Initialize categoriser with custom category patterns.
+
+        Args:
+            mapping: Custom category to pattern mapping.
+        """
         super().__init__()
         self._custom_lookup = _build_category_lookup(mapping)
         self._cache: dict[str, CategoryKey] = {}
 
     def categorise(self, code: str | None) -> CategoryKey:
+        """Categorize a diagnostic code into a semantic category.
+
+        First checks custom patterns, then falls back to default patterns.
+        Results are cached for performance.
+
+        Args:
+            code: Diagnostic code to categorize (e.g., "attr-defined").
+
+        Returns:
+            CategoryKey representing the semantic category.
+        """
         if not code:
             return _GENERAL_CATEGORY
         cached = self._cache.get(code)
@@ -175,10 +285,27 @@ class _Categoriser:
 
 
 def _normalise_rel_path(path: Path) -> str:
+    """Normalize path separators to forward slashes.
+
+    Args:
+        path: Path to normalize.
+
+    Returns:
+        String path with forward slashes.
+    """
     return str(path).replace("\\", "/")
 
 
 def _ensure_file_summary(files: dict[str, FileSummary], rel_path: str) -> FileSummary:
+    """Get or create a FileSummary for the given path.
+
+    Args:
+        files: Dictionary of existing file summaries.
+        rel_path: Relative path to the file.
+
+    Returns:
+        FileSummary for the given path, newly created if needed.
+    """
     summary = files.get(rel_path)
     if summary is None:
         summary = FileSummary(path=rel_path)
@@ -191,6 +318,14 @@ _MAX_PATH_CACHE_SIZE: Final[int] = 4096
 
 
 def _split_rel_path(rel_path: str) -> tuple[str, ...]:
+    """Split path into parts with caching for performance.
+
+    Args:
+        rel_path: Relative path string to split.
+
+    Returns:
+        Tuple of path components, excluding "." and empty strings.
+    """
     cached = _PATH_PART_CACHE.get(rel_path)
     if cached is not None:
         return cached
@@ -212,6 +347,21 @@ def _update_file_summary(  # noqa: PLR0913
     category_totals: Counter[CategoryKey],
     categoriser: _Categoriser,
 ) -> CategoryKey:
+    """Update file summary and global totals with a new diagnostic.
+
+    Args:
+        summary: FileSummary to update.
+        severity: Severity level of the diagnostic.
+        code: Diagnostic code (e.g., "attr-defined").
+        diagnostic: FileDiagnostic entry to append.
+        severity_totals: Global counter for severity levels.
+        rule_totals: Global counter for rule names.
+        category_totals: Global counter for categories.
+        categoriser: Categoriser instance for code categorization.
+
+    Returns:
+        CategoryKey assigned to this diagnostic.
+    """
     if severity is SeverityLevel.ERROR:
         summary.errors += 1
     elif severity is SeverityLevel.WARNING:
@@ -232,6 +382,19 @@ def _folder_summaries_for_path(
     rel_path: str,
     max_depth: int,
 ) -> Iterable[FolderSummary]:
+    """Get or create FolderSummary objects for all ancestor folders.
+
+    Creates folder summaries for each depth level from 1 to max_depth
+    along the path hierarchy.
+
+    Args:
+        folder_levels: Nested dict mapping depth -> folder path -> FolderSummary.
+        rel_path: Relative path to the file.
+        max_depth: Maximum folder depth to track.
+
+    Yields:
+        FolderSummary for each ancestor folder up to max_depth.
+    """
     parts = _split_rel_path(rel_path)
     for depth in range(1, min(len(parts), max_depth) + 1):
         folder = "/".join(parts[:depth])
@@ -250,6 +413,14 @@ def _update_folder_summary(
     code: str | None,
     category: CategoryKey,
 ) -> None:
+    """Update folder summary counters with a diagnostic.
+
+    Args:
+        bucket: FolderSummary to update.
+        severity: Severity level of the diagnostic.
+        code: Diagnostic code.
+        category: Category assigned to the diagnostic.
+    """
     if severity is SeverityLevel.ERROR:
         bucket.errors += 1
     elif severity is SeverityLevel.WARNING:
@@ -262,6 +433,17 @@ def _update_folder_summary(
 
 
 def _finalise_file_entries(files: dict[str, FileSummary]) -> list[FileEntry]:
+    """Convert FileSummary objects to FileEntry dicts, sorted and ordered.
+
+    Sorts diagnostics within each file by line and column, then sorts
+    files by path.
+
+    Args:
+        files: Dictionary of FileSummary objects keyed by path.
+
+    Returns:
+        List of FileEntry dicts sorted by path.
+    """
     for summary in files.values():
         summary.diagnostics.sort(key=operator.itemgetter("line", "column"))
     file_list = sorted(files.values(), key=lambda item: item.path)
@@ -283,6 +465,14 @@ def _finalise_file_entries(files: dict[str, FileSummary]) -> list[FileEntry]:
 def _finalise_folder_entries(
     folder_levels: dict[int, dict[str, FolderSummary]],
 ) -> list[FolderEntry]:
+    """Convert FolderSummary objects to FolderEntry dicts, sorted by depth and path.
+
+    Args:
+        folder_levels: Nested dict mapping depth -> folder path -> FolderSummary.
+
+    Returns:
+        List of FolderEntry dicts sorted by depth then path.
+    """
     folder_entries: list[FolderEntry] = []
     for depth in sorted(folder_levels):
         entries = sorted(folder_levels[depth].values(), key=lambda item: item.path)
@@ -297,29 +487,47 @@ def _build_summary_counts(
     rule_totals: Counter[RuleName],
     category_totals: Counter[CategoryKey],
 ) -> dict[str, object]:
+    """Build summary statistics dictionary from run results and counters.
+
+    Args:
+        run: RunResult containing diagnostics.
+        severity_totals: Counter of diagnostics by severity.
+        rule_totals: Counter of diagnostics by rule name.
+        category_totals: Counter of diagnostics by category.
+
+    Returns:
+        Dictionary with summary statistics including breakdowns by severity, rule, and category.
+    """
     return {
         "errors": sum(1 for diag in run.diagnostics if diag.severity is SeverityLevel.ERROR),
         "warnings": sum(1 for diag in run.diagnostics if diag.severity is SeverityLevel.WARNING),
-        "information": sum(
-            1 for diag in run.diagnostics if diag.severity is SeverityLevel.INFORMATION
-        ),
+        "information": sum(1 for diag in run.diagnostics if diag.severity is SeverityLevel.INFORMATION),
         "total": len(run.diagnostics),
         "severityBreakdown": {
-            severity: severity_totals[severity]
-            for severity in sorted(severity_totals, key=lambda item: item.value)
+            severity: severity_totals[severity] for severity in sorted(severity_totals, key=lambda item: item.value)
         },
         "ruleCounts": {str(key): rule_totals[key] for key in sorted(rule_totals, key=str)},
-        "categoryCounts": {
-            category: category_totals[category] for category in sorted(category_totals, key=str)
-        },
+        "categoryCounts": {category: category_totals[category] for category in sorted(category_totals, key=str)},
     }
 
 
 def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
+    """Aggregate and summarize diagnostics from a type checking run.
+
+    Processes all diagnostics to create:
+    - Overall summary statistics
+    - Per-file diagnostic details
+    - Per-folder aggregations with recommendations
+
+    Args:
+        run: RunResult containing diagnostics and configuration.
+        max_depth: Maximum folder depth to aggregate (default: 3).
+
+    Returns:
+        AggregatedData containing summary, file entries, and folder entries.
+    """
     files: dict[str, FileSummary] = {}
-    folder_levels: dict[int, dict[str, FolderSummary]] = {
-        depth: {} for depth in range(1, max_depth + 1)
-    }
+    folder_levels: dict[int, dict[str, FolderSummary]] = {depth: {} for depth in range(1, max_depth + 1)}
 
     severity_totals: Counter[SeverityLevel] = Counter()
     rule_totals: Counter[RuleName] = Counter()

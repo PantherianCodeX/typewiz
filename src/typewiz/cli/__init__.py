@@ -13,15 +13,15 @@ from .helpers.formatting import (
 )
 
 try:  # pragma: no cover - defensive import guard
-    from .. import __version__ as _pkg_version
-except Exception:  # pragma: no cover - fallback for partial initialisation
+    from typewiz import __version__ as _pkg_version
+except Exception:  # pragma: no cover  # noqa: BLE001 JUSTIFIED: fallback for partial initialisation
     _pkg_version = "0.0.0"
 
 __version__ = _pkg_version
 
 __all__ = [
-    "__version__",
     "SUMMARY_FIELD_CHOICES",
+    "__version__",
     "main",
     "print_readiness_summary",
     "print_summary",

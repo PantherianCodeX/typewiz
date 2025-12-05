@@ -4,15 +4,23 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from tests.fixtures.builders import TestDataBuilder
-from typewiz.core.summary_types import SummaryData
+
+if TYPE_CHECKING:
+    from typewiz.core.summary_types import SummaryData
 
 
 @pytest.fixture(scope="session")
 def test_data_builder() -> TestDataBuilder:
-    """Provide a reusable test data builder for unit tests."""
+    """Provide a reusable test data builder for unit tests.
+
+    Returns:
+        Shared ``TestDataBuilder`` instance.
+    """
     return TestDataBuilder()
 
 

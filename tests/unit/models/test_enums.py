@@ -62,22 +62,22 @@ def test_mode_from_str_accepts_variants(value: str, expected: Mode) -> None:
 
 
 def test_mode_from_str_rejects_invalid() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown mode"):
         _ = Mode.from_str("invalid-mode")
 
 
 def test_readiness_status_from_str_invalid() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown readiness status"):
         _ = ReadinessStatus.from_str("unknown")
 
 
 def test_data_format_from_str_invalid() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown data format"):
         _ = DataFormat.from_str("binary")
 
 
 def test_summary_tab_name_invalid() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown summary tab"):
         _ = SummaryTabName.from_str("invalid")
 
 
@@ -145,7 +145,7 @@ def test_various_enum_parsers_accept_values(value: str, enum_cls: EnumType) -> N
     ],
 )
 def test_various_enums_reject_unknown_values(enum_cls: EnumType) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not-a-real-option"):
         _ = enum_cls.from_str("not-a-real-option")
 
 
@@ -157,7 +157,7 @@ def test_severity_level_coerce_returns_existing_instance() -> None:
 def test_clone_override_entries_returns_copies() -> None:
     entries: list[OverrideEntry] = [
         cast(
-            OverrideEntry,
+            "OverrideEntry",
             {"path": "apps", "include": [RelPath("pkg")], "pluginArgs": ["--strict"]},
         ),
     ]

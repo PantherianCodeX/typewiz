@@ -5,13 +5,17 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence, Set
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.engines.execution import run_mypy, run_pyright
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from collections.abc import Set as AbstractSet
 
 pytestmark = [pytest.mark.unit, pytest.mark.engine]
 
@@ -45,7 +49,7 @@ def test_run_pyright_parses_payload_and_warns_on_summary_mismatch(
     def fake_run_command(
         argv: Sequence[str],
         cwd: Path,
-        allowed: Set[str],
+        allowed: AbstractSet[str],
     ) -> _CommandResult:
         assert "pyright" in argv[0]
         assert cwd == tmp_path
@@ -62,6 +66,7 @@ def test_run_pyright_parses_payload_and_warns_on_summary_mismatch(
         tool_total: int,
         **kwargs: object,
     ) -> None:
+        assert kwargs == {}
         captured_warning["payload"] = (
             parsed_errors,
             parsed_warnings,
@@ -92,7 +97,7 @@ def test_run_mypy_parses_stdout_and_stderr(tmp_path: Path, monkeypatch: pytest.M
     def fake_run_command(
         argv: Sequence[str],
         cwd: Path,
-        allowed: Set[str],
+        allowed: AbstractSet[str],
     ) -> _CommandResult:
         assert cwd == tmp_path
         assert argv[0] == "python"

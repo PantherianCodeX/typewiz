@@ -30,9 +30,7 @@ def _collect_internal_imports(source: Path) -> list[str]:
     offenders: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name.startswith("typewiz._internal"):
-                    offenders.append(alias.name)
+            offenders.extend(alias.name for alias in node.names if alias.name.startswith("typewiz._internal"))
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
             if module.startswith("typewiz._internal"):

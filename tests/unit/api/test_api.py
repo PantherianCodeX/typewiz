@@ -4,8 +4,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -28,6 +27,10 @@ from typewiz.core.type_aliases import EngineName, ProfileName, RunnerName, ToolN
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.manifest.typed import ManifestData, ToolSummary
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
 
 pytestmark = pytest.mark.unit
 
@@ -120,7 +123,8 @@ def test_run_audit_programmatic(
     assert ReadinessStatus.CLOSE in buckets
     unknown_close_entries = buckets.get(ReadinessStatus.CLOSE, ())
     counts = [entry["count"] for entry in unknown_close_entries if "count" in entry]
-    assert counts and sum(counts) >= 1
+    assert counts
+    assert sum(counts) >= 1
 
 
 def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -166,8 +170,10 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     manifest_runs = manifest["runs"]
     run_payload = manifest_runs[0]
     engine_options = run_payload["engineOptions"]
-    assert "profile" in engine_options and engine_options["profile"] == "strict"
-    assert "include" in engine_options and engine_options["include"] == ["extra"]
+    assert "profile" in engine_options
+    assert engine_options["profile"] == "strict"
+    assert "include" in engine_options
+    assert engine_options["include"] == ["extra"]
 
 
 def test_run_audit_respects_folder_overrides(
@@ -231,12 +237,15 @@ exclude = ["legacy"]
     manifest_runs = manifest["runs"]
     run_payload = next(run for run in manifest_runs if run["mode"] == "full")
     engine_options = run_payload["engineOptions"]
-    assert "profile" in engine_options and engine_options["profile"] == "strict"
-    assert "pluginArgs" in engine_options and "--billing" in engine_options["pluginArgs"]
+    assert "profile" in engine_options
+    assert engine_options["profile"] == "strict"
+    assert "pluginArgs" in engine_options
+    assert "--billing" in engine_options["pluginArgs"]
     overrides = engine_options.get("overrides", [])
     assert overrides
     first_override = overrides[0]
-    assert "path" in first_override and first_override["path"].endswith("packages/billing")
+    assert "path" in first_override
+    assert first_override["path"].endswith("packages/billing")
     assert first_override.get("profile") == "strict"
     assert "--billing" in first_override.get("pluginArgs", [])
 
@@ -290,7 +299,8 @@ def test_run_audit_cache_preserves_tool_summary(
     first_manifest_full = next(run for run in first_runs if run["mode"] == "full")
     assert "toolSummary" in first_manifest_full
     tool_summary = first_manifest_full["toolSummary"]
-    assert "total" in tool_summary and tool_summary["total"] == 1
+    assert "total" in tool_summary
+    assert tool_summary["total"] == 1
 
     second = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
     # cache hit should avoid new invocations
@@ -304,7 +314,8 @@ def test_run_audit_cache_preserves_tool_summary(
     cached_manifest_full = next(run for run in second_runs if run["mode"] == "full")
     assert "toolSummary" in cached_manifest_full
     cached_tool_summary = cached_manifest_full["toolSummary"]
-    assert "errors" in cached_tool_summary and cached_tool_summary["errors"] == 1
+    assert "errors" in cached_tool_summary
+    assert cached_tool_summary["errors"] == 1
 
 
 def test_api_exposes_dashboard_and_manifest_helpers(tmp_path: Path) -> None:
@@ -316,7 +327,8 @@ def test_api_exposes_dashboard_and_manifest_helpers(tmp_path: Path) -> None:
     }
     summary = api_build_summary(manifest)
     markdown = api_render_markdown(summary)
-    assert isinstance(markdown, str) and markdown
+    assert isinstance(markdown, str)
+    assert markdown
     html = api_render_html(summary)
     assert "<html" in html.lower()
     rendered = render_dashboard_summary(

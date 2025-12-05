@@ -7,19 +7,21 @@ from __future__ import annotations
 import json
 import logging
 import os
-from collections.abc import Generator
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-from pytest import CaptureFixture, MonkeyPatch, fixture
 
 from typewiz._internal.logging_utils import LOG_LEVELS, configure_logging, structured_extra
 from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from pathlib import Path
+
 pytestmark = pytest.mark.unit
 
 
-def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str]) -> None:
+def test_configure_logging_json_emits_structured_logs(capsys: pytest.CaptureFixture[str]) -> None:
     _ = configure_logging("json")
     logger = logging.getLogger("typewiz")
     logger.info(
@@ -33,8 +35,13 @@ def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str
             exit_code=0,
         ),
     )
+
+    def _raise_logging_failure() -> None:
+        message = "boom"
+        raise RuntimeError(message)
+
     try:
-        raise RuntimeError("boom")
+        _raise_logging_failure()
     except RuntimeError:
         logger.exception("broken")
     captured = capsys.readouterr()
@@ -56,7 +63,7 @@ def test_configure_logging_json_emits_structured_logs(capsys: CaptureFixture[str
     assert "exc_info" in exception_payload
 
 
-def test_configure_logging_respects_level(capsys: CaptureFixture[str]) -> None:
+def test_configure_logging_respects_level(capsys: pytest.CaptureFixture[str]) -> None:
     assert LOG_LEVELS == ("debug", "info", "warning", "error")
     _ = configure_logging("text", log_level="warning")
     logger = logging.getLogger("typewiz")
@@ -69,8 +76,8 @@ def test_configure_logging_respects_level(capsys: CaptureFixture[str]) -> None:
 
 
 def test_configure_logging_honors_env_overrides(
-    capsys: CaptureFixture[str],
-    monkeypatch: MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("TYPEWIZ_LOG_FORMAT", "json")
     monkeypatch.setenv("TYPEWIZ_LOG_LEVEL", "error")
@@ -97,14 +104,19 @@ def test_structured_extra_normalises_inputs(tmp_path: Path) -> None:
         run_id="pyright:current",
         details={"runs": 4},
     )
-    assert "mode" in extra and extra["mode"] is Mode.CURRENT
-    assert "counts" in extra and extra["counts"][SeverityLevel.ERROR] == 2
-    assert "manifest" in extra and extra["manifest"].endswith("typing_audit.json")
-    assert "run_id" in extra and extra["run_id"] == "pyright:current"
-    assert "details" in extra and extra["details"] == {"runs": 4}
+    assert "mode" in extra
+    assert extra["mode"] is Mode.CURRENT
+    assert "counts" in extra
+    assert extra["counts"][SeverityLevel.ERROR] == 2
+    assert "manifest" in extra
+    assert extra["manifest"].endswith("typing_audit.json")
+    assert "run_id" in extra
+    assert extra["run_id"] == "pyright:current"
+    assert "details" in extra
+    assert extra["details"] == {"runs": 4}
 
 
-@fixture(autouse=True)
+@pytest.fixture(autouse=True)
 def reset_typewiz_logging() -> Generator[None, None, None]:
     logger = logging.getLogger("typewiz")
     handlers = list(logger.handlers)

@@ -5,11 +5,14 @@
 from __future__ import annotations
 
 from argparse import Namespace
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from typewiz.cli.commands import cache as cache_cmd
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
 
@@ -34,9 +37,7 @@ def test_handle_clear_removes_directory(tmp_path: Path, monkeypatch: pytest.Monk
     assert not target.exists()
 
 
-def test_handle_clear_handles_missing_directory(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_handle_clear_handles_missing_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange
     args = Namespace(cache_action="clear", path=tmp_path / "missing", project_root=None)
 
@@ -54,5 +55,5 @@ def test_handle_clear_handles_missing_directory(
 
 def test_execute_cache_unknown_action() -> None:
     # Act / Assert
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = cache_cmd.execute_cache(Namespace(cache_action="invalid"))

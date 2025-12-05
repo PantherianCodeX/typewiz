@@ -71,7 +71,7 @@ def test_model_type_from_str_helpers() -> None:
     assert SignaturePolicy.from_str(" Warn ") is SignaturePolicy.WARN
     assert FailOnPolicy.from_str("ANY") is FailOnPolicy.ANY
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown log format"):
         _ = LogFormat.from_str("binary")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown data format"):
         _ = DataFormat.from_str("yaml")

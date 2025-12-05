@@ -5,14 +5,18 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, cast
+
+from typewiz.core.model_types import LogComponent
+from typewiz.logging import structured_extra
 
 from .process import python_executable, run_command
 
 logger: logging.Logger = logging.getLogger("typewiz.internal.versions")
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typewiz.core.type_aliases import ToolName
 
 __all__ = ["detect_tool_versions"]
@@ -30,7 +34,6 @@ def _safe_version_from_output(output: str) -> str | None:
 
 def detect_tool_versions(tools: Sequence[str | ToolName]) -> dict[str, str]:
     """Return a mapping of tool -> version by invoking their version commands."""
-
     versions: dict[str, str] = {}
     seen: set[str] = set()
     for tool in tools:
@@ -50,7 +53,7 @@ def detect_tool_versions(tools: Sequence[str | ToolName]) -> dict[str, str]:
                 ver = _safe_version_from_output(out)
                 if ver:
                     versions[name] = ver
-        except Exception as exc:
+        except (OSError, TypeError, ValueError) as exc:
             logger.debug(
                 "Failed to detect version for %s: %s",
                 name,
@@ -62,8 +65,5 @@ def detect_tool_versions(tools: Sequence[str | ToolName]) -> dict[str, str]:
 
 
 def _structured_extra(**kwargs: object) -> dict[str, object]:
-    from typewiz.core.model_types import LogComponent
-    from typewiz.logging import structured_extra
-
-    payload = structured_extra(LogComponent.SERVICES, **cast(dict[str, Any], kwargs))
-    return cast(dict[str, object], payload)
+    payload = structured_extra(LogComponent.SERVICES, **cast("dict[str, Any]", kwargs))
+    return cast("dict[str, object]", payload)

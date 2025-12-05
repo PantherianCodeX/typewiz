@@ -4,6 +4,24 @@
 
 from __future__ import annotations
 
-from . import audit, cache, engines, help, manifest, query, ratchet
+import importlib
+from typing import TYPE_CHECKING, Final
 
-__all__ = ["audit", "cache", "engines", "help", "manifest", "query", "ratchet"]
+if TYPE_CHECKING:
+    from types import ModuleType
+
+_EXPORTED_MODULES: Final[tuple[str, ...]] = ("audit", "cache", "engines", "help", "manifest", "query", "ratchet")
+__all__ = list(_EXPORTED_MODULES)
+
+
+def __getattr__(name: str) -> ModuleType:
+    if name not in _EXPORTED_MODULES:
+        message = f"module '{__name__}' has no attribute '{name}'"
+        raise AttributeError(message)
+    module = importlib.import_module(f"{__name__}.{name}")
+    globals()[name] = module
+    return module
+
+
+def __dir__() -> list[str]:
+    return sorted(__all__)

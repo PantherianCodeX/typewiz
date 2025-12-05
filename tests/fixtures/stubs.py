@@ -4,15 +4,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from typewiz.core.model_types import Mode
 from typewiz.core.type_aliases import ToolName
-from typewiz.core.types import Diagnostic, RunResult
 from typewiz.engines.base import EngineContext, EngineResult
-from typewiz.manifest.typed import ToolSummary
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from typewiz.core.types import Diagnostic, RunResult
+    from typewiz.manifest.typed import ToolSummary
 
 __all__ = ["AuditStubEngine", "EngineInvocation", "RecordingEngine", "StubEngine"]
 
@@ -23,6 +26,7 @@ class StubEngine:
     name: str
 
     def __init__(self, result: RunResult, expected_profile: str | None = None) -> None:
+        """Initialise the stub with a canned ``RunResult`` outcome."""
         super().__init__()
         self.name = "stub"
         self._result = result
@@ -57,7 +61,7 @@ class StubEngine:
     def category_mapping(self) -> dict[str, list[str]]:
         return {}
 
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+    def fingerprint_targets(self, _context: EngineContext, _paths: Sequence[str]) -> Sequence[str]:
         return []
 
 
@@ -67,6 +71,7 @@ class AuditStubEngine:
     name: str
 
     def __init__(self, result: RunResult) -> None:
+        """Prime the stub engine with a single ``RunResult`` payload."""
         super().__init__()
         self.name = "stub"
         self._result = result
@@ -83,9 +88,7 @@ class AuditStubEngine:
                 diagnostics=[],
             )
         tool_summary = (
-            cast(ToolSummary, dict(self._result.tool_summary))
-            if self._result.tool_summary is not None
-            else None
+            cast("ToolSummary", dict(self._result.tool_summary)) if self._result.tool_summary is not None else None
         )
         return EngineResult(
             engine=tool_name,
@@ -100,7 +103,7 @@ class AuditStubEngine:
     def category_mapping(self) -> dict[str, list[str]]:
         return {"unknownChecks": ["reportGeneralTypeIssues"]}
 
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+    def fingerprint_targets(self, _context: EngineContext, _paths: Sequence[str]) -> Sequence[str]:
         return []
 
 
@@ -132,6 +135,7 @@ class RecordingEngine:
         current_exit_code: int = 0,
         category_mapping: dict[str, list[str]] | None = None,
     ) -> None:
+        """Set up the recording engine with canned diagnostics and metadata."""
         super().__init__()
         self._diagnostics = list(diagnostics or [])
         self._tool_summary_on_full = tool_summary_on_full
@@ -150,7 +154,7 @@ class RecordingEngine:
         self.invocations.append(invocation)
         exit_code = self._full_exit_code if context.mode is Mode.FULL else self._current_exit_code
         tool_summary = (
-            cast(ToolSummary, dict(self._tool_summary_on_full))
+            cast("ToolSummary", dict(self._tool_summary_on_full))
             if context.mode is Mode.FULL and self._tool_summary_on_full is not None
             else None
         )
@@ -167,5 +171,5 @@ class RecordingEngine:
     def category_mapping(self) -> dict[str, list[str]]:
         return dict(self._category_mapping)
 
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[str]) -> Sequence[str]:
+    def fingerprint_targets(self, _context: EngineContext, _paths: Sequence[str]) -> Sequence[str]:
         return []

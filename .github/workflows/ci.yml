@@ -101,6 +101,74 @@ jobs:
               ;;
           esac
 
+  security:
+    name: Security ${{ matrix.check_name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - check_name: "Bandit"
+            run: |
+              mkdir -p out/security
+              .venv/bin/bandit -c pyproject.toml -r src/ -f json -o out/security/bandit-report.json || true
+          - check_name: "Safety"
+            run: |
+              mkdir -p out/security
+              .venv/bin/safety scan --json > out/security/safety-report.json || true
+          - check_name: "Pylint"
+            run: |
+              mkdir -p out/lint
+              .venv/bin/pylint --output-format=json --reports=n src/ > out/lint/pylint.json || true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache virtualenv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-
+
+      - name: Install dependencies
+        run: |
+          if [ ! -d .venv ]; then
+            python -m venv .venv
+          fi
+          PY_EXE=.venv/bin/python
+          PIP_EXE=.venv/bin/pip
+          $PY_EXE -m pip install -U pip
+          $PIP_EXE install -r requirements-dev.txt
+
+      - name: Run ${{ matrix.check_name }}
+        run: ${{ matrix.run }}
+        continue-on-error: true
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports-${{ matrix.check_name }}
+          path: out/
+          if-no-files-found: ignore
+
   tests-matrix:
     needs: quality
     strategy:

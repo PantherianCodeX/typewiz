@@ -1,5 +1,12 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Dashboard summary builder for typewiz.
+
+This module handles the construction of dashboard summaries from manifest data.
+It processes type checking runs, aggregates diagnostics, computes readiness metrics,
+and structures the data for rendering in HTML or Markdown formats.
+"""
+
 from __future__ import annotations
 
 import json
@@ -7,8 +14,7 @@ import logging
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from typewiz.config.validation import (
     coerce_int,
@@ -44,7 +50,6 @@ from typewiz.core.type_aliases import CategoryKey, RelPath, RunId
 from typewiz.exceptions import TypewizTypeError
 from typewiz.logging import structured_extra
 from typewiz.manifest.loader import load_manifest_data
-from typewiz.manifest.typed import EngineOptionsEntry, ManifestData, ToolSummary
 from typewiz.readiness.compute import (
     DEFAULT_CLOSE_THRESHOLD,
     ReadinessEntry,
@@ -52,13 +57,28 @@ from typewiz.readiness.compute import (
     ReadinessPayload,
     compute_readiness,
 )
-from typewiz.runtime import JSONValue
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from typewiz.manifest.typed import EngineOptionsEntry, ManifestData, ToolSummary
+    from typewiz.runtime import JSONValue
 
 logger: logging.Logger = logging.getLogger("typewiz.dashboard")
 
 
 @dataclass(slots=True)
 class _FolderAccumulators:
+    """Accumulates folder-level diagnostic statistics across multiple runs.
+
+    Attributes:
+        totals: Mapping of folder paths to severity level counters.
+        counts: Number of runs that included diagnostics for each folder.
+        code_totals: Mapping of folder paths to diagnostic code counters.
+        category_totals: Mapping of folder paths to category counters.
+        recommendations: Set of recommendations for each folder path.
+    """
+
     totals: dict[str, Counter[str]]
     counts: dict[str, int]
     code_totals: dict[str, Counter[str]]
@@ -66,6 +86,12 @@ class _FolderAccumulators:
     recommendations: dict[str, set[str]]
 
     def build_entries(self) -> list[ReadinessEntry]:
+        """Build readiness entries from accumulated folder statistics.
+
+        Returns:
+            List of readiness entries containing aggregated diagnostic counts,
+            code counts, category counts, and recommendations for each folder.
+        """
         entries: list[ReadinessEntry] = []
         for path, counts in self.totals.items():
             entries.append(
@@ -84,6 +110,18 @@ class _FolderAccumulators:
 
 @dataclass(slots=True)
 class _SummaryState:
+    """Maintains aggregated state while building dashboard summaries.
+
+    Attributes:
+        run_summary: Summary data for each type checking run.
+        severity_totals: Total diagnostic counts by severity level.
+        rule_totals: Total diagnostic counts by rule code.
+        category_totals: Total diagnostic counts by category.
+        folder_stats: Accumulated folder-level statistics.
+        file_entries: List of tuples containing file path and diagnostic counts.
+        rule_file_counts: Mapping of diagnostic rules to file occurrence counters.
+    """
+
     run_summary: dict[RunId, SummaryRunEntry]
     severity_totals: Counter[SeverityLevel]
     rule_totals: Counter[str]
@@ -95,6 +133,15 @@ class _SummaryState:
 
 @dataclass(slots=True)
 class _HotspotPayload:
+    """Container for hotspot data used in dashboard tabs.
+
+    Attributes:
+        top_rules: Top diagnostic rules by occurrence count.
+        top_folders: Top folders by diagnostic count.
+        top_files: Top files by diagnostic count.
+        rule_files: Mapping of diagnostic rules to affected files with counts.
+    """
+
     top_rules: CountsByRule
     top_folders: list[SummaryFolderEntry]
     top_files: list[SummaryFileEntry]
@@ -108,8 +155,10 @@ def _coerce_status_key(value: object) -> ReadinessStatus:
         try:
             return ReadinessStatus.from_str(value)
         except ValueError as exc:
-            raise DashboardTypeError("readiness.strict", "a known readiness status") from exc
-    raise DashboardTypeError("readiness.strict", "a known readiness status")
+            msg = "readiness.strict"
+            raise DashboardTypeError(msg, "a known readiness status") from exc
+    msg = "readiness.strict"
+    raise DashboardTypeError(msg, "a known readiness status")
 
 
 def _maybe_severity_level(value: object) -> SeverityLevel | None:
@@ -131,9 +180,23 @@ def _require_category_key(value: object, context: str) -> CategoryKey:
 
 
 class DashboardTypeError(TypewizTypeError):
-    """Raised when dashboard data has an unexpected shape."""
+    """Raised when dashboard data has an unexpected shape.
+
+    This exception is raised during dashboard data processing when the manifest
+    or summary data does not conform to expected structure or types.
+
+    Attributes:
+        context: The location or field where the type error occurred.
+        expected: Description of the expected type or format.
+    """
 
     def __init__(self, context: str, expected: str) -> None:
+        """Initialize the DashboardTypeError.
+
+        Args:
+            context: The location or field where the type error occurred.
+            expected: Description of the expected type or format.
+        """
         self.context = context
         self.expected = expected
         super().__init__(f"{context} must be {expected}")
@@ -144,6 +207,14 @@ def _coerce_rel_paths(values: Sequence[str]) -> list[RelPath]:
 
 
 def load_manifest(path: Path) -> ManifestData:
+    """Load and parse a manifest file from disk.
+
+    Args:
+        path: Path to the manifest JSON file.
+
+    Returns:
+        Parsed manifest data structure containing type checking runs and diagnostics.
+    """
     raw = json.loads(path.read_text(encoding="utf-8"))
     return load_manifest_data(raw)
 
@@ -153,9 +224,7 @@ def _collect_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPay
 
 
 def _empty_readiness_tab() -> ReadinessTab:
-    strict_defaults: dict[ReadinessStatus, list[dict[str, JSONValue]]] = {
-        status: [] for status in ReadinessStatus
-    }
+    strict_defaults: dict[ReadinessStatus, list[dict[str, JSONValue]]] = {status: [] for status in ReadinessStatus}
     return cast("ReadinessTab", {"strict": strict_defaults, "options": {}})
 
 
@@ -167,7 +236,8 @@ def _coerce_readiness_entries(value: object, context: str) -> list[dict[str, JSO
     entries: list[dict[str, JSONValue]] = []
     for index, entry in enumerate(cast("Sequence[object]", value)):
         if not isinstance(entry, Mapping):
-            raise DashboardTypeError(f"{context}[{index}]", "a mapping")
+            msg = f"{context}[{index}]"
+            raise DashboardTypeError(msg, "a mapping")
         entries.append(coerce_mapping(cast("Mapping[object, object]", entry)))
     return entries
 
@@ -176,10 +246,11 @@ def _coerce_run_entries(manifest: ManifestData) -> list[dict[str, JSONValue]]:
     runs_raw = manifest.get("runs")
     if not isinstance(runs_raw, Sequence):
         return []
-    entries: list[dict[str, JSONValue]] = []
-    for item in cast("Sequence[object]", runs_raw):
-        if isinstance(item, Mapping):
-            entries.append(coerce_mapping(cast("Mapping[object, object]", item)))
+    entries: list[dict[str, JSONValue]] = [
+        coerce_mapping(cast("Mapping[object, object]", item))
+        for item in cast("Sequence[object]", runs_raw)
+        if isinstance(item, Mapping)
+    ]
     return entries
 
 
@@ -195,9 +266,7 @@ def _prepare_run_payload(
     command_list = [str(part) for part in coerce_object_list(run.get("command"))]
     options_obj = run.get("engineOptions")
     options_map: dict[str, JSONValue] = (
-        coerce_mapping(cast("Mapping[object, object]", options_obj))
-        if isinstance(options_obj, Mapping)
-        else {}
+        coerce_mapping(cast("Mapping[object, object]", options_obj)) if isinstance(options_obj, Mapping) else {}
     )
     return RunId(f"{tool_obj}:{mode_obj}"), summary_map, options_map, command_list
 
@@ -233,7 +302,7 @@ def _parse_manifest_overrides(raw_overrides: object) -> list[OverrideEntry]:
     for override_obj in coerce_object_list(raw_overrides):
         if not isinstance(override_obj, Mapping):
             continue
-        override_map = coerce_mapping(cast(Mapping[object, object], override_obj))
+        override_map = coerce_mapping(cast("Mapping[object, object]", override_obj))
         entry: OverrideEntry = {}
         path_value = override_map.get("path")
         if isinstance(path_value, str) and path_value:
@@ -258,16 +327,14 @@ def _parse_manifest_overrides(raw_overrides: object) -> list[OverrideEntry]:
 def _parse_category_mapping(raw_mapping: object) -> CategoryMapping:
     if not isinstance(raw_mapping, Mapping):
         return {}
-    source: dict[str, JSONValue] = coerce_mapping(cast(Mapping[object, object], raw_mapping))
+    source: dict[str, JSONValue] = coerce_mapping(cast("Mapping[object, object]", raw_mapping))
     category_mapping: CategoryMapping = {}
     for key, values in source.items():
         category_key = coerce_category_key(key)
         if category_key is None:
             continue
         value_list = [
-            str(item).strip()
-            for item in coerce_object_list(values)
-            if isinstance(item, str | int | float | bool)
+            str(item).strip() for item in coerce_object_list(values) if isinstance(item, str | int | float | bool)
         ]
         cleaned = [item for item in value_list if item]
         if cleaned:
@@ -287,10 +354,7 @@ def _parse_severity_breakdown(summary_map: Mapping[str, JSONValue]) -> CountsByS
 
 
 def _parse_rule_counts(summary_map: Mapping[str, JSONValue]) -> CountsByRule:
-    return {
-        key: coerce_int(value)
-        for key, value in coerce_mapping(summary_map.get("ruleCounts")).items()
-    }
+    return {key: coerce_int(value) for key, value in coerce_mapping(summary_map.get("ruleCounts")).items()}
 
 
 def _parse_category_counts(summary_map: Mapping[str, JSONValue]) -> CountsByCategory:
@@ -306,7 +370,7 @@ def _parse_category_counts(summary_map: Mapping[str, JSONValue]) -> CountsByCate
 
 def _coerce_folder_entries(per_folder: object) -> list[dict[str, JSONValue]]:
     return [
-        coerce_mapping(cast(Mapping[object, object], entry))
+        coerce_mapping(cast("Mapping[object, object]", entry))
         for entry in coerce_object_list(per_folder)
         if isinstance(entry, Mapping)
     ]
@@ -370,7 +434,7 @@ def _update_file_metrics(
         for diag in diagnostics:
             if not isinstance(diag, Mapping):
                 continue
-            diag_map = coerce_mapping(cast(Mapping[object, object], diag))
+            diag_map = coerce_mapping(cast("Mapping[object, object]", diag))
             code_obj = diag_map.get("code")
             code = str(code_obj).strip() if isinstance(code_obj, str) else ""
             if code:
@@ -405,7 +469,7 @@ def _consume_run(run: Mapping[str, JSONValue], *, state: _SummaryState) -> None:
     tool_summary_obj = run.get("toolSummary")
     if isinstance(tool_summary_obj, Mapping) and tool_summary_obj:
         run_entry["toolSummary"] = cast(
-            ToolSummary,
+            "ToolSummary",
             {
                 "errors": coerce_int(tool_summary_obj.get("errors")),
                 "warnings": coerce_int(tool_summary_obj.get("warnings")),
@@ -477,9 +541,7 @@ def _build_top_folder_entries(
     folder_entries_full: Sequence[ReadinessEntry],
     folder_stats: _FolderAccumulators,
 ) -> list[SummaryFolderEntry]:
-    folder_entry_lookup: dict[str, ReadinessEntry] = {
-        entry["path"]: entry for entry in folder_entries_full
-    }
+    folder_entry_lookup: dict[str, ReadinessEntry] = {entry["path"]: entry for entry in folder_entries_full}
     payload: list[SummaryFolderEntry] = []
     for path, counts in top_folders:
         folder_entry = folder_entry_lookup.get(path)
@@ -514,8 +576,7 @@ def _build_rule_files_payload(
     payload: dict[str, list[RulePathEntry]] = {}
     for rule, occurrences in sorted(rule_file_counts.items()):
         entries: list[RulePathEntry] = [
-            RulePathEntry(path=file_path, count=int(count))
-            for file_path, count in occurrences.most_common(10)
+            RulePathEntry(path=file_path, count=int(count)) for file_path, count in occurrences.most_common(10)
         ]
         payload[rule] = entries
     return payload
@@ -566,11 +627,10 @@ def _extract_metadata(manifest: ManifestData) -> tuple[str, str]:
 def _validate_readiness_tab(raw: Mapping[object, object]) -> ReadinessTab:
     strict_raw = raw.get("strict")
     if not isinstance(strict_raw, Mapping):
-        raise DashboardTypeError("readiness.strict", "a mapping")
+        msg = "readiness.strict"
+        raise DashboardTypeError(msg, "a mapping")
     strict_map = coerce_mapping(cast("Mapping[object, object]", strict_raw))
-    strict_section: dict[ReadinessStatus, list[dict[str, JSONValue]]] = {
-        status: [] for status in ReadinessStatus
-    }
+    strict_section: dict[ReadinessStatus, list[dict[str, JSONValue]]] = {status: [] for status in ReadinessStatus}
     for key, value in strict_map.items():
         status = _coerce_status_key(key)
         strict_section[status] = _coerce_readiness_entries(
@@ -580,24 +640,40 @@ def _validate_readiness_tab(raw: Mapping[object, object]) -> ReadinessTab:
 
     options_raw = raw.get("options")
     if not isinstance(options_raw, Mapping):
-        raise DashboardTypeError("readiness.options", "a mapping")
+        msg = "readiness.options"
+        raise DashboardTypeError(msg, "a mapping")
     options_map = coerce_mapping(cast("Mapping[object, object]", options_raw))
+    options_section = _build_readiness_options(options_map)
+
+    return cast(
+        "ReadinessTab",
+        {
+            "strict": strict_section,
+            "options": options_section,
+        },
+    )
+
+
+def _build_readiness_options(options_map: Mapping[object, object]) -> dict[CategoryKey, ReadinessOptionsPayload]:
     options_section: dict[CategoryKey, ReadinessOptionsPayload] = {}
     for category_key_raw, bucket_obj in options_map.items():
         if not isinstance(bucket_obj, Mapping):
-            raise DashboardTypeError(f"readiness.options[{category_key_raw!r}]", "a mapping")
+            msg = f"readiness.options[{category_key_raw!r}]"
+            raise DashboardTypeError(msg, "a mapping")
         bucket_map = coerce_mapping(cast("Mapping[object, object]", bucket_obj))
         threshold_value = bucket_map.get("threshold")
         if threshold_value is not None and not isinstance(threshold_value, int):
+            msg = f"readiness.options[{category_key_raw!r}].threshold"
             raise DashboardTypeError(
-                f"readiness.options[{category_key_raw!r}].threshold",
+                msg,
                 "an integer",
             )
         threshold = threshold_value if isinstance(threshold_value, int) else DEFAULT_CLOSE_THRESHOLD
         buckets_obj = bucket_map.get("buckets")
         if not isinstance(buckets_obj, Mapping):
+            msg = f"readiness.options[{category_key_raw!r}].buckets"
             raise DashboardTypeError(
-                f"readiness.options[{category_key_raw!r}].buckets",
+                msg,
                 "a mapping",
             )
         buckets_map = coerce_mapping(cast("Mapping[object, object]", buckets_obj))
@@ -615,17 +691,23 @@ def _validate_readiness_tab(raw: Mapping[object, object]) -> ReadinessTab:
             f"readiness.options[{category_key_raw!r}]",
         )
         options_section[category_key] = options_bucket.to_payload()
-
-    return cast(
-        "ReadinessTab",
-        {
-            "strict": strict_section,
-            "options": options_section,
-        },
-    )
+    return options_section
 
 
 def build_summary(manifest: ManifestData) -> SummaryData:
+    """Build a comprehensive dashboard summary from manifest data.
+
+    This function aggregates diagnostic data from multiple type checking runs,
+    computes readiness metrics, identifies hotspots, and structures all data
+    for dashboard rendering.
+
+    Args:
+        manifest: Parsed manifest data containing type checking run results.
+
+    Returns:
+        Structured summary data ready for rendering in HTML or Markdown format.
+        Includes overview metrics, run summaries, hotspots, and readiness analysis.
+    """
     state = _create_summary_state()
     for run in _coerce_run_entries(manifest):
         _consume_run(run, state=state)
@@ -656,7 +738,7 @@ def build_summary(manifest: ManifestData) -> SummaryData:
     generated_at, project_root = _extract_metadata(manifest)
 
     return cast(
-        SummaryData,
+        "SummaryData",
         {
             "generatedAt": generated_at,
             "projectRoot": project_root,

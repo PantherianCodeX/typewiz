@@ -4,8 +4,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -15,6 +14,10 @@ from typewiz.core.type_aliases import ProfileName, RelPath, ToolName
 from typewiz.engines.base import EngineContext, EngineOptions, EngineResult
 from typewiz.engines.builtin.mypy import MypyEngine
 from typewiz.engines.builtin.pyright import PyrightEngine
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
 
 pytestmark = [pytest.mark.unit, pytest.mark.engine]
 
@@ -41,18 +44,18 @@ def _make_context(
     )
 
 
-def test_mypy_engine_builds_command_with_defaults(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_mypy_engine_builds_command_with_defaults(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     engine = MypyEngine()
     _ = (tmp_path / "mypy.ini").write_text("[mypy]\n", encoding="utf-8")
     monkeypatch.setattr("typewiz.engines.builtin.mypy.python_executable", lambda: "py")
     context = _make_context(tmp_path, plugin_args=["--strict"])
 
-    recorded: dict[str, list[str]] = {}
+    recorded: dict[str, list[str] | Path | Mode] = {}
 
     def fake_run_mypy(root: Path, *, mode: Mode, command: list[str]) -> EngineResult:
         recorded["command"] = list(command)
+        recorded["root"] = root
+        recorded["mode"] = mode
         return EngineResult(
             engine=ToolName("pyright"),
             mode=mode,
@@ -64,22 +67,24 @@ def test_mypy_engine_builds_command_with_defaults(
 
     monkeypatch.setattr("typewiz.engines.builtin.mypy.run_mypy", fake_run_mypy)
     _ = engine.run(context, [])
+    assert recorded["root"] == tmp_path
+    assert recorded["mode"] == Mode.CURRENT
     assert "--config-file" in recorded["command"]
     assert "--no-pretty" in recorded["command"]
 
 
-def test_mypy_engine_full_mode_appends_paths(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_mypy_engine_full_mode_appends_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     engine = MypyEngine()
     monkeypatch.setattr("typewiz.engines.builtin.mypy.python_executable", lambda: "py")
     context = _make_context(tmp_path, mode=Mode.FULL)
     paths = [RelPath("pkg/app.py"), RelPath("pkg/utils.py")]
 
-    recorded: dict[str, list[str]] = {}
+    recorded: dict[str, list[str] | Path | Mode] = {}
 
     def fake_run_mypy(root: Path, *, mode: Mode, command: list[str]) -> EngineResult:
         recorded["command"] = list(command)
+        recorded["root"] = root
+        recorded["mode"] = mode
         return EngineResult(
             engine=ToolName("pyright"),
             mode=mode,
@@ -91,6 +96,8 @@ def test_mypy_engine_full_mode_appends_paths(
 
     monkeypatch.setattr("typewiz.engines.builtin.mypy.run_mypy", fake_run_mypy)
     _ = engine.run(context, paths)
+    assert recorded["root"] == tmp_path
+    assert recorded["mode"] == Mode.FULL
     assert recorded["command"][-2:] == ["pkg/app.py", "pkg/utils.py"]
     assert "--hide-error-context" in recorded["command"]
 
@@ -112,18 +119,17 @@ def test_mypy_engine_run_invokes_runner(tmp_path: Path, monkeypatch: pytest.Monk
     assert captured["mode"] == Mode.CURRENT
 
 
-def test_pyright_engine_current_prefers_default_config(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_pyright_engine_current_prefers_default_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     engine = PyrightEngine()
     default_config = tmp_path / "pyrightconfig.json"
     _ = default_config.write_text("{}", encoding="utf-8")
     context = _make_context(tmp_path)
 
-    recorded: dict[str, list[str]] = {}
+    recorded: dict[str, list[str] | str] = {}
 
     def fake_run_pyright(root: Path, *, mode: Mode, command: list[str]) -> EngineResult:
         recorded["command"] = list(command)
+        recorded["root"] = str(root)
         return EngineResult(
             engine=ToolName("pyright"),
             mode=mode,
@@ -145,10 +151,12 @@ def test_pyright_engine_full_with_paths(tmp_path: Path, monkeypatch: pytest.Monk
     paths = [RelPath("src/app.py")]
     context_no_paths = _make_context(tmp_path, mode=Mode.FULL)
 
-    recorded: dict[str, list[str]] = {}
+    recorded: dict[str, list[str] | Path | Mode] = {}
 
     def fake_run_pyright(root: Path, *, mode: Mode, command: list[str]) -> EngineResult:
         recorded["command"] = list(command)
+        recorded["root"] = root
+        recorded["mode"] = mode
         return EngineResult(
             engine=ToolName("pyright"),
             mode=mode,
@@ -160,6 +168,8 @@ def test_pyright_engine_full_with_paths(tmp_path: Path, monkeypatch: pytest.Monk
 
     monkeypatch.setattr("typewiz.engines.builtin.pyright.run_pyright", fake_run_pyright)
     _ = engine.run(context, paths)
+    assert recorded["root"] == tmp_path
+    assert recorded["mode"] == Mode.FULL
     assert recorded["command"][-1] == "src/app.py"
     assert "--verifytypes" in recorded["command"]
     _ = engine.run(context_no_paths, [])
@@ -204,10 +214,12 @@ def test_pyright_engine_current_without_config_uses_project_root(
     engine = PyrightEngine()
     context = _make_context(tmp_path)
 
-    recorded: dict[str, list[str]] = {}
+    recorded: dict[str, list[str] | Path | Mode] = {}
 
     def fake_run_pyright(root: Path, *, mode: Mode, command: list[str]) -> EngineResult:
         recorded["command"] = list(command)
+        recorded["root"] = root
+        recorded["mode"] = mode
         return EngineResult(
             engine=ToolName("pyright"),
             mode=mode,
@@ -219,7 +231,10 @@ def test_pyright_engine_current_without_config_uses_project_root(
 
     monkeypatch.setattr("typewiz.engines.builtin.pyright.run_pyright", fake_run_pyright)
     _ = engine.run(context, [])
+    assert recorded["root"] == tmp_path
+    assert recorded["mode"] == Mode.CURRENT
     assert str(tmp_path) in recorded["command"]
+    assert recorded["root"] == str(tmp_path)
 
 
 def test_category_mapping_contains_expected_keys() -> None:

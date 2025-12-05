@@ -15,9 +15,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
 
 
 def _signature_payload(hash_value: str) -> EngineSignaturePayloadWithHash:
-    return EngineSignaturePayloadWithHash(
-        tool="pyright", mode=Mode.FULL, engineOptions={}, hash=hash_value
-    )
+    return EngineSignaturePayloadWithHash(tool="pyright", mode=Mode.FULL, engineOptions={}, hash=hash_value)
 
 
 def test_run_report_format_lines_includes_signature_details() -> None:

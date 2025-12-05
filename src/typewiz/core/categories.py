@@ -21,10 +21,30 @@ CATEGORY_NAMES: Final[tuple[CategoryName, ...]] = tuple(CategoryName(key) for ke
 
 
 def _is_category_key(value: str) -> TypeGuard[CategoryKey]:
+    """Check if a string value is a valid CategoryKey.
+
+    Args:
+        value: String to check against known category keys.
+
+    Returns:
+        TypeGuard indicating if value is a valid CategoryKey.
+    """
     return value in CATEGORY_KEY_SET
 
 
 def coerce_category_key(value: object) -> CategoryKey | None:
+    """Coerce an arbitrary object to a CategoryKey if possible.
+
+    Converts the value to a string, strips whitespace, and validates it
+    against known category keys. Returns None if the value cannot be
+    coerced to a valid CategoryKey.
+
+    Args:
+        value: Arbitrary object to coerce to a CategoryKey.
+
+    Returns:
+        Valid CategoryKey if coercion succeeds, None otherwise.
+    """
     token = str(value).strip()
     if not token or not _is_category_key(token):
         return None

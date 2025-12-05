@@ -5,9 +5,8 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import pytest
 
@@ -21,9 +20,13 @@ from typewiz.audit.paths import (
     relative_override_path,
 )
 from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
-from typewiz.core.model_types import CategoryMapping
 from typewiz.core.type_aliases import EngineName, ProfileName, RelPath
 from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from typewiz.core.model_types import CategoryMapping
 
 pytestmark = pytest.mark.unit
 
@@ -110,17 +113,18 @@ def test_apply_engine_paths_respects_exclude() -> None:
         [RelPath("src/tests")],
     )
     assert "src" in result
-    assert "pkg" in result and "tests" in result
+    assert "pkg" in result
+    assert "tests" in result
     assert all(not path.startswith("src/tests") for path in result)
 
 
 class MinimalEngine(BaseEngine):
+    """Minimal BaseEngine implementation used for option resolution tests."""
+
     name = "stub"
 
     @override
-    def run(
-        self, context: EngineContext, paths: Sequence[RelPath]
-    ) -> EngineResult:  # pragma: no cover
+    def run(self, context: EngineContext, paths: Sequence[RelPath]) -> EngineResult:  # pragma: no cover
         raise NotImplementedError
 
     @override

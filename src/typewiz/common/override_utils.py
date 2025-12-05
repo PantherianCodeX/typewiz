@@ -1,18 +1,31 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Formatting helpers for path override payloads."""
+
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from typewiz.collections import dedupe_preserve
 
-from ..core.model_types import OverrideEntry
-from ..core.type_aliases import RelPath
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from typewiz.core.model_types import OverrideEntry
+    from typewiz.core.type_aliases import RelPath
 
 
 def get_override_components(
     entry: OverrideEntry,
 ) -> tuple[str, str | None, list[str], list[RelPath], list[RelPath]]:
+    """Return normalised override components for consistent rendering.
+
+    Args:
+        entry: Override mapping pulled from manifest data.
+
+    Returns:
+        Tuple of path, profile, plugin args, include paths, and exclude paths.
+    """
     path = entry.get("path", "—") or "—"
     profile = entry.get("profile")
     plugin_args = dedupe_preserve(entry.get("pluginArgs", []))
@@ -22,6 +35,11 @@ def get_override_components(
 
 
 def format_override_inline(entry: OverrideEntry) -> str:
+    """Render an override entry as a compact inline description.
+
+    Returns:
+        String representation summarising the override.
+    """
     path, profile, plugin_args, include_paths, exclude_paths = get_override_components(entry)
     details: list[str] = []
     if profile:
@@ -38,6 +56,11 @@ def format_override_inline(entry: OverrideEntry) -> str:
 
 
 def format_overrides_block(entries: Sequence[OverrideEntry]) -> list[str]:
+    """Render override entries as Markdown bullet lines.
+
+    Returns:
+        List of Markdown lines detailing each override.
+    """
     lines: list[str] = []
     for entry in entries:
         path, profile, plugin_args, include_paths, exclude_paths = get_override_components(entry)
@@ -60,6 +83,7 @@ def format_overrides_block(entries: Sequence[OverrideEntry]) -> list[str]:
 
 
 def override_detail_lines(entry: OverrideEntry) -> tuple[str, list[str]]:
+    """Return a ``(path, details)`` tuple for detailed override reporting."""
     path, profile, plugin_args, include_paths, exclude_paths = get_override_components(entry)
     details: list[str] = []
     if profile:
@@ -76,8 +100,8 @@ def override_detail_lines(entry: OverrideEntry) -> tuple[str, list[str]]:
 
 
 __all__ = [
-    "get_override_components",
     "format_override_inline",
     "format_overrides_block",
+    "get_override_components",
     "override_detail_lines",
 ]

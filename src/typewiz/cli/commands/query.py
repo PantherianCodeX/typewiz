@@ -6,20 +6,9 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from typewiz.core.model_types import (
-    DataFormat,
-    HotspotKind,
-    QuerySection,
-    ReadinessLevel,
-    ReadinessStatus,
-    SeverityLevel,
-)
-from typewiz.core.summary_types import SummaryData
-from typewiz.services.dashboard import load_summary_from_manifest
-
-from ..helpers import (
+from typewiz.cli.helpers import (
     echo,
     query_engines,
     query_hotspots,
@@ -30,12 +19,24 @@ from ..helpers import (
     register_argument,
     render_data,
 )
+from typewiz.core.model_types import (
+    DataFormat,
+    HotspotKind,
+    QuerySection,
+    ReadinessLevel,
+    ReadinessStatus,
+    SeverityLevel,
+)
+from typewiz.services.dashboard import load_summary_from_manifest
+
+if TYPE_CHECKING:
+    from typewiz.core.summary_types import SummaryData
 
 
 class SubparserRegistry(Protocol):
-    def add_parser(
-        self, *args: Any, **kwargs: Any
-    ) -> argparse.ArgumentParser: ...  # pragma: no cover - Protocol
+    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
+        """Register a CLI subcommand on an argparse subparser collection."""
+        ...  # pragma: no cover - Protocol helper
 
 
 def register_query_command(subparsers: SubparserRegistry) -> None:
@@ -253,15 +254,21 @@ def _render_payload(data: object, fmt: DataFormat) -> None:
 
 
 def execute_query(args: argparse.Namespace) -> int:
-    """Execute the ``typewiz query`` command."""
+    """Execute the ``typewiz query`` command.
+
+    Args:
+        args: Parsed CLI namespace describing the desired section and filters.
+
+    Returns:
+        ``0`` when the query runs successfully.
+
+    Raises:
+        SystemExit: If the section selector is invalid.
+    """
     summary = _load_summary(args.manifest)
     section_value = args.query_section
     try:
-        section = (
-            section_value
-            if isinstance(section_value, QuerySection)
-            else QuerySection.from_str(section_value)
-        )
+        section = section_value if isinstance(section_value, QuerySection) else QuerySection.from_str(section_value)
     except ValueError as exc:  # pragma: no cover - argparse prevents invalid choices
         raise SystemExit(str(exc)) from exc
 
@@ -280,16 +287,8 @@ def execute_query(args: argparse.Namespace) -> int:
             payload = query_hotspots(summary, kind=kind, limit=args.limit)
         case QuerySection.READINESS:
             level_choice = ReadinessLevel.from_str(args.level)
-            statuses = (
-                [ReadinessStatus.from_str(status) for status in args.statuses]
-                if args.statuses
-                else None
-            )
-            severities = (
-                [SeverityLevel.from_str(severity) for severity in args.severities]
-                if args.severities
-                else None
-            )
+            statuses = [ReadinessStatus.from_str(status) for status in args.statuses] if args.statuses else None
+            severities = [SeverityLevel.from_str(severity) for severity in args.severities] if args.severities else None
             payload = query_readiness(
                 summary,
                 level=level_choice,

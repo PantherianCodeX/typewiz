@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from typing import Literal, TypedDict, cast
+from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
 from typewiz.common.override_utils import format_override_inline, override_detail_lines
 from typewiz.config.validation import (
@@ -26,14 +26,7 @@ from typewiz.core.model_types import (
     SummaryStyle,
     clone_override_entries,
 )
-from typewiz.core.summary_types import (
-    HotspotsTab,
-    SummaryData,
-    SummaryFileEntry,
-    SummaryFolderEntry,
-)
 from typewiz.core.type_aliases import RelPath, RunId
-from typewiz.core.types import RunResult
 from typewiz.error_codes import error_code_for
 from typewiz.readiness.views import ReadinessValidationError, ReadinessViewResult
 from typewiz.runtime import JSONValue, normalise_enums_for_json
@@ -46,6 +39,15 @@ from typewiz.services.readiness import (
 
 from .io import echo
 
+if TYPE_CHECKING:
+    from typewiz.core.summary_types import (
+        HotspotsTab,
+        SummaryData,
+        SummaryFileEntry,
+        SummaryFolderEntry,
+    )
+    from typewiz.core.types import RunResult
+
 
 def stringify(value: object) -> str:
     if value is None:
@@ -55,13 +57,13 @@ def stringify(value: object) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, Mapping):
-        mapping = cast(Mapping[str, JSONValue], value)
+        mapping = cast("Mapping[str, JSONValue]", value)
         items: list[str] = []
         for key, val in mapping.items():
             items.append(f"{key}: {stringify(val)}")
         return "{" + ", ".join(items) + "}"
     if isinstance(value, Sequence) and not isinstance(value, str | bytes | bytearray):
-        sequence = cast(Sequence[JSONValue], value)
+        sequence = cast("Sequence[JSONValue]", value)
         return "[" + ", ".join(stringify(item) for item in sequence) + "]"
     return str(value)
 
@@ -77,10 +79,7 @@ def render_table_rows(rows: Sequence[Mapping[str, JSONValue]]) -> list[str]:
     header_line = " | ".join(header.ljust(widths[header]) for header in headers)
     separator = "-+-".join("-" * widths[header] for header in headers)
     lines = [header_line, separator]
-    lines.extend(
-        " | ".join(stringify(row.get(header)).ljust(widths[header]) for header in headers)
-        for row in rows
-    )
+    lines.extend(" | ".join(stringify(row.get(header)).ljust(widths[header]) for header in headers) for row in rows)
     return lines
 
 
@@ -172,7 +171,14 @@ def _normalise_format(fmt: FormatInput) -> Literal["json", "table"]:
 
 
 def _parse_run_identifier(raw: str) -> tuple[RunId, str, str]:
-    """Parse ``tool:mode`` identifiers into typed components."""
+    """Parse ``tool:mode`` identifiers into typed components.
+
+    Args:
+        raw: Run identifier in the manifest (``tool:mode``).
+
+    Returns:
+        Tuple of ``RunId``, tool name, and mode string.
+    """
     tool, sep, remainder = raw.partition(":")
     mode = remainder if sep else ""
     return RunId(raw), tool, mode
@@ -188,7 +194,18 @@ def parse_summary_fields(
     *,
     valid_fields: set[SummaryField] | None = None,
 ) -> list[SummaryField]:
-    """Parse ``--summary-fields`` input, validating against allowable field names."""
+    """Parse ``--summary-fields`` input, validating against allowable field names.
+
+    Args:
+        raw: Comma-separated CLI input or ``None``.
+        valid_fields: Subset of allowable fields (defaults to all choices).
+
+    Returns:
+        Ordered list of ``SummaryField`` values.
+
+    Raises:
+        SystemExit: If the input references an unknown field.
+    """
     field_set = valid_fields if valid_fields is not None else SUMMARY_FIELD_CHOICES
     if not raw:
         return []
@@ -203,7 +220,8 @@ def parse_summary_fields(
         field = name_map.get(item)
         if field is None:
             readable = ", ".join(sorted({*name_map, "all"}))
-            raise SystemExit(f"Unknown summary field '{item}'. Valid values: {readable}")
+            msg = f"Unknown summary field '{item}'. Valid values: {readable}"
+            raise SystemExit(msg)
         if field not in fields:
             fields.append(field)
     return fields
@@ -228,13 +246,13 @@ def _collect_run_details(
 ) -> list[tuple[str, str]]:
     items: list[tuple[str, str]] = []
     if SummaryField.PROFILE in fields:
-        items.extend(_profile_details(run, expanded))
+        items.extend(_profile_details(run, expanded=expanded))
     if SummaryField.CONFIG in fields:
-        items.extend(_config_details(run, expanded))
+        items.extend(_config_details(run, expanded=expanded))
     if SummaryField.PLUGIN_ARGS in fields:
-        items.extend(_plugin_args_details(run, expanded))
+        items.extend(_plugin_args_details(run, expanded=expanded))
     if SummaryField.PATHS in fields:
-        items.extend(_paths_details(run, expanded))
+        items.extend(_paths_details(run, expanded=expanded))
     if SummaryField.OVERRIDES in fields:
         items.extend(_format_override_details(run.overrides, expanded=expanded))
     return items
@@ -258,29 +276,29 @@ def _format_override_details(
     return [("overrides", "; ".join(summary))]
 
 
-def _optional_detail(label: str, value: str | None, expanded: bool) -> list[tuple[str, str]]:
+def _optional_detail(label: str, value: str | None, *, expanded: bool) -> list[tuple[str, str]]:
     if value or expanded:
         return [(label, value or "—")]
     return []
 
 
-def _profile_details(run: RunResult, expanded: bool) -> list[tuple[str, str]]:
-    return _optional_detail("profile", run.profile, expanded)
+def _profile_details(run: RunResult, *, expanded: bool) -> list[tuple[str, str]]:
+    return _optional_detail("profile", run.profile, expanded=expanded)
 
 
-def _config_details(run: RunResult, expanded: bool) -> list[tuple[str, str]]:
+def _config_details(run: RunResult, *, expanded: bool) -> list[tuple[str, str]]:
     value = str(run.config_file) if run.config_file else None
-    return _optional_detail("config", value, expanded)
+    return _optional_detail("config", value, expanded=expanded)
 
 
-def _plugin_args_details(run: RunResult, expanded: bool) -> list[tuple[str, str]]:
+def _plugin_args_details(run: RunResult, *, expanded: bool) -> list[tuple[str, str]]:
     plugin_args = format_list([str(arg) for arg in run.plugin_args])
     if plugin_args != "—" or expanded:
         return [("plugin args", plugin_args)]
     return []
 
 
-def _paths_details(run: RunResult, expanded: bool) -> list[tuple[str, str]]:
+def _paths_details(run: RunResult, *, expanded: bool) -> list[tuple[str, str]]:
     details: list[tuple[str, str]] = []
     include_paths = format_list([str(path) for path in run.include])
     exclude_paths = format_list([str(path) for path in run.exclude])
@@ -330,7 +348,22 @@ def collect_readiness_view(
     limit: int,
     severities: Sequence[SeverityLevel] | None = None,
 ) -> ReadinessQueryPayload:
-    """Collect readiness data with consistent error handling."""
+    """Collect readiness data with consistent error handling.
+
+    Args:
+        summary: Manifest summary payload.
+        level: Granularity for readiness reporting.
+        statuses: Optional subset of ``ReadinessStatus`` entries to include.
+        limit: Maximum number of entries to return (``0`` = unlimited).
+        severities: Optional severity filters.
+
+    Returns:
+        Readiness payload in the structure expected by CLI consumers.
+
+    Raises:
+        SystemExit: If readiness data cannot be validated (wraps
+            ``ReadinessValidationError``).
+    """
     try:
         return service_collect_readiness_view(
             summary,
@@ -345,7 +378,7 @@ def collect_readiness_view(
         raise SystemExit(message) from exc
 
 
-def print_readiness_summary(  # noqa: PLR0913
+def print_readiness_summary(
     summary: SummaryData,
     *,
     level: ReadinessLevel,
@@ -368,7 +401,16 @@ def print_readiness_summary(  # noqa: PLR0913
 
 
 def render_data(data: object, fmt: FormatInput) -> list[str]:
-    """Render Python data for CLI output."""
+    """Render Python data for CLI output.
+
+    Args:
+        data: Arbitrary data structure returned by query commands.
+        fmt: Desired format (``json`` or ``table``) possibly derived from
+            ``DataFormat`` enumerations.
+
+    Returns:
+        List of lines representing the formatted payload.
+    """
     fmt_value = _normalise_format(fmt)
     if fmt_value == "json":
         return [json.dumps(normalise_enums_for_json(data), indent=2, ensure_ascii=False)]
@@ -376,11 +418,11 @@ def render_data(data: object, fmt: FormatInput) -> list[str]:
         table_rows: list[Mapping[str, JSONValue]] = []
         for item in cast("Sequence[object]", data):
             if isinstance(item, Mapping):
-                mapping_item = cast(Mapping[object, object], item)
+                mapping_item = cast("Mapping[object, object]", item)
                 table_rows.append(coerce_mapping(mapping_item))
         return render_table_rows(table_rows)
     if isinstance(data, Mapping):
-        mapping_data = coerce_mapping(cast(Mapping[object, object], data))
+        mapping_data = coerce_mapping(cast("Mapping[object, object]", data))
         dict_rows: list[Mapping[str, JSONValue]] = [
             {"key": str(key), "value": value} for key, value in mapping_data.items()
         ]
@@ -394,7 +436,16 @@ def query_overview(
     include_categories: bool,
     include_runs: bool,
 ) -> OverviewQueryPayload:
-    """Build the payload for ``typewiz query overview``."""
+    """Build the payload for ``typewiz query overview``.
+
+    Args:
+        summary: Manifest summary payload.
+        include_categories: Whether to include category totals.
+        include_runs: Whether to embed per-run severity totals.
+
+    Returns:
+        Structured overview payload suitable for JSON or table rendering.
+    """
     overview = summary["tabs"]["overview"]
     severity_totals_map = coerce_mapping(overview.get("severityTotals", {}))
     severity_totals = {str(key): coerce_int(value) for key, value in severity_totals_map.items()}
@@ -405,9 +456,7 @@ def query_overview(
     }
     if include_categories:
         category_totals_map = coerce_mapping(overview.get("categoryTotals", {}))
-        payload["category_totals"] = {
-            str(key): coerce_int(value) for key, value in category_totals_map.items()
-        }
+        payload["category_totals"] = {str(key): coerce_int(value) for key, value in category_totals_map.items()}
     if include_runs:
         runs: list[OverviewRunEntry] = []
         for name, entry in overview.get("runSummary", {}).items():
@@ -434,7 +483,16 @@ def query_hotspots(
     kind: HotspotKind,
     limit: int,
 ) -> list[FileHotspotEntry] | list[FolderHotspotEntry]:
-    """Build the payload for ``typewiz query hotspots``."""
+    """Build the payload for ``typewiz query hotspots``.
+
+    Args:
+        summary: Manifest summary payload.
+        kind: Whether to request file or folder hotspots.
+        limit: Maximum number of entries to return (``0`` = unlimited).
+
+    Returns:
+        Top hotspots in the requested shape.
+    """
     hotspots = summary["tabs"]["hotspots"]
     if kind is HotspotKind.FILES:
         return _build_file_hotspot_entries(hotspots, limit=limit)
@@ -475,9 +533,7 @@ def _build_folder_hotspot_entries(
         }
         code_counts_map = coerce_mapping(folder_entry.get("codeCounts"))
         if code_counts_map:
-            folder_record["code_counts"] = {
-                str(key): coerce_int(value) for key, value in code_counts_map.items()
-            }
+            folder_record["code_counts"] = {str(key): coerce_int(value) for key, value in code_counts_map.items()}
         recommendations_list = coerce_object_list(folder_entry.get("recommendations"))
         if recommendations_list:
             folder_record["recommendations"] = [str(item) for item in recommendations_list]
@@ -495,7 +551,18 @@ def query_readiness(
     limit: int,
     severities: Sequence[SeverityLevel] | None = None,
 ) -> ReadinessQueryPayload:
-    """Build the payload for ``typewiz query readiness``."""
+    """Build the payload for ``typewiz query readiness``.
+
+    Args:
+        summary: Manifest summary payload.
+        level: Readiness aggregation level.
+        statuses: Optional readiness statuses to filter.
+        limit: Maximum entries to include.
+        severities: Optional severity filters.
+
+    Returns:
+        Readiness query payload derived from ``summary``.
+    """
     return collect_readiness_view(
         summary,
         level=level,
@@ -512,7 +579,17 @@ def query_runs(
     modes: Sequence[str] | None,
     limit: int,
 ) -> list[RunSummaryEntry]:
-    """Build the payload for ``typewiz query runs``."""
+    """Build the payload for ``typewiz query runs``.
+
+    Args:
+        summary: Manifest summary payload.
+        tools: Optional filter of tool names.
+        modes: Optional filter of run modes.
+        limit: Maximum number of entries to return (``0`` = unlimited).
+
+    Returns:
+        Run summary entries filtered according to the provided options.
+    """
     runs = summary["tabs"]["runs"]["runSummary"]
     tool_filter = {tool for tool in tools or [] if tool}
     mode_filter = {mode for mode in modes or [] if mode}
@@ -540,7 +617,15 @@ def query_runs(
 
 
 def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:
-    """Build the payload for ``typewiz query engines``."""
+    """Build the payload for ``typewiz query engines``.
+
+    Args:
+        summary: Manifest summary payload.
+        limit: Maximum number of entries to return (``0`` = unlimited).
+
+    Returns:
+        List of engine configuration summaries keyed by run identifier.
+    """
     runs = summary["tabs"]["engines"]["runSummary"]
     records: list[EngineEntry] = []
     for name, entry in sorted(runs.items()):
@@ -580,7 +665,7 @@ def _parse_override_entries(raw_overrides: object) -> list[OverrideEntry]:
 def _parse_single_override(candidate: object) -> OverrideEntry | None:
     if not isinstance(candidate, Mapping):
         return None
-    override_map = coerce_mapping(cast(Mapping[object, object], candidate))
+    override_map = coerce_mapping(cast("Mapping[object, object]", candidate))
     typed_entry: OverrideEntry = {}
     path = override_map.get("path")
     if isinstance(path, str) and path:
@@ -597,7 +682,7 @@ def _parse_single_override(candidate: object) -> OverrideEntry | None:
     exclude_paths = _coerce_rel_path_list(override_map.get("exclude", []))
     if exclude_paths:
         typed_entry["exclude"] = exclude_paths
-    return typed_entry if typed_entry else None
+    return typed_entry or None
 
 
 def _coerce_rel_path_list(raw: object) -> list[RelPath]:
@@ -610,7 +695,16 @@ def query_rules(
     limit: int,
     include_paths: bool,
 ) -> list[RuleEntry]:
-    """Build the payload for ``typewiz query rules``."""
+    """Build the payload for ``typewiz query rules``.
+
+    Args:
+        summary: Manifest summary payload.
+        limit: Maximum number of rule entries to include.
+        include_paths: Whether to attach file-level contributions per rule.
+
+    Returns:
+        Rule entries describing counts and optional path contributions.
+    """
     hotspots = summary["tabs"]["hotspots"]
     rules = hotspots.get("topRules", {})
     rule_paths = hotspots.get("ruleFiles", {}) if include_paths else {}

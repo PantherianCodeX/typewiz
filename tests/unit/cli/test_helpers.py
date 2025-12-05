@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -34,9 +34,11 @@ from typewiz.core.model_types import (
     SummaryField,
     SummaryStyle,
 )
-from typewiz.core.summary_types import SummaryData
-from typewiz.core.types import RunResult
-from typewiz.readiness.views import FolderReadinessPayload
+
+if TYPE_CHECKING:
+    from typewiz.core.summary_types import SummaryData
+    from typewiz.core.types import RunResult
+    from typewiz.readiness.views import FolderReadinessPayload
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
 
@@ -52,7 +54,7 @@ def test_parse_key_value_entries_returns_pairs() -> None:
 
 
 def test_parse_key_value_entries_rejects_invalid() -> None:
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = parse_key_value_entries(["novalue"], argument="--profile")
 
 
@@ -62,7 +64,7 @@ def test_parse_int_mapping_converts_to_ints() -> None:
 
 
 def test_parse_int_mapping_rejects_non_int() -> None:
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = parse_int_mapping(["errors=abc"], argument="--target")
 
 
@@ -78,9 +80,9 @@ def test_parse_hash_workers_accepts_values() -> None:
 
 
 def test_parse_hash_workers_rejects_invalid() -> None:
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = parse_hash_workers("-1")
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = parse_hash_workers("fast")
 
 
@@ -94,15 +96,14 @@ def test_query_overview_payload_shapes(cli_summary: SummaryData) -> None:
     assert payload["severity_totals"]["error"] == 2
     assert payload.get("category_totals", {})["unknownChecks"] == 2
     runs = payload.get("runs")
-    assert runs and runs[0]["run"] == "pyright:current"
+    assert runs
+    assert runs[0]["run"] == "pyright:current"
 
 
 def test_query_hotspots_file_payload(cli_summary: SummaryData) -> None:
     entries = query_hotspots(cli_summary, kind=HotspotKind.FILES, limit=1)
     assert entries[0]["path"] == "src/app.py"
-    folders = cast(
-        list[FolderHotspotEntry], query_hotspots(cli_summary, kind=HotspotKind.FOLDERS, limit=1)
-    )
+    folders = cast("list[FolderHotspotEntry]", query_hotspots(cli_summary, kind=HotspotKind.FOLDERS, limit=1))
     assert folders[0]["participating_runs"] == 1
 
 
@@ -122,7 +123,7 @@ def test_query_rules_include_paths(cli_summary: SummaryData) -> None:
 
 def test_query_readiness_payload(cli_summary: SummaryData) -> None:
     view = cast(
-        dict[ReadinessStatus, list[FolderReadinessPayload]],
+        "dict[ReadinessStatus, list[FolderReadinessPayload]]",
         query_readiness(
             cli_summary,
             level=ReadinessLevel.FOLDER,

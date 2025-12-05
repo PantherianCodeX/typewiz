@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -12,12 +12,19 @@ from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.core.type_aliases import ToolName
 from typewiz.core.types import Diagnostic, RunResult
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 STUB_TOOL = ToolName("stub")
 
 
 @pytest.fixture
 def fake_run(tmp_path: Path) -> RunResult:
-    """Provide a representative run payload for CLI->engine workflows."""
+    """Provide a representative run payload for CLI->engine workflows.
+
+    Returns:
+        ``RunResult`` with a single diagnostic referencing ``tmp_path``.
+    """
     (tmp_path / "pkg").mkdir(exist_ok=True)
     diag = Diagnostic(
         tool=STUB_TOOL,

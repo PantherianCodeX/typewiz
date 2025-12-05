@@ -5,9 +5,20 @@
 from __future__ import annotations
 
 import importlib
-from types import ModuleType
+from typing import TYPE_CHECKING
 
-__all__ = [
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    cache: ModuleType
+    collection_utils: ModuleType
+    error_codes: ModuleType
+    exceptions: ModuleType
+    license: ModuleType  # noqa: A001  # JUSTIFIED: module attribute name must match public API typewiz._internal.license
+    logging_utils: ModuleType
+    utils: ModuleType
+
+_EXPOSED_MODULES = [
     "cache",
     "collection_utils",
     "error_codes",
@@ -16,14 +27,7 @@ __all__ = [
     "logging_utils",
     "utils",
 ]
-
-cache: ModuleType
-collection_utils: ModuleType
-error_codes: ModuleType
-exceptions: ModuleType
-license: ModuleType
-logging_utils: ModuleType
-utils: ModuleType
+__all__ = list(_EXPOSED_MODULES)
 
 
 def __getattr__(name: str) -> ModuleType:

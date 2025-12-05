@@ -47,11 +47,11 @@ VERIFYTYPES_PACKAGE ?= typewiz
   help %.help \
   ci.precommit.install ci.check \
   all.test all.lint all.type all.format all.fix \
-  lint lint.ruff lint.format format fix \
+  lint lint.ruff lint.format lint.pylint format fix \
   type type.mypy type.pyright type.verify typing.run typing.baseline typing.strict typing.ci \
   pytest.all pytest.verbose pytest.failfast pytest.unit pytest.integration pytest.property pytest.performance pytest.cov pytest.clean \
   tests.all tests.verbose tests.failfast tests.unit tests.integration tests.property tests.performance tests.cov tests.clean \
-  sec.lint sec.bandit \
+  sec.lint sec.bandit sec.safety sec.all \
   bench \
   verifytypes \
   hooks.update \
@@ -295,9 +295,20 @@ tests.clean: ## Alias for pytest.clean
 sec.lint: ## Advisory security lint (ruff S-rules)
 	$(RUFF) check --select S
 
-sec.bandit: ## Run Bandit if available (advisory)
-	@if command -v bandit >/dev/null 2>&1; then \
-	  bandit -q -r src -x src/typewiz/_internal/logging_utils.py; \
-	else \
-	  echo "[advisory] bandit not installed; skipping"; \
-	fi
+sec.bandit: ## Run Bandit security scanner
+	@mkdir -p out/security
+	$(BIN_DIR)/bandit -c pyproject.toml -r src/ -f json -o out/security/bandit-report.json || true
+	@echo "Bandit report: out/security/bandit-report.json"
+
+sec.safety: ## Run Safety dependency vulnerability scanner
+	@mkdir -p out/security
+	$(BIN_DIR)/safety scan --json > out/security/safety-report.json || true
+	@echo "Safety report: out/security/safety-report.json"
+
+sec.all: sec.lint sec.bandit sec.safety ## Run all security checks
+
+##@ Code Quality
+lint.pylint: ## Run Pylint code quality checks
+	@mkdir -p out/lint
+	$(BIN_DIR)/pylint --output-format=json --reports=n src/ > out/lint/pylint.json || true
+	@echo "Pylint report: out/lint/pylint.json"

@@ -9,5 +9,4 @@ __all__ = ["consume"]
 
 def consume(value: object | None) -> None:
     """Explicitly mark a value as intentionally unused."""
-
     _ = value

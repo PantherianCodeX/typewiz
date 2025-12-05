@@ -4,8 +4,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -33,9 +32,13 @@ from typewiz.core.model_types import (
     SummaryField,
     SummaryStyle,
 )
-from typewiz.core.summary_types import ReadinessOptionEntry, ReadinessStrictEntry, SummaryData
 from typewiz.core.type_aliases import RelPath, ToolName
 from typewiz.core.types import RunResult
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from typewiz.core.summary_types import ReadinessOptionEntry, ReadinessStrictEntry, SummaryData
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
 
@@ -45,14 +48,14 @@ ALL_SUMMARY_FIELDS = sorted(SUMMARY_FIELD_CHOICES, key=lambda field: field.value
 
 def _sample_readiness_summary() -> SummaryData:
     option_entries = cast(
-        dict[ReadinessStatus, list[ReadinessOptionEntry]],
+        "dict[ReadinessStatus, list[ReadinessOptionEntry]]",
         {
             ReadinessStatus.READY: [{"path": "pkg", "count": "not-a-number"}],
             ReadinessStatus.BLOCKED: [{"path": "pkg", "count": 2}],
         },
     )
     strict_entries = cast(
-        dict[ReadinessStatus, list[ReadinessStrictEntry]],
+        "dict[ReadinessStatus, list[ReadinessStrictEntry]]",
         {
             ReadinessStatus.READY: [{"path": "pkg/module.py", "diagnostics": 0}],
             ReadinessStatus.BLOCKED: [{"path": "pkg/other.py", "diagnostics": "3"}],
@@ -124,7 +127,7 @@ def test_parse_summary_fields_rejects_unknown_value() -> None:
     raw = "profile,unknown"
 
     # Act / Assert
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         consume(parse_summary_fields(raw, valid_fields=SUMMARY_FIELD_CHOICES))
 
 
@@ -149,7 +152,7 @@ def test_collect_plugin_args_merges_entries() -> None:
 )
 def test_collect_plugin_args_rejects_invalid_entries(entries: list[str]) -> None:
     # Act / Assert
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         consume(collect_plugin_args(entries))
 
 
@@ -167,7 +170,7 @@ def test_collect_profile_args_records_mappings() -> None:
 @pytest.mark.parametrize("entries", [["pyright"], ["pyright="]])
 def test_collect_profile_args_rejects_invalid_entries(entries: list[str]) -> None:
     # Act / Assert
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         consume(collect_profile_args(entries))
 
 
@@ -178,9 +181,7 @@ def test_collect_profile_args_rejects_invalid_entries(entries: list[str]) -> Non
         (["current"], (True, True, False)),
     ],
 )
-def test_normalise_modes_tuple_handles_cli_flags(
-    raw: list[str] | None, expected: tuple[bool, bool, bool]
-) -> None:
+def test_normalise_modes_tuple_handles_cli_flags(raw: list[str] | None, expected: tuple[bool, bool, bool]) -> None:
     # Act
     result = normalise_modes_tuple(raw)
 
@@ -193,7 +194,7 @@ def test_normalise_modes_tuple_rejects_unknown_value() -> None:
     raw = ["unknown"]
 
     # Act / Assert
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         consume(normalise_modes_tuple(raw))
 
 
@@ -328,7 +329,7 @@ def test_query_readiness_invalid_data_raises() -> None:
     )
 
     # Act / Assert
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         consume(
             query_readiness(
                 summary,

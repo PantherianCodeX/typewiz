@@ -61,9 +61,7 @@ def _make_summary() -> SummaryData:
             "unknownChecks": ReadinessOptionsPayload(
                 threshold=2,
                 buckets={
-                    ReadinessStatus.BLOCKED: (
-                        ReadinessOptionEntry(path="src/app", count=3, errors=2, warnings=1),
-                    ),
+                    ReadinessStatus.BLOCKED: (ReadinessOptionEntry(path="src/app", count=3, errors=2, warnings=1),),
                 },
             ),
         },
@@ -98,7 +96,7 @@ def test_collect_readiness_view_folder() -> None:
         statuses=[ReadinessStatus.BLOCKED],
         limit=5,
     )
-    folder_view = cast(dict[ReadinessStatus, list[FolderReadinessPayload]], view)
+    folder_view = cast("dict[ReadinessStatus, list[FolderReadinessPayload]]", view)
     assert ReadinessStatus.BLOCKED in folder_view
     blocked_entries = folder_view[ReadinessStatus.BLOCKED]
     assert blocked_entries
@@ -117,7 +115,7 @@ def test_collect_readiness_view_folder_severity_filter() -> None:
         limit=5,
         severities=[SeverityLevel.INFORMATION],
     )
-    folder_view = cast(dict[ReadinessStatus, list[FolderReadinessPayload]], view)
+    folder_view = cast("dict[ReadinessStatus, list[FolderReadinessPayload]]", view)
     assert folder_view[ReadinessStatus.BLOCKED] == []
 
 
@@ -129,7 +127,7 @@ def test_collect_readiness_view_file() -> None:
         statuses=[ReadinessStatus.BLOCKED],
         limit=5,
     )
-    file_view = cast(dict[ReadinessStatus, list[FileReadinessPayload]], view)
+    file_view = cast("dict[ReadinessStatus, list[FileReadinessPayload]]", view)
     assert ReadinessStatus.BLOCKED in file_view
     blocked_entries = file_view[ReadinessStatus.BLOCKED]
     assert blocked_entries
@@ -138,7 +136,7 @@ def test_collect_readiness_view_file() -> None:
     assert entry["diagnostics"] == 4
     categories = entry.get("categories")
     assert isinstance(categories, dict)
-    categories_dict = cast(dict[CategoryName, object], categories)
+    categories_dict = cast("dict[CategoryName, object]", categories)
     assert categories_dict.get(CategoryName("unknownChecks")) == 3
 
 
@@ -151,7 +149,7 @@ def test_collect_readiness_view_file_severity_filter() -> None:
         limit=5,
         severities=[SeverityLevel.WARNING],
     )
-    file_view = cast(dict[ReadinessStatus, list[FileReadinessPayload]], view)
+    file_view = cast("dict[ReadinessStatus, list[FileReadinessPayload]]", view)
     assert file_view[ReadinessStatus.BLOCKED]
     filtered = collect_readiness_view(
         summary,
@@ -160,7 +158,7 @@ def test_collect_readiness_view_file_severity_filter() -> None:
         limit=5,
         severities=[SeverityLevel.INFORMATION],
     )
-    filtered_view = cast(dict[ReadinessStatus, list[FileReadinessPayload]], filtered)
+    filtered_view = cast("dict[ReadinessStatus, list[FileReadinessPayload]]", filtered)
     assert filtered_view[ReadinessStatus.BLOCKED] == []
 
 
@@ -177,9 +175,7 @@ def test_collect_readiness_view_folder_fallback_category() -> None:
             "optionalChecks": ReadinessOptionsPayload(
                 threshold=2,
                 buckets={
-                    ReadinessStatus.BLOCKED: (
-                        ReadinessOptionEntry(path="src/opt", count=2, errors=1, warnings=1),
-                    ),
+                    ReadinessStatus.BLOCKED: (ReadinessOptionEntry(path="src/opt", count=2, errors=1, warnings=1),),
                 },
             ),
         },
@@ -209,7 +205,7 @@ def test_collect_readiness_view_folder_fallback_category() -> None:
         statuses=[ReadinessStatus.BLOCKED],
         limit=5,
     )
-    folder_view = cast(dict[ReadinessStatus, list[FolderReadinessPayload]], view)
+    folder_view = cast("dict[ReadinessStatus, list[FolderReadinessPayload]]", view)
     assert folder_view[ReadinessStatus.BLOCKED][0]["path"] == "src/opt"
 
 
@@ -224,7 +220,7 @@ def test_collect_readiness_view_rejects_invalid() -> None:
     blocked_entries = strict_map[blocked_key]
     assert blocked_entries
     blocked_entries[0]["diagnostics"] = -1
-    with pytest.raises(ReadinessValidationError):
+    with pytest.raises(ReadinessValidationError, match="diagnostics must be non-negative"):
         consume(
             collect_readiness_view(
                 summary,

@@ -9,15 +9,14 @@ import json
 from collections import Counter
 from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from typewiz.config.validation import coerce_int, coerce_mapping, coerce_object_list
 from typewiz.core.categories import coerce_category_key
+from typewiz.core.model_types import DEFAULT_SEVERITIES, Mode, SeverityLevel
+from typewiz.core.type_aliases import CategoryKey, RunId, ToolName
 from typewiz.runtime import JSONValue, normalise_enums_for_json
 
-from ..core.model_types import DEFAULT_SEVERITIES, Mode, SeverityLevel
-from ..core.type_aliases import CategoryKey, RunId, ToolName
-from ..manifest.typed import ManifestData
 from .models import (
     RATCHET_SCHEMA_VERSION,
     EngineSignaturePayload,
@@ -27,6 +26,9 @@ from .models import (
     RatchetRunBudgetModel,
 )
 from .summary import RatchetFinding, RatchetReport, RatchetRunReport
+
+if TYPE_CHECKING:
+    from typewiz.manifest.typed import ManifestData
 
 
 def _normalise_mode(value: object) -> Mode | None:
@@ -114,10 +116,10 @@ def _canonicalise_engine_options(
             result[key] = json_list
     overrides = _normalise_overrides(raw)
     if overrides:
-        result["overrides"] = cast(JSONValue, overrides)
+        result["overrides"] = cast("JSONValue", overrides)
     category_mapping = _normalise_category_mapping(raw)
     if category_mapping:
-        result["categoryMapping"] = cast(JSONValue, category_mapping)
+        result["categoryMapping"] = cast("JSONValue", category_mapping)
     return result
 
 
@@ -148,7 +150,7 @@ def _split_targets(
             run_id, severity_token = key.rsplit(".", 1)
             severity = SeverityLevel.from_str(severity_token)
             run_key = run_id.strip()
-            entry = per_run.setdefault(run_key, cast(dict[SeverityLevel, int], {}))
+            entry = per_run.setdefault(run_key, cast("dict[SeverityLevel, int]", {}))
             entry[severity] = budget
         else:
             severity = SeverityLevel.from_str(key)
@@ -169,18 +171,14 @@ def _build_path_budgets(
         counts = _severity_counts_from_file(entry_map)
         if not counts:
             counts = Counter(dict.fromkeys(severities, 0))
-        budgets: dict[SeverityLevel, int] = {
-            severity: max(0, counts.get(severity, 0)) for severity in severities
-        }
+        budgets: dict[SeverityLevel, int] = {severity: max(0, counts.get(severity, 0)) for severity in severities}
         path_budgets[path] = RatchetPathBudgetModel(severities=budgets)
     return path_budgets
 
 
 def _engine_signature_payload(run: Mapping[str, JSONValue]) -> EngineSignaturePayload:
     engine_options = _canonicalise_engine_options(
-        coerce_mapping(run.get("engineOptions"))
-        if isinstance(run.get("engineOptions"), Mapping)
-        else None,
+        coerce_mapping(run.get("engineOptions")) if isinstance(run.get("engineOptions"), Mapping) else None,
     )
     engine_options_dict: dict[str, JSONValue] = dict(engine_options)
     mode = _normalise_mode(run.get("mode"))
@@ -265,8 +263,18 @@ def build_ratchet_from_manifest(
     targets: Mapping[str, int] | None = None,
     manifest_path: str | Path | None = None,
 ) -> RatchetModel:
-    """Create a ratchet budget from a manifest payload."""
+    """Create a ratchet budget from a manifest payload.
 
+    Args:
+        manifest: Loaded manifest JSON.
+        runs: Optional subset of runs to include.
+        severities: Optional severity ordering override.
+        targets: Optional mapping of severity budgets.
+        manifest_path: Optional filesystem path recorded in the model.
+
+    Returns:
+        New ``RatchetModel`` capturing budgets per selected run.
+    """
     selected_runs = _select_run_ids(manifest, runs)
     run_lookup = _run_by_id(manifest)
 
@@ -292,9 +300,7 @@ def build_ratchet_from_manifest(
 
     generated_at = str(manifest.get("generatedAt")) if manifest.get("generatedAt") else ""
     project_root_str = manifest.get("projectRoot")
-    project_root = (
-        Path(project_root_str) if isinstance(project_root_str, str) and project_root_str else None
-    )
+    project_root = Path(project_root_str) if isinstance(project_root_str, str) and project_root_str else None
     manifest_path_resolved = None
     if manifest_path:
         manifest_path_resolved = Path(manifest_path)
@@ -411,8 +417,16 @@ def compare_manifest_to_ratchet(
     ratchet: RatchetModel,
     runs: Sequence[str | RunId] | None = None,
 ) -> RatchetReport:
-    """Compare a manifest payload against a ratchet budget."""
+    """Compare a manifest payload against a ratchet budget.
 
+    Args:
+        manifest: Latest manifest payload to evaluate.
+        ratchet: Existing ratchet model storing budgets.
+        runs: Optional subset of runs to analyse.
+
+    Returns:
+        ``RatchetReport`` describing per-run improvements and violations.
+    """
     run_lookup = _run_by_id(manifest)
     if runs is None:
         selected_runs: list[RunId] = [RunId(run_id) for run_id in ratchet.runs.keys()]
@@ -436,7 +450,6 @@ def apply_auto_update(
     generated_at: str,
 ) -> RatchetModel:
     """Return a new ratchet model with budgets reduced to current manifest counts."""
-
     report = compare_manifest_to_ratchet(manifest=manifest, ratchet=ratchet, runs=runs)
     updated_runs: dict[RunId, RatchetRunBudgetModel] = {}
     run_lookup = _run_by_id(manifest)
@@ -475,11 +488,8 @@ def refresh_signatures(
     generated_at: str,
 ) -> RatchetModel:
     """Return a ratchet model with refreshed engine signature metadata."""
-
     run_lookup = _run_by_id(manifest)
-    selected_run_ids: set[RunId] = (
-        set(_normalise_run_id_values(runs)) if runs else set(ratchet.runs.keys())
-    )
+    selected_run_ids: set[RunId] = set(_normalise_run_id_values(runs)) if runs else set(ratchet.runs.keys())
     refreshed_runs: dict[RunId, RatchetRunBudgetModel] = {}
     for run_id, budget in ratchet.runs.items():
         if runs and run_id not in selected_run_ids:

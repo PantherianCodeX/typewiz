@@ -7,9 +7,9 @@ from __future__ import annotations
 import json
 import sys
 import types
-from collections.abc import Sequence
-from pathlib import Path
-from typing import cast
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -26,10 +26,15 @@ from typewiz.core.model_types import (
     OverrideEntry,
     SeverityLevel,
 )
-from typewiz.core.summary_types import SummaryData
 from typewiz.core.type_aliases import EngineName, RelPath, RunnerName, ToolName
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+    from typewiz.core.summary_types import SummaryData
 
 pytestmark = [pytest.mark.integration, pytest.mark.cli]
 
@@ -39,12 +44,187 @@ PYRIGHT_RUNNER = RunnerName(PYRIGHT_ENGINE)
 PYRIGHT_TOOL = ToolName("pyright")
 
 
+@dataclass(slots=True)
+class AuditFullOutputsContext:
+    compare_path: Path
+    dashboard_json: Path
+    dashboard_md: Path
+    dashboard_html: Path
+
+
 def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: StubEngine) -> None:
     def _resolve(_: Sequence[str]) -> list[StubEngine]:
         return [engine]
 
     monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve)
     monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve)
+
+
+def _run_cli_command(args: Sequence[str]) -> int:
+    """Invoke the CLI entrypoint with the provided arguments."""
+    return main(list(args))
+
+
+def _make_dashboard_renderer(
+    summary: SummaryData,
+    *,
+    allowed_views: set[str],
+) -> Callable[..., str]:
+    """Return a renderer that mimics ``render_dashboard_summary``."""
+
+    def _render_dashboard(summary_arg: SummaryData, **kwargs: object) -> str:
+        assert summary_arg is summary
+        output_format = cast("DashboardFormat", kwargs["format"])
+        default_view = cast("DashboardView | str", kwargs["default_view"])
+        if output_format is DashboardFormat.JSON:
+            return json.dumps(summary_arg)
+        if output_format is DashboardFormat.MARKDOWN:
+            return "markdown"
+        view_value = default_view.value if isinstance(default_view, DashboardView) else default_view
+        assert view_value in allowed_views
+        return "<html>"
+
+    return _render_dashboard
+
+
+def _arrange_cli_audit_full_outputs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> AuditFullOutputsContext:
+    cfg = Config()
+    cfg.audit.runners = [PYRIGHT_RUNNER]
+
+    summary = build_empty_summary()
+    summary["tabs"]["overview"]["severityTotals"] = {
+        SeverityLevel.ERROR: 0,
+        SeverityLevel.WARNING: 0,
+        SeverityLevel.INFORMATION: 1,
+    }
+    prev_summary = build_empty_summary()
+    prev_summary["tabs"]["overview"]["severityTotals"] = {
+        SeverityLevel.ERROR: 0,
+        SeverityLevel.WARNING: 0,
+        SeverityLevel.INFORMATION: 0,
+    }
+
+    diag = Diagnostic(
+        tool=PYRIGHT_TOOL,
+        severity=SeverityLevel.INFORMATION,
+        path=tmp_path / "pkg" / "module.py",
+        line=1,
+        column=1,
+        code="information",
+        message="info",
+    )
+    override_entry_full: OverrideEntry = {"path": "pkg", "profile": "strict"}
+    run = RunResult(
+        tool=PYRIGHT_TOOL,
+        mode=Mode.CURRENT,
+        command=["pyright", "pkg"],
+        exit_code=0,
+        duration_ms=1.0,
+        diagnostics=[diag],
+        profile="strict",
+        config_file=tmp_path / "pyrightconfig.json",
+        plugin_args=["--strict"],
+        include=[RelPath("pkg")],
+        exclude=[],
+        overrides=[override_entry_full],
+        scanned_paths=[RelPath("pkg")],
+    )
+    audit_result = AuditResult(
+        manifest={"schemaVersion": CURRENT_MANIFEST_VERSION, "runs": []},
+        runs=[run],
+        summary=summary,
+        error_count=0,
+        warning_count=0,
+    )
+
+    def _load_config(_: Path | None = None) -> Config:
+        return cfg
+
+    def _resolve_root(_: Path | None = None) -> Path:
+        return tmp_path
+
+    def _default_paths(_: Path) -> list[str]:
+        return ["pkg"]
+
+    def _run_audit_stub(**_: object) -> AuditResult:
+        return audit_result
+
+    monkeypatch.setattr("typewiz.cli.commands.audit.load_config", _load_config)
+    monkeypatch.setattr("typewiz.cli.commands.audit.resolve_project_root", _resolve_root)
+    monkeypatch.setattr("typewiz.cli.commands.audit.default_full_paths", _default_paths)
+    monkeypatch.setattr("typewiz.cli.commands.audit.run_audit", _run_audit_stub)
+
+    def _fake_build_summary(data: object) -> SummaryData:
+        if isinstance(data, dict):
+            dict_data = cast("dict[str, object]", data)
+            if dict_data.get("__prev__"):
+                return prev_summary
+        return summary
+
+    monkeypatch.setattr("typewiz.cli.commands.audit.build_summary", _fake_build_summary)
+
+    def _load_prev_summary(_: Path) -> SummaryData:
+        return prev_summary
+
+    monkeypatch.setattr(
+        "typewiz.cli.commands.audit.load_summary_from_manifest",
+        _load_prev_summary,
+    )
+
+    renderer = _make_dashboard_renderer(
+        summary,
+        allowed_views={"engines", "overview", "hotspots", "readiness", "runs"},
+    )
+    monkeypatch.setattr(
+        "typewiz.services.dashboard.render_dashboard_summary",
+        renderer,
+    )
+
+    (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
+    compare_path = tmp_path / "prev_manifest.json"
+    consume(compare_path.write_text("{}", encoding="utf-8"))
+
+    dashboard_json = tmp_path / "dashboard.json"
+    dashboard_md = tmp_path / "dashboard.md"
+    dashboard_html = tmp_path / "dashboard.html"
+    return AuditFullOutputsContext(
+        compare_path=compare_path,
+        dashboard_json=dashboard_json,
+        dashboard_md=dashboard_md,
+        dashboard_html=dashboard_html,
+    )
+
+
+def _act_cli_audit_full_outputs(
+    context: AuditFullOutputsContext,
+    capsys: pytest.CaptureFixture[str],
+) -> tuple[int, str]:
+    exit_code = _run_cli_command(
+        [
+            "audit",
+            "--runner",
+            "pyright",
+            "pkg",
+            "--summary",
+            "full",
+            "--fail-on",
+            "any",
+            "--compare-to",
+            str(context.compare_path),
+            "--dashboard-json",
+            str(context.dashboard_json),
+            "--dashboard-markdown",
+            str(context.dashboard_md),
+            "--dashboard-html",
+            str(context.dashboard_html),
+            "--dashboard-view",
+            "engines",
+        ],
+    )
+    return exit_code, capsys.readouterr().out
 
 
 def test_cli_audit(
@@ -62,7 +242,7 @@ def test_cli_audit(
     manifest_path = tmp_path / "manifest.json"
     dashboard_path = tmp_path / "dashboard.md"
     consume(dashboard_path.write_text("stale", encoding="utf-8"))
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "audit",
             "--runner",
@@ -95,12 +275,12 @@ def test_cli_audit(
     assert any(mode is Mode.FULL for mode, _, _ in engine.invocations)
     assert all("--cli-flag" in args for _, args, _ in engine.invocations)
 
-    manifest_json = cast(dict[str, object], json.loads(manifest_path.read_text(encoding="utf-8")))
+    manifest_json = cast("dict[str, object]", json.loads(manifest_path.read_text(encoding="utf-8")))
     runs_value = manifest_json.get("runs")
     assert isinstance(runs_value, list)
     assert runs_value
-    first_run = cast(dict[str, object], runs_value[0])
-    engine_options_obj = cast(dict[str, object], first_run.get("engineOptions", {}))
+    first_run = cast("dict[str, object]", runs_value[0])
+    engine_options_obj = cast("dict[str, object]", first_run.get("engineOptions", {}))
     assert engine_options_obj.get("profile") == "strict"
     assert engine_options_obj.get("pluginArgs") == ["--cli-flag"]
     assert "profile=" not in captured.out
@@ -116,7 +296,7 @@ def test_cli_dashboard_output(tmp_path: Path) -> None:
     manifest_path = tmp_path / "manifest.json"
     consume(manifest_path.write_text(json.dumps(manifest), encoding="utf-8"))
 
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "dashboard",
             "--manifest",
@@ -128,21 +308,17 @@ def test_cli_dashboard_output(tmp_path: Path) -> None:
     assert exit_code == 0
 
 
-def test_cli_version_flag(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_cli_version_flag(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     monkeypatch.setenv("TYPEWIZ_LICENSE_KEY", "test")
-    exit_code = main(["--version"])
+    exit_code = _run_cli_command(["--version"])
     assert exit_code == 0
     output = capsys.readouterr().out
     assert "typewiz" in output.lower()
 
 
-def test_cli_engines_list(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_cli_engines_list(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     monkeypatch.setenv("TYPEWIZ_LICENSE_KEY", "test")
-    exit_code = main(["engines", "list", "--format", "json"])
+    exit_code = _run_cli_command(["engines", "list", "--format", "json"])
     assert exit_code == 0
     data = json.loads(capsys.readouterr().out)
     assert any(entry["name"] == "pyright" for entry in data)
@@ -154,7 +330,7 @@ def test_cli_cache_clear(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Non
     consume((cache_dir / "cache.json").write_text("{}", encoding="utf-8"))
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("TYPEWIZ_LICENSE_KEY", "test")
-    exit_code = main(["cache", "clear"])
+    exit_code = _run_cli_command(["cache", "clear"])
     assert exit_code == 0
     assert not cache_dir.exists()
 
@@ -172,7 +348,7 @@ def test_cli_audit_readiness_summary(
     consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
 
     manifest_path = tmp_path / "manifest.json"
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "audit",
             "--runner",
@@ -200,7 +376,7 @@ def test_cli_audit_readiness_summary(
     assert "[typewiz] readiness folder status=blocked" in captured.out
     assert "pkg" in captured.out
 
-    exit_code_readiness = main(
+    exit_code_readiness = _run_cli_command(
         [
             "readiness",
             "--manifest",
@@ -225,7 +401,7 @@ def test_cli_readiness_details_and_severity(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     manifest_path = build_cli_manifest(tmp_path)
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "readiness",
             "--manifest",
@@ -291,7 +467,7 @@ exclude = ["unused"]
     manifest_path = tmp_path / "manifest.json"
     dashboard_path = tmp_path / "dashboard.md"
     monkeypatch.chdir(tmp_path)
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "audit",
             "--runner",
@@ -341,7 +517,7 @@ def test_cli_audit_dry_run(
     consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
     manifest_path = tmp_path / "manifest.json"
 
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "audit",
             "--runner",
@@ -368,7 +544,7 @@ def test_cli_audit_hash_workers_override(
     recorded: dict[str, object] = {}
 
     sample_summary = cast(
-        SummaryData,
+        "SummaryData",
         {
             "generatedAt": "now",
             "projectRoot": str(tmp_path),
@@ -404,7 +580,7 @@ def test_cli_audit_hash_workers_override(
             warning_count=0,
         )
 
-    def _noop(*args: object, **kwargs: object) -> None:
+    def _noop(*_args: object, **_kwargs: object) -> None:
         return None
 
     monkeypatch.setattr("typewiz.cli.commands.audit.run_audit", _run_audit_stub)
@@ -414,7 +590,7 @@ def test_cli_audit_hash_workers_override(
     (tmp_path / "pkg").mkdir(exist_ok=True)
     consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
 
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "audit",
             "--runner",
@@ -442,7 +618,7 @@ def test_cli_mode_only_full(
 
     (tmp_path / "pkg").mkdir(exist_ok=True)
 
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "audit",
             "--runner",
@@ -472,7 +648,7 @@ def test_cli_plugin_arg_validation(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     )
     _patch_engine_resolution(monkeypatch, engine)
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         consume(
             main(
                 [
@@ -490,7 +666,7 @@ def test_cli_plugin_arg_validation(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
 
 def test_cli_init_writes_template(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     target = tmp_path / "typewiz.toml"
-    exit_code = main(["init", "--output", str(target)])
+    exit_code = _run_cli_command(["init", "--output", str(target)])
     assert exit_code == 0
     out = capsys.readouterr().out
     assert "Wrote starter config" in out
@@ -510,7 +686,7 @@ def test_cli_audit_without_markers(
     (tmp_path / "pkg").mkdir(exist_ok=True)
     consume((tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8"))
 
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "audit",
             "--runner",
@@ -536,7 +712,7 @@ def test_cli_audit_requires_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("typewiz.cli.commands.audit.load_config", _load_config)
     monkeypatch.setattr("typewiz.cli.commands.audit.default_full_paths", _default_paths)
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         consume(main(["audit"]))
 
 
@@ -545,154 +721,14 @@ def test_cli_audit_full_outputs(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    cfg = Config()
-    cfg.audit.runners = [PYRIGHT_RUNNER]
+    context = _arrange_cli_audit_full_outputs(monkeypatch, tmp_path)
+    exit_code, output = _act_cli_audit_full_outputs(context, capsys)
 
-    summary = build_empty_summary()
-    summary["tabs"]["overview"]["severityTotals"] = {
-        SeverityLevel.ERROR: 0,
-        SeverityLevel.WARNING: 0,
-        SeverityLevel.INFORMATION: 1,
-    }
-    prev_summary = build_empty_summary()
-    prev_summary["tabs"]["overview"]["severityTotals"] = {
-        SeverityLevel.ERROR: 0,
-        SeverityLevel.WARNING: 0,
-        SeverityLevel.INFORMATION: 0,
-    }
-
-    diag = Diagnostic(
-        tool=PYRIGHT_TOOL,
-        severity=SeverityLevel.INFORMATION,
-        path=tmp_path / "pkg" / "module.py",
-        line=1,
-        column=1,
-        code="information",
-        message="info",
-    )
-    override_entry_full: OverrideEntry = {"path": "pkg", "profile": "strict"}
-    run = RunResult(
-        tool=PYRIGHT_TOOL,
-        mode=Mode.CURRENT,
-        command=["pyright", "pkg"],
-        exit_code=0,
-        duration_ms=1.0,
-        diagnostics=[diag],
-        profile="strict",
-        config_file=tmp_path / "pyrightconfig.json",
-        plugin_args=["--strict"],
-        include=[RelPath("pkg")],
-        exclude=[],
-        overrides=[override_entry_full],
-        scanned_paths=[RelPath("pkg")],
-    )
-    audit_result = AuditResult(
-        manifest={"schemaVersion": CURRENT_MANIFEST_VERSION, "runs": []},
-        runs=[run],
-        summary=summary,
-        error_count=0,
-        warning_count=0,
-    )
-
-    def _load_config(_: Path | None = None) -> Config:
-        return cfg
-
-    def _resolve_root(_: Path | None = None) -> Path:
-        return tmp_path
-
-    def _default_paths(_: Path) -> list[str]:
-        return ["pkg"]
-
-    def _run_audit_stub(**_: object) -> AuditResult:
-        return audit_result
-
-    def _render_dashboard(
-        summary_arg: SummaryData,
-        *,
-        format: DashboardFormat,
-        default_view: DashboardView | str,
-    ) -> str:
-        assert summary_arg is summary
-        if format is DashboardFormat.JSON:
-            return json.dumps(summary_arg)
-        if format is DashboardFormat.MARKDOWN:
-            return "markdown"
-        view_value = default_view.value if isinstance(default_view, DashboardView) else default_view
-        assert view_value in {"engines", "overview", "hotspots", "readiness", "runs"}
-        return "<html>"
-
-    monkeypatch.setattr("typewiz.cli.commands.audit.load_config", _load_config)
-    monkeypatch.setattr("typewiz.cli.commands.audit.resolve_project_root", _resolve_root)
-    monkeypatch.setattr("typewiz.cli.commands.audit.default_full_paths", _default_paths)
-    monkeypatch.setattr("typewiz.cli.commands.audit.run_audit", _run_audit_stub)
-
-    def _fake_build_summary(data: object) -> SummaryData:
-        if isinstance(data, dict):
-            dict_data = cast(dict[str, object], data)
-            if dict_data.get("__prev__"):
-                return prev_summary
-        return summary
-
-    monkeypatch.setattr("typewiz.cli.commands.audit.build_summary", _fake_build_summary)
-
-    def _load_prev_summary(_: Path) -> SummaryData:
-        return prev_summary
-
-    monkeypatch.setattr(
-        "typewiz.cli.commands.audit.load_summary_from_manifest",
-        _load_prev_summary,
-    )
-
-    def _render_audit_dashboard(
-        summary_arg: SummaryData,
-        *,
-        format: DashboardFormat,
-        default_view: DashboardView | str,
-    ) -> str:
-        return _render_dashboard(summary_arg, format=format, default_view=default_view)
-
-    monkeypatch.setattr(
-        "typewiz.services.dashboard.render_dashboard_summary",
-        _render_audit_dashboard,
-    )
-
-    (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
-    compare_path = tmp_path / "prev_manifest.json"
-    consume(compare_path.write_text("{}", encoding="utf-8"))
-
-    dashboard_json = tmp_path / "dashboard.json"
-    dashboard_md = tmp_path / "dashboard.md"
-    dashboard_html = tmp_path / "dashboard.html"
-
-    exit_code = main(
-        [
-            "audit",
-            "--runner",
-            "pyright",
-            "pkg",
-            "--summary",
-            "full",
-            "--fail-on",
-            "any",
-            "--compare-to",
-            str(compare_path),
-            "--dashboard-json",
-            str(dashboard_json),
-            "--dashboard-markdown",
-            str(dashboard_md),
-            "--dashboard-html",
-            str(dashboard_html),
-            "--dashboard-view",
-            "engines",
-        ],
-    )
-
-    out = capsys.readouterr().out
-    assert "delta: errors=0 warnings=0 info=+1" in out
+    assert "delta: errors=0 warnings=0 info=+1" in output
     assert exit_code == 2
-    assert dashboard_json.exists()
-    assert dashboard_md.exists()
-    assert dashboard_html.exists()
+    assert context.dashboard_json.exists()
+    assert context.dashboard_md.exists()
+    assert context.dashboard_html.exists()
 
 
 def test_cli_dashboard_outputs(
@@ -713,37 +749,26 @@ def test_cli_dashboard_outputs(
     def _load_summary(_: Path) -> SummaryData:
         return summary
 
-    def _render_dashboard_cli(
-        summary_arg: SummaryData,
-        *,
-        format: DashboardFormat,
-        default_view: DashboardView | str,
-    ) -> str:
-        assert summary_arg is summary
-        if format is DashboardFormat.JSON:
-            return json.dumps(summary_arg)
-        if format is DashboardFormat.MARKDOWN:
-            return "markdown"
-        view_value = default_view.value if isinstance(default_view, DashboardView) else default_view
-        assert view_value in {"overview", "engines", "hotspots", "readiness", "runs"}
-        return "<html>"
-
     monkeypatch.setattr(
         "typewiz.cli.app.load_summary_from_manifest",
         _load_summary,
     )
+    renderer = _make_dashboard_renderer(
+        summary,
+        allowed_views={"overview", "engines", "hotspots", "readiness", "runs"},
+    )
     monkeypatch.setattr(
         "typewiz.cli.app.render_dashboard_summary",
-        _render_dashboard_cli,
+        renderer,
     )
 
-    exit_code_json = main(["dashboard", "--manifest", str(manifest_path)])
+    exit_code_json = _run_cli_command(["dashboard", "--manifest", str(manifest_path)])
     assert exit_code_json == 0
     out_json = capsys.readouterr().out
     assert json.loads(out_json) == summary
 
     md_path = tmp_path / "dashboard.md"
-    exit_code_md = main(
+    exit_code_md = _run_cli_command(
         [
             "dashboard",
             "--manifest",
@@ -758,7 +783,7 @@ def test_cli_dashboard_outputs(
     assert md_path.read_text(encoding="utf-8") == "markdown"
 
     html_path = tmp_path / "dashboard.html"
-    exit_code_html = main(
+    exit_code_html = _run_cli_command(
         [
             "dashboard",
             "--manifest",
@@ -808,7 +833,7 @@ def test_cli_manifest_validate_with_jsonschema(
     dummy_module = types.SimpleNamespace(Draft7Validator=DummyValidator)
     monkeypatch.setitem(sys.modules, "jsonschema", dummy_module)
 
-    exit_code = main(["manifest", "validate", str(manifest_path), "--schema", str(schema_path)])
+    exit_code = _run_cli_command(["manifest", "validate", str(manifest_path), "--schema", str(schema_path)])
     assert exit_code == 0
     assert "manifest is valid" in capsys.readouterr().out
 
@@ -833,7 +858,7 @@ def test_cli_manifest_validate_runs_type(
         ),
     )
 
-    exit_code = main(["manifest", "validate", str(manifest_path)])
+    exit_code = _run_cli_command(["manifest", "validate", str(manifest_path)])
     assert exit_code == 2
     output = capsys.readouterr().out
     assert "validation error at runs" in output
@@ -842,13 +867,13 @@ def test_cli_manifest_validate_runs_type(
 
 def test_cli_manifest_unknown_action(monkeypatch: pytest.MonkeyPatch) -> None:
     manifest_cmd = ["manifest", "unknown"]
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         consume(main(manifest_cmd))
 
 
 def test_cli_query_overview_table(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     manifest_path = build_cli_manifest(tmp_path)
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "query",
             "overview",
@@ -867,7 +892,7 @@ def test_cli_query_overview_table(tmp_path: Path, capsys: pytest.CaptureFixture[
 
 def test_cli_query_hotspots_json(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     manifest_path = build_cli_manifest(tmp_path)
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "query",
             "hotspots",
@@ -883,7 +908,7 @@ def test_cli_query_hotspots_json(tmp_path: Path, capsys: pytest.CaptureFixture[s
     data = json.loads(capsys.readouterr().out)
     assert data[0]["path"] == "src"
     assert data[0]["errors"] >= 1
-    exit_code_files = main(
+    exit_code_files = _run_cli_command(
         [
             "query",
             "hotspots",
@@ -904,7 +929,7 @@ def test_cli_query_hotspots_json(tmp_path: Path, capsys: pytest.CaptureFixture[s
 
 def test_cli_query_readiness_file_table(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     manifest_path = build_cli_manifest(tmp_path)
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "query",
             "readiness",
@@ -929,7 +954,7 @@ def test_cli_query_readiness_folder_json(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     manifest_path = build_cli_manifest(tmp_path)
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "query",
             "readiness",
@@ -945,7 +970,7 @@ def test_cli_query_readiness_folder_json(
 
 def test_cli_query_runs_filters(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     manifest_path = build_cli_manifest(tmp_path)
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "query",
             "runs",
@@ -967,7 +992,7 @@ def test_cli_query_runs_filters(tmp_path: Path, capsys: pytest.CaptureFixture[st
 
 def test_cli_query_runs_empty(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     manifest_path = build_cli_manifest(tmp_path)
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "query",
             "runs",
@@ -986,7 +1011,7 @@ def test_cli_query_runs_empty(tmp_path: Path, capsys: pytest.CaptureFixture[str]
 
 def test_cli_query_engines_table(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     manifest_path = build_cli_manifest(tmp_path)
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "query",
             "engines",
@@ -1004,7 +1029,7 @@ def test_cli_query_engines_table(tmp_path: Path, capsys: pytest.CaptureFixture[s
 
 def test_cli_query_rules_limit(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     manifest_path = build_cli_manifest(tmp_path)
-    exit_code = main(
+    exit_code = _run_cli_command(
         [
             "query",
             "rules",
@@ -1036,7 +1061,7 @@ def test_cli_manifest_validate_accepts_minimal_payload(
         ),
     )
 
-    exit_code = main(["manifest", "validate", str(manifest_path)])
+    exit_code = _run_cli_command(["manifest", "validate", str(manifest_path)])
     assert exit_code == 0
     output = capsys.readouterr().out
     assert "manifest is valid" in output
@@ -1044,7 +1069,7 @@ def test_cli_manifest_validate_accepts_minimal_payload(
 
 def test_cli_manifest_schema_command(tmp_path: Path) -> None:
     schema_path = tmp_path / "schema.json"
-    exit_code = main(["manifest", "schema", "--output", str(schema_path), "--indent", "4"])
+    exit_code = _run_cli_command(["manifest", "schema", "--output", str(schema_path), "--indent", "4"])
     assert exit_code == 0
     assert schema_path.exists()
     schema_data = json.loads(schema_path.read_text(encoding="utf-8"))

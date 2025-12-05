@@ -4,8 +4,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -15,6 +14,10 @@ from typewiz.api import run_audit
 from typewiz.config import AuditConfig, Config, EngineSettings
 from typewiz.core.model_types import Mode
 from typewiz.core.type_aliases import EngineName, RunnerName
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
 
 pytestmark = pytest.mark.unit
 

@@ -4,16 +4,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
-from ..core.model_types import Mode, SeverityLevel
-from ..core.type_aliases import RunId
-from .models import EngineSignaturePayloadWithHash
+from typewiz.core.model_types import Mode, SeverityLevel
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from typewiz.core.type_aliases import RunId
+
+    from .models import EngineSignaturePayloadWithHash
 
 
 def _new_finding_list() -> list[RatchetFinding]:
+    """Create an empty list of ratchet findings.
+
+    Returns:
+        list[RatchetFinding]: An empty list for storing ratchet findings.
+    """
     return []
 
 
@@ -28,8 +37,11 @@ class RatchetFinding:
 
     @property
     def delta(self) -> int:
-        """Compute the difference between actual and allowed diagnostics."""
+        """Compute the difference between actual and allowed diagnostics.
 
+        Returns:
+            int: The difference (actual - allowed), positive means more than allowed.
+        """
         return self.actual - self.allowed
 
     def to_payload(
@@ -38,8 +50,15 @@ class RatchetFinding:
         include_delta: bool = True,
         rename_allowed: str | None = None,
     ) -> dict[str, object]:
-        """Serialise the finding for JSON output."""
+        """Serialize the finding for JSON output.
 
+        Args:
+            include_delta (bool, optional): Whether to include the delta field. Defaults to True.
+            rename_allowed (str | None, optional): Alternative name for the "allowed" field. Defaults to None.
+
+        Returns:
+            dict[str, object]: A dictionary representation of the finding.
+        """
         payload: dict[str, object] = {
             "path": self.path,
             "severity": self.severity.value,
@@ -65,12 +84,28 @@ class RatchetRunReport:
     actual_signature: EngineSignaturePayloadWithHash | None = None
 
     def has_violations(self) -> bool:
+        """Check if this run has any ratchet violations.
+
+        Returns:
+            bool: True if there are violations, False otherwise.
+        """
         return bool(self.violations)
 
     def has_signature_mismatch(self) -> bool:
+        """Check if this run has a signature mismatch.
+
+        Returns:
+            bool: True if signatures don't match, False otherwise.
+        """
         return not self.signature_matches
 
     def to_payload(self) -> dict[str, object]:
+        """Serialize the run report to a dictionary payload.
+
+        Returns:
+            dict[str, object]: A dictionary representation of the run report.
+        """
+
         def _signature_payload(
             entry: EngineSignaturePayloadWithHash | None,
         ) -> EngineSignaturePayloadWithHash | None:
@@ -80,15 +115,13 @@ class RatchetRunReport:
             mode_value = payload.get("mode")
             if isinstance(mode_value, Mode):
                 payload["mode"] = mode_value.value
-            return cast(EngineSignaturePayloadWithHash, payload)
+            return cast("EngineSignaturePayloadWithHash", payload)
 
         return {
             "run": self.run_id,
             "severities": [severity.value for severity in self.severities],
             "violations": [finding.to_payload() for finding in self.violations],
-            "improvements": [
-                finding.to_payload(rename_allowed="previous") for finding in self.improvements
-            ],
+            "improvements": [finding.to_payload(rename_allowed="previous") for finding in self.improvements],
             "signature_matches": self.signature_matches,
             "expected_signature": _signature_payload(self.expected_signature),
             "actual_signature": _signature_payload(self.actual_signature),
@@ -101,6 +134,16 @@ class RatchetRunReport:
         limit: int | None = None,
         summary_only: bool = False,
     ) -> list[str]:
+        """Format the run report as human-readable text lines.
+
+        Args:
+            ignore_signature (bool): Whether to ignore signature mismatches in the output.
+            limit (int | None, optional): Maximum number of findings to display per section. Defaults to None.
+            summary_only (bool, optional): If True, only show summary statistics. Defaults to False.
+
+        Returns:
+            list[str]: Formatted text lines describing the run report.
+        """
         lines = [self._status_line(ignore_signature)]
         if summary_only:
             lines.append(self._summary_line())
@@ -123,16 +166,20 @@ class RatchetRunReport:
             )
         )
         if not ignore_signature and self.has_signature_mismatch():
-            expected_hash = (
-                self.expected_signature.get("hash") if self.expected_signature else "<none>"
-            )
+            expected_hash = self.expected_signature.get("hash") if self.expected_signature else "<none>"
             actual_hash = self.actual_signature.get("hash") if self.actual_signature else "<none>"
-            lines.append(
-                "  Engine signature mismatch:" + f" expected={expected_hash} actual={actual_hash}"
-            )
+            lines.append("  Engine signature mismatch:" + f" expected={expected_hash} actual={actual_hash}")
         return lines
 
     def _status_line(self, ignore_signature: bool) -> str:
+        """Generate the status line summarizing the run result.
+
+        Args:
+            ignore_signature (bool): Whether to ignore signature mismatches.
+
+        Returns:
+            str: A formatted status line.
+        """
         status_parts: list[str] = []
         if self.violations:
             status_parts.append("violations")
@@ -143,17 +190,18 @@ class RatchetRunReport:
         if not status_parts:
             status_parts.append("clean")
         status = ",".join(status_parts)
-        status_line = f"[typewiz] ratchet run={self.run_id} status={status}"
-        return status_line
+        return f"[typewiz] ratchet run={self.run_id} status={status}"
 
     def _summary_line(self) -> str:
+        """Generate a summary line with counts.
+
+        Returns:
+            str: A formatted summary line with violation and improvement counts.
+        """
         signature = "ok" if self.signature_matches else "mismatch"
-        summary_line = (
-            f"  summary: violations={len(self.violations)}"
-            f" improvements={len(self.improvements)}"
-            f" signature={signature}"
+        return (
+            f"  summary: violations={len(self.violations)} improvements={len(self.improvements)} signature={signature}"
         )
-        return summary_line
 
     def _format_finding_block(
         self,
@@ -163,11 +211,21 @@ class RatchetRunReport:
         limit: int | None,
         formatter: Callable[[RatchetFinding], str],
     ) -> list[str]:
+        """Format a block of findings with a title.
+
+        Args:
+            title (str): The section title (e.g., "Violations", "Improvements").
+            findings (list[RatchetFinding]): The findings to format.
+            limit (int | None): Maximum number of findings to display.
+            formatter (Callable[[RatchetFinding], str]): Function to format individual findings.
+
+        Returns:
+            list[str]: Formatted text lines for the finding block.
+        """
         if not findings:
             return [f"  {title}: none"]
         lines = [f"  {title}:"]
-        for finding in self._slice_findings(findings, limit):
-            lines.append("    " + formatter(finding))
+        lines.extend("    " + formatter(finding) for finding in self._slice_findings(findings, limit))
         return lines
 
     @staticmethod
@@ -175,12 +233,29 @@ class RatchetRunReport:
         findings: list[RatchetFinding],
         limit: int | None,
     ) -> list[RatchetFinding]:
+        """Limit the number of findings if a limit is specified.
+
+        Args:
+            findings (list[RatchetFinding]): The findings to slice.
+            limit (int | None): Maximum number of findings to return, or None for all.
+
+        Returns:
+            list[RatchetFinding]: A sliced list of findings.
+        """
         if limit is not None and limit > 0:
             return findings[:limit]
         return findings
 
     @staticmethod
     def _format_violation_line(finding: RatchetFinding) -> str:
+        """Format a violation finding as a text line.
+
+        Args:
+            finding (RatchetFinding): The violation finding to format.
+
+        Returns:
+            str: A formatted text line showing the violation details.
+        """
         return (
             f"{finding.path} [{finding.severity.value}] "
             f"actual={finding.actual} allowed={finding.allowed} delta=+{finding.delta}"
@@ -188,6 +263,14 @@ class RatchetRunReport:
 
     @staticmethod
     def _format_improvement_line(finding: RatchetFinding) -> str:
+        """Format an improvement finding as a text line.
+
+        Args:
+            finding (RatchetFinding): The improvement finding to format.
+
+        Returns:
+            str: A formatted text line showing the improvement details.
+        """
         return (
             f"{finding.path} [{finding.severity.value}] "
             f"previous={finding.allowed} current={finding.actual} delta={finding.delta}"
@@ -201,12 +284,27 @@ class RatchetReport:
     runs: list[RatchetRunReport]
 
     def has_violations(self) -> bool:
+        """Check if any run in this report has violations.
+
+        Returns:
+            bool: True if any run has violations, False otherwise.
+        """
         return any(run.has_violations() for run in self.runs)
 
     def has_signature_mismatch(self) -> bool:
+        """Check if any run in this report has a signature mismatch.
+
+        Returns:
+            bool: True if any run has a signature mismatch, False otherwise.
+        """
         return any(run.has_signature_mismatch() for run in self.runs)
 
     def to_payload(self) -> dict[str, object]:
+        """Serialize the report to a dictionary payload.
+
+        Returns:
+            dict[str, object]: A dictionary representation of the entire report.
+        """
         return {
             "runs": [run.to_payload() for run in self.runs],
             "has_violations": self.has_violations(),
@@ -219,6 +317,16 @@ class RatchetReport:
         limit: int | None = None,
         summary_only: bool = False,
     ) -> list[str]:
+        """Format the entire report as human-readable text lines.
+
+        Args:
+            ignore_signature (bool): Whether to ignore signature mismatches in the output.
+            limit (int | None, optional): Maximum number of findings to display per section. Defaults to None.
+            summary_only (bool, optional): If True, only show summary statistics. Defaults to False.
+
+        Returns:
+            list[str]: Formatted text lines describing the entire report.
+        """
         lines: list[str] = []
         for run in self.runs:
             lines.extend(
@@ -231,6 +339,14 @@ class RatchetReport:
         return lines
 
     def exit_code(self, *, ignore_signature: bool) -> int:
+        """Determine the exit code based on report findings.
+
+        Args:
+            ignore_signature (bool): Whether to ignore signature mismatches when determining exit code.
+
+        Returns:
+            int: Exit code (1 if violations or signature mismatch, 0 otherwise).
+        """
         if self.has_violations():
             return 1
         if not ignore_signature and self.has_signature_mismatch():
@@ -240,6 +356,6 @@ class RatchetReport:
 
 __all__ = [
     "RatchetFinding",
-    "RatchetRunReport",
     "RatchetReport",
+    "RatchetRunReport",
 ]

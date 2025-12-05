@@ -22,11 +22,11 @@ from .process import CommandOutput, python_executable, run_command
 from .versions import detect_tool_versions
 
 __all__ = [
+    "ROOT_MARKERS",
     "CommandOutput",
     "JSONList",
     "JSONMapping",
     "JSONValue",
-    "ROOT_MARKERS",
     "RootMarker",
     "as_int",
     "as_list",

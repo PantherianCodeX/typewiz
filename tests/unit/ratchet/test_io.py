@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import ValidationError
@@ -13,6 +13,9 @@ from pydantic import ValidationError
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 from typewiz.ratchet.io import current_timestamp, load_manifest, load_ratchet, write_ratchet
 from typewiz.ratchet.models import RatchetModel
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
 
@@ -45,7 +48,7 @@ def test_load_ratchet_invalid_payload(tmp_path: Path) -> None:
     ratchet_path = tmp_path / "ratchet.json"
     _ = ratchet_path.write_text("{}", encoding="utf-8")
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError, match="Field required"):
         _ = load_ratchet(ratchet_path)
 
 

@@ -1,12 +1,12 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Service façade for readiness computations used by the CLI."""
+
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from typewiz.core.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
-from typewiz.core.summary_types import SummaryData
 from typewiz.readiness.views import (
     FileReadinessPayload,
     FolderReadinessPayload,
@@ -17,6 +17,11 @@ from typewiz.readiness.views import (
     collect_readiness_view as _collect_readiness_view,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from typewiz.core.summary_types import SummaryData
+
 
 def collect_readiness_view(
     summary: SummaryData,
@@ -26,6 +31,22 @@ def collect_readiness_view(
     limit: int,
     severities: Sequence[SeverityLevel] | None = None,
 ) -> ReadinessViewResult:
+    """Collect readiness data from a summary payload with typed validation.
+
+    Args:
+        summary: Manifest summary payload.
+        level: Readiness granularity (files or folders).
+        statuses: Optional subset of statuses to include.
+        limit: Max entries per status (``0`` = unlimited).
+        severities: Optional severity filters.
+
+    Returns:
+        Readiness view result structured per ``ReadinessLevel``.
+
+    Note:
+        Validation errors raised by ``_collect_readiness_view`` propagate to the
+        caller as ``ReadinessValidationError``.
+    """
     return _collect_readiness_view(
         summary,
         level=level,
@@ -35,7 +56,7 @@ def collect_readiness_view(
     )
 
 
-def format_readiness_summary(  # noqa: PLR0913
+def format_readiness_summary(
     summary: SummaryData,
     *,
     level: ReadinessLevel,
@@ -44,6 +65,19 @@ def format_readiness_summary(  # noqa: PLR0913
     severities: Sequence[SeverityLevel] | None = None,
     detailed: bool = False,
 ) -> list[str]:
+    """Render a text summary mirroring the legacy CLI readiness report.
+
+    Args:
+        summary: Manifest summary payload.
+        level: Readiness granularity to render.
+        statuses: Optional subset of statuses to include.
+        limit: Maximum items per bucket.
+        severities: Optional severity filters.
+        detailed: Whether to append severity counts to each line.
+
+    Returns:
+        List of CLI-friendly lines ready to print.
+    """
     view = collect_readiness_view(
         summary,
         level=level,
@@ -66,7 +100,7 @@ def format_readiness_summary(  # noqa: PLR0913
 
     if level is ReadinessLevel.FOLDER:
         folder_view: dict[ReadinessStatus, list[FolderReadinessPayload]] = cast(
-            dict[ReadinessStatus, list[FolderReadinessPayload]],
+            "dict[ReadinessStatus, list[FolderReadinessPayload]]",
             view,
         )
         for status, folder_entries in folder_view.items():
@@ -80,7 +114,7 @@ def format_readiness_summary(  # noqa: PLR0913
         return lines
 
     file_view: dict[ReadinessStatus, list[FileReadinessPayload]] = cast(
-        dict[ReadinessStatus, list[FileReadinessPayload]],
+        "dict[ReadinessStatus, list[FileReadinessPayload]]",
         view,
     )
     for status, file_entries in file_view.items():
@@ -95,7 +129,7 @@ def format_readiness_summary(  # noqa: PLR0913
 
 
 __all__ = [
+    "ReadinessValidationError",
     "collect_readiness_view",
     "format_readiness_summary",
-    "ReadinessValidationError",
 ]

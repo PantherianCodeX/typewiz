@@ -2,17 +2,14 @@
 
 """Ratchet orchestration services used by CLI and API layers."""
 
-from __future__ import annotations  # noqa: I001
+from __future__ import annotations
 
 import logging
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from typewiz.core.model_types import LogComponent, SeverityLevel, SignaturePolicy
-from typewiz.core.type_aliases import RunId
 from typewiz.logging import structured_extra
-from typewiz.manifest.typed import ManifestData
 from typewiz.ratchet import apply_auto_update as _apply_auto_update
 from typewiz.ratchet import build_ratchet_from_manifest as _build_ratchet_from_manifest
 from typewiz.ratchet import compare_manifest_to_ratchet as _compare_manifest_to_ratchet
@@ -21,8 +18,15 @@ from typewiz.ratchet import refresh_signatures as _refresh_signatures
 from typewiz.ratchet import write_ratchet as _write_ratchet
 from typewiz.ratchet.io import current_timestamp as _current_timestamp
 from typewiz.ratchet.io import load_manifest as _load_manifest
-from typewiz.ratchet.models import RatchetModel
-from typewiz.ratchet.summary import RatchetReport
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+    from pathlib import Path
+
+    from typewiz.core.type_aliases import RunId
+    from typewiz.manifest.typed import ManifestData
+    from typewiz.ratchet.models import RatchetModel
+    from typewiz.ratchet.summary import RatchetReport
 
 logger: logging.Logger = logging.getLogger("typewiz.services.ratchet")
 
@@ -51,24 +55,54 @@ class RatchetServiceError(RuntimeError):
 
 
 class RatchetFileExistsError(RatchetServiceError):
+    """Raised when attempting to write a ratchet file that already exists without force flag.
+
+    Attributes:
+        path: Path to the existing ratchet file.
+    """
+
     def __init__(self, path: Path) -> None:
+        """Initialize error with the conflicting path.
+
+        Args:
+            path: Path to the existing ratchet file.
+        """
         super().__init__(f"Refusing to overwrite existing ratchet: {path}")
         self.path = path
 
 
 class RatchetPathRequiredError(RatchetServiceError):
+    """Raised when a ratchet operation requires a path but none was provided."""
+
     def __init__(self) -> None:
+        """Initialize the error with a descriptive message."""
         super().__init__("Ratchet path is required for this operation.")
 
 
 @dataclass(slots=True)
 class RatchetInitResult:
+    """Result of initializing a new ratchet baseline.
+
+    Attributes:
+        model: The newly created ratchet model.
+        output_path: Path where the ratchet was written.
+    """
+
     model: RatchetModel
     output_path: Path
 
 
 @dataclass(slots=True)
 class RatchetCheckResult:
+    """Result of checking a manifest against a ratchet baseline.
+
+    Attributes:
+        report: Detailed comparison report.
+        ignore_signature: Whether signature mismatches were ignored.
+        warn_signature: Whether signature warnings should be shown.
+        exit_code: Computed exit code for the check operation.
+    """
+
     report: RatchetReport
     ignore_signature: bool
     warn_signature: bool
@@ -77,6 +111,15 @@ class RatchetCheckResult:
 
 @dataclass(slots=True)
 class RatchetUpdateResult:
+    """Result of updating a ratchet with auto-update logic.
+
+    Attributes:
+        report: Comparison report before update.
+        updated: The updated ratchet model.
+        output_path: Path where the updated ratchet was written, or None if dry-run.
+        wrote_file: Whether the file was actually written to disk.
+    """
+
     report: RatchetReport
     updated: RatchetModel
     output_path: Path | None
@@ -85,12 +128,32 @@ class RatchetUpdateResult:
 
 @dataclass(slots=True)
 class RatchetRebaselineResult:
+    """Result of rebaselining a ratchet with refreshed signatures.
+
+    Attributes:
+        refreshed: The ratchet model with updated signatures.
+        output_path: Path where the refreshed ratchet was written.
+    """
+
     refreshed: RatchetModel
     output_path: Path
 
 
 @dataclass(slots=True)
 class RatchetInfoSnapshot:
+    """Structured snapshot of ratchet configuration and display settings.
+
+    Attributes:
+        manifest_path: Path to the manifest file.
+        ratchet_path: Optional path to the ratchet file.
+        runs: Optional filter for specific run IDs.
+        severities: Severity levels to include.
+        targets: Budget targets for each severity level.
+        signature_policy: Policy for handling signature mismatches.
+        limit: Maximum number of items to display.
+        summary_only: Whether to show only summary information.
+    """
+
     manifest_path: Path
     ratchet_path: Path | None
     runs: Sequence[RunId] | None
@@ -102,12 +165,21 @@ class RatchetInfoSnapshot:
 
 
 def _ensure_can_write(path: Path, *, force: bool) -> None:
+    """Verify a path can be written and create parent directories.
+
+    Args:
+        path: Target file path.
+        force: Whether to allow overwriting existing files.
+
+    Raises:
+        RatchetFileExistsError: If the file exists and force is False.
+    """
     if path.exists() and not force:
         raise RatchetFileExistsError(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
-def init_ratchet(  # noqa: PLR0913
+def init_ratchet(
     *,
     manifest: ManifestData,
     runs: Sequence[RunId] | None,
@@ -117,8 +189,20 @@ def init_ratchet(  # noqa: PLR0913
     output_path: Path,
     force: bool,
 ) -> RatchetInitResult:
-    """Build and persist a ratchet baseline."""
+    """Build and persist a ratchet baseline from a manifest.
 
+    Args:
+        manifest: Manifest data to build the ratchet from.
+        runs: Optional filter for specific run IDs to include.
+        manifest_path: Path to the manifest file (for logging).
+        severities: Optional severity levels to include in baseline.
+        targets: Optional custom budget targets per severity.
+        output_path: Path where the ratchet file will be written.
+        force: Whether to overwrite an existing ratchet file.
+
+    Returns:
+        RatchetInitResult containing the created model and output path.
+    """
     _ensure_can_write(output_path, force=force)
     logger.info(
         "Initializing ratchet baseline",
@@ -156,10 +240,22 @@ def check_ratchet(
     runs: Sequence[RunId] | None,
     signature_policy: SignaturePolicy,
 ) -> RatchetCheckResult:
-    """Compare a manifest against a ratchet model and compute exit metadata."""
+    """Compare a manifest against a ratchet model and compute exit metadata.
 
+    Args:
+        manifest: Current manifest data to check.
+        ratchet_path: Path to the ratchet baseline file.
+        runs: Optional filter for specific run IDs to check.
+        signature_policy: How to handle signature mismatches (enforce, warn, ignore).
+
+    Returns:
+        RatchetCheckResult with comparison report and exit code.
+
+    Raises:
+        RatchetPathRequiredError: If ratchet_path is None.
+    """
     if ratchet_path is None:
-        raise RatchetPathRequiredError()
+        raise RatchetPathRequiredError
     ratchet_model = _load_ratchet(ratchet_path)
     report = _compare_manifest_to_ratchet(
         manifest=manifest,
@@ -218,10 +314,26 @@ def update_ratchet(  # noqa: PLR0913
     force: bool,
     dry_run: bool,
 ) -> RatchetUpdateResult:
-    """Apply auto-update logic and optionally persist the refreshed ratchet."""
+    """Apply auto-update logic and optionally persist the refreshed ratchet.
 
+    Args:
+        manifest: Current manifest data.
+        ratchet_path: Path to the existing ratchet file.
+        runs: Optional filter for specific run IDs.
+        generated_at: Timestamp for the updated ratchet metadata.
+        target_overrides: Optional custom budget overrides to apply.
+        output_path: Optional custom output path (defaults to ratchet_path).
+        force: Whether to overwrite existing files.
+        dry_run: If True, skip writing the file.
+
+    Returns:
+        RatchetUpdateResult with report, updated model, and write status.
+
+    Raises:
+        RatchetPathRequiredError: If ``ratchet_path`` is ``None``.
+    """
     if ratchet_path is None:
-        raise RatchetPathRequiredError()
+        raise RatchetPathRequiredError
     logger.info(
         "Updating ratchet %s",
         ratchet_path,
@@ -269,7 +381,7 @@ def update_ratchet(  # noqa: PLR0913
     )
 
 
-def rebaseline_ratchet(  # noqa: PLR0913
+def rebaseline_ratchet(
     *,
     manifest: ManifestData,
     ratchet_path: Path | None,
@@ -278,10 +390,24 @@ def rebaseline_ratchet(  # noqa: PLR0913
     output_path: Path,
     force: bool,
 ) -> RatchetRebaselineResult:
-    """Refresh ratchet signatures and persist the result."""
+    """Refresh ratchet signatures and persist the result.
 
+    Args:
+        manifest: Current manifest data.
+        ratchet_path: Path to the existing ratchet file.
+        runs: Optional filter for specific run IDs.
+        generated_at: Timestamp for the refreshed ratchet metadata.
+        output_path: Path where the refreshed ratchet will be written.
+        force: Whether to overwrite existing files.
+
+    Returns:
+        RatchetRebaselineResult with the refreshed model and output path.
+
+    Raises:
+        RatchetPathRequiredError: If ``ratchet_path`` is ``None``.
+    """
     if ratchet_path is None:
-        raise RatchetPathRequiredError()
+        raise RatchetPathRequiredError
     ratchet_model = _load_ratchet(ratchet_path)
     refreshed = _refresh_signatures(
         manifest=manifest,
@@ -314,8 +440,21 @@ def describe_ratchet(  # noqa: PLR0913
     limit: int | None,
     summary_only: bool,
 ) -> RatchetInfoSnapshot:
-    """Return a structured snapshot of ratchet configuration inputs."""
+    """Return a structured snapshot of ratchet configuration inputs.
 
+    Args:
+        manifest_path: Path to the manifest file.
+        ratchet_path: Optional path to the ratchet file.
+        runs: Optional filter for specific run IDs.
+        severities: Severity levels to include.
+        targets: Budget targets for each severity.
+        signature_policy: Policy for signature mismatch handling.
+        limit: Maximum items to display.
+        summary_only: Whether to show only summary.
+
+    Returns:
+        RatchetInfoSnapshot with all configuration details.
+    """
     return RatchetInfoSnapshot(
         manifest_path=manifest_path,
         ratchet_path=ratchet_path,
@@ -331,6 +470,14 @@ def describe_ratchet(  # noqa: PLR0913
 def split_target_mapping(
     mapping: Mapping[str, int],
 ) -> tuple[dict[SeverityLevel, int], dict[str, dict[SeverityLevel, int]]]:
+    """Split target mapping into global and per-run budget dictionaries.
+
+    Args:
+        mapping: Raw target mapping with keys like "error" or "mypy.warning".
+
+    Returns:
+        Tuple of (global_targets, per_run_targets) dictionaries.
+    """
     global_targets: dict[SeverityLevel, int] = {}
     per_run: dict[str, dict[SeverityLevel, int]] = {}
     for raw_key, value in mapping.items():
@@ -351,8 +498,12 @@ def split_target_mapping(
 
 
 def apply_target_overrides(model: RatchetModel, overrides: Mapping[str, int]) -> None:
-    """Apply CLI target overrides to a ratchet model in-place."""
+    """Apply CLI target overrides to a ratchet model in-place.
 
+    Args:
+        model: Ratchet model to modify.
+        overrides: Target overrides mapping severity levels or run.severity to budgets.
+    """
     if not overrides:
         return
     logger.debug(

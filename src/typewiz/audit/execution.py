@@ -5,24 +5,27 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from typewiz.audit.options import normalise_category_mapping, prepare_category_mapping
 from typewiz.audit.paths import fingerprint_targets as build_fingerprint_targets
 from typewiz.audit.paths import normalise_override_entries, normalise_paths, relative_override_path
 from typewiz.cache import CachedRun, EngineCache, collect_file_hashes, fingerprint_path
 from typewiz.collections import merge_preserve
-from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from typewiz.core.model_types import FileHashPayload, LogComponent, Mode, OverrideEntry
 from typewiz.core.type_aliases import CacheKey, EngineName, PathKey, ProfileName, RelPath, ToolName
 from typewiz.core.types import RunResult
 from typewiz.engines import EngineContext, EngineOptions
-from typewiz.engines.base import BaseEngine, EngineResult
 from typewiz.logging import StructuredLogExtra, structured_extra
-from typewiz.manifest.typed import ToolSummary
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+    from pathlib import Path
+
+    from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
+    from typewiz.engines.base import BaseEngine, EngineResult
+    from typewiz.manifest.typed import ToolSummary
 
 
 @dataclass(slots=True)
@@ -84,7 +87,7 @@ def _merge_base_paths(
     return include_raw, exclude_raw
 
 
-def _initial_option_state(  # noqa: PLR0913
+def _initial_option_state(
     project_root: Path,
     audit_config: AuditConfig,
     engine_name: EngineName,
@@ -337,9 +340,7 @@ def _build_cached_run_result(
         overrides=[cast("OverrideEntry", dict(item)) for item in cached_run.overrides],
         category_mapping={k: list(v) for k, v in cached_run.category_mapping.items()},
         tool_summary=(
-            cast("ToolSummary", dict(cached_run.tool_summary))
-            if cached_run.tool_summary is not None
-            else None
+            cast("ToolSummary", dict(cached_run.tool_summary)) if cached_run.tool_summary is not None else None
         ),
         scanned_paths=list(mode_paths),
     )
@@ -379,9 +380,7 @@ def _path_matches(candidate: RelPath, pattern: RelPath) -> bool:
         return False
     candidate_norm = str(candidate).rstrip("/")
     pattern_norm = str(pattern).rstrip("/")
-    return candidate_norm == pattern_norm or (
-        pattern_norm != "" and candidate_norm.startswith(f"{pattern_norm}/")
-    )
+    return candidate_norm == pattern_norm or (pattern_norm and candidate_norm.startswith(f"{pattern_norm}/"))
 
 
 def apply_engine_paths(
@@ -389,7 +388,19 @@ def apply_engine_paths(
     include: Sequence[RelPath],
     exclude: Sequence[RelPath],
 ) -> list[RelPath]:
-    """Merge include/exclude directives with default paths for a run."""
+    """Merge include/exclude directives with default paths for a run.
+
+    Args:
+        default_paths: Baseline paths supplied by the audit configuration or
+            engine options.
+        include: Additional include entries to append (deduplicated) ahead of
+            exclusion filtering.
+        exclude: Patterns that should be removed from the resulting path list.
+
+    Returns:
+        A list of ``RelPath`` entries that respects ordering guarantees and
+        removes excluded paths when possible.
+    """
     ordered: list[RelPath] = []
     seen: set[str] = set()
 
@@ -407,9 +418,7 @@ def apply_engine_paths(
     if not exclude:
         return ordered
 
-    filtered = [
-        path for path in ordered if not any(_path_matches(path, pattern) for pattern in exclude)
-    ]
+    filtered = [path for path in ordered if not any(_path_matches(path, pattern) for pattern in exclude)]
     return filtered or ordered
 
 
@@ -418,7 +427,19 @@ def resolve_engine_options(
     audit_config: AuditConfig,
     engine: BaseEngine,
 ) -> EngineOptions:
-    """Compute engine options including overrides and category mappings."""
+    """Compute engine options including overrides and category mappings.
+
+    Args:
+        project_root: Repository root to resolve relative paths against.
+        audit_config: Global audit configuration that describes overrides and
+            file selection.
+        engine: Concrete engine implementation whose metadata influences
+            category mappings and profile selection.
+
+    Returns:
+        ``EngineOptions`` ready to be passed into ``EngineContext`` when running
+        the engine.
+    """
     engine_name = EngineName(engine.name)
     settings, profile_name, profile = _resolve_base_profile(audit_config, engine_name)
     state = _initial_option_state(
@@ -457,7 +478,23 @@ def execute_engine_mode(  # noqa: PLR0913
     root: Path,
     full_paths_normalised: Sequence[RelPath],
 ) -> tuple[RunResult, bool]:
-    """Execute or fetch a cached engine run and return the result."""
+    """Execute or fetch a cached engine run and return the result.
+
+    Args:
+        engine: Engine under execution.
+        mode: ``Mode`` being evaluated (``current``/``full``).
+        context: Engine context produced by ``resolve_engine_options``.
+        audit_config: Audit configuration for filtering paths and caching.
+        cache: Persistent cache used to store previous run outputs.
+        tool_versions: Mapping of executable identifiers to version strings for
+            cache invalidation.
+        root: Project root directory.
+        full_paths_normalised: Canonicalised set of include paths for caching.
+
+    Returns:
+        A tuple containing the ``RunResult`` (either cached or freshly executed)
+        and a boolean indicating whether fingerprint inputs were truncated.
+    """
     engine_options = context.engine_options
     mode_paths = _paths_for_mode(mode, engine_options, full_paths_normalised)
     cache_key, file_hashes, truncated = _prepare_cache_inputs(
@@ -510,11 +547,10 @@ def execute_engine_mode(  # noqa: PLR0913
     try:
         result = engine.run(context, mode_paths)
     except Exception as exc:
-        logger.error(
+        logger.exception(
             "Engine %s:%s failed",
             engine.name,
             mode,
-            exc_info=True,
             extra=structured_extra(
                 component=LogComponent.ENGINE,
                 tool=engine.name,

@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from typewiz.config.validation import (
@@ -28,7 +30,7 @@ def test_coerce_str_handles_non_string() -> None:
 
 
 def test_coerce_int_parses_values() -> None:
-    assert coerce_int(True) == 1
+    assert coerce_int(value=True) == 1
     assert coerce_int("42") == 42
     assert coerce_int("invalid", default=7) == 7
 
@@ -41,13 +43,13 @@ def test_coerce_optional_str_handles_empty() -> None:
 
 def test_require_non_negative_int_rejects_negative() -> None:
     assert require_non_negative_int("6", context="count") == 6
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="count must be non-negative"):
         _ = require_non_negative_int(-5, context="count")
 
 
 def test_coerce_float_parses_values() -> None:
     result = coerce_float("3.14")
-    assert abs(result - 3.14) < 1e-9
+    assert abs(result - math.pi) < 1e-9
     assert coerce_float("bad", default=1.5) == 1.5
 
 

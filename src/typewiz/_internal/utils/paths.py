@@ -8,6 +8,9 @@ import logging
 from pathlib import Path
 from typing import Any, Final, Literal, cast
 
+from typewiz.core.model_types import LogComponent
+from typewiz.logging import structured_extra
+
 logger: logging.Logger = logging.getLogger("typewiz.internal.paths")
 
 __all__ = ["ROOT_MARKERS", "RootMarker", "default_full_paths", "resolve_project_root"]
@@ -80,8 +83,5 @@ def resolve_project_root(start: Path | None = None) -> Path:
 
 
 def _structured_extra(**kwargs: object) -> dict[str, object]:
-    from typewiz.core.model_types import LogComponent
-    from typewiz.logging import structured_extra
-
-    payload = structured_extra(LogComponent.SERVICES, **cast(dict[str, Any], kwargs))
-    return cast(dict[str, object], payload)
+    payload = structured_extra(LogComponent.SERVICES, **cast("dict[str, Any]", kwargs))
+    return cast("dict[str, object]", payload)

@@ -1,11 +1,18 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Configuration loading and path resolution for Typewiz.
+
+This module provides functionality to load Typewiz configuration files from disk,
+validate them, and resolve relative paths to absolute paths. It supports both
+project-level configuration files (typewiz.toml, .typewiz.toml) and directory-level
+overrides (typewiz.dir.toml, .typewizdir.toml).
+"""
+
 from __future__ import annotations
 
 import tomllib as toml
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Final, Literal, cast
+from typing import TYPE_CHECKING, Final, Literal, cast
 
 from pydantic import ValidationError
 
@@ -27,8 +34,21 @@ from .models import (
     ratchet_from_model,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 
 def resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:
+    """Resolve all relative paths in audit configuration to absolute paths.
+
+    This function recursively resolves relative paths in the audit configuration,
+    including output paths, engine settings paths, and path override fields. All
+    relative paths are resolved relative to the provided base directory.
+
+    Args:
+        base_dir: The base directory to resolve relative paths against.
+        audit: The audit configuration containing paths to resolve.
+    """
     _resolve_output_paths(base_dir, audit)
     for settings in audit.engine_settings.values():
         _resolve_engine_settings_paths(base_dir, settings)
@@ -93,6 +113,32 @@ def _discover_path_overrides(root: Path) -> list[PathOverride]:
 
 
 def load_config(explicit_path: Path | None = None) -> Config:
+    """Load Typewiz configuration from a TOML file or use defaults.
+
+    This function searches for and loads a Typewiz configuration file, resolves
+    all relative paths, discovers directory-level path overrides, and returns a
+    fully configured Config object. If no configuration file is found, it returns
+    a default configuration with sensible defaults.
+
+    The function searches for configuration files in the following order:
+    1. If explicit_path is provided, only that path is checked
+    2. Otherwise, it checks for typewiz.toml and .typewiz.toml in the current directory
+
+    Configuration files can use either a direct format or be nested under [tool.typewiz]
+    for compatibility with PEP 518 tools.
+
+    Args:
+        explicit_path: Optional explicit path to a configuration file. If provided,
+            only this file will be checked. If None, standard locations are searched.
+
+    Returns:
+        A Config object containing audit and ratchet configuration with all paths
+        resolved to absolute paths.
+
+    Raises:
+        InvalidConfigFileError: If the configuration file exists but contains invalid
+            configuration data that fails validation.
+    """
     search_order: list[Path] = []
     if explicit_path:
         search_order.append(explicit_path)

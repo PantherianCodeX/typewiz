@@ -5,20 +5,12 @@
 from __future__ import annotations
 
 from collections import Counter
-from pathlib import Path
-from typing import Any, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 import pytest
 
 from typewiz.core.model_types import SeverityLevel, SignaturePolicy
 from typewiz.core.type_aliases import RelPath, RunId
-from typewiz.manifest.typed import (
-    EngineOptionsEntry,
-    FileEntry,
-    ManifestData,
-    RunPayload,
-    RunSummary,
-)
 from typewiz.ratchet import (
     apply_auto_update,
     build_ratchet_from_manifest,
@@ -27,6 +19,17 @@ from typewiz.ratchet import (
 )
 from typewiz.ratchet.models import RatchetModel
 from typewiz.ratchet.policies import compare_signatures
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from typewiz.manifest.typed import (
+        EngineOptionsEntry,
+        FileEntry,
+        ManifestData,
+        RunPayload,
+        RunSummary,
+    )
 
 pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
 
@@ -69,7 +72,7 @@ def _make_manifest(
             )
         per_file_entries.append(
             cast(
-                FileEntry,
+                "FileEntry",
                 {
                     "path": path,
                     "errors": counts.get("error", 0),
@@ -86,7 +89,7 @@ def _make_manifest(
         "exclude": [],
     }
     summary_totals = cast(
-        RunSummary,
+        "RunSummary",
         {
             "errors": sum(counts.get("error", 0) for counts in per_file.values()),
             "warnings": sum(counts.get("warning", 0) for counts in per_file.values()),
@@ -98,7 +101,7 @@ def _make_manifest(
         },
     )
     run_payload = cast(
-        RunPayload,
+        "RunPayload",
         {
             "tool": "pyright",
             "mode": "current",
@@ -111,15 +114,14 @@ def _make_manifest(
             "engineOptions": engine_options,
         },
     )
-    manifest = cast(
-        ManifestData,
+    return cast(
+        "ManifestData",
         {
             "generatedAt": "2025-01-01T00:00:00Z",
             "projectRoot": "/project",
             "runs": [run_payload],
         },
     )
-    return manifest
 
 
 def test_build_ratchet_uses_manifest_counts() -> None:
@@ -154,9 +156,7 @@ def test_compare_detects_regressions_and_signature_changes() -> None:
         targets=None,
         manifest_path="baseline.json",
     )
-    regress_manifest = _make_manifest(
-        {"src/foo.py": Counter({"error": 2})}, plugin_args=["--strict", "--verifytypes"]
-    )
+    regress_manifest = _make_manifest({"src/foo.py": Counter({"error": 2})}, plugin_args=["--strict", "--verifytypes"])
     report = compare_manifest_to_ratchet(manifest=regress_manifest, ratchet=ratchet, runs=None)
     assert report.has_violations()
     run_report = report.runs[0]
@@ -201,9 +201,9 @@ def test_report_payload_and_formatting() -> None:
 
     payload = report.to_payload()
     assert payload["has_violations"] is True
-    runs_payload = cast(list[dict[str, Any]], payload["runs"])
+    runs_payload = cast("list[dict[str, Any]]", payload["runs"])
     run_payload = runs_payload[0]
-    violations = cast(list[dict[str, Any]], run_payload["violations"])
+    violations = cast("list[dict[str, Any]]", run_payload["violations"])
     assert violations[0]["actual"] == EXPECTED_ERROR_AFTER_UPDATE
     assert violations[0]["allowed"] == EXPECTED_ALLOWED_BASELINE
 
@@ -255,7 +255,9 @@ def test_refresh_signatures_updates_hash() -> None:
     assert refreshed_signature is not None
     original_hash = original_signature.get("hash")
     new_hash = refreshed_signature.get("hash")
-    assert original_hash and new_hash and original_hash != new_hash
+    assert original_hash
+    assert new_hash
+    assert original_hash != new_hash
 
 
 def test_compare_signatures_respects_policy() -> None:
@@ -281,7 +283,7 @@ def test_compare_manifest_to_ratchet_skips_missing_runs() -> None:
             }
         },
     })
-    manifest = cast(ManifestData, {"runs": []})
+    manifest = cast("ManifestData", {"runs": []})
     report = compare_manifest_to_ratchet(manifest=manifest, ratchet=ratchet_model, runs=None)
     assert report.runs == []
 
@@ -300,7 +302,7 @@ def test_apply_auto_update_skips_missing_manifest_runs() -> None:
             }
         },
     })
-    manifest = cast(ManifestData, {"runs": []})
+    manifest = cast("ManifestData", {"runs": []})
     updated = apply_auto_update(
         manifest=manifest,
         ratchet=ratchet_model,
@@ -327,7 +329,7 @@ def test_refresh_signatures_handles_subset_and_missing_manifest(tmp_path: Path) 
         },
     })
     refreshed = refresh_signatures(
-        manifest=cast(ManifestData, {"runs": []}),
+        manifest=cast("ManifestData", {"runs": []}),
         ratchet=ratchet_model,
         runs=[RunId("pyright:current")],
         generated_at="2025-02-01T00:00:00Z",

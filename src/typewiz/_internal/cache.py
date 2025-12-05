@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final, Literal, TypedDict, cast
 
 from typewiz._internal.utils import JSONValue, consume, file_lock, normalise_enums_for_json
+from typewiz._internal.utils.process import CommandOutput, run_command
 from typewiz.config.validation import coerce_int, coerce_object_list, coerce_str_list
 from typewiz.core.categories import coerce_category_key
 from typewiz.core.model_types import LogComponent, SeverityLevel, clone_override_entries
@@ -191,14 +192,10 @@ def _normalise_override_entry(raw: Mapping[str, object]) -> OverrideEntry:
     plugin_args = coerce_str_list(raw.get("pluginArgs", []))
     if plugin_args:
         entry["pluginArgs"] = plugin_args
-    include_paths = [
-        RelPath(str(path)) for path in coerce_str_list(raw.get("include", [])) if str(path).strip()
-    ]
+    include_paths = [RelPath(str(path)) for path in coerce_str_list(raw.get("include", [])) if str(path).strip()]
     if include_paths:
         entry["include"] = include_paths
-    exclude_paths = [
-        RelPath(str(path)) for path in coerce_str_list(raw.get("exclude", [])) if str(path).strip()
-    ]
+    exclude_paths = [RelPath(str(path)) for path in coerce_str_list(raw.get("exclude", [])) if str(path).strip()]
     if exclude_paths:
         entry["exclude"] = exclude_paths
     return entry
@@ -250,6 +247,26 @@ def _normalise_file_hash_payload(raw: Mapping[str, object]) -> FileHashPayload:
     return payload
 
 
+class _EntryJson(TypedDict, total=False):
+    command: list[str]
+    exit_code: int
+    duration_ms: float
+    diagnostics: list[Mapping[str, object]]
+    file_hashes: Mapping[str, Mapping[str, object]]
+    profile: str | None
+    config_file: str | None
+    plugin_args: list[str]
+    include: list[str]
+    exclude: list[str]
+    overrides: list[Mapping[str, object]]
+    category_mapping: Mapping[str, Sequence[str]]
+    tool_summary: dict[str, int]
+
+
+class _Payload(TypedDict, total=False):
+    entries: dict[str, _EntryJson]
+
+
 def fingerprint_path(path: Path) -> FileHashPayload:
     return _fingerprint(path)
 
@@ -270,24 +287,6 @@ class EngineCache:
             raw = json.loads(self.path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             return
-
-        class _EntryJson(TypedDict, total=False):
-            command: list[str]
-            exit_code: int
-            duration_ms: float
-            diagnostics: list[Mapping[str, object]]
-            file_hashes: Mapping[str, Mapping[str, object]]
-            profile: str | None
-            config_file: str | None
-            plugin_args: list[str]
-            include: list[str]
-            exclude: list[str]
-            overrides: list[Mapping[str, object]]
-            category_mapping: Mapping[str, Sequence[str]]
-            tool_summary: dict[str, int]
-
-        class _Payload(TypedDict, total=False):
-            entries: dict[str, _EntryJson]
 
         payload = cast("_Payload", raw)
         payload_entries = payload.get("entries")
@@ -335,11 +334,7 @@ class EngineCache:
                 diagnostics=diagnostics_list,
                 file_hashes=file_hashes_map,
                 profile=str(profile) if isinstance(profile, str) and profile.strip() else None,
-                config_file=(
-                    str(config_file)
-                    if isinstance(config_file, str) and config_file.strip()
-                    else None
-                ),
+                config_file=(str(config_file) if isinstance(config_file, str) and config_file.strip() else None),
                 plugin_args=plugin_args_list,
                 include=include_list,
                 exclude=exclude_list,
@@ -368,9 +363,7 @@ class EngineCache:
                     "exit_code": entry.exit_code,
                     "duration_ms": entry.duration_ms,
                     "diagnostics": entry.diagnostics,
-                    "file_hashes": {
-                        str(path_key): payload for path_key, payload in entry.file_hashes.items()
-                    },
+                    "file_hashes": {str(path_key): payload for path_key, payload in entry.file_hashes.items()},
                     "profile": entry.profile,
                     "config_file": entry.config_file,
                     "plugin_args": entry.plugin_args,
@@ -387,9 +380,7 @@ class EngineCache:
         lock_path = self.path.with_suffix(self.path.suffix + ".lock")
         tmp_path = self.path.with_suffix(".tmp")
         with file_lock(lock_path):
-            consume(
-                tmp_path.write_text(json.dumps(payload_json, indent=2) + "\n", encoding="utf-8")
-            )
+            consume(tmp_path.write_text(json.dumps(payload_json, indent=2) + "\n", encoding="utf-8"))
             consume(tmp_path.replace(self.path))
         self._dirty = False
 
@@ -397,13 +388,10 @@ class EngineCache:
         entry = self._entries.get(key)
         if not entry:
             return None
-        return {
-            path_key: cast("FileHashPayload", dict(payload))
-            for path_key, payload in entry.file_hashes.items()
-        }
+        return {path_key: cast("FileHashPayload", dict(payload)) for path_key, payload in entry.file_hashes.items()}
 
+    @staticmethod
     def key_for(
-        self,
         engine: str,
         mode: Mode,
         paths: Sequence[RelPath],
@@ -470,11 +458,7 @@ class EngineCache:
             exclude=list(entry.exclude),
             overrides=clone_override_entries(entry.overrides),
             category_mapping={k: list(v) for k, v in entry.category_mapping.items()},
-            tool_summary=(
-                cast("ToolSummary", dict(entry.tool_summary))
-                if entry.tool_summary is not None
-                else None
-            ),
+            tool_summary=(cast("ToolSummary", dict(entry.tool_summary)) if entry.tool_summary is not None else None),
         )
 
     def update(  # noqa: PLR0913
@@ -500,8 +484,7 @@ class EngineCache:
             key=lambda diag: (str(diag.path), diag.line, diag.column),
         )
         file_hash_payloads: dict[PathKey, FileHashPayload] = {
-            hash_key: cast("FileHashPayload", dict(hash_payload))
-            for hash_key, hash_payload in file_hashes.items()
+            hash_key: cast("FileHashPayload", dict(hash_payload)) for hash_key, hash_payload in file_hashes.items()
         }
         command_list: Command = [str(arg) for arg in command]
         include_list: list[RelPath] = [RelPath(str(path)) for path in include]
@@ -571,16 +554,12 @@ def _git_list_files(repo_root: Path) -> set[str]:
         return set()
 
     try:
-        import subprocess
-
-        completed = subprocess.run(  # noqa: S603
+        result: CommandOutput = run_command(
             [git_cmd, "ls-files", "-co", "--exclude-standard"],
-            check=False,
-            cwd=str(repo_root),
-            capture_output=True,
-            text=True,
+            cwd=repo_root,
+            allowed={git_cmd},
         )
-    except Exception as exc:  # pragma: no cover - defensive
+    except (TypeError, ValueError) as exc:  # pragma: no cover - defensive: validate argv and allowlist
         logger.debug(
             "git ls-files failed: %s",
             exc,
@@ -588,13 +567,13 @@ def _git_list_files(repo_root: Path) -> set[str]:
         )
         return set()
 
-    if completed.returncode != 0:
+    if result.exit_code != 0:
         return set()
 
-    return {line.strip() for line in completed.stdout.splitlines() if line.strip()}
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
 
 
-def collect_file_hashes(  # noqa: C901, PLR0913, PLR0912, PLR0915
+def collect_file_hashes(  # noqa: C901, PLR0912, PLR0914, PLR0915  # JUSTIFIED: central hashing pipeline coordinates several limits and baselines; splitting further would harm coherence
     project_root: Path,
     paths: Iterable[str],
     *,
@@ -681,7 +660,7 @@ def collect_file_hashes(  # noqa: C901, PLR0913, PLR0912, PLR0915
             for root, dirs, files in os.walk(absolute, followlinks=False):
                 dirs[:] = sorted(d for d in dirs if not (Path(root) / d).is_symlink())
                 for fname in sorted(files):
-                    if not (fname.endswith(".py") or fname.endswith(".pyi")):
+                    if not (fname.endswith((".py", ".pyi"))):
                         continue
                     _maybe_add(Path(root) / fname)
                     if stop:

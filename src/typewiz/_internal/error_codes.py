@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import NewType
+from typing import TYPE_CHECKING, NewType
 
 from typewiz.config import (
     ConfigFieldChoiceError,
@@ -26,6 +25,9 @@ from typewiz.manifest.versioning import (
 from typewiz.readiness.views import ReadinessValidationError
 
 from .exceptions import TypewizError, TypewizTypeError, TypewizValidationError
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 ErrorCode = NewType("ErrorCode", str)
 
@@ -53,7 +55,6 @@ _ERROR_CODES: dict[type[BaseException], ErrorCode] = {
 
 def error_code_for(exc: BaseException) -> ErrorCode:
     """Return a stable error code for a structured Typewiz exception."""
-
     for cls in type(exc).__mro__:
         code = _ERROR_CODES.get(cls)
         if code:
@@ -67,7 +68,6 @@ def error_code_catalog() -> Mapping[str, ErrorCode]:
     Intended for diagnostics, tests, and documentation generation - avoids
     exposing the private mapping while keeping a single source of truth.
     """
-
     result: dict[str, ErrorCode] = {}
     for exc_type, code in _ERROR_CODES.items():
         key = f"{exc_type.__module__}.{exc_type.__name__}"

@@ -5,8 +5,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -14,6 +13,10 @@ from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.core.type_aliases import RelPath, ToolName
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.manifest.builder import ManifestBuilder
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
 
 pytestmark = pytest.mark.unit
 
@@ -47,9 +50,7 @@ def _make_run(tmp_path: Path) -> RunResult:
     )
 
 
-def test_manifest_builder_adds_run_and_writes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_manifest_builder_adds_run_and_writes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     builder = ManifestBuilder(tmp_path)
     builder.add_run(_make_run(tmp_path))
     builder.fingerprint_truncated = True

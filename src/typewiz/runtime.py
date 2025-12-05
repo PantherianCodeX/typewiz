@@ -24,9 +24,9 @@ from typewiz._internal.utils import (
 from typewiz.json_types import JSONValue
 
 __all__ = [
+    "ROOT_MARKERS",
     "CommandOutput",
     "JSONValue",
-    "ROOT_MARKERS",
     "RootMarker",
     "as_int",
     "as_list",

@@ -7,20 +7,22 @@ from __future__ import annotations
 import json
 from collections import Counter
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 import pytest
 
 from typewiz.core.model_types import SeverityLevel
 from typewiz.core.type_aliases import RelPath
-from typewiz.manifest.typed import (
-    EngineOptionsEntry,
-    FileEntry,
-    ManifestData,
-    RunPayload,
-    RunSummary,
-)
 from typewiz.ratchet.core import build_ratchet_from_manifest
+
+if TYPE_CHECKING:
+    from typewiz.manifest.typed import (
+        EngineOptionsEntry,
+        FileEntry,
+        ManifestData,
+        RunPayload,
+        RunSummary,
+    )
 
 pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
 
@@ -40,7 +42,7 @@ def _schema_path() -> Path:
 
 
 def _load_schema() -> dict[str, object]:
-    return cast(dict[str, object], json.loads(_schema_path().read_text()))
+    return cast("dict[str, object]", json.loads(_schema_path().read_text()))
 
 
 def _manifest() -> ManifestData:
@@ -61,7 +63,7 @@ def _manifest() -> ManifestData:
             )
         per_file_entries.append(
             cast(
-                FileEntry,
+                "FileEntry",
                 {
                     "path": path,
                     "errors": counts.get("error", 0),
@@ -78,7 +80,7 @@ def _manifest() -> ManifestData:
         "exclude": [],
     }
     summary_totals = cast(
-        RunSummary,
+        "RunSummary",
         {
             "errors": 1,
             "warnings": 1,
@@ -90,7 +92,7 @@ def _manifest() -> ManifestData:
         },
     )
     run_payload = cast(
-        RunPayload,
+        "RunPayload",
         {
             "tool": "pyright",
             "mode": "current",
@@ -104,7 +106,7 @@ def _manifest() -> ManifestData:
         },
     )
     return cast(
-        ManifestData,
+        "ManifestData",
         {
             "generatedAt": "2025-01-01T00:00:00Z",
             "projectRoot": "/repo",

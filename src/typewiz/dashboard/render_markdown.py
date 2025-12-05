@@ -1,31 +1,40 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Markdown rendering module for typewiz dashboards.
+
+This module provides functionality to render dashboard summary data as formatted
+Markdown documents. The output includes overview metrics, run summaries, engine
+details, hotspot analysis, readiness metrics, and run logs in a readable text format.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from typewiz.common.override_utils import format_overrides_block
 from typewiz.config.validation import coerce_int, coerce_mapping, coerce_object_list
 from typewiz.core.model_types import OverrideEntry, ReadinessStatus, SeverityLevel, SummaryTabName
-from typewiz.core.summary_types import (
-    ReadinessOptionsPayload,
-    ReadinessStrictEntry,
-    ReadinessTab,
-    SummaryData,
-    SummaryRunEntry,
-)
-from typewiz.core.type_aliases import RunId
 from typewiz.readiness.compute import CATEGORY_LABELS
+
+if TYPE_CHECKING:
+    from typewiz.core.summary_types import (
+        ReadinessOptionsPayload,
+        ReadinessStrictEntry,
+        ReadinessTab,
+        SummaryData,
+        SummaryRunEntry,
+    )
+    from typewiz.core.type_aliases import RunId
 
 
 def _materialise_dict_list(values: object) -> list[dict[str, object]]:
     result: list[dict[str, object]] = []
     if not isinstance(values, Sequence) or isinstance(values, (str, bytes, bytearray)):
         return result
-    for entry in cast(Sequence[object], values):
+    for entry in cast("Sequence[object]", values):
         if isinstance(entry, Mapping):
-            entry_map = coerce_mapping(cast(Mapping[object, object], entry))
+            entry_map = coerce_mapping(cast("Mapping[object, object]", entry))
             result.append(dict(entry_map.items()))
     return result
 
@@ -40,9 +49,7 @@ def _format_entry_list(entries: Sequence[dict[str, object]], limit: int = 8) -> 
 
 
 def _empty_readiness_tab() -> ReadinessTab:
-    strict_defaults: dict[ReadinessStatus, list[ReadinessStrictEntry]] = {
-        status: [] for status in ReadinessStatus
-    }
+    strict_defaults: dict[ReadinessStatus, list[ReadinessStrictEntry]] = {status: [] for status in ReadinessStatus}
     return {"strict": strict_defaults, "options": {}}
 
 
@@ -80,28 +87,23 @@ def _md_run_summary(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:
         lines.append("| _No runs recorded_ | 0 | 0 | 0 | — |")
         return lines
     for key, data in run_summary.items():
-        dm = coerce_mapping(cast(Mapping[object, object], data))
+        dm = coerce_mapping(cast("Mapping[object, object]", data))
         cmd = " ".join(str(part) for part in coerce_object_list(dm.get("command")))
-        row = (
-            f"| `{key}` | {dm.get('errors', 0)} | {dm.get('warnings', 0)} | "
-            f"{dm.get('information', 0)} | `{cmd}` |"
-        )
+        row = f"| `{key}` | {dm.get('errors', 0)} | {dm.get('warnings', 0)} | {dm.get('information', 0)} | `{cmd}` |"
         lines.append(row)
     return lines
 
 
-def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:
+def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:  # noqa: PLR0914  # JUSTIFIED: function assembles rich markdown for each engine in a single, readable block
     lines = ["", "### Engine details"]
     if not run_summary:
         lines.append("- No engine data available")
         return lines
     for key, data in run_summary.items():
-        dm = coerce_mapping(cast(Mapping[object, object], data))
+        dm = coerce_mapping(cast("Mapping[object, object]", data))
         options_obj = dm.get("engineOptions")
         options = (
-            coerce_mapping(cast(Mapping[object, object], options_obj))
-            if isinstance(options_obj, Mapping)
-            else {}
+            coerce_mapping(cast("Mapping[object, object]", options_obj)) if isinstance(options_obj, Mapping) else {}
         )
         profile = str(options.get("profile") or "—")
         config_file = str(options.get("configFile") or "—")
@@ -125,7 +127,7 @@ def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str
         )
         tool_totals_obj = dm.get("toolSummary")
         if isinstance(tool_totals_obj, Mapping):
-            tool_totals = coerce_mapping(cast(Mapping[object, object], tool_totals_obj))
+            tool_totals = coerce_mapping(cast("Mapping[object, object]", tool_totals_obj))
             t_errors = coerce_int(tool_totals.get("errors"))
             t_warnings = coerce_int(tool_totals.get("warnings"))
             t_info = coerce_int(tool_totals.get("information"))
@@ -136,9 +138,7 @@ def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str
             p_total = coerce_int(dm.get("total")) or (p_errors + p_warnings + p_info)
             mismatch = t_errors != p_errors or t_warnings != p_warnings or t_total != p_total
             mismatch_text = (
-                f" (mismatch vs parsed: {p_errors}/{p_warnings}/{p_info} total={p_total})"
-                if mismatch
-                else ""
+                f" (mismatch vs parsed: {p_errors}/{p_warnings}/{p_info} total={p_total})" if mismatch else ""
             )
             lines.append(
                 (
@@ -150,8 +150,8 @@ def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str
         overrides: list[OverrideEntry] = []
         for item in coerce_object_list(overrides_obj):
             if isinstance(item, Mapping):
-                entry_map = coerce_mapping(cast(Mapping[object, object], item))
-                overrides.append(cast(OverrideEntry, dict(entry_map.items())))
+                entry_map = coerce_mapping(cast("Mapping[object, object]", item))
+                overrides.append(cast("OverrideEntry", dict(entry_map.items())))
         if overrides:
             lines.append("- Folder overrides:")
             lines.extend(format_overrides_block(overrides))
@@ -160,7 +160,7 @@ def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str
 
 def _md_hotspots(hotspots: Mapping[str, object], summary: SummaryData) -> list[str]:
     lines: list[str] = ["", "### Hotspots"]
-    top_rules = cast(Mapping[str, int], hotspots.get("topRules", summary.get("topRules", {})))
+    top_rules = cast("Mapping[str, int]", hotspots.get("topRules", summary.get("topRules", {})))
     if top_rules:
         lines.extend(
             [
@@ -175,13 +175,12 @@ def _md_hotspots(hotspots: Mapping[str, object], summary: SummaryData) -> list[s
     else:
         lines.append("- No diagnostic rules recorded")
 
-    rule_files = cast(Mapping[str, Sequence[Mapping[str, object]]], hotspots.get("ruleFiles", {}))
+    rule_files = cast("Mapping[str, Sequence[Mapping[str, object]]]", hotspots.get("ruleFiles", {}))
     if rule_files:
         lines.extend(["", "#### Rule hotspots by file", ""])
         for rule, rule_entries in rule_files.items():
             formatted = ", ".join(
-                f"`{entry.get('path', '<unknown>')}` ({entry.get('count', 0)})"
-                for entry in rule_entries[:5]
+                f"`{entry.get('path', '<unknown>')}` ({entry.get('count', 0)})" for entry in rule_entries[:5]
             )
             lines.append(f"- `{rule}`: {formatted or '—'}")
 
@@ -197,7 +196,7 @@ def _md_hotspots(hotspots: Mapping[str, object], summary: SummaryData) -> list[s
         ],
     )
     if top_folders:
-        for folder in cast(Sequence[Mapping[str, object]], top_folders):
+        for folder in cast("Sequence[Mapping[str, object]]", top_folders):
             row = (
                 f"| `{folder['path']}` | {folder['errors']} | {folder['warnings']} | "
                 f"{folder['information']} | {folder['participatingRuns']} |"
@@ -216,7 +215,7 @@ def _md_hotspots(hotspots: Mapping[str, object], summary: SummaryData) -> list[s
         "| --- | ---: | ---: |",
     ])
     if top_files:
-        for entry in cast(Sequence[Mapping[str, object]], top_files):
+        for entry in cast("Sequence[Mapping[str, object]]", top_files):
             row = f"| `{entry['path']}` | {entry['errors']} | {entry['warnings']} |"
             lines.append(row)
     else:
@@ -230,17 +229,13 @@ def _md_run_logs(
 ) -> list[str]:
     lines = ["", "### Run logs"]
     rd_obj = runs_tab.get("runSummary")
-    run_details = (
-        cast(Mapping[RunId, SummaryRunEntry], rd_obj)
-        if isinstance(rd_obj, Mapping)
-        else run_summary
-    )
+    run_details = cast("Mapping[RunId, SummaryRunEntry]", rd_obj) if isinstance(rd_obj, Mapping) else run_summary
     if not run_details:
         lines.append("- No runs recorded")
         return lines
     for key, data in run_details.items():
-        dm = coerce_mapping(cast(Mapping[object, object], data))
-        breakdown = coerce_mapping(cast(Mapping[object, object], dm.get("severityBreakdown")))
+        dm = coerce_mapping(cast("Mapping[object, object]", data))
+        breakdown = coerce_mapping(cast("Mapping[object, object]", dm.get("severityBreakdown")))
         lines.extend(
             [
                 "",
@@ -259,21 +254,21 @@ def _md_run_logs(
 def _md_readiness(tabs: Mapping[str, object]) -> list[str]:
     lines = ["", "### Readiness snapshot", ""]
     raw = tabs.get(SummaryTabName.READINESS.value)
-    rs: ReadinessTab = (
-        cast(ReadinessTab, raw) if isinstance(raw, Mapping) else _empty_readiness_tab()
-    )
-    strict_section_raw = cast(dict[ReadinessStatus, list[dict[str, object]]], rs.get("strict", {}))
+    rs: ReadinessTab = cast("ReadinessTab", raw) if isinstance(raw, Mapping) else _empty_readiness_tab()
+    strict_section_raw = cast("dict[ReadinessStatus, list[dict[str, object]]]", rs.get("strict", {}))
     ready_entries = _materialise_dict_list(strict_section_raw.get(ReadinessStatus.READY, []))
     close_entries = _materialise_dict_list(strict_section_raw.get(ReadinessStatus.CLOSE, []))
     blocked_entries = _materialise_dict_list(strict_section_raw.get(ReadinessStatus.BLOCKED, []))
-    lines.append(f"- Ready for strict typing: {_format_entry_list(ready_entries)}")
-    lines.append(f"- Close to strict typing: {_format_entry_list(close_entries)}")
-    lines.append(f"- Blocked folders: {_format_entry_list(blocked_entries)}")
+    lines.extend((
+        f"- Ready for strict typing: {_format_entry_list(ready_entries)}",
+        f"- Close to strict typing: {_format_entry_list(close_entries)}",
+        f"- Blocked folders: {_format_entry_list(blocked_entries)}",
+    ))
 
-    readiness_options_raw = cast(dict[str, ReadinessOptionsPayload], rs.get("options", {}))
+    readiness_options_raw = cast("dict[str, ReadinessOptionsPayload]", rs.get("options", {}))
     if readiness_options_raw:
         lines.extend(["", "#### Per-option readiness", ""])
-        label_lookup = cast(dict[str, str], CATEGORY_LABELS)
+        label_lookup = cast("dict[str, str]", CATEGORY_LABELS)
         for category, buckets_obj in readiness_options_raw.items():
             label_key: str = str(category)
             label = label_lookup.get(label_key, label_key)
@@ -287,6 +282,19 @@ def _md_readiness(tabs: Mapping[str, object]) -> list[str]:
 
 
 def render_markdown(summary: SummaryData) -> str:
+    """Render dashboard summary data as a formatted Markdown document.
+
+    This function generates a comprehensive Markdown report containing all dashboard
+    information: severity totals, run summaries, engine configurations, diagnostic
+    hotspots, readiness analysis, and detailed run logs. The output is suitable for
+    viewing in text editors, version control diffs, or Markdown renderers.
+
+    Args:
+        summary: Complete dashboard summary data to render.
+
+    Returns:
+        Formatted Markdown document as a string with headers, tables, and lists.
+    """
     tabs = summary["tabs"]
     overview = tabs[SummaryTabName.OVERVIEW.value]
     run_summary = overview["runSummary"]

@@ -69,7 +69,7 @@ def test_discover_manifest_path_prefers_configured_when_present(tmp_path: Path) 
 
 
 def test_discover_manifest_path_errors_when_missing(tmp_path: Path) -> None:
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = discover_manifest_path(tmp_path, explicit=None, configured=None)
 
 
@@ -84,7 +84,7 @@ def test_discover_ratchet_path_defaults(tmp_path: Path) -> None:
 
 
 def test_discover_manifest_path_requires_existing(tmp_path: Path) -> None:
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = discover_manifest_path(tmp_path, explicit=tmp_path / "missing.json", configured=None)
 
 
@@ -102,7 +102,7 @@ def test_discover_ratchet_path_prefers_configured(tmp_path: Path) -> None:
 
 
 def test_discover_ratchet_path_requires_existing(tmp_path: Path) -> None:
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = discover_ratchet_path(
             tmp_path,
             explicit=tmp_path / "missing.json",
@@ -112,7 +112,7 @@ def test_discover_ratchet_path_requires_existing(tmp_path: Path) -> None:
 
 
 def test_discover_ratchet_path_requires_existing_configured(tmp_path: Path) -> None:
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = discover_ratchet_path(
             tmp_path,
             explicit=None,
@@ -151,21 +151,19 @@ def test_resolve_severities_falls_back_to_defaults_when_empty() -> None:
         (None, SignaturePolicy.FAIL),
     ],
 )
-def test_resolve_signature_policy_accepts_permitted_values(
-    value: str | None, expected: SignaturePolicy
-) -> None:
+def test_resolve_signature_policy_accepts_permitted_values(value: str | None, expected: SignaturePolicy) -> None:
     assert resolve_signature_policy(value, SignaturePolicy.FAIL) is expected
 
 
 def test_resolve_signature_policy_rejects_invalid() -> None:
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit, match=r".*"):
         _ = resolve_signature_policy("maybe", SignaturePolicy.FAIL)
 
 
 def test_resolve_summary_only_and_limit() -> None:
-    assert resolve_summary_only(True, False) is True
-    assert resolve_summary_only(False, True) is True
-    assert resolve_summary_only(False, False) is False
+    assert resolve_summary_only(cli_summary=True, config_summary=False) is True
+    assert resolve_summary_only(cli_summary=False, config_summary=True) is True
+    assert resolve_summary_only(cli_summary=False, config_summary=False) is False
     assert resolve_limit(5, None) == 5
     assert resolve_limit(None, 10) == 10
 

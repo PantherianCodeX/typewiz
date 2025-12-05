@@ -6,17 +6,17 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Protocol
 
-from ..helpers import echo, register_argument
+from typewiz.cli.helpers import echo, register_argument
 
 _TOPICS_ROOT = Path(__file__).resolve().parents[4] / "docs" / "cli" / "topics"
 
 
 class SubparserRegistry(Protocol):
-    def add_parser(
-        self, *args: Any, **kwargs: Any
-    ) -> argparse.ArgumentParser: ...  # pragma: no cover - Protocol
+    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
+        """Register a CLI subcommand on an argparse subparser collection."""
+        ...  # pragma: no cover - Protocol helper
 
 
 def register_help_command(subparsers: SubparserRegistry) -> None:
@@ -67,7 +67,14 @@ def _render_topics_list(topics: dict[str, Path]) -> None:
 
 
 def execute_help(args: argparse.Namespace) -> int:
-    """Execute the ``typewiz help`` command."""
+    """Execute the ``typewiz help`` command.
+
+    Args:
+        args: Parsed CLI namespace containing optional topic data.
+
+    Returns:
+        ``0`` on success or ``2`` if the requested topic is unknown.
+    """
     root = args.topics_dir or _TOPICS_ROOT
     topics = _discover_topics(root)
     topic = args.topic

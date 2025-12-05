@@ -1,5 +1,7 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""High-level audit orchestration entry points."""
+
 from __future__ import annotations
 
 import json
@@ -13,7 +15,6 @@ from typewiz.audit.paths import normalise_paths
 from typewiz.cache import EngineCache
 from typewiz.config import AuditConfig, Config, load_config
 from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
-from typewiz.core.type_aliases import RelPath
 from typewiz.dashboard import build_summary, render_html, render_markdown
 from typewiz.engines import EngineContext, resolve_engines
 from typewiz.logging import structured_extra
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from typewiz.core.summary_types import SummaryData
+    from typewiz.core.type_aliases import RelPath
     from typewiz.core.types import RunResult
     from typewiz.engines.base import BaseEngine
     from typewiz.manifest.typed import ManifestData
@@ -64,9 +66,7 @@ def _determine_full_paths(
     audit_config: AuditConfig,
     full_paths: Sequence[str] | None,
 ) -> list[RelPath]:
-    raw_full_paths = (
-        list(full_paths) if full_paths else (audit_config.full_paths or default_full_paths(root))
-    )
+    raw_full_paths = list(full_paths) if full_paths else (audit_config.full_paths or default_full_paths(root))
     if not raw_full_paths:
         message = "No directories to scan; configure 'full_paths' or pass 'full_paths' argument"
         raise ValueError(message)
@@ -156,7 +156,7 @@ def _run_engines(inputs: _AuditInputs) -> tuple[list[RunResult], bool]:
     return runs, truncated_any
 
 
-def _persist_manifest_and_dashboards(  # noqa: PLR0913
+def _persist_manifest_and_dashboards(
     *,
     inputs: _AuditInputs,
     runs: list[RunResult],
@@ -244,7 +244,7 @@ def _compute_run_totals(runs: list[RunResult]) -> tuple[int, int]:
     return error_count, warning_count
 
 
-def run_audit(  # noqa: PLR0913
+def run_audit(
     *,
     project_root: Path | None = None,
     config: Config | None = None,
@@ -254,7 +254,23 @@ def run_audit(  # noqa: PLR0913
     build_summary_output: bool = False,
     persist_outputs: bool = True,
 ) -> AuditResult:
-    """Run configured engines, persist artefacts, and collate diagnostics."""
+    """Run configured engines, persist artefacts, and collate diagnostics.
+
+    Args:
+        project_root: Directory that hosts ``typing_audit.json`` and engine
+            configuration. ``None`` defaults to ``Path.cwd()``.
+        config: Resolved ``typewiz.config.Config`` object. ``None`` triggers a
+            fresh load from disk based on ``project_root``.
+        override: In-memory overrides applied on top of the config file.
+        full_paths: Explicit include list overriding ``config.full_paths``.
+        write_manifest_to: Optional override for the manifest destination.
+        build_summary_output: Whether to produce dashboard payloads.
+        persist_outputs: Whether manifest/summary artefacts should be written.
+
+    Returns:
+        ``AuditResult`` containing the final manifest, per-engine run metadata,
+        summary payloads, and aggregated severity counts.
+    """
     _cfg, inputs = _prepare_audit_inputs(
         project_root=project_root,
         config=config,

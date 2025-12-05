@@ -5,10 +5,9 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, Final
 
 from typewiz._internal.utils import consume
 from typewiz.core.model_types import Mode, OverrideEntry, ReadinessStatus, SeverityLevel
@@ -34,20 +33,27 @@ from typewiz.core.summary_types import (
 from typewiz.core.type_aliases import CategoryKey, CategoryName, RelPath, RunId, ToolName
 from typewiz.core.types import Diagnostic, RunResult
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
-from typewiz.readiness.compute import ReadinessEntry
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
+    from typewiz.readiness.compute import ReadinessEntry
 
 __all__ = [
     "TestDataBuilder",
-    "build_diagnostic",
     "build_cli_manifest",
-    "build_empty_summary",
     "build_cli_run_result",
     "build_cli_summary",
+    "build_diagnostic",
+    "build_empty_summary",
     "build_readiness_entries",
     "build_readiness_summary",
     "build_sample_run",
     "build_sample_summary",
 ]
+
+TOOL_PYRIGHT: Final[ToolName] = ToolName("pyright")
+TOOL_STUB: Final[ToolName] = ToolName("stub")
 
 
 @dataclass(slots=True)
@@ -58,51 +64,16 @@ class TestDataBuilder:
 
     project_root: Path = Path("/repo")
     generated_at: str = "2025-01-01T00:00:00Z"
-    tool_name: ToolName = ToolName("pyright")
-    stub_tool_name: ToolName = ToolName("stub")
+    tool_name: ToolName = TOOL_PYRIGHT
+    stub_tool_name: ToolName = TOOL_STUB
 
     def build_sample_summary(self) -> SummaryData:
         """Return a representative SummaryData payload used by dashboard tests."""
-        pyright_override: OverrideEntry = {
-            "path": "apps/platform",
-            "pluginArgs": ["--warnings"],
-        }
-        mypy_override: OverrideEntry = {
-            "path": "packages/legacy",
-            "exclude": [RelPath("packages/legacy")],
-        }
-        run_summary: dict[RunId, SummaryRunEntry] = {
-            RunId("pyright:current"): {
-                "command": ["pyright", "--outputjson"],
-                "errors": 0,
-                "warnings": 0,
-                "information": 0,
-                "total": 0,
-                "engineOptions": {
-                    "profile": "baseline",
-                    "configFile": "pyrightconfig.json",
-                    "pluginArgs": ["--lib"],
-                    "include": [RelPath("apps")],
-                    "exclude": [RelPath("apps/legacy")],
-                    "overrides": [pyright_override],
-                },
-            },
-            RunId("mypy:full"): {
-                "command": ["python", "-m", "mypy"],
-                "errors": 1,
-                "warnings": 1,
-                "information": 0,
-                "total": 2,
-                "engineOptions": {
-                    "profile": "strict",
-                    "configFile": "mypy.ini",
-                    "pluginArgs": ["--strict"],
-                    "include": [RelPath("packages")],
-                    "exclude": [],
-                    "overrides": [mypy_override],
-                },
-            },
-        }
+        pyright_override, mypy_override = self._build_sample_overrides()
+        run_summary = self._build_sample_run_summary(
+            pyright_override=pyright_override,
+            mypy_override=mypy_override,
+        )
 
         severity_totals: CountsBySeverity = {
             SeverityLevel.ERROR: 1,
@@ -154,6 +125,103 @@ class TestDataBuilder:
             "reportUnknownMemberType": [RulePathEntry(path="packages/core/agents.py", count=1)],
         }
 
+        readiness_tab = self._build_sample_readiness_tab()
+        category_totals: CountsByCategory = {}
+        tabs = self._build_sample_tabs(
+            severity_totals=severity_totals,
+            category_totals=category_totals,
+            run_summary=run_summary,
+            top_rules=top_rules,
+            top_folders=top_folders,
+            top_files=top_files,
+            rule_files=rule_files,
+            readiness_tab=readiness_tab,
+        )
+
+        return {
+            "generatedAt": self.generated_at,
+            "projectRoot": self.project_root.as_posix(),
+            "runSummary": run_summary,
+            "severityTotals": severity_totals,
+            "categoryTotals": category_totals,
+            "topRules": top_rules,
+            "topFolders": top_folders,
+            "topFiles": top_files,
+            "ruleFiles": rule_files,
+            "tabs": tabs,
+        }
+
+    def _build_sample_overrides(self) -> tuple[OverrideEntry, OverrideEntry]:
+        """Return the canonical overrides used across sample summaries."""
+        pyright_override: OverrideEntry = {
+            "path": "apps/platform",
+            "pluginArgs": ["--warnings"],
+        }
+        mypy_override: OverrideEntry = {
+            "path": "packages/legacy",
+            "exclude": [RelPath("packages/legacy")],
+        }
+        return pyright_override, mypy_override
+
+    def _build_sample_run_summary(
+        self,
+        *,
+        pyright_override: OverrideEntry,
+        mypy_override: OverrideEntry,
+    ) -> dict[RunId, SummaryRunEntry]:
+        """Construct the run summary shared across tabs."""
+        return {
+            RunId("pyright:current"): {
+                "command": ["pyright", "--outputjson"],
+                "errors": 0,
+                "warnings": 0,
+                "information": 0,
+                "total": 0,
+                "engineOptions": {
+                    "profile": "baseline",
+                    "configFile": "pyrightconfig.json",
+                    "pluginArgs": ["--lib"],
+                    "include": [RelPath("apps")],
+                    "exclude": [RelPath("apps/legacy")],
+                    "overrides": [pyright_override],
+                },
+            },
+            RunId("mypy:full"): {
+                "command": ["python", "-m", "mypy"],
+                "errors": 1,
+                "warnings": 1,
+                "information": 0,
+                "total": 2,
+                "engineOptions": {
+                    "profile": "strict",
+                    "configFile": "mypy.ini",
+                    "pluginArgs": ["--strict"],
+                    "include": [RelPath("packages")],
+                    "exclude": [],
+                    "overrides": [mypy_override],
+                },
+            },
+        }
+
+    def _build_sample_readiness_tab(self) -> ReadinessTab:
+        """Generate readiness data used by dashboard and CLI tests."""
+
+        def _bucket(
+            ready: list[ReadinessOptionEntry],
+            close: list[ReadinessOptionEntry],
+            *,
+            threshold: int,
+        ) -> ReadinessOptionsPayload:
+            buckets: dict[ReadinessStatus, tuple[ReadinessOptionEntry, ...]] = {}
+            if ready:
+                buckets[ReadinessStatus.READY] = tuple(ready)
+            if close:
+                buckets[ReadinessStatus.CLOSE] = tuple(close)
+            return {
+                "threshold": threshold,
+                "buckets": buckets,
+            }
+
         readiness_ready_categories: dict[CategoryName, int] = {
             CategoryName("unknownChecks"): 0,
             CategoryName("optionalChecks"): 0,
@@ -204,23 +272,7 @@ class TestDataBuilder:
             },
         ]
 
-        def _bucket(
-            ready: list[ReadinessOptionEntry],
-            close: list[ReadinessOptionEntry],
-            *,
-            threshold: int,
-        ) -> ReadinessOptionsPayload:
-            buckets: dict[ReadinessStatus, tuple[ReadinessOptionEntry, ...]] = {}
-            if ready:
-                buckets[ReadinessStatus.READY] = tuple(ready)
-            if close:
-                buckets[ReadinessStatus.CLOSE] = tuple(close)
-            return {
-                "threshold": threshold,
-                "buckets": buckets,
-            }
-
-        readiness_tab: ReadinessTab = {
+        return {
             "strict": {
                 ReadinessStatus.READY: readiness_ready,
                 ReadinessStatus.CLOSE: readiness_close,
@@ -278,8 +330,20 @@ class TestDataBuilder:
             },
         }
 
-        category_totals: CountsByCategory = {}
-        tabs: SummaryTabs = {
+    def _build_sample_tabs(
+        self,
+        *,
+        severity_totals: CountsBySeverity,
+        category_totals: CountsByCategory,
+        run_summary: dict[RunId, SummaryRunEntry],
+        top_rules: CountsByRule,
+        top_folders: list[SummaryFolderEntry],
+        top_files: list[SummaryFileEntry],
+        rule_files: dict[str, list[RulePathEntry]],
+        readiness_tab: ReadinessTab,
+    ) -> SummaryTabs:
+        """Assemble SummaryTabs shared across CLI/dashboard tests."""
+        return {
             "overview": {
                 "severityTotals": severity_totals,
                 "categoryTotals": category_totals,
@@ -294,19 +358,6 @@ class TestDataBuilder:
             },
             "readiness": readiness_tab,
             "runs": {"runSummary": run_summary},
-        }
-
-        return {
-            "generatedAt": self.generated_at,
-            "projectRoot": self.project_root.as_posix(),
-            "runSummary": run_summary,
-            "severityTotals": severity_totals,
-            "categoryTotals": category_totals,
-            "topRules": top_rules,
-            "topFolders": top_folders,
-            "topFiles": top_files,
-            "ruleFiles": rule_files,
-            "tabs": tabs,
         }
 
     def build_cli_summary(self) -> SummaryData:
@@ -329,9 +380,7 @@ class TestDataBuilder:
                 "unknownChecks": ReadinessOptionsPayload(
                     threshold=1,
                     buckets={
-                        ReadinessStatus.BLOCKED: (
-                            ReadinessOptionEntry(path="src", count=2, errors=1, warnings=1),
-                        ),
+                        ReadinessStatus.BLOCKED: (ReadinessOptionEntry(path="src", count=2, errors=1, warnings=1),),
                     },
                 ),
             },
@@ -420,7 +469,11 @@ class TestDataBuilder:
         return summary
 
     def build_cli_run_result(self) -> RunResult:
-        """Build a RunResult tailored to CLI printing tests."""
+        """Build a RunResult tailored to CLI printing tests.
+
+        Returns:
+            ``RunResult`` seeded with representative diagnostics and metadata.
+        """
         diagnostic = Diagnostic(
             tool=self.tool_name,
             severity=SeverityLevel.ERROR,
@@ -446,7 +499,14 @@ class TestDataBuilder:
         return run
 
     def build_readiness_entries(self, count: int = 200) -> list[ReadinessEntry]:
-        """Generate readiness entries that stress readiness computation."""
+        """Generate readiness entries that stress readiness computation.
+
+        Args:
+            count: Number of readiness records to emit.
+
+        Returns:
+            List of synthetic readiness entries.
+        """
         entries: list[ReadinessEntry] = []
         for index in range(count):
             unknown_count = (index * 3) % 5
@@ -474,7 +534,16 @@ class TestDataBuilder:
         *,
         tool_name: ToolName | None = None,
     ) -> RunResult:
-        """Construct a run with many diagnostics for performance testing."""
+        """Construct a run with many diagnostics for performance testing.
+
+        Args:
+            num_files: Number of files represented in the run.
+            diagnostics_per_file: Diagnostics to generate per file.
+            tool_name: Optional override for the tool identifier.
+
+        Returns:
+            ``RunResult`` packed with synthetic diagnostics.
+        """
         diagnostics: list[Diagnostic] = []
         target_tool = tool_name or self.tool_name
         for file_index in range(num_files):
@@ -482,9 +551,7 @@ class TestDataBuilder:
             diagnostics.extend(
                 Diagnostic(
                     tool=target_tool,
-                    severity=(
-                        SeverityLevel.ERROR if diag_index % 3 == 0 else SeverityLevel.WARNING
-                    ),
+                    severity=(SeverityLevel.ERROR if diag_index % 3 == 0 else SeverityLevel.WARNING),
                     path=path,
                     line=diag_index + 1,
                     column=1,
@@ -509,7 +576,11 @@ DEFAULT_READINESS_CATEGORY: CategoryKey = "unknownChecks"
 
 
 def build_sample_summary() -> SummaryData:
-    """Convenience wrapper for the default sample summary."""
+    """Convenience wrapper for the default sample summary.
+
+    Returns:
+        Sample ``SummaryData`` used by CLI tests.
+    """
     return _DEFAULT_TEST_DATA_BUILDER.build_sample_summary()
 
 
@@ -534,7 +605,14 @@ def build_sample_run(num_files: int = 120, diagnostics_per_file: int = 5) -> Run
 
 
 def build_cli_manifest(tmp_path: Path) -> Path:
-    """Generate a representative CLI manifest for integration tests."""
+    """Generate a representative CLI manifest for integration tests.
+
+    Args:
+        tmp_path: Temporary directory used to write the manifest file.
+
+    Returns:
+        Path to the generated manifest file.
+    """
     manifest: dict[str, Any] = {
         "generatedAt": "2025-11-05T00:00:00Z",
         "projectRoot": str(tmp_path),
@@ -671,7 +749,11 @@ def build_cli_manifest(tmp_path: Path) -> Path:
 
 
 def build_empty_summary() -> SummaryData:
-    """Construct a blank SummaryData payload with the required structure."""
+    """Construct a blank SummaryData payload with the required structure.
+
+    Returns:
+        ``SummaryData`` skeleton with empty tabs.
+    """
     run_summary: dict[RunId, SummaryRunEntry] = {}
     severity_totals: CountsBySeverity = {}
     category_totals: CountsByCategory = {}
@@ -732,7 +814,7 @@ def build_diagnostic(
     message: str = "example diagnostic",
 ) -> Diagnostic:
     """Return a Diagnostic populated with sensible defaults for CLI-oriented tests."""
-    diag_tool = tool or ToolName("pyright")
+    diag_tool = tool or TOOL_PYRIGHT
     diag_path = Path(path)
     return Diagnostic(
         tool=diag_tool,
@@ -763,7 +845,5 @@ def build_readiness_summary(
             },
         }
     if strict_entries is not None:
-        readiness_tab["strict"] = {
-            status: list(entries) for status, entries in strict_entries.items()
-        }
+        readiness_tab["strict"] = {status: list(entries) for status, entries in strict_entries.items()}
     return summary

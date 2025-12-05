@@ -26,10 +26,21 @@ def path_parts(min_size: int = 1, max_size: int = 5) -> st.SearchStrategy[list[s
 
 
 def severity_counts(max_value: int = 10) -> st.SearchStrategy[int]:
-    """Strategy that emits bounded non-negative severity counts."""
+    """Strategy that emits bounded non-negative severity counts.
+
+    Args:
+        max_value: Maximum count allowed in the emitted integers.
+
+    Returns:
+        Hypothesis strategy producing integers between 0 and ``max_value``.
+    """
     return st.integers(min_value=0, max_value=max_value)
 
 
 def arbitrary_cli_noise() -> st.SearchStrategy[object]:
-    """Inputs that should coerce to defaults in CLI helpers."""
+    """Inputs that should coerce to defaults in CLI helpers.
+
+    Returns:
+        Hypothesis strategy emitting arbitrary noise values (str/int/None).
+    """
     return st.one_of(st.text(), st.integers(), st.none())

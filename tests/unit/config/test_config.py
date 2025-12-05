@@ -223,7 +223,7 @@ default_profile = "strict"
             encoding="utf-8",
         ),
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="default_profile 'strict' is not defined in profiles"):
         consume(load_config(config_path))
 
 
@@ -255,13 +255,13 @@ def test_directory_override_validation_error_message(tmp_path: Path) -> None:
 def test_engine_profile_model_requires_string_inherit() -> None:
     invalid_value: object = object()
     with pytest.raises(ValidationError, match="inherit must be a string"):
-        _ = EngineProfileModel(inherit=cast(str, invalid_value))
+        _ = EngineProfileModel(inherit=cast("str", invalid_value))
 
 
 def test_engine_settings_model_requires_string_default_profile() -> None:
     invalid_value: object = object()
     with pytest.raises(ValidationError, match="default_profile must be a string"):
-        _ = EngineSettingsModel(default_profile=cast(str, invalid_value))
+        _ = EngineSettingsModel(default_profile=cast("str", invalid_value))
 
 
 def test_audit_config_model_coerces_limits_and_fail_on() -> None:
@@ -312,7 +312,7 @@ def test_engine_profile_model_strips_inherit() -> None:
     )
     assert profile.inherit == "base"
     assert profile.plugin_args == ["--x"]
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="inherit must be a string"):
         consume(EngineProfileModel.model_validate({"inherit": 123}))
 
 
@@ -326,9 +326,9 @@ def test_engine_settings_model_validators() -> None:
     )
     assert model.default_profile == "strict"
     assert model.profiles["strict"].plugin_args == ["--p"]
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="default_profile must be a string"):
         consume(EngineSettingsModel.model_validate({"default_profile": 123}))
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="default_profile 'missing' is not defined in profiles"):
         consume(
             EngineSettingsModel.model_validate(
                 {
@@ -349,7 +349,7 @@ def test_audit_config_model_plugin_args_normalisation() -> None:
     )
     assert model.plugin_args == {"pyright": ["--x"]}
     assert model.active_profiles == {"stub": "strict"}
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown profile 'missing' for engine 'stub'"):
         consume(
             AuditConfigModel.model_validate(
                 {
@@ -390,11 +390,13 @@ def test_resolve_path_fields_resolves_relative_paths(tmp_path: Path) -> None:
     resolve_path_fields(tmp_path, audit)
     assert audit.manifest_path == (tmp_path / "manifest.json").resolve()
     stub_settings = audit.engine_settings[STUB]
-    assert stub_settings.config_file and stub_settings.config_file.is_absolute()
+    assert stub_settings.config_file
+    assert stub_settings.config_file.is_absolute()
     override = audit.path_overrides[0]
     assert override.path.is_absolute()
     override_settings = override.engine_settings[STUB]
-    assert override_settings.config_file and override_settings.config_file.is_absolute()
+    assert override_settings.config_file
+    assert override_settings.config_file.is_absolute()
 
 
 def test_ratchet_config_model_converts_severity_strings() -> None:
@@ -455,7 +457,7 @@ def test_audit_config_model_coercions() -> None:
 
 
 def test_audit_config_model_invalid_fail_on() -> None:
-    with pytest.raises(ValidationError) as excinfo:
+    with pytest.raises(ValidationError, match="fail_on must be one of") as excinfo:
         _ = AuditConfigModel.model_validate({"fail_on": "unsupported"})
     assert "fail_on must be one of" in str(excinfo.value)
 
@@ -467,6 +469,4 @@ def test_config_exception_messages(tmp_path: Path) -> None:
     assert "Unknown profile" in str(UnknownEngineProfileError("pyright", "strict"))
     assert "Unsupported config_version" in str(UnsupportedConfigVersionError(2, 0))
     assert "Unable to read" in str(ConfigReadError(tmp_path / "cfg.toml", OSError("boom")))
-    assert "Invalid typewiz" in str(
-        InvalidConfigFileError(tmp_path / "cfg.toml", ValueError("bad"))
-    )
+    assert "Invalid typewiz" in str(InvalidConfigFileError(tmp_path / "cfg.toml", ValueError("bad")))

@@ -6,10 +6,9 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Never, NoReturn, Protocol
 
 from typewiz.cli.helpers import (
     DEFAULT_RATCHET_FILENAME,
@@ -27,8 +26,6 @@ from typewiz.cli.helpers import (
 )
 from typewiz.config import RatchetConfig, load_config
 from typewiz.core.model_types import DataFormat, RatchetAction, SignaturePolicy
-from typewiz.core.type_aliases import RunId
-from typewiz.manifest.typed import ManifestData
 from typewiz.runtime import normalise_enums_for_json, resolve_project_root
 from typewiz.services.ratchet import (
     RatchetFileExistsError,
@@ -45,9 +42,29 @@ from typewiz.services.ratchet import (
     load_manifest as load_ratchet_manifest,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from typewiz.core.type_aliases import RunId
+    from typewiz.manifest.typed import ManifestData
+
 
 @dataclass(slots=True)
 class RatchetContext:
+    """Context object holding all configuration and data for ratchet operations.
+
+    Attributes:
+        project_root: Root directory of the project.
+        config: Ratchet configuration settings.
+        manifest_path: Path to the typing audit manifest file.
+        ratchet_path: Path to the ratchet budget file (may be None for init).
+        manifest_payload: Loaded manifest data.
+        runs: Sequence of run IDs to process, or None for all runs.
+        signature_policy: Policy for handling signature mismatches.
+        limit: Maximum number of entries to display, or None for unlimited.
+        summary_only: Whether to display only summary information.
+    """
+
     project_root: Path
     config: RatchetConfig
     manifest_path: Path
@@ -68,14 +85,27 @@ class RatchetContext:
 
 
 def _handle_service_error(exc: RatchetServiceError) -> int:
+    """Handle ratchet service errors by printing to stderr and returning error code.
+
+    Args:
+        exc: The ratchet service error that occurred.
+
+    Returns:
+        int: Exit code 1 indicating failure.
+    """
     echo(f"[typewiz] {exc}", err=True)
     return 1
 
 
 class SubparserRegistry(Protocol):
-    def add_parser(
-        self, *args: Any, **kwargs: Any
-    ) -> argparse.ArgumentParser: ...  # pragma: no cover - stub
+    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
+        """Register a CLI subcommand on an argparse subparser collection."""
+        ...  # pragma: no cover - stub helper
+
+
+def _raise_unknown_ratchet_action(action: Never) -> NoReturn:
+    msg = f"Unknown ratchet action: {action}"
+    raise SystemExit(msg)
 
 
 def register_ratchet_command(subparsers: SubparserRegistry) -> None:
@@ -110,11 +140,7 @@ def execute_ratchet(args: argparse.Namespace) -> int:
 
     action_value = args.action
     try:
-        action = (
-            action_value
-            if isinstance(action_value, RatchetAction)
-            else RatchetAction.from_str(action_value)
-        )
+        action = action_value if isinstance(action_value, RatchetAction) else RatchetAction.from_str(action_value)
     except ValueError as exc:  # pragma: no cover - argparse prevents invalid choices
         raise SystemExit(str(exc)) from exc
     explicit_manifest: Path | None = getattr(args, "manifest", None)
@@ -129,8 +155,7 @@ def execute_ratchet(args: argparse.Namespace) -> int:
         project_root,
         explicit=explicit_ratchet,
         configured=ratchet_cfg.output_path,
-        require_exists=action
-        in {RatchetAction.CHECK, RatchetAction.UPDATE, RatchetAction.REBASELINE_SIGNATURE},
+        require_exists=action in {RatchetAction.CHECK, RatchetAction.UPDATE, RatchetAction.REBASELINE_SIGNATURE},
     )
 
     manifest_payload = load_ratchet_manifest(manifest_path)
@@ -141,8 +166,8 @@ def execute_ratchet(args: argparse.Namespace) -> int:
     )
     limit_value = resolve_limit(getattr(args, "limit", None), ratchet_cfg.limit)
     summary_only = resolve_summary_only(
-        getattr(args, "summary_only", False),
-        ratchet_cfg.summary_only,
+        cli_summary=getattr(args, "summary_only", False),
+        config_summary=ratchet_cfg.summary_only,
     )
 
     context = RatchetContext(
@@ -171,10 +196,18 @@ def execute_ratchet(args: argparse.Namespace) -> int:
         return handle_rebaseline(context, args)
     if action is RatchetAction.INFO:
         return handle_info(context)
-    raise SystemExit(f"Unknown ratchet action: {action}")
+    _raise_unknown_ratchet_action(action)
 
 
 def _register_init_parser(subparsers: SubparserRegistry) -> None:
+    """Register the 'ratchet init' subcommand parser.
+
+    Configures the init subcommand with argument groups for inputs, budget settings,
+    and output options. This command creates a new ratchet budget file from a manifest.
+
+    Args:
+        subparsers: Subparser registry where the init command will be added.
+    """
     ratchet_init = subparsers.add_parser(
         RatchetAction.INIT.value,
         help="Create a ratchet budget from a manifest",
@@ -229,6 +262,14 @@ def _register_init_parser(subparsers: SubparserRegistry) -> None:
 
 
 def _register_check_parser(subparsers: SubparserRegistry) -> None:
+    """Register the 'ratchet check' subcommand parser.
+
+    Configures the check subcommand with argument groups for inputs, display options,
+    and policy settings. This command compares a manifest against ratchet budgets.
+
+    Args:
+        subparsers: Subparser registry where the check command will be added.
+    """
     ratchet_check = subparsers.add_parser(
         RatchetAction.CHECK.value,
         help="Compare a manifest against a ratchet budget",
@@ -290,6 +331,15 @@ def _register_check_parser(subparsers: SubparserRegistry) -> None:
 
 
 def _register_update_parser(subparsers: SubparserRegistry) -> None:
+    """Register the 'ratchet update' subcommand parser.
+
+    Configures the update subcommand with argument groups for inputs, budget settings,
+    output options, and display settings. This command updates ratchet budgets based
+    on a new manifest while preserving or modifying target thresholds.
+
+    Args:
+        subparsers: Subparser registry where the update command will be added.
+    """
     ratchet_update = subparsers.add_parser(
         RatchetAction.UPDATE.value,
         help="Update ratchet budgets using a manifest",
@@ -365,6 +415,14 @@ def _register_update_parser(subparsers: SubparserRegistry) -> None:
 
 
 def _register_rebaseline_parser(subparsers: SubparserRegistry) -> None:
+    """Register the 'ratchet rebaseline-signature' subcommand parser.
+
+    Configures the rebaseline-signature subcommand with argument groups for inputs and
+    output options. This command refreshes engine signature data without changing budgets.
+
+    Args:
+        subparsers: Subparser registry where the rebaseline-signature command will be added.
+    """
     ratchet_rebaseline = subparsers.add_parser(
         RatchetAction.REBASELINE_SIGNATURE.value,
         help="Refresh engine signature data without changing budgets",
@@ -411,6 +469,15 @@ def _register_rebaseline_parser(subparsers: SubparserRegistry) -> None:
 
 
 def _register_info_parser(subparsers: SubparserRegistry) -> None:
+    """Register the 'ratchet info' subcommand parser.
+
+    Configures the info subcommand with arguments for inputs discovery. This command
+    shows the resolved ratchet configuration including manifest path, ratchet path,
+    runs, severities, targets, and signature policy.
+
+    Args:
+        subparsers: Subparser registry where the info command will be added.
+    """
     ratchet_info = subparsers.add_parser(
         RatchetAction.INFO.value,
         help="Show resolved ratchet configuration",
@@ -442,6 +509,18 @@ def _register_info_parser(subparsers: SubparserRegistry) -> None:
 
 
 def handle_init(context: RatchetContext, args: argparse.Namespace) -> int:
+    """Handle the 'ratchet init' command execution.
+
+    Creates a new ratchet budget file from a manifest using the specified severities
+    and target budgets. The output path is determined from CLI args, context, or defaults.
+
+    Args:
+        context: Ratchet execution context containing configuration and manifest data.
+        args: Parsed command-line arguments including output path, severities, targets, and force.
+
+    Returns:
+        int: Exit code (0 for success, 1 for failure).
+    """
     output: Path | None = getattr(args, "output", None)
     if output is None:
         output = context.ratchet_path or (context.project_root / DEFAULT_RATCHET_FILENAME).resolve()
@@ -474,6 +553,19 @@ def handle_init(context: RatchetContext, args: argparse.Namespace) -> int:
 
 
 def handle_check(context: RatchetContext, args: argparse.Namespace) -> int:
+    """Handle the 'ratchet check' command execution.
+
+    Compares the current manifest against ratchet budgets and reports on any violations.
+    Output can be formatted as JSON or table format. Returns non-zero exit code if budgets
+    are exceeded or signature mismatches fail policy checks.
+
+    Args:
+        context: Ratchet execution context containing configuration and manifest data.
+        args: Parsed command-line arguments including output format.
+
+    Returns:
+        int: Exit code (0 for success, non-zero for budget violations or policy failures).
+    """
     try:
         result = check_ratchet(
             manifest=context.manifest_payload,
@@ -502,6 +594,19 @@ def handle_check(context: RatchetContext, args: argparse.Namespace) -> int:
 
 
 def handle_update(context: RatchetContext, args: argparse.Namespace) -> int:
+    """Handle the 'ratchet update' command execution.
+
+    Updates ratchet budgets based on a new manifest, optionally applying target overrides.
+    Supports dry-run mode for previewing changes without writing to disk. The updated
+    ratchet is written to the specified output path or the original ratchet path.
+
+    Args:
+        context: Ratchet execution context containing configuration and manifest data.
+        args: Parsed command-line arguments including targets, output path, force, and dry-run.
+
+    Returns:
+        int: Exit code (always 0 for success).
+    """
     cli_targets = parse_target_entries(getattr(args, "targets", []))
     output: Path | None = getattr(args, "output", None)
     output = resolve_path(context.project_root, output) if output else None
@@ -536,14 +641,27 @@ def handle_update(context: RatchetContext, args: argparse.Namespace) -> int:
 
 
 def handle_rebaseline(context: RatchetContext, args: argparse.Namespace) -> int:
+    """Handle the 'ratchet rebaseline-signature' command execution.
+
+    Refreshes engine signature data in the ratchet file without changing budget values.
+    This is useful when engine configurations or versions change but budgets should remain
+    constant. Writes to the specified output path or updates the original ratchet file.
+
+    Args:
+        context: Ratchet execution context containing configuration and manifest data.
+        args: Parsed command-line arguments including output path and force flag.
+
+    Returns:
+        int: Exit code (0 for success, 1 for failure).
+
+    Raises:
+        SystemExit: If the ratchet path cannot be determined.
+    """
     target_path: Path | None = getattr(args, "output", None)
-    target_path = (
-        context.ratchet_path
-        if target_path is None
-        else resolve_path(context.project_root, target_path)
-    )
+    target_path = context.ratchet_path if target_path is None else resolve_path(context.project_root, target_path)
     if target_path is None:
-        raise SystemExit("Ratchet path is required for ratchet rebaseline.")
+        msg = "Ratchet path is required for ratchet rebaseline."
+        raise SystemExit(msg)
 
     try:
         result = rebaseline_ratchet(
@@ -562,6 +680,18 @@ def handle_rebaseline(context: RatchetContext, args: argparse.Namespace) -> int:
 
 
 def handle_info(context: RatchetContext) -> int:
+    """Handle the 'ratchet info' command execution.
+
+    Displays the resolved ratchet configuration including manifest path, ratchet path,
+    runs, severities, target budgets, signature policy, display limit, and summary mode.
+    This helps users understand the effective configuration being used.
+
+    Args:
+        context: Ratchet execution context containing configuration and manifest data.
+
+    Returns:
+        int: Exit code (always 0 for success).
+    """
     severities = resolve_severities(None, context.config.severities)
     snapshot = describe_ratchet(
         manifest_path=context.manifest_path,
@@ -595,6 +725,9 @@ def handle_info(context: RatchetContext) -> int:
 
 __all__ = [
     "RatchetContext",
+    "RatchetFileExistsError",
+    "RatchetPathRequiredError",
+    "RatchetServiceError",
     "execute_ratchet",
     "handle_check",
     "handle_info",
@@ -602,7 +735,4 @@ __all__ = [
     "handle_rebaseline",
     "handle_update",
     "register_ratchet_command",
-    "RatchetServiceError",
-    "RatchetFileExistsError",
-    "RatchetPathRequiredError",
 ]

@@ -5,10 +5,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
 from copy import deepcopy
-from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -20,13 +18,14 @@ from typewiz.config import AuditConfig
 from typewiz.core.model_types import Mode
 from typewiz.core.type_aliases import EngineName, RunnerName
 from typewiz.manifest.loader import load_manifest_data
-from typewiz.manifest.models import (
-    ManifestValidationError,
-    manifest_json_schema,
-    validate_manifest_payload,
-)
-from typewiz.manifest.typed import ManifestData
+from typewiz.manifest.models import ManifestValidationError, manifest_json_schema, validate_manifest_payload
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+    from typewiz.manifest.typed import ManifestData
 
 pytestmark = pytest.mark.unit
 
@@ -107,7 +106,7 @@ def test_validate_manifest_payload_rejects_invalid_tool() -> None:
     m = cast("dict[str, Any]", manifest)
     invalid_run = cast("dict[str, Any]", m["runs"][0])
     invalid_run["tool"] = 123
-    with pytest.raises(ManifestValidationError):
+    with pytest.raises(ManifestValidationError, match="Input should be a valid string"):
         consume(validate_manifest_payload(manifest))
 
 
@@ -129,7 +128,7 @@ def test_validate_manifest_payload_rejects_malformed_perfile() -> None:
     md = cast("dict[str, Any]", manifest)
     run = cast("dict[str, Any]", md["runs"][0])
     run["perFile"] = [{}]
-    with pytest.raises(ManifestValidationError):
+    with pytest.raises(ManifestValidationError, match="Field required"):
         consume(validate_manifest_payload(manifest))
 
 
@@ -138,7 +137,7 @@ def test_validate_manifest_payload_rejects_extra_fields() -> None:
     md = cast("dict[str, Any]", manifest)
     run = cast("dict[str, Any]", md["runs"][0])
     run["unexpectedField"] = "value"
-    with pytest.raises(ManifestValidationError):
+    with pytest.raises(ManifestValidationError, match="Extra inputs are not permitted"):
         consume(validate_manifest_payload(manifest))
 
 
@@ -146,7 +145,7 @@ def test_validate_manifest_payload_rejects_missing_schema_version() -> None:
     manifest = _sample_manifest()
     manifest_dict = cast("dict[str, Any]", manifest)
     manifest_dict.pop("schemaVersion")
-    with pytest.raises(ManifestValidationError) as exc_info:
+    with pytest.raises(ManifestValidationError, match="Unsupported schemaVersion type") as exc_info:
         consume(validate_manifest_payload(manifest))
     errors = exc_info.value.validation_error.errors()
     assert errors[0]["loc"] == ("schemaVersion",)
@@ -156,7 +155,7 @@ def test_validate_manifest_payload_rejects_numeric_schema_version() -> None:
     manifest = _sample_manifest()
     manifest_dict = cast("dict[str, Any]", manifest)
     manifest_dict["schemaVersion"] = 1
-    with pytest.raises(ManifestValidationError) as exc_info:
+    with pytest.raises(ManifestValidationError, match="Unsupported schemaVersion type") as exc_info:
         consume(validate_manifest_payload(manifest))
     errors = exc_info.value.validation_error.errors()
     assert errors[0]["type"].endswith("manifest.version.type")
@@ -166,7 +165,7 @@ def test_validate_manifest_payload_rejects_future_schema_version() -> None:
     manifest = _sample_manifest()
     manifest_dict = cast("dict[str, Any]", manifest)
     manifest_dict["schemaVersion"] = "999"
-    with pytest.raises(ManifestValidationError) as exc_info:
+    with pytest.raises(ManifestValidationError, match="Unsupported manifest schema version") as exc_info:
         consume(validate_manifest_payload(manifest))
     errors = exc_info.value.validation_error.errors()
     assert errors[0]["type"].endswith("manifest.version.unsupported")
@@ -176,7 +175,7 @@ def test_validate_manifest_payload_rejects_non_list_runs() -> None:
     manifest = _sample_manifest()
     manifest_dict = cast("dict[str, Any]", manifest)
     manifest_dict["runs"] = cast("Any", tuple(manifest_dict["runs"]))
-    with pytest.raises(ManifestValidationError) as exc_info:
+    with pytest.raises(ManifestValidationError, match="runs must be a list of run payloads") as exc_info:
         consume(validate_manifest_payload(manifest))
     errors = exc_info.value.validation_error.errors()
     assert errors[0]["type"].endswith("manifest.runs.type")

@@ -1,44 +1,110 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Model types and enumerations for Typewiz.
+
+This module defines core model types, enumerations, and TypedDict classes used
+throughout Typewiz. It includes:
+
+- Mode and severity enumerations for type checking runs
+- Status enumerations for readiness and licensing
+- Format enumerations for output and dashboard rendering
+- Action enumerations for CLI commands
+- TypedDict definitions for data payloads
+- Utility functions for type coercion and validation
+"""
+
 from __future__ import annotations
 
-from collections.abc import Sequence
 from enum import StrEnum
-from typing import Final, TypedDict, cast
-
-from typewiz.json_types import JSONValue
+from typing import TYPE_CHECKING, Final, TypedDict, cast
 
 from .type_aliases import CategoryKey, RelPath
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from typewiz.json_types import JSONValue
+
 
 class Mode(StrEnum):
+    """Enumeration of type checking execution modes.
+
+    Attributes:
+        CURRENT: Check only files changed in the current working tree.
+        FULL: Check all files in the project.
+    """
+
     CURRENT = "current"
     FULL = "full"
 
     @classmethod
     def from_str(cls, raw: str) -> Mode:
+        """Create a Mode enum from a string value.
+
+        Args:
+            raw: String representation of the mode.
+
+        Returns:
+            Mode enum value.
+
+        Raises:
+            ValueError: If the string does not match any Mode value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown mode '{raw}'") from exc
+            msg = f"Unknown mode '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class SeverityLevel(StrEnum):
+    """Enumeration of diagnostic severity levels.
+
+    Attributes:
+        ERROR: Critical issues that prevent type safety.
+        WARNING: Potential issues that should be addressed.
+        INFORMATION: Informational diagnostics.
+    """
+
     ERROR = "error"
     WARNING = "warning"
     INFORMATION = "information"
 
     @classmethod
     def from_str(cls, raw: str) -> SeverityLevel:
+        """Create a SeverityLevel enum from a string value.
+
+        Args:
+            raw: String representation of the severity level.
+
+        Returns:
+            SeverityLevel enum value.
+
+        Raises:
+            ValueError: If the string does not match any SeverityLevel value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown severity '{raw}'") from exc
+            msg = f"Unknown severity '{raw}'"
+            raise ValueError(msg) from exc
 
     @classmethod
     def coerce(cls, raw: object) -> SeverityLevel:
+        """Coerce an arbitrary object to a SeverityLevel with fallback.
+
+        Attempts to convert the input to a SeverityLevel, handling common
+        variations like plural forms and 'info' shorthand. Returns
+        INFORMATION as the default if coercion fails.
+
+        Args:
+            raw: Object to coerce to a SeverityLevel.
+
+        Returns:
+            SeverityLevel enum value, defaulting to INFORMATION.
+        """
         if isinstance(raw, SeverityLevel):
             return raw
         if isinstance(raw, str):
@@ -47,8 +113,8 @@ class SeverityLevel(StrEnum):
                 singular = token[:-1]
                 if singular in cls._value2member_map_:
                     token = singular
-            if token == "info":
-                token = "information"
+            if token == "info":  # noqa: S105 JUSTIFIED; not a password
+                token = "information"  # noqa: S105 JUSTIFIED; not a password
             try:
                 return cls.from_str(token)
             except ValueError:
@@ -63,33 +129,84 @@ DEFAULT_SEVERITIES: Final[tuple[SeverityLevel, SeverityLevel]] = (
 
 
 class ReadinessStatus(StrEnum):
+    """Enumeration of readiness status levels for type checking adoption.
+
+    Attributes:
+        READY: Module/file is ready for strict type checking.
+        CLOSE: Module/file is close to ready with minimal issues.
+        BLOCKED: Module/file has significant blocking issues.
+    """
+
     READY = "ready"
     CLOSE = "close"
     BLOCKED = "blocked"
 
     @classmethod
     def from_str(cls, raw: str) -> ReadinessStatus:
+        """Create a ReadinessStatus enum from a string value.
+
+        Args:
+            raw: String representation of the readiness status.
+
+        Returns:
+            ReadinessStatus enum value.
+
+        Raises:
+            ValueError: If the string does not match any ReadinessStatus value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown readiness status '{raw}'") from exc
+            msg = f"Unknown readiness status '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class LogFormat(StrEnum):
+    """Enumeration of log output formats.
+
+    Attributes:
+        TEXT: Human-readable text format.
+        JSON: Machine-readable JSON format.
+    """
+
     TEXT = "text"
     JSON = "json"
 
     @classmethod
     def from_str(cls, raw: str) -> LogFormat:
+        """Create a LogFormat enum from a string value.
+
+        Args:
+            raw: String representation of the log format.
+
+        Returns:
+            LogFormat enum value.
+
+        Raises:
+            ValueError: If the string does not match any LogFormat value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown log format '{raw}'") from exc
+            msg = f"Unknown log format '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class LogComponent(StrEnum):
+    """Enumeration of loggable system components.
+
+    Attributes:
+        ENGINE: Type checking engine component.
+        CLI: Command-line interface component.
+        DASHBOARD: Dashboard rendering component.
+        CACHE: Caching system component.
+        RATCHET: Ratcheting mechanism component.
+        SERVICES: Service layer component.
+        MANIFEST: Manifest handling component.
+    """
+
     ENGINE = "engine"
     CLI = "cli"
     DASHBOARD = "dashboard"
@@ -100,54 +217,134 @@ class LogComponent(StrEnum):
 
     @classmethod
     def from_str(cls, raw: str) -> LogComponent:
+        """Create a LogComponent enum from a string value.
+
+        Args:
+            raw: String representation of the log component.
+
+        Returns:
+            LogComponent enum value.
+
+        Raises:
+            ValueError: If the string does not match any LogComponent value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown log component '{raw}'") from exc
+            msg = f"Unknown log component '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class LicenseMode(StrEnum):
+    """Enumeration of license modes for Typewiz.
+
+    Attributes:
+        COMMERCIAL: Commercial license mode.
+        EVALUATION: Evaluation/trial license mode.
+    """
+
     COMMERCIAL = "commercial"
     EVALUATION = "evaluation"
 
     @classmethod
     def from_str(cls, raw: str) -> LicenseMode:
+        """Create a LicenseMode enum from a string value.
+
+        Args:
+            raw: String representation of the license mode.
+
+        Returns:
+            LicenseMode enum value.
+
+        Raises:
+            ValueError: If the string does not match any LicenseMode value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown license mode '{raw}'") from exc
+            msg = f"Unknown license mode '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class DataFormat(StrEnum):
+    """Enumeration of data output formats.
+
+    Attributes:
+        JSON: JSON data format.
+        TABLE: Tabular data format.
+    """
+
     JSON = "json"
     TABLE = "table"
 
     @classmethod
     def from_str(cls, raw: str) -> DataFormat:
+        """Create a DataFormat enum from a string value.
+
+        Args:
+            raw: String representation of the data format.
+
+        Returns:
+            DataFormat enum value.
+
+        Raises:
+            ValueError: If the string does not match any DataFormat value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown data format '{raw}'") from exc
+            msg = f"Unknown data format '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class DashboardFormat(StrEnum):
+    """Enumeration of dashboard rendering formats.
+
+    Attributes:
+        JSON: Raw JSON data format.
+        MARKDOWN: Markdown documentation format.
+        HTML: HTML webpage format.
+    """
+
     JSON = "json"
     MARKDOWN = "markdown"
     HTML = "html"
 
     @classmethod
     def from_str(cls, raw: str) -> DashboardFormat:
+        """Create a DashboardFormat enum from a string value.
+
+        Args:
+            raw: String representation of the dashboard format.
+
+        Returns:
+            DashboardFormat enum value.
+
+        Raises:
+            ValueError: If the string does not match any DashboardFormat value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown dashboard format '{raw}'") from exc
+            msg = f"Unknown dashboard format '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class DashboardView(StrEnum):
+    """Enumeration of dashboard view types.
+
+    Attributes:
+        OVERVIEW: High-level overview of type checking results.
+        ENGINES: Engine-specific diagnostic information.
+        HOTSPOTS: Areas with the most type checking issues.
+        READINESS: Readiness analysis for strict type checking.
+        RUNS: Individual run details and history.
+    """
+
     OVERVIEW = "overview"
     ENGINES = "engines"
     HOTSPOTS = "hotspots"
@@ -156,54 +353,134 @@ class DashboardView(StrEnum):
 
     @classmethod
     def from_str(cls, raw: str) -> DashboardView:
+        """Create a DashboardView enum from a string value.
+
+        Args:
+            raw: String representation of the dashboard view.
+
+        Returns:
+            DashboardView enum value.
+
+        Raises:
+            ValueError: If the string does not match any DashboardView value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown dashboard view '{raw}'") from exc
+            msg = f"Unknown dashboard view '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class ReadinessLevel(StrEnum):
+    """Enumeration of readiness analysis granularity levels.
+
+    Attributes:
+        FOLDER: Folder-level readiness analysis.
+        FILE: File-level readiness analysis.
+    """
+
     FOLDER = "folder"
     FILE = "file"
 
     @classmethod
     def from_str(cls, raw: str) -> ReadinessLevel:
+        """Create a ReadinessLevel enum from a string value.
+
+        Args:
+            raw: String representation of the readiness level.
+
+        Returns:
+            ReadinessLevel enum value.
+
+        Raises:
+            ValueError: If the string does not match any ReadinessLevel value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown readiness level '{raw}'") from exc
+            msg = f"Unknown readiness level '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class HotspotKind(StrEnum):
+    """Enumeration of hotspot analysis types.
+
+    Attributes:
+        FILES: File-level hotspot analysis.
+        FOLDERS: Folder-level hotspot analysis.
+    """
+
     FILES = "files"
     FOLDERS = "folders"
 
     @classmethod
     def from_str(cls, raw: str) -> HotspotKind:
+        """Create a HotspotKind enum from a string value.
+
+        Args:
+            raw: String representation of the hotspot kind.
+
+        Returns:
+            HotspotKind enum value.
+
+        Raises:
+            ValueError: If the string does not match any HotspotKind value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown hotspot kind '{raw}'") from exc
+            msg = f"Unknown hotspot kind '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class SummaryStyle(StrEnum):
+    """Enumeration of summary display styles.
+
+    Attributes:
+        COMPACT: Minimal summary output.
+        EXPANDED: Detailed summary with additional context.
+        FULL: Complete summary with all available information.
+    """
+
     COMPACT = "compact"
     EXPANDED = "expanded"
     FULL = "full"
 
     @classmethod
     def from_str(cls, raw: str) -> SummaryStyle:
+        """Create a SummaryStyle enum from a string value.
+
+        Args:
+            raw: String representation of the summary style.
+
+        Returns:
+            SummaryStyle enum value.
+
+        Raises:
+            ValueError: If the string does not match any SummaryStyle value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown summary style '{raw}'") from exc
+            msg = f"Unknown summary style '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class SummaryField(StrEnum):
+    """Enumeration of summary field types.
+
+    Attributes:
+        PROFILE: Type checking profile configuration.
+        CONFIG: Configuration file settings.
+        PLUGIN_ARGS: Plugin-specific arguments.
+        PATHS: Analyzed file paths.
+        OVERRIDES: Path-specific override configurations.
+    """
+
     PROFILE = "profile"
     CONFIG = "config"
     PLUGIN_ARGS = "plugin-args"
@@ -212,28 +489,70 @@ class SummaryField(StrEnum):
 
     @classmethod
     def from_str(cls, raw: str) -> SummaryField:
+        """Create a SummaryField enum from a string value.
+
+        Args:
+            raw: String representation of the summary field.
+
+        Returns:
+            SummaryField enum value.
+
+        Raises:
+            ValueError: If the string does not match any SummaryField value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown summary field '{raw}'") from exc
+            msg = f"Unknown summary field '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class SignaturePolicy(StrEnum):
+    """Enumeration of ratchet signature validation policies.
+
+    Attributes:
+        FAIL: Fail the build on signature mismatch.
+        WARN: Warn on signature mismatch but don't fail.
+        IGNORE: Ignore signature mismatches.
+    """
+
     FAIL = "fail"
     WARN = "warn"
     IGNORE = "ignore"
 
     @classmethod
     def from_str(cls, raw: str) -> SignaturePolicy:
+        """Create a SignaturePolicy enum from a string value.
+
+        Args:
+            raw: String representation of the signature policy.
+
+        Returns:
+            SignaturePolicy enum value.
+
+        Raises:
+            ValueError: If the string does not match any SignaturePolicy value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown signature policy '{raw}'") from exc
+            msg = f"Unknown signature policy '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class FailOnPolicy(StrEnum):
+    """Enumeration of failure policies for type checking runs.
+
+    Attributes:
+        NEVER: Never fail regardless of diagnostics.
+        NONE: Fail only if no diagnostics are found.
+        WARNINGS: Fail on warnings or errors.
+        ERRORS: Fail only on errors.
+        ANY: Fail on any diagnostic.
+    """
+
     NEVER = "never"
     NONE = "none"
     WARNINGS = "warnings"
@@ -242,14 +561,36 @@ class FailOnPolicy(StrEnum):
 
     @classmethod
     def from_str(cls, raw: str) -> FailOnPolicy:
+        """Create a FailOnPolicy enum from a string value.
+
+        Args:
+            raw: String representation of the fail-on policy.
+
+        Returns:
+            FailOnPolicy enum value.
+
+        Raises:
+            ValueError: If the string does not match any FailOnPolicy value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown fail-on policy '{raw}'") from exc
+            msg = f"Unknown fail-on policy '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class RatchetAction(StrEnum):
+    """Enumeration of ratchet command actions.
+
+    Attributes:
+        INIT: Initialize a new ratchet baseline.
+        CHECK: Check current state against ratchet baseline.
+        UPDATE: Update the ratchet baseline.
+        REBASELINE_SIGNATURE: Rebaseline the signature without changing counts.
+        INFO: Display ratchet information.
+    """
+
     INIT = "init"
     CHECK = "check"
     UPDATE = "update"
@@ -258,27 +599,69 @@ class RatchetAction(StrEnum):
 
     @classmethod
     def from_str(cls, raw: str) -> RatchetAction:
+        """Create a RatchetAction enum from a string value.
+
+        Args:
+            raw: String representation of the ratchet action.
+
+        Returns:
+            RatchetAction enum value.
+
+        Raises:
+            ValueError: If the string does not match any RatchetAction value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown ratchet action '{raw}'") from exc
+            msg = f"Unknown ratchet action '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class ManifestAction(StrEnum):
+    """Enumeration of manifest command actions.
+
+    Attributes:
+        VALIDATE: Validate a manifest file.
+        SCHEMA: Display the manifest JSON schema.
+    """
+
     VALIDATE = "validate"
     SCHEMA = "schema"
 
     @classmethod
     def from_str(cls, raw: str) -> ManifestAction:
+        """Create a ManifestAction enum from a string value.
+
+        Args:
+            raw: String representation of the manifest action.
+
+        Returns:
+            ManifestAction enum value.
+
+        Raises:
+            ValueError: If the string does not match any ManifestAction value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown manifest action '{raw}'") from exc
+            msg = f"Unknown manifest action '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class QuerySection(StrEnum):
+    """Enumeration of queryable dashboard sections.
+
+    Attributes:
+        OVERVIEW: Overview summary section.
+        HOTSPOTS: Hotspot analysis section.
+        READINESS: Readiness analysis section.
+        RUNS: Individual runs section.
+        ENGINES: Engine-specific section.
+        RULES: Rule-specific analysis section.
+    """
+
     OVERVIEW = "overview"
     HOTSPOTS = "hotspots"
     READINESS = "readiness"
@@ -288,14 +671,36 @@ class QuerySection(StrEnum):
 
     @classmethod
     def from_str(cls, raw: str) -> QuerySection:
+        """Create a QuerySection enum from a string value.
+
+        Args:
+            raw: String representation of the query section.
+
+        Returns:
+            QuerySection enum value.
+
+        Raises:
+            ValueError: If the string does not match any QuerySection value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown query section '{raw}'") from exc
+            msg = f"Unknown query section '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class SummaryTabName(StrEnum):
+    """Enumeration of summary tab names.
+
+    Attributes:
+        OVERVIEW: Overview tab.
+        ENGINES: Engines tab.
+        HOTSPOTS: Hotspots tab.
+        READINESS: Readiness tab.
+        RUNS: Runs tab.
+    """
+
     OVERVIEW = "overview"
     ENGINES = "engines"
     HOTSPOTS = "hotspots"
@@ -304,14 +709,34 @@ class SummaryTabName(StrEnum):
 
     @classmethod
     def from_str(cls, raw: str) -> SummaryTabName:
+        """Create a SummaryTabName enum from a string value.
+
+        Args:
+            raw: String representation of the summary tab.
+
+        Returns:
+            SummaryTabName enum value.
+
+        Raises:
+            ValueError: If the string does not match any SummaryTabName value.
+        """
         value = raw.strip().lower()
         try:
             return cls(value)
         except ValueError as exc:
-            raise ValueError(f"Unknown summary tab '{raw}'") from exc
+            msg = f"Unknown summary tab '{raw}'"
+            raise ValueError(msg) from exc
 
 
 class RecommendationCode(StrEnum):
+    """Enumeration of recommendation codes for type checking adoption.
+
+    Attributes:
+        STRICT_READY: Module is ready for strict type checking.
+        CANDIDATE_ENABLE_UNKNOWN_CHECKS: Consider enabling unknown type checks.
+        CANDIDATE_ENABLE_OPTIONAL_CHECKS: Consider enabling optional checks.
+    """
+
     STRICT_READY = "strict-ready"
     CANDIDATE_ENABLE_UNKNOWN_CHECKS = "candidate-enable-unknown-checks"
     CANDIDATE_ENABLE_OPTIONAL_CHECKS = "candidate-enable-optional-checks"
@@ -321,6 +746,16 @@ type CategoryMapping = dict[CategoryKey, list[str]]
 
 
 class OverrideEntry(TypedDict, total=False):
+    """TypedDict for path-specific configuration overrides.
+
+    Attributes:
+        path: File or folder path to apply the override to.
+        profile: Type checking profile to use for this path.
+        pluginArgs: Additional plugin arguments for this path.
+        include: Paths to include in type checking.
+        exclude: Paths to exclude from type checking.
+    """
+
     path: str
     profile: str
     pluginArgs: list[str]
@@ -329,6 +764,19 @@ class OverrideEntry(TypedDict, total=False):
 
 
 class DiagnosticPayload(TypedDict, total=False):
+    """TypedDict for diagnostic message data payloads.
+
+    Attributes:
+        tool: Name of the type checking tool that generated the diagnostic.
+        severity: Severity level of the diagnostic.
+        path: File path where the diagnostic was found.
+        line: Line number of the diagnostic.
+        column: Column number of the diagnostic.
+        code: Diagnostic error code if available.
+        message: Human-readable diagnostic message.
+        raw: Raw diagnostic data from the tool.
+    """
+
     tool: str
     severity: str
     path: str
@@ -340,6 +788,16 @@ class DiagnosticPayload(TypedDict, total=False):
 
 
 class FileHashPayload(TypedDict, total=False):
+    """TypedDict for file hash and metadata information.
+
+    Attributes:
+        hash: Content hash of the file.
+        mtime: Modification timestamp of the file.
+        size: Size of the file in bytes.
+        missing: Whether the file is missing.
+        unreadable: Whether the file is unreadable.
+    """
+
     hash: str
     mtime: int
     size: int
@@ -348,4 +806,12 @@ class FileHashPayload(TypedDict, total=False):
 
 
 def clone_override_entries(entries: Sequence[OverrideEntry]) -> list[OverrideEntry]:
-    return [cast(OverrideEntry, dict(entry)) for entry in entries]
+    """Create a deep copy of override entries.
+
+    Args:
+        entries: Sequence of OverrideEntry dictionaries to clone.
+
+    Returns:
+        List of cloned OverrideEntry dictionaries.
+    """
+    return [cast("OverrideEntry", dict(entry)) for entry in entries]

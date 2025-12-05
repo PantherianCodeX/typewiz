@@ -54,6 +54,18 @@ Additional tips:
   - `snapshots/` encloses golden files shared by multiple suites.
 - Property-based strategies should be colocated under `tests/property_based/strategies/` and re-exported as needed.
 
+## Static Analysis Policy
+
+Static analysis gates treat tests as first-class code. The same mypy/pyright strictness applies to the entire tree, and Ruff enforces every family of checks with suite-aware exceptions:
+
+- **Common rules** – All tests must type hint fixtures/helpers and honour pytest best practices (`PT***`, `ANN***`, `ARG***`). Docstrings for test functions are optional, but module/doc coverage still applies where meaningful.
+- **Unit tests** – Bare `assert` statements, sentinel magic values, and relaxed package layout warnings are ignored to keep scenarios succinct. Everything else (imports, private access, security) follows production rules.
+- **Integration/performance tests** – Allowed to spawn subprocesses (`S60x`) and touch private helpers because they mimic full CLI flows. Complexity caps remain, so split scenarios into helpers when they grow beyond readability targets.
+- **Property-based tests** – Hypothesis primitives such as `assume`/`reject` are exempt from boolean-argument warnings (`FBT003`), but all generated strategies must stay typed.
+- **Fixtures & builders** – Dedicated helpers under `tests/fixtures/` may access private internals (`SLF001`) and carry complex setup logic (`PLR0914`). These relaxations never apply outside `tests/fixtures/`.
+
+If a test suite truly needs to suppress an additional rule, justify it inline with `# noqa` and update this document so the rule remains discoverable. `make sec.lint` (Ruff `S` rules) runs across `tests/` as well as `src/`, while `bandit` stays scoped to `src/` to avoid assertion noise—subprocess-driven tests are already carved out via the Ruff config.
+
 ## Coverage Requirements
 
 - Overall coverage may never drop below **95%** (validated via `make pytest.cov`).

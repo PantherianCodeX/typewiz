@@ -53,34 +53,333 @@ include = ["typewiz*"]
 typewiz = ["py.typed"]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py312"
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+]
 preview = true
-# Focus linting on high-signal rules; reduce docstring/license noise for now.
-lint.select = ["E", "F", "I", "UP", "B", "C", "CPY", "PLR0912", "PLR0913", "PLR0915"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812",  # Trailing comma conflicts with formatter
+    "ISC001",  # Implicit string concatenation conflicts with formatter
+    "D100",    # Module docstrings enforced via per-file ignores
+    "D104",    # Package docstrings enforced via per-file ignores
+    "TRY003",  # Detailed error messages improve debuggability
+    "FIX002",  # TODOs tracked externally
+    "TD002",   # TODO authors tracked in git
+    "TD003",   # TODO issue links tracked externally
+]
+fixable = ["ALL"]
+unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
-"tests/conftest.py" = ["E402"]
-"tests/**" = ["S101", "D100", "D101", "D102", "D103", "D104", "PLR2004", "C901", "PLR0912", "PLR0913", "PLR0915"]
-"scripts/refactor_imports.py" = ["C901", "PLR0912", "PLR0913", "PLR0915"]
+# Shared pytest glue modules intentionally bend some import/structure rules.
+"tests/**/conftest.py" = ["E402", "D103", "DOC201", "DOC402", "INP001"]
+# Namespaces inside tests are not importable packages and docstrings add little value.
+"tests/**/__init__.py" = ["D104", "INP001"]
+# Fixture/strategy helpers trade readability for flexibility and often need to reach private helpers.
+"tests/fixtures/**/*.py" = [
+    "D101",
+    "D102",
+    "D103",
+    "PLR0914",
+    "PLR2004",
+    "PLR6301",
+    "PLC2701",
+    "RUF009",
+    "S101",
+    "SLF001",
+]
+# Unit tests allow bare asserts and magic values but must still honour typing/pytest rules.
+"tests/unit/**/*.py" = [
+    "D102",
+    "D103",
+    "INP001",
+    "PLR2004",
+    "PLR6301",
+    "PLC2701",
+    "S101",
+]
+# Integration suites frequently exercise subprocesses and private toggles to validate workflows.
+"tests/integration/**/*.py" = [
+    "D102",
+    "D103",
+    "PLR2004",
+    "PLR6301",
+    "PLC2701",
+    "S101",
+    "S603",
+    "S607",
+    "SLF001",
+    "C901",
+    "PLR0914",
+    "PLR0913",
+]
+# Property-based tests rely on assume/reject primitives and relaxed docstrings.
+"tests/property_based/**/*.py" = [
+    "D102",
+    "D103",
+    "PLR2004",
+    "PLR6301",
+    "PLC2701",
+    "S101",
+    "FBT003",
+]
+# Performance runs intentionally access subprocesses and private toggles to benchmark realistic flows.
+"tests/performance/**/*.py" = [
+    "D102",
+    "D103",
+    "PLR2004",
+    "PLR6301",
+    "PLC2701",
+    "S101",
+    "S603",
+    "S607",
+    "SLF001",
+]
+# Focused allowances for test modules that interact with the git CLI extensively.
+"tests/unit/misc/test_refactor_imports.py" = ["S404", "S603", "S607"]
+# Cache regression tests introspect internal helpers by design.
+"tests/unit/cache/test_internal.py" = ["SLF001"]
+"scripts/refactor_imports.py" = ["C901", "PLR0912", "PLR0913", "PLR0915", "CPY001", "T201"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "double"
+docstring-quotes = "double"
+
+[tool.ruff.lint.isort]
+known-first-party = ["typewiz"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.lint.pylint]
+max-args = 7
+max-branches = 12
+max-returns = 6
+max-statements = 50
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+preview = true
+docstring-code-format = true
+docstring-code-line-length = 88
 
 
 [tool.coverage.run]
 source = ["src/typewiz"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+fail_under = 95
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
 
 [tool.pytest.ini_options]
 minversion = "8.4"
 testpaths = ["tests"]
-python_files = ["test_*.py"]
+python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+pythonpath = ["."]
+norecursedirs = [
+    ".venv",
+    "node_modules",
+    "__pycache__",
+    ".git",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+asyncio_mode = "auto"
 addopts = [
     "-ra",
     "--strict-markers",
     "--strict-config",
     "-v",
+    "--benchmark-disable",
+    "-n",
+    "auto",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests requiring external services",
+    "unit: Unit tests",
+    "smoke: Smoke tests",
 ]
 filterwarnings = [
     "error",
     "ignore::DeprecationWarning",
 ]
+
+[tool.pylint.main]
+py-version = "3.12"
+recursive = true
+init-hook = "import sys; from pathlib import Path; ROOT = Path.cwd(); sys.path[:0] = [str(ROOT / 'src')]"
+ignore-patterns = [
+    "^\\..*",
+    "^__pycache__$",
+    "\\.pyc$",
+    ".*\\.egg-info$",
+    "^build$",
+    "^dist$",
+    "^tests$",
+    "test_.*\\.py$",
+    ".*_test\\.py$",
+]
+load-plugins = [
+    "pylint.extensions.check_elif",
+    "pylint.extensions.bad_builtin",
+    "pylint.extensions.docparams",
+    "pylint.extensions.for_any_all",
+    "pylint.extensions.set_membership",
+    "pylint.extensions.code_style",
+    "pylint.extensions.overlapping_exceptions",
+    "pylint.extensions.typing",
+    "pylint.extensions.redefined_variable_type",
+    "pylint.extensions.comparison_placement",
+    "pylint.extensions.mccabe",
+    "pylint.extensions.confusing_elif",
+    "pylint.extensions.consider_refactoring_into_while_condition",
+]
+enable = "all"
+
+[tool.pylint.messages_control]
+disable = [
+    "line-too-long",
+    "bad-indentation",
+    "too-few-public-methods",
+    "no-self-argument",
+    "redefined-outer-name",
+    "duplicate-code",
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+]
+enable = [
+    "use-symbolic-message-instead",
+    "useless-suppression",
+]
+
+[tool.pylint.format]
+max-line-length = 120
+expected-line-ending-format = "LF"
+ignore-long-lines = "^\\s*(# )?<?https?://\\S+>?$"
+max-module-lines = 1000
+
+[tool.pylint.design]
+max-complexity = 10
+max-args = 7
+max-locals = 15
+max-returns = 6
+max-branches = 12
+max-statements = 50
+max-parents = 7
+max-attributes = 8
+min-public-methods = 0
+max-public-methods = 20
+max-bool-expr = 5
+
+[tool.pylint.basic]
+argument-naming-style = "snake_case"
+attr-naming-style = "snake_case"
+class-attribute-naming-style = "any"
+class-const-naming-style = "UPPER_CASE"
+class-naming-style = "PascalCase"
+const-naming-style = "UPPER_CASE"
+function-naming-style = "snake_case"
+inlinevar-naming-style = "any"
+method-naming-style = "snake_case"
+module-naming-style = "snake_case"
+variable-naming-style = "snake_case"
+docstring-min-length = 10
+no-docstring-rgx = "^_"
+good-names = ["i", "j", "k", "ex", "db", "id", "pk", "_", "e"]
+accept-no-param-doc = false
+accept-no-raise-doc = false
+accept-no-return-doc = false
+accept-no-yields-doc = false
+
+[tool.pylint.imports]
+deprecated-modules = ["optparse", "tkinter.tix"]
+allow-wildcard-with-all = false
+analyse-fallback-blocks = true
+
+[tool.pylint.exceptions]
+overgeneral-exceptions = ["builtins.BaseException", "builtins.Exception"]
+
+[tool.pylint.logging]
+logging-modules = ["logging"]
+logging-format-style = "new"
+
+[tool.pylint.refactoring]
+max-nested-blocks = 5
+never-returning-functions = ["sys.exit", "argparse.parse_error"]
+
+[tool.pylint.similarities]
+min-similarity-lines = 4
+ignore-comments = true
+ignore-docstrings = true
+
+[tool.pylint.typecheck]
+contextmanager-decorators = ["contextlib.contextmanager"]
+generated-members = []
+ignored-modules = []
+ignored-classes = ["SQLObject", "optparse.Values", "thread._local", "_thread._local"]
+mixin-class-rgx = ".*MixIn"
+
+[tool.pylint.variables]
+allowed-redefined-builtins = []
+dummy-variables-rgx = "_.*|dummy.*"
+ignored-argument-names = "_.*"
+init-import = false
+
+[tool.pylint.classes]
+defining-attr-methods = ["__init__", "__new__", "setUp", "asyncSetUp", "__post_init__"]
+exclude-protected = ["_asdict", "_fields", "_replace", "_source", "_make"]
+valid-classmethod-first-arg = ["cls"]
+valid-metaclass-classmethod-first-arg = ["mcs"]
+
+[tool.pylint.string]
+check-quote-consistency = true
+check-str-concat-over-line-jumps = true
+
+[tool.bandit]
+exclude_dirs = [
+    "tests",
+    ".venv",
+    "build",
+    "dist",
+]
+targets = ["src"]

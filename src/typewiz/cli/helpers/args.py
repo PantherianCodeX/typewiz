@@ -4,24 +4,32 @@
 
 from __future__ import annotations
 
-import argparse
-from collections.abc import Sequence
-from typing import Any, Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from typewiz.core.model_types import Mode
 from typewiz.runtime import consume
 
+if TYPE_CHECKING:
+    import argparse
+    from collections.abc import Sequence
+
 
 class ArgumentRegistrar(Protocol):
-    def add_argument(
-        self, *args: Any, **kwargs: Any
-    ) -> argparse.Action: ...  # pragma: no cover - stub
+    """Protocol defining the interface for argument registration.
+
+    This protocol matches the interface of argparse.ArgumentParser and argument groups,
+    allowing them to be used interchangeably for adding arguments.
+    """
+
+    def add_argument(self, *args: object, **kwargs: object) -> argparse.Action:
+        """Expose ``ArgumentParser.add_argument`` so helpers can operate generically."""
+        ...  # pragma: no cover - runtime behaviour delegated to argparse
 
 
 def register_argument(
-    registrar: ArgumentRegistrar,
-    *args: Any,
-    **kwargs: Any,
+    registrar: ArgumentRegistrar | argparse.ArgumentParser | argparse._ArgumentGroup,
+    *args: object,
+    **kwargs: object,
 ) -> None:
     """Register an argument on a parser/argument group, discarding the action handle."""
     consume(registrar.add_argument(*args, **kwargs))
@@ -39,16 +47,30 @@ def parse_key_value_entries(
     *,
     argument: str,
 ) -> list[tuple[str, str]]:
-    """Parse KEY=VALUE strings supplied via CLI flags."""
+    """Parse KEY=VALUE strings supplied via CLI flags.
+
+    Args:
+        entries: Raw CLI tokens passed to a multi-use flag.
+        argument: Flag name used for constructing helpful error messages.
+
+    Returns:
+        A list of ``(key, value)`` tuples trimmed of whitespace.
+
+    Raises:
+        SystemExit: If any token omits the ``=`` separator or contains empty
+            key/value content.
+    """
     pairs: list[tuple[str, str]] = []
     for raw in entries:
         if "=" not in raw:
-            raise SystemExit(f"{argument} expects KEY=VALUE syntax")
+            msg = f"{argument} expects KEY=VALUE syntax"
+            raise SystemExit(msg)
         key, value = raw.split("=", 1)
         key_clean = key.strip()
         value_clean = value.strip()
         if not key_clean or not value_clean:
-            raise SystemExit(f"{argument} expects non-empty KEY and VALUE")
+            msg = f"{argument} expects non-empty KEY and VALUE"
+            raise SystemExit(msg)
         pairs.append((key_clean, value_clean))
     return pairs
 
@@ -58,19 +80,41 @@ def parse_int_mapping(
     *,
     argument: str,
 ) -> dict[str, int]:
-    """Parse KEY=INT style arguments into a mapping."""
+    """Parse KEY=INT style arguments into a mapping.
+
+    Args:
+        entries: Raw CLI tokens to interpret.
+        argument: Flag name for diagnostics.
+
+    Returns:
+        Mapping of keys to non-negative integer values.
+
+    Raises:
+        SystemExit: If any value fails integer coercion.
+    """
     mapping: dict[str, int] = {}
     for key, value in parse_key_value_entries(entries, argument=argument):
         try:
             budget = int(value)
         except ValueError as exc:
-            raise SystemExit(f"{argument} value for '{key}' must be an integer") from exc
+            msg = f"{argument} value for '{key}' must be an integer"
+            raise SystemExit(msg) from exc
         mapping[key] = max(0, budget)
     return mapping
 
 
 def collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
-    """Normalise ``--plugin-arg`` inputs into a mapping keyed by runner."""
+    """Normalise ``--plugin-arg`` inputs into a mapping keyed by runner.
+
+    Args:
+        entries: CLI chunks formatted as ``RUNNER=ARG`` (or ``RUNNER:ARG``).
+
+    Returns:
+        Dictionary where each runner maps to a list of arguments.
+
+    Raises:
+        SystemExit: If syntax is invalid or arguments are empty.
+    """
     result: dict[str, list[str]] = {}
     for raw in entries:
         if "=" in raw:
@@ -78,24 +122,47 @@ def collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
         elif ":" in raw:
             runner, arg = raw.split(":", 1)
         else:
-            raise SystemExit(f"Invalid --plugin-arg value '{raw}'. Use RUNNER=ARG (or RUNNER:ARG).")
+            msg = f"Invalid --plugin-arg value '{raw}'. Use RUNNER=ARG (or RUNNER:ARG)."
+            raise SystemExit(msg)
         runner_name = runner.strip()
         if not runner_name:
-            raise SystemExit("Runner name in --plugin-arg cannot be empty")
+            msg = "Runner name in --plugin-arg cannot be empty"
+            raise SystemExit(msg)
         arg_clean = arg.strip()
         if not arg_clean:
-            raise SystemExit(f"Argument for runner '{runner_name}' cannot be empty")
+            msg = f"Argument for runner '{runner_name}' cannot be empty"
+            raise SystemExit(msg)
         result.setdefault(runner_name, []).append(arg_clean)
     return result
 
 
 def collect_profile_args(entries: Sequence[str]) -> dict[str, str]:
-    """Normalise ``--profile`` overrides provided on the command line."""
+    """Normalise ``--profile`` overrides provided on the command line.
+
+    Args:
+        entries: CLI values provided to ``--profile``.
+
+    Returns:
+        Mapping of runner names to profile identifiers.
+
+    Note:
+        Invalid entries raise ``SystemExit`` inside ``parse_key_value_entries``.
+    """
     return dict(parse_key_value_entries(entries, argument="--profile"))
 
 
 def normalise_modes(values: Sequence[str] | None) -> list[Mode]:
-    """Validate ``--mode`` selectors and normalise to canonical ``Mode`` values."""
+    """Validate ``--mode`` selectors and normalise to canonical ``Mode`` values.
+
+    Args:
+        values: Raw ``--mode`` arguments, or ``None`` if not provided.
+
+    Returns:
+        Ordered list of unique ``Mode`` entries.
+
+    Raises:
+        SystemExit: If any value is not recognised as a valid mode.
+    """
     if not values:
         return []
     modes: list[Mode] = []
@@ -103,27 +170,41 @@ def normalise_modes(values: Sequence[str] | None) -> list[Mode]:
         try:
             mode = Mode.from_str(raw)
         except ValueError as exc:
-            raise SystemExit(f"{exc}. Valid modes: current, full") from exc
+            msg = f"{exc}. Valid modes: current, full"
+            raise SystemExit(msg) from exc
         if mode not in modes:
             modes.append(mode)
     return modes
 
 
 def parse_hash_workers(value: str | None) -> int | Literal["auto"] | None:
-    """Return a normalised hash worker spec ('auto' or non-negative integer)."""
+    """Return a normalised hash worker spec ('auto' or non-negative integer).
+
+    Args:
+        value: CLI value supplied to ``--hash-workers``.
+
+    Returns:
+        ``None`` if no preference, ``"auto"`` for adaptive workers, or an
+        integer >= 0.
+
+    Raises:
+        SystemExit: If input cannot be parsed or specifies a negative count.
+    """
     if value is None:
         return None
     token = value.strip().lower()
     if not token:
         return None
-    if token == "auto":
+    if token == "auto":  # noqa: S105 JUSTIFIED; not a password
         return "auto"
     try:
         workers = int(token)
-    except ValueError as exc:  # pragma: no cover - validated via CLI tests
-        raise SystemExit("--hash-workers must be 'auto' or a non-negative integer") from exc
+    except ValueError as exc:
+        msg = "--hash-workers must be 'auto' or a non-negative integer"
+        raise SystemExit(msg) from exc
     if workers < 0:
-        raise SystemExit("--hash-workers must be non-negative")
+        msg = "--hash-workers must be non-negative"
+        raise SystemExit(msg)
     return workers
 
 
@@ -133,8 +214,8 @@ __all__ = [
     "collect_profile_args",
     "normalise_modes",
     "parse_comma_separated",
-    "parse_int_mapping",
     "parse_hash_workers",
+    "parse_int_mapping",
     "parse_key_value_entries",
     "register_argument",
 ]

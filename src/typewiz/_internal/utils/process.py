@@ -5,17 +5,21 @@
 from __future__ import annotations
 
 import logging
-import subprocess
+import subprocess  # noqa: S404  # JUSTIFIED: centralised wrapper for safe, allowlisted subprocess execution
 import sys
 import time
-from collections.abc import Iterable
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
+
+from typewiz.core.model_types import LogComponent
+from typewiz.logging import structured_extra
 
 logger: logging.Logger = logging.getLogger("typewiz.internal.process")
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+
     from typewiz.core.type_aliases import Command
 
 __all__ = ["CommandOutput", "python_executable", "run_command"]
@@ -41,6 +45,21 @@ def run_command(
     Security guardrails:
     - Requires an iterable of string arguments; never uses ``shell=True``.
     - Optionally enforces an allowlist for the executable (first arg) via ``allowed``.
+
+    Args:
+        args: Command line to execute. The first element is treated as the
+            executable and must be a non-empty string.
+        cwd: Optional working directory for the child process.
+        allowed: Optional allowlist of valid executables. When provided, the
+            first element of ``args`` must match one of these entries.
+
+    Returns:
+        ``CommandOutput`` containing the executed argument vector along with the
+        captured stdout/stderr, exit code, and duration in milliseconds.
+
+    Raises:
+        ValueError: If ``args`` is empty or the executable is not allowlisted.
+        TypeError: If any argument is falsy (for example ``""``).
     """
     argv: Command = list(args)
     if not argv:
@@ -98,8 +117,5 @@ def python_executable() -> str:
 
 
 def _structured_extra(**kwargs: object) -> dict[str, object]:
-    from typewiz.core.model_types import LogComponent
-    from typewiz.logging import structured_extra
-
-    payload = structured_extra(LogComponent.SERVICES, **cast(dict[str, Any], kwargs))
-    return cast(dict[str, object], payload)
+    payload = structured_extra(LogComponent.SERVICES, **cast("dict[str, Any]", kwargs))
+    return cast("dict[str, object]", payload)

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -14,14 +14,16 @@ from typewiz.common.override_utils import (
     get_override_components,
     override_detail_lines,
 )
-from typewiz.core.model_types import OverrideEntry
+
+if TYPE_CHECKING:
+    from typewiz.core.model_types import OverrideEntry
 
 pytestmark = pytest.mark.unit
 
 
 def test_get_override_components_normalises_values() -> None:
     entry = cast(
-        OverrideEntry,
+        "OverrideEntry",
         {
             "path": "src",
             "profile": "strict",
@@ -40,7 +42,7 @@ def test_get_override_components_normalises_values() -> None:
 
 def test_format_override_inline_includes_details() -> None:
     entry = cast(
-        OverrideEntry,
+        "OverrideEntry",
         {
             "path": "src",
             "profile": "strict",
@@ -58,14 +60,14 @@ def test_format_override_inline_includes_details() -> None:
 
 
 def test_format_override_inline_handles_missing_details() -> None:
-    entry = cast(OverrideEntry, {"path": "pkg"})
+    entry = cast("OverrideEntry", {"path": "pkg"})
     assert format_override_inline(entry) == "pkg"
 
 
 def test_format_overrides_block_outputs_list() -> None:
     entries: list[OverrideEntry] = [
-        cast(OverrideEntry, {"path": "apps", "pluginArgs": ["--foo"]}),
-        cast(OverrideEntry, {"path": "pkg", "include": ["."], "exclude": ["legacy"]}),
+        cast("OverrideEntry", {"path": "apps", "pluginArgs": ["--foo"]}),
+        cast("OverrideEntry", {"path": "pkg", "include": ["."], "exclude": ["legacy"]}),
     ]
     lines = format_overrides_block(entries)
     assert lines[0].startswith("  - `apps`")
@@ -75,7 +77,7 @@ def test_format_overrides_block_outputs_list() -> None:
 
 
 def test_override_detail_lines_reports_defaults() -> None:
-    entry = cast(OverrideEntry, {"path": "src"})
+    entry = cast("OverrideEntry", {"path": "src"})
     path, details = override_detail_lines(entry)
     assert path == "src"
     assert details == ["no explicit changes"]

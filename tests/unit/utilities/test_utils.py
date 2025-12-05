@@ -6,8 +6,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -29,6 +28,9 @@ from typewiz._internal.utils import (
 from typewiz._internal.utils import locks as locks_mod
 from typewiz._internal.utils import versions as versions_mod
 from typewiz.core.model_types import ReadinessStatus, SeverityLevel
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = pytest.mark.unit
 
@@ -59,7 +61,7 @@ def test_resolve_project_root_defaults_to_cwd_when_no_markers(
 
 def test_resolve_project_root_raises_for_missing_path(tmp_path: Path) -> None:
     missing = tmp_path / "absent"
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(FileNotFoundError, match="Provided project root"):
         _ = resolve_project_root(missing)
 
 
@@ -97,17 +99,19 @@ def test_normalise_enums_for_json_converts_keys_and_nested_values() -> None:
     }
     normalised = normalise_enums_for_json(payload)
     assert isinstance(normalised, dict)
-    normalised_dict = cast(dict[str, object], normalised)
+    normalised_dict = cast("dict[str, object]", normalised)
     ready_raw = normalised_dict.get("ready")
     assert isinstance(ready_raw, dict)
-    ready_bucket = cast(dict[str, object], ready_raw)
+    ready_bucket = cast("dict[str, object]", ready_raw)
     assert ready_bucket.get("status") == "close"
     counts_value = ready_bucket.get("counts")
-    assert isinstance(counts_value, list) and counts_value
+    assert isinstance(counts_value, list)
+    assert counts_value
     assert counts_value[0] == "blocked"
     nested_raw = normalised_dict.get("nested")
-    assert isinstance(nested_raw, list) and nested_raw
-    first_nested = cast(dict[str, object], nested_raw[0])
+    assert isinstance(nested_raw, list)
+    assert nested_raw
+    first_nested = cast("dict[str, object]", nested_raw[0])
     assert first_nested.get("severity") == "error"
 
 
@@ -124,9 +128,7 @@ def test_json_cast_helpers_handle_defaults() -> None:
     assert as_int("oops", default=5) == 5
 
 
-def test_file_lock_supports_fallback_branch(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_file_lock_supports_fallback_branch(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     lock_path = tmp_path / "lock"
     data_path = tmp_path / "data.txt"
 
@@ -186,14 +188,14 @@ def test_file_lock_handles_msvcrt_branch(monkeypatch: pytest.MonkeyPatch, tmp_pa
 def test_run_command_enforces_allowlist() -> None:
     result = run_command([sys.executable, "-c", "print('ok')"], allowed={sys.executable})
     assert "ok" in result.stdout
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r".*"):
         _ = run_command([sys.executable, "-c", "print('blocked')"], allowed={"python"})
 
 
 def test_run_command_requires_arguments() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r".*"):
         _ = run_command([])
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=r".*"):
         _ = run_command([""])
 
 
@@ -218,7 +220,8 @@ def test_detect_tool_versions_parses_outputs(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_detect_tool_versions_swallows_failures(monkeypatch: pytest.MonkeyPatch) -> None:
     def _fail_run_command(*_: object, **__: object) -> CommandOutput:
-        raise RuntimeError("boom")
+        message = "boom"
+        raise RuntimeError(message)
 
     monkeypatch.setattr(versions_mod, "run_command", _fail_run_command)
     monkeypatch.setattr(versions_mod, "python_executable", lambda: sys.executable)

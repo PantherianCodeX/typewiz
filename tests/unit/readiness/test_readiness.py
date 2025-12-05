@@ -4,12 +4,11 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
 from typewiz.core.model_types import ReadinessStatus
-from typewiz.core.summary_types import ReadinessOptionsPayload
 from typewiz.core.type_aliases import CategoryName
 from typewiz.readiness.compute import (
     CATEGORY_PATTERNS,
@@ -17,6 +16,9 @@ from typewiz.readiness.compute import (
     ReadinessOptions,
     compute_readiness,
 )
+
+if TYPE_CHECKING:
+    from typewiz.core.summary_types import ReadinessOptionsPayload
 
 pytestmark = pytest.mark.unit
 
@@ -66,14 +68,15 @@ def test_compute_readiness_close_notes() -> None:
     options_bucket = readiness["options"]["unknownChecks"].get("buckets")
     assert isinstance(options_bucket, dict)
     close_option_entries = options_bucket.get(ReadinessStatus.CLOSE)
-    assert isinstance(close_option_entries, tuple) and close_option_entries
+    assert isinstance(close_option_entries, tuple)
+    assert close_option_entries
     first_folder = close_option_entries[0]
     assert first_folder.get("path") == "src/pkg"
 
 
 def test_compute_readiness_general_extra() -> None:
     entry = cast(
-        ReadinessEntry,
+        "ReadinessEntry",
         {
             "path": "src/pkg",
             "errors": 2,
@@ -92,7 +95,8 @@ def test_compute_readiness_general_extra() -> None:
     options_bucket = readiness["options"]["unknownChecks"].get("buckets")
     assert isinstance(options_bucket, dict)
     close_option_entries = options_bucket.get(ReadinessStatus.CLOSE)
-    assert isinstance(close_option_entries, tuple) and close_option_entries
+    assert isinstance(close_option_entries, tuple)
+    assert close_option_entries
     assert close_option_entries[0].get("count") == 1
 
 
@@ -106,14 +110,17 @@ def test_readiness_options_roundtrip() -> None:
     }
     options = ReadinessOptions.from_payload(bucket_payload, default_threshold=2)
     ready_bucket = options.buckets[ReadinessStatus.READY]
-    assert ready_bucket and ready_bucket[0].get("path") == "src/pkg"
+    assert ready_bucket
+    assert ready_bucket[0].get("path") == "src/pkg"
     assert options.threshold == 4
     payload = options.to_payload()
     buckets = payload.get("buckets")
     assert isinstance(buckets, dict)
     payload_ready = buckets.get(ReadinessStatus.READY)
-    assert isinstance(payload_ready, tuple) and payload_ready
+    assert isinstance(payload_ready, tuple)
+    assert payload_ready
     assert payload_ready[0].get("path") == "src/pkg"
     payload_blocked = buckets.get(ReadinessStatus.BLOCKED)
-    assert isinstance(payload_blocked, tuple) and payload_blocked
+    assert isinstance(payload_blocked, tuple)
+    assert payload_blocked
     assert payload_blocked[0].get("errors") == 2

@@ -15,21 +15,40 @@ from __future__ import annotations
 
 import argparse
 import ast
-import subprocess
+import shutil
+import subprocess  # noqa: S404  # JUSTIFIED: leverages git CLI for repo-aware discovery and rewriting with explicit executable path
 import sys
-from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator, Sequence
 
 
 @dataclass(slots=True)
 class ImportMap:
+    """Declarative mapping between legacy and replacement module paths.
+
+    Attributes:
+        old: Fully qualified dotted import path that should be rewritten.
+        new: Replacement module path that the script should emit.
+    """
+
     old: str
     new: str
 
 
 @dataclass(slots=True)
 class EnsureImport:
+    """Instruction for injecting a missing import into a file.
+
+    Attributes:
+        path: Absolute path to the Python file that must contain the import.
+        module: Dotted module path to import from.
+        symbols: Symbols from ``module`` that should be imported.
+    """
+
     path: Path
     module: str
     symbols: tuple[str, ...]
@@ -76,7 +95,21 @@ def _resolve_absolute_module(module: str, current_module: str | None) -> str | N
     return ".".join(target)
 
 
-def _parse_map_entries(entries: Iterable[str]) -> list[ImportMap]:
+def parse_map_entries(entries: Iterable[str]) -> list[ImportMap]:
+    """Parse ``old=new`` mapping specifiers into structured entries.
+
+    Args:
+        entries: Iterable of CLI-style mapping arguments where each item is
+            expected to be in the form ``old.module=new.module``.
+
+    Returns:
+        Ordered list of ``ImportMap`` objects describing the requested
+        rewrites.
+
+    Raises:
+        argparse.ArgumentTypeError: If any entry does not contain ``=`` or
+            omits either the ``old`` or ``new`` module value.
+    """
     mapping: list[ImportMap] = []
     for entry in entries:
         if "=" not in entry:
@@ -112,7 +145,7 @@ def _parse_ensure_import_entries(entries: Iterable[str], root: Path) -> list[Ens
     ensure_list: list[EnsureImport] = []
     for entry in entries:
         parts = entry.split(":")
-        if len(parts) != 3:
+        if len(parts) != 3:  # noqa: PLR2004 JUSTIFIED: must be exactly 3 parts
             msg = f"Invalid ensure-import '{entry}'. Expected path:module:symbols."
             raise argparse.ArgumentTypeError(msg)
         rel_path, module, symbols_str = parts
@@ -128,15 +161,24 @@ def _parse_ensure_import_entries(entries: Iterable[str], root: Path) -> list[Ens
     return ensure_list
 
 
+def _git_executable() -> str:
+    git_path = shutil.which("git")
+    if git_path is None:
+        msg = "git executable not found in PATH"
+        raise FileNotFoundError(msg)
+    return git_path
+
+
 def _git_repo_root(start: Path) -> Path | None:
     try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
+        command = [_git_executable(), "rev-parse", "--show-toplevel"]
+        result = subprocess.run(  # noqa: S603  # JUSTIFIED: executes git with explicit path and no untrusted input
+            command,
             check=True,
             capture_output=True,
             text=True,
             cwd=start,
-        )
+        )  # JUSTIFIED: executes git with explicit path for repository discovery
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
     root = result.stdout.strip()
@@ -148,13 +190,14 @@ def _git_tracked_python_files(root: Path) -> list[Path]:
     if not repo_root:
         return []
     try:
-        result = subprocess.run(
-            ["git", "-C", str(repo_root), "ls-files", "*.py"],
+        command = [_git_executable(), "-C", str(repo_root), "ls-files", "*.py"]
+        result = subprocess.run(  # noqa: S603  # JUSTIFIED: enumerates tracked files using git with explicit path and constant arguments
+            command,
             check=True,
             capture_output=True,
             text=True,
         )
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         return []
     root_resolved = root.resolve()
     files: list[Path] = []
@@ -165,12 +208,12 @@ def _git_tracked_python_files(root: Path) -> list[Path]:
         path = (repo_root / rel).resolve()
         if not path.exists():
             continue
-        if root_resolved == repo_root or path == root_resolved or root_resolved in path.parents:
+        if root_resolved in {repo_root, path, path.parents}:
             files.append(path)
     return files
 
 
-def _iter_python_files(root: Path, use_git: bool) -> Iterator[Path]:
+def _iter_python_files(root: Path, *, use_git: bool) -> Iterator[Path]:
     if use_git:
         git_files = _git_tracked_python_files(root)
         if git_files:
@@ -181,7 +224,8 @@ def _iter_python_files(root: Path, use_git: bool) -> Iterator[Path]:
 
 def _load_mapping_file(path: Path) -> list[str]:
     if not path.exists():
-        raise FileNotFoundError(f"Mapping file {path} does not exist")
+        msg = f"Mapping file {path} does not exist"
+        raise FileNotFoundError(msg)
     entries: list[str] = []
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
@@ -246,11 +290,24 @@ def _rewrite_import_line(line: str, mapping: dict[str, str]) -> tuple[str, bool]
     return new_line, True
 
 
-def _rewrite_content(
+def rewrite_content(
     content: str,
     mapping: dict[str, str],
     current_module: str | None = None,
 ) -> tuple[str, bool]:
+    """Rewrite import statements in a module according to a mapping.
+
+    Args:
+        content: Original source text for a Python module.
+        mapping: Dictionary mapping fully qualified module names to their
+            replacements.
+        current_module: Optional module name used to resolve relative imports.
+
+    Returns:
+        Tuple of ``(new_content, changed)`` where ``new_content`` is the
+        possibly rewritten source and ``changed`` indicates whether any import
+        lines were modified.
+    """
     lines = content.splitlines()
     changed_any = False
     for idx, line in enumerate(lines):
@@ -268,9 +325,23 @@ def _rewrite_content(
     return "\n".join(lines) + ("\n" if content.endswith("\n") else ""), True
 
 
-def _ensure_import_in_content(
-    content: str, module: str, symbols: tuple[str, ...]
-) -> tuple[str, bool]:
+def _build_mapping_dict(args: argparse.Namespace) -> dict[str, str]:
+    """Build a mapping dictionary from CLI arguments.
+
+    Returns:
+        Dictionary mapping legacy module paths (keys) to replacement module
+        paths (values), preserving the user-specified order.
+    """
+    mapping_entries = list(args.mappings)
+    for file_entry in args.mapping_files:
+        mapping_entries.extend(_load_mapping_file(Path(file_entry)))
+    if not mapping_entries:
+        return {}
+    mappings = parse_map_entries(mapping_entries)
+    return {entry.old: entry.new for entry in mappings}
+
+
+def _ensure_import_in_content(content: str, module: str, symbols: tuple[str, ...]) -> tuple[str, bool]:
     lines = content.splitlines()
     line_ending = "\n" if content.endswith("\n") else ""
     target_prefix = f"from {module} import "
@@ -325,128 +396,155 @@ def _determine_insertion_index(lines: list[str]) -> int:
     return idx
 
 
-def _rewrite_exports(content: str, export_map: dict[str, str]) -> tuple[str, bool]:
-    if not export_map:
-        return content, False
+def _parse_module(content: str) -> ast.Module | None:
     try:
-        tree = ast.parse(content)
+        return ast.parse(content)
     except SyntaxError:
-        return content, False
-    target_node: ast.Assign | None = None
+        return None
+
+
+def _export_assignment_node(tree: ast.Module) -> ast.Assign | None:
     for node in tree.body:
-        if isinstance(node, ast.Assign):
-            if any(
-                isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
-            ):
-                target_node = node
-                break
-    if target_node is None:
-        return content, False
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
+        ):
+            return node
+    return None
+
+
+def _extract_export_names(target_node: ast.Assign) -> list[str] | None:
     values: list[str] = []
     elts: list[ast.expr] = []
     if isinstance(target_node.value, (ast.List, ast.Tuple)):
         elts = list(target_node.value.elts)
     else:
-        return content, False
+        return None
     for elt in elts:
         if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
             values.append(elt.value)
         else:
-            return content, False
-    replaced = False
+            return None
+    return values
+
+
+def _rewrite_export_block(content: str, node: ast.Assign, entries: list[str]) -> str:
+    new_block_lines = ["__all__ = ["]
+    new_block_lines.extend(f'    "{name}",' for name in entries)
+    new_block_lines.append("]")
+    start = node.lineno - 1
+    end = node.end_lineno
+    lines = content.splitlines()
+    lines[start:end] = new_block_lines
+    result = "\n".join(lines)
+    if content.endswith("\n"):
+        result += "\n"
+    return result
+
+
+def _rewrite_exports(content: str, export_map: dict[str, str]) -> tuple[str, bool]:
+    if not export_map:
+        return content, False
+    tree = _parse_module(content)
+    if tree is None:
+        return content, False
+    target_node = _export_assignment_node(tree)
+    if target_node is None:
+        return content, False
     new_values: list[str] = []
-    for name in values:
+    replaced = False
+    names = _extract_export_names(target_node)
+    if names is None:
+        return content, False
+    for name in names:
         new_name = export_map.get(name, name)
         if new_name != name:
             replaced = True
         new_values.append(new_name)
     if not replaced:
         return content, False
-    new_block_lines = ["__all__ = ["]
-    for name in new_values:
-        new_block_lines.append(f'    "{name}",')
-    new_block_lines.append("]")
-    start = target_node.lineno - 1
-    end = target_node.end_lineno
-    lines = content.splitlines()
-    lines[start:end] = new_block_lines
-    result = "\n".join(lines)
-    if content.endswith("\n"):
-        result += "\n"
-    return result, True
+    return _rewrite_export_block(content, target_node, new_values), True
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Rewrite import statements")
-    _ = parser.add_argument(
+    parser.add_argument(
         "--root",
         default="src",
         help="Root directory to scan for Python files (default: src)",
     )
-    _ = parser.add_argument(
+    parser.add_argument(
         "--map",
         dest="mappings",
         action="append",
         default=[],
         help="Mapping entry in the form old.module=new.module (repeatable)",
     )
-    _ = parser.add_argument(
+    parser.add_argument(
         "--mapping-file",
         dest="mapping_files",
         action="append",
         default=[],
         help="Optional file containing mapping definitions (one 'old=new' per line)",
     )
-    _ = parser.add_argument(
+    parser.add_argument(
         "--apply",
         action="store_true",
         help="Actually write changes (default: dry-run)",
     )
-    _ = parser.add_argument(
+    parser.add_argument(
         "--ensure-import",
         dest="ensure_imports",
         action="append",
         default=[],
         help="Ensure an import exists in the given file. Format: path:module:symbol1,symbol2",
     )
-    _ = parser.add_argument(
+    parser.add_argument(
         "--export-map",
         dest="export_mappings",
         action="append",
         default=[],
         help="Rename entries inside __all__ blocks (old=new, repeatable)",
     )
-    _ = parser.add_argument(
+    parser.add_argument(
         "--use-git",
         dest="use_git",
         action="store_true",
         default=True,
         help="Use 'git ls-files' to discover Python files (respects gitignore)",
     )
-    _ = parser.add_argument(
+    parser.add_argument(
         "--no-use-git",
         dest="use_git",
         action="store_false",
         help="Disable git discovery and scan filesystem directly",
     )
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """CLI entry point for rewriting imports across the repository.
+
+    Args:
+        argv: Optional argument vector used when the function is invoked from
+            tests; defaults to ``sys.argv[1:]`` when ``None``.
+
+    Returns:
+        ``0`` when all requested rewrites/dry-run inspections succeed, or ``1``
+        if parsing fails or mutated files cannot be processed.
+    """
+    parser = _build_parser()
     args = parser.parse_args(argv)
 
     root = Path(args.root).resolve()
     if not root.exists():
         parser.error(f"Root directory {root} does not exist")
 
-    mapping_entries = list(args.mappings)
-    for file_entry in args.mapping_files:
-        mapping_entries.extend(_load_mapping_file(Path(file_entry)))
-    mappings = _parse_map_entries(mapping_entries) if mapping_entries else []
-    mapping_dict = {entry.old: entry.new for entry in mappings}
+    mapping_dict = _build_mapping_dict(args)
     export_map = _parse_export_map(args.export_mappings)
     ensure_imports = _parse_ensure_import_entries(args.ensure_imports, root)
 
     if not (mapping_dict or export_map or ensure_imports):
-        parser.error(
-            "Provide at least one --map/--mapping-file/--ensure-import/--export-map action"
-        )
+        parser.error("Provide at least one --map/--mapping-file/--ensure-import/--export-map action")
 
     seen_paths: set[Path] = set()
     changed_files: list[Path] = []
@@ -459,10 +557,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         changed_files.append(resolved)
 
     if mapping_dict:
-        for path in _iter_python_files(root, args.use_git):
+        for path in _iter_python_files(root, use_git=args.use_git):
             content = path.read_text(encoding="utf-8")
             module_name = _module_name_from_path(path, root)
-            new_content, changed = _rewrite_content(content, mapping_dict, module_name)
+            new_content, changed = rewrite_content(content, mapping_dict, module_name)
             if not changed:
                 continue
             _mark(path)
@@ -470,7 +568,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 _ = path.write_text(new_content, encoding="utf-8")
 
     if export_map:
-        for path in _iter_python_files(root, args.use_git):
+        for path in _iter_python_files(root, use_git=args.use_git):
             content = path.read_text(encoding="utf-8")
             new_content, changed = _rewrite_exports(content, export_map)
             if not changed:
@@ -484,9 +582,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"Skipping missing file {ensure_entry.path}")
             continue
         content = ensure_entry.path.read_text(encoding="utf-8")
-        new_content, changed = _ensure_import_in_content(
-            content, ensure_entry.module, ensure_entry.symbols
-        )
+        new_content, changed = _ensure_import_in_content(content, ensure_entry.module, ensure_entry.symbols)
         if not changed:
             continue
         _mark(ensure_entry.path)

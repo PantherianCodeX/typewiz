@@ -1,5 +1,12 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Configuration management for TypeWiz.
+
+This package provides configuration loading, validation, and model definitions
+for TypeWiz. It supports hierarchical configuration files with profile-based
+engine settings and directory-level overrides.
+"""
+
 from __future__ import annotations
 
 from .loader import load_config, resolve_path_fields

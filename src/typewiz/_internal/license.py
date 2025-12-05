@@ -5,11 +5,14 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
 from functools import lru_cache
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from typewiz.core.model_types import LicenseMode
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 LICENSE_KEY_ENV: Final[str] = "TYPEWIZ_LICENSE_KEY"
 SUPPORT_EMAIL: Final[str] = "pantheriancodex@pm.me"
@@ -20,7 +23,6 @@ _notice_emitted = False
 @lru_cache(maxsize=1)
 def get_license_key() -> str | None:
     """Return the configured license key, if any."""
-
     key = os.getenv(LICENSE_KEY_ENV)
     if not key:
         return None
@@ -29,19 +31,16 @@ def get_license_key() -> str | None:
 
 def license_mode() -> LicenseMode:
     """Return the current license mode."""
-
     return LicenseMode.COMMERCIAL if get_license_key() else LicenseMode.EVALUATION
 
 
 def has_commercial_license() -> bool:
     """Return True when a license key is present."""
-
     return license_mode() is LicenseMode.COMMERCIAL
 
 
 def maybe_emit_evaluation_notice(emitter: Callable[[str], None]) -> None:
     """Emit an evaluation banner once per process when no license key is set."""
-
     global _notice_emitted  # noqa: PLW0603
     if _notice_emitted:
         return
@@ -56,7 +55,6 @@ def maybe_emit_evaluation_notice(emitter: Callable[[str], None]) -> None:
 
 def reset_license_notice_state() -> None:
     """Reset cached license state (intended for tests)."""
-
     global _notice_emitted  # noqa: PLW0603
     _notice_emitted = False
     get_license_key.cache_clear()

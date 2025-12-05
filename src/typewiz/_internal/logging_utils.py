@@ -8,18 +8,20 @@ import os
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Final, Literal, SupportsFloat, SupportsInt, TypedDict, Unpack, cast, override
+from typing import TYPE_CHECKING, Final, Literal, SupportsFloat, SupportsInt, TypedDict, Unpack, cast, override
 
 from typewiz._internal.utils.json import normalise_enums_for_json
 from typewiz.core.model_types import LogComponent, LogFormat, Mode, SeverityLevel
-from typewiz.core.type_aliases import RunId, ToolName
+
+if TYPE_CHECKING:
+    from typewiz.core.type_aliases import RunId, ToolName
 
 ROOT_LOGGER_NAME: Final[str] = "typewiz"
 LOG_FORMAT_ENV: Final[str] = "TYPEWIZ_LOG_FORMAT"
 LOG_LEVEL_ENV: Final[str] = "TYPEWIZ_LOG_LEVEL"
 
 LOG_FORMATS: Final[tuple[Literal["text", "json"], ...]] = cast(
-    tuple[Literal["text", "json"], ...],
+    "tuple[Literal['text', 'json'], ...]",
     tuple(format_.value for format_ in LogFormat),
 )
 LOG_LEVELS: Final[tuple[Literal["debug", "info", "warning", "error"], ...]] = (
@@ -146,8 +148,18 @@ def configure_logging(
     *,
     log_level: str | int | None = None,
 ) -> LogConfig:
-    """Configure Typewiz logging according to the requested format and level."""
+    """Configure Typewiz logging according to the requested format and level.
 
+    Args:
+        log_format: Desired log output format. ``None`` falls back to the
+            ``TYPEWIZ_LOG_FORMAT`` environment variable or ``text``.
+        log_level: Preferred verbosity (string or numeric). ``None`` consults
+            ``TYPEWIZ_LOG_LEVEL`` or defaults to ``info``.
+
+    Returns:
+        A ``LogConfig`` describing the selected formatter and resolved numeric
+        log level, which is also applied to the root and child loggers.
+    """
     selected_format = _select_format(log_format)
     level_value, level_name = _select_level(log_level)
 
@@ -204,11 +216,11 @@ def _normalise_mode(value: Mode | str | None) -> Mode | None:
 def _normalise_path(value: object) -> str | None:
     if value is None:
         return None
-    return os.fspath(cast(str | os.PathLike[str], value))
+    return os.fspath(cast("str | os.PathLike[str]", value))
 
 
 def _to_float(value: object) -> float:
-    return float(cast(SupportsFloat | str | float, value))
+    return float(cast("SupportsFloat | str | float", value))
 
 
 def _to_bool(value: object) -> bool:
@@ -216,7 +228,7 @@ def _to_bool(value: object) -> bool:
 
 
 def _to_int(value: object) -> int:
-    return int(cast(SupportsInt | str | int, value))
+    return int(cast("SupportsInt | str | int", value))
 
 
 def _maybe_assign(
@@ -243,17 +255,16 @@ def structured_extra(
     **kwargs: Unpack[_StructuredLogKwargs],
 ) -> StructuredLogExtra:
     """Return a consistently typed ``logging.extra`` payload."""
-
     extra: StructuredLogExtra = {"component": component}
-    payload_kwargs = cast(dict[str, object], kwargs)
+    payload_kwargs = cast("dict[str, object]", kwargs)
     _maybe_assign(extra, key="tool", kwargs=payload_kwargs, transform=str)
-    mode_value = _normalise_mode(cast(Mode | str | None, payload_kwargs.get("mode")))
+    mode_value = _normalise_mode(cast("Mode | str | None", payload_kwargs.get("mode")))
     if mode_value is not None:
         extra["mode"] = mode_value
     _maybe_assign(extra, key="duration_ms", kwargs=payload_kwargs, transform=_to_float)
     counts = payload_kwargs.get("counts")
     if isinstance(counts, Mapping) and counts:
-        extra["counts"] = dict(cast(Mapping[SeverityLevel, int], counts))
+        extra["counts"] = dict(cast("Mapping[SeverityLevel, int]", counts))
     _maybe_assign(extra, key="cached", kwargs=payload_kwargs, transform=_to_bool)
     _maybe_assign(extra, key="exit_code", kwargs=payload_kwargs, transform=_to_int)
     _maybe_assign(
@@ -278,7 +289,7 @@ def structured_extra(
     )
     details = payload_kwargs.get("details")
     if isinstance(details, Mapping) and details:
-        extra["details"] = dict(cast(Mapping[str, object], details))
+        extra["details"] = dict(cast("Mapping[str, object]", details))
     return extra
 
 

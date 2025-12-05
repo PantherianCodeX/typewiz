@@ -19,7 +19,8 @@ pytestmark = pytest.mark.unit
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MODULE_PATH = REPO_ROOT / "scripts" / "refactor_imports.py"
 SPEC = importlib.util.spec_from_file_location("refactor_imports", MODULE_PATH)
-assert SPEC and SPEC.loader
+assert SPEC
+assert SPEC.loader
 _module = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = _module
 SPEC.loader.exec_module(_module)
@@ -28,14 +29,14 @@ MODULE: Any = _module
 
 def test_rewrite_content_updates_from_import() -> None:
     content = "from foo.bar import Baz\n"
-    new_content, changed = MODULE._rewrite_content(content, {"foo.bar": "new.mod"})
+    new_content, changed = MODULE.rewrite_content(content, {"foo.bar": "new.mod"})
     assert changed
     assert new_content == "from new.mod import Baz\n"
 
 
 def test_relative_import_resolves_to_absolute_module() -> None:
     content = "from ..utils import helper\n"
-    new_content, changed = MODULE._rewrite_content(
+    new_content, changed = MODULE.rewrite_content(
         content,
         {"pkg.utils": "pkg._internal.utils"},
         current_module="pkg.sub.module",
@@ -46,7 +47,7 @@ def test_relative_import_resolves_to_absolute_module() -> None:
 
 def test_identity_mapping_normalizes_relative_path() -> None:
     content = "from .._internal.utils import helper\n"
-    new_content, changed = MODULE._rewrite_content(
+    new_content, changed = MODULE.rewrite_content(
         content,
         {"pkg._internal.utils": "pkg._internal.utils"},
         current_module="pkg.core.mod",
@@ -99,8 +100,8 @@ def test_mapping_file_support(tmp_path: Path) -> None:
 
 
 def test_parse_map_entries_requires_values() -> None:
-    with pytest.raises(argparse.ArgumentTypeError):
-        MODULE._parse_map_entries(["invalid"])
+    with pytest.raises(argparse.ArgumentTypeError, match="Invalid mapping 'invalid'"):
+        MODULE.parse_map_entries(["invalid"])
 
 
 def test_ensure_import_respects_docstring_and_future(tmp_path: Path) -> None:
@@ -171,9 +172,7 @@ def test_git_discovery_limits_to_tracked_files(tmp_path: Path) -> None:
     _write(tracked, "import alpha.module\n")
     _write(untracked, "import alpha.module\n")
     _ = subprocess.run(["git", "add", str(tracked.relative_to(repo))], cwd=repo, check=True)
-    _ = subprocess.run(
-        ["git", "commit", "-m", "add tracked"], cwd=repo, check=True, capture_output=True
-    )
+    _ = subprocess.run(["git", "commit", "-m", "add tracked"], cwd=repo, check=True, capture_output=True)
 
     exit_code = MODULE.main([
         "--root",
@@ -197,9 +196,7 @@ def test_no_use_git_processes_untracked_files(tmp_path: Path) -> None:
     _write(tracked, "from source import item\n")
     _write(untracked, "from source import item\n")
     _ = subprocess.run(["git", "add", str(tracked.relative_to(repo))], cwd=repo, check=True)
-    _ = subprocess.run(
-        ["git", "commit", "-m", "add tracked"], cwd=repo, check=True, capture_output=True
-    )
+    _ = subprocess.run(["git", "commit", "-m", "add tracked"], cwd=repo, check=True, capture_output=True)
 
     exit_code = MODULE.main([
         "--root",

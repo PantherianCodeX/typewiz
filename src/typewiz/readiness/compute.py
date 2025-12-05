@@ -1,10 +1,16 @@
 # Copyright (c) 2024 PantherianCodeX. All Rights Reserved.
 
+"""Core readiness computation logic and data structures.
+
+This module contains the core algorithms for computing readiness metrics,
+including categorizing diagnostics, assessing status levels, and generating
+readiness payloads for files and folders.
+"""
+
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Final, TypedDict, cast
+from typing import TYPE_CHECKING, Final, TypedDict, cast
 
 from typewiz.core.categories import CATEGORY_NAMES
 from typewiz.core.model_types import ReadinessStatus
@@ -14,6 +20,9 @@ from typewiz.core.summary_types import (
     ReadinessStrictEntry,
 )
 from typewiz.core.type_aliases import CategoryKey, CategoryName
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 DEFAULT_CLOSE_THRESHOLD: Final[int] = 3
 STRICT_CLOSE_THRESHOLD: Final[int] = 3
@@ -57,6 +66,18 @@ _CATEGORY_PATTERN_LOOKUPS: Final[tuple[tuple[CategoryName, tuple[str, ...]], ...
 
 
 class ReadinessEntry(TypedDict):
+    """Input entry for readiness computation.
+
+    Attributes:
+        path (str): The file or folder path.
+        errors (int): Number of error-level diagnostics.
+        warnings (int): Number of warning-level diagnostics.
+        information (int): Number of information-level diagnostics.
+        codeCounts (dict[str, int]): Counts of specific diagnostic codes.
+        categoryCounts (dict[CategoryKey, int]): Pre-categorized diagnostic counts.
+        recommendations (list[str]): Suggested improvements for this path.
+    """
+
     path: str
     errors: int
     warnings: int
@@ -68,16 +89,34 @@ class ReadinessEntry(TypedDict):
 
 @dataclass(slots=True)
 class ReadinessOptions:
+    """Readiness options tracking entries by status with a threshold.
+
+    Attributes:
+        threshold (int): The threshold for considering something "close" to ready.
+        buckets (dict[ReadinessStatus, tuple[ReadinessOptionEntry, ...]]): Entries grouped by readiness status.
+    """
+
     threshold: int
     buckets: dict[ReadinessStatus, tuple[ReadinessOptionEntry, ...]] = field(
         default_factory=lambda: dict.fromkeys(ReadinessStatus, ())
     )
 
     def add_entry(self, status: ReadinessStatus, entry: ReadinessOptionEntry) -> None:
+        """Add an entry to the appropriate status bucket.
+
+        Args:
+            status (ReadinessStatus): The readiness status bucket to add to.
+            entry (ReadinessOptionEntry): The entry to add.
+        """
         current = self.buckets.get(status, ())
         self.buckets[status] = (*current, entry)
 
     def to_payload(self) -> ReadinessOptionsPayload:
+        """Convert to a serializable payload.
+
+        Returns:
+            ReadinessOptionsPayload: A dictionary representation of the readiness options.
+        """
         buckets: dict[ReadinessStatus, tuple[ReadinessOptionEntry, ...]] = {
             status: entries for status, entries in self.buckets.items() if entries
         }
@@ -93,6 +132,15 @@ class ReadinessOptions:
         *,
         default_threshold: int = DEFAULT_CLOSE_THRESHOLD,
     ) -> ReadinessOptions:
+        """Create ReadinessOptions from a payload dictionary.
+
+        Args:
+            bucket (ReadinessOptionsPayload): The payload to deserialize.
+            default_threshold (int, optional): Default threshold if not in payload. Defaults to DEFAULT_CLOSE_THRESHOLD.
+
+        Returns:
+            ReadinessOptions: The deserialized readiness options instance.
+        """
         threshold = bucket.get("threshold", default_threshold)
         instance = cls(threshold=threshold)
         source_map = cast("Mapping[object, object]", bucket.get("buckets", {}))
@@ -108,11 +156,11 @@ class ReadinessOptions:
                 continue
             if isinstance(raw_entries, tuple):
                 instance.buckets[status] = cast(
-                    tuple[ReadinessOptionEntry, ...],
+                    "tuple[ReadinessOptionEntry, ...]",
                     raw_entries,
                 )
             elif isinstance(raw_entries, list):
-                typed_entries = cast(list[ReadinessOptionEntry], raw_entries)
+                typed_entries = cast("list[ReadinessOptionEntry]", raw_entries)
                 instance.buckets[status] = tuple(typed_entries)
         return instance
 
@@ -125,15 +173,35 @@ ReadinessOptionsMap = dict[CategoryKey, ReadinessOptions]
 
 
 class ReadinessPayload(TypedDict):
+    """Complete readiness assessment payload.
+
+    Attributes:
+        strict (StrictBuckets): File-level readiness entries bucketed by status.
+        options (OptionsPayloads): Folder-level readiness options by category.
+    """
+
     strict: StrictBuckets
     options: OptionsPayloads
 
 
 def _new_category_counts() -> CategoryCountMap:
+    """Create a new category count map initialized to zero.
+
+    Returns:
+        CategoryCountMap: A dictionary with all categories initialized to 0.
+    """
     return dict.fromkeys(CATEGORY_NAMES, 0)
 
 
 def _category_counts_from_entry(entry: ReadinessEntry) -> CategoryCountMap:
+    """Extract category counts from a readiness entry.
+
+    Args:
+        entry (ReadinessEntry): The readiness entry to process.
+
+    Returns:
+        CategoryCountMap: A mapping of categories to diagnostic counts.
+    """
     raw_counts = entry.get("categoryCounts")
     if raw_counts:
         categories = _new_category_counts()
@@ -156,6 +224,14 @@ def _category_counts_from_entry(entry: ReadinessEntry) -> CategoryCountMap:
 
 
 def _category_status_map(categories: CategoryCountMap) -> CategoryStatusMap:
+    """Determine readiness status for each category based on counts.
+
+    Args:
+        categories (CategoryCountMap): Diagnostic counts per category.
+
+    Returns:
+        CategoryStatusMap: A mapping of categories to their readiness status.
+    """
     status_map: CategoryStatusMap = {}
     for category_key in CATEGORY_PATTERNS:
         key = CategoryName(category_key)
@@ -163,7 +239,7 @@ def _category_status_map(categories: CategoryCountMap) -> CategoryStatusMap:
     return status_map
 
 
-def _append_option_buckets(  # noqa: PLR0913
+def _append_option_buckets(
     options: ReadinessOptionsMap,
     entry_path: str,
     category_status: CategoryStatusMap,
@@ -171,8 +247,18 @@ def _append_option_buckets(  # noqa: PLR0913
     errors: int,
     warnings: int,
 ) -> None:
+    """Add entries to option buckets for each category.
+
+    Args:
+        options (ReadinessOptionsMap): The options map to update.
+        entry_path (str): The path of the entry being processed.
+        category_status (CategoryStatusMap): Status for each category.
+        categories (CategoryCountMap): Diagnostic counts per category.
+        errors (int): Total error count.
+        warnings (int): Total warning count.
+    """
     for category, status in category_status.items():
-        category_key = cast(CategoryKey, str(category))
+        category_key = cast("CategoryKey", str(category))
         bucket = options[category_key]
         entry_payload: ReadinessOptionEntry = {
             "path": entry_path,
@@ -188,6 +274,16 @@ def _strict_status_details(
     category_status: CategoryStatusMap,
     categories: CategoryCountMap,
 ) -> tuple[ReadinessStatus, list[str]]:
+    """Determine strict readiness status and notes for an entry.
+
+    Args:
+        total_diagnostics (int): Total number of diagnostics.
+        category_status (CategoryStatusMap): Status for each category.
+        categories (CategoryCountMap): Diagnostic counts per category.
+
+    Returns:
+        tuple[ReadinessStatus, list[str]]: The overall status and any explanatory notes.
+    """
     if total_diagnostics == 0:
         return ReadinessStatus.READY, []
     blocking_categories = [
@@ -212,6 +308,18 @@ def _build_strict_entry_payload(
     total_diagnostics: int,
     notes: list[str],
 ) -> ReadinessStrictEntry:
+    """Build a strict entry payload from computed data.
+
+    Args:
+        entry (ReadinessEntry): The original entry.
+        categories (CategoryCountMap): Diagnostic counts per category.
+        category_status (CategoryStatusMap): Status for each category.
+        total_diagnostics (int): Total diagnostic count.
+        notes (list[str]): Explanatory notes.
+
+    Returns:
+        ReadinessStrictEntry: A complete strict entry payload.
+    """
     strict_entry: ReadinessStrictEntry = {
         "path": entry["path"],
         "errors": entry.get("errors", 0),
@@ -219,8 +327,7 @@ def _build_strict_entry_payload(
         "information": entry.get("information", 0),
         "diagnostics": total_diagnostics,
         "categories": {
-            CategoryName(category): categories.get(CategoryName(category), 0)
-            for category in CATEGORY_PATTERNS
+            CategoryName(category): categories.get(CategoryName(category), 0) for category in CATEGORY_PATTERNS
         },
         "categoryStatus": dict(category_status.items()),
         "recommendations": entry.get("recommendations", []),
@@ -231,6 +338,14 @@ def _build_strict_entry_payload(
 
 
 def _bucket_code_counts(code_counts: dict[str, int]) -> CategoryCountMap:
+    """Categorize diagnostic codes into predefined categories.
+
+    Args:
+        code_counts (dict[str, int]): Counts of specific diagnostic codes.
+
+    Returns:
+        CategoryCountMap: Diagnostic counts bucketed by category.
+    """
     buckets = _new_category_counts()
     for rule, count in code_counts.items():
         lowered = rule.lower()
@@ -246,6 +361,15 @@ def _bucket_code_counts(code_counts: dict[str, int]) -> CategoryCountMap:
 
 
 def _status_for_category(category: CategoryKey, count: int) -> ReadinessStatus:
+    """Determine readiness status for a category based on its count.
+
+    Args:
+        category (CategoryKey): The category to assess.
+        count (int): The diagnostic count for this category.
+
+    Returns:
+        ReadinessStatus: READY if count is 0, CLOSE if below threshold, BLOCKED otherwise.
+    """
     if count == 0:
         return ReadinessStatus.READY
     close_threshold = CATEGORY_CLOSE_THRESHOLD.get(category, DEFAULT_CLOSE_THRESHOLD)
@@ -253,19 +377,39 @@ def _status_for_category(category: CategoryKey, count: int) -> ReadinessStatus:
 
 
 def _new_options_bucket(category: CategoryKey) -> ReadinessOptions:
+    """Create a new ReadinessOptions bucket for a category.
+
+    Args:
+        category (CategoryKey): The category for which to create options.
+
+    Returns:
+        ReadinessOptions: A new options instance with category-specific threshold.
+    """
     threshold = CATEGORY_CLOSE_THRESHOLD.get(category, DEFAULT_CLOSE_THRESHOLD)
     return ReadinessOptions(threshold=threshold)
 
 
 def _options_payload_from_map(options: ReadinessOptionsMap) -> OptionsPayloads:
+    """Convert an options map to a payload dictionary.
+
+    Args:
+        options (ReadinessOptionsMap): The options map to convert.
+
+    Returns:
+        OptionsPayloads: A dictionary of category options payloads.
+    """
     return {category: bucket.to_payload() for category, bucket in options.items()}
 
 
 def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPayload:
     """Compute strict typing readiness for folders.
 
-    Input folder_entries should contain keys: path, errors, warnings, information,
-    and optionally codeCounts, recommendations.
+    Args:
+        folder_entries: Folder payloads containing path, severity counts, and
+            optional metadata (``codeCounts``, ``recommendations``).
+
+    Returns:
+        ``ReadinessPayload`` grouping folder status buckets and option payloads.
     """
     strict_buckets: StrictBuckets = {status: [] for status in ReadinessStatus}
     option_buckets: ReadinessOptionsMap = {}

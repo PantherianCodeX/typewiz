@@ -5,10 +5,9 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from typewiz.api import build_summary
 from typewiz.cli.helpers import (
@@ -34,18 +33,22 @@ from typewiz.core.model_types import (
     SummaryField,
     SummaryStyle,
 )
-from typewiz.core.summary_types import SummaryData
 from typewiz.core.type_aliases import EngineName, ProfileName
-from typewiz.core.types import RunResult
 from typewiz.runtime import default_full_paths, resolve_project_root
 from typewiz.services.audit import AuditResult, run_audit
 from typewiz.services.dashboard import emit_dashboard_outputs, load_summary_from_manifest
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from typewiz.core.summary_types import SummaryData
+    from typewiz.core.types import RunResult
+
 
 class SubparserRegistry(Protocol):
-    def add_parser(
-        self, *args: Any, **kwargs: Any
-    ) -> argparse.ArgumentParser: ...  # pragma: no cover - Protocol
+    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
+        """Register a CLI subcommand on an argparse subparser collection."""
+        ...  # pragma: no cover - Protocol helper
 
 
 def register_audit_command(subparsers: SubparserRegistry) -> None:
@@ -54,10 +57,7 @@ def register_audit_command(subparsers: SubparserRegistry) -> None:
         "audit",
         help="Run typing audits and produce manifests/dashboards",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description=(
-            "Collect diagnostics from configured engines "
-            "and optionally write manifests or dashboards."
-        ),
+        description=("Collect diagnostics from configured engines and optionally write manifests or dashboards."),
     )
 
     register_argument(
@@ -291,7 +291,8 @@ def normalise_modes_tuple(modes: Sequence[str] | None) -> tuple[bool, bool, bool
     run_current = Mode.CURRENT in normalised
     run_full = Mode.FULL in normalised
     if not run_current and not run_full:
-        raise SystemExit("No modes selected. Choose at least one of: current, full.")
+        msg = "No modes selected. Choose at least one of: current, full."
+        raise SystemExit(msg)
     return (True, run_current, run_full)
 
 
@@ -307,13 +308,15 @@ def _update_override_with_profiles(
 ) -> None:
     flattened: list[str] = []
     for pair in entries:
-        if len(pair) != 2:
-            raise SystemExit("--profile entries must specify both runner and profile")
+        if len(pair) != 2:  # noqa: PLR2004 JUSTIFIED: a pair is always 2
+            msg = "--profile entries must specify both runner and profile"
+            raise SystemExit(msg)
         runner, profile = pair
         runner_clean = runner.strip()
         profile_clean = profile.strip()
         if not runner_clean or not profile_clean:
-            raise SystemExit("--profile entries must specify both runner and profile")
+            msg = "--profile entries must specify both runner and profile"
+            raise SystemExit(msg)
         flattened.append(f"{runner_clean}={profile_clean}")
     for runner, profile in collect_profile_args(flattened).items():
         override.active_profiles[EngineName(runner)] = ProfileName(profile)
@@ -323,9 +326,7 @@ def _resolve_summary_fields(args: argparse.Namespace) -> tuple[list[SummaryField
     style_choice = SummaryStyle.from_str(args.summary)
     if style_choice is SummaryStyle.FULL:
         return (sorted(SUMMARY_FIELD_CHOICES, key=lambda field: field.value), SummaryStyle.EXPANDED)
-    render_style = (
-        SummaryStyle.EXPANDED if style_choice is SummaryStyle.EXPANDED else SummaryStyle.COMPACT
-    )
+    render_style = SummaryStyle.EXPANDED if style_choice is SummaryStyle.EXPANDED else SummaryStyle.COMPACT
     return (
         parse_summary_fields(args.summary_fields, valid_fields=SUMMARY_FIELD_CHOICES),
         render_style,
@@ -336,15 +337,9 @@ def _maybe_print_readiness(args: argparse.Namespace, summary: SummaryData) -> No
     if not args.readiness:
         return
     level_choice = ReadinessLevel.from_str(args.readiness_level)
-    statuses = (
-        [ReadinessStatus.from_str(status) for status in args.readiness_status]
-        if args.readiness_status
-        else None
-    )
+    statuses = [ReadinessStatus.from_str(status) for status in args.readiness_status] if args.readiness_status else None
     severities = (
-        [SeverityLevel.from_str(value) for value in args.readiness_severity]
-        if args.readiness_severity
-        else None
+        [SeverityLevel.from_str(value) for value in args.readiness_severity] if args.readiness_severity else None
     )
     print_readiness_summary(
         summary,
@@ -375,7 +370,7 @@ def _build_delta_line(
             return f"+{value}" if value > 0 else (f"{value}" if value < 0 else "0")
 
         return f"; delta: errors={_fmt(de)} warnings={_fmt(dw)} info={_fmt(di)}"
-    except Exception:  # pragma: no cover - defensive guard mirrors historical behaviour
+    except (OSError, KeyError, TypeError, ValueError):
         return ""
 
 
@@ -452,7 +447,8 @@ def _prepare_execution_plan(args: argparse.Namespace) -> _AuditExecutionPlan:
     project_root = resolve_project_root(args.project_root)
     selected_full_paths = _resolve_full_paths(args, config, project_root)
     if not selected_full_paths:
-        raise SystemExit("No paths found for full runs. Provide paths or configure 'full_paths'.")
+        msg = "No paths found for full runs. Provide paths or configure 'full_paths'."
+        raise SystemExit(msg)
 
     modes_specified, run_current, run_full = normalise_modes_tuple(args.modes)
     cli_fail_on = FailOnPolicy.from_str(args.fail_on) if args.fail_on else None
@@ -510,10 +506,9 @@ def _summarize_audit_run(
 
     _echo(
         "[typewiz] totals:"
-        + f" errors={error_count}"
-        + f" warnings={warning_count}"
-        + f" info={info_count}; runs={len(result.runs)}"
-        + delta_segment,
+        f" errors={error_count}"
+        f" warnings={warning_count}"
+        f" info={info_count}; runs={len(result.runs)}" + delta_segment,
     )
     return audit_summary, exit_code
 
@@ -562,7 +557,14 @@ def _determine_exit_code(
 
 
 def execute_audit(args: argparse.Namespace) -> int:
-    """Execute the ``typewiz audit`` command."""
+    """Execute the ``typewiz audit`` command.
+
+    Args:
+        args: Parsed CLI namespace produced by argparse.
+
+    Returns:
+        Exit code honouring the configured ``--fail-on`` policy.
+    """
     plan = _prepare_execution_plan(args)
     result = _run_audit_plan(plan)
     audit_summary, exit_code = _summarize_audit_run(args, plan=plan, result=result)

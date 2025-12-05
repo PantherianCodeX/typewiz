@@ -4,8 +4,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import hypothesis.strategies as st
 import pytest
@@ -15,6 +14,9 @@ from tests.property_based.strategies import path_strings, severity_counts
 from typewiz._internal.utils import consume
 from typewiz.manifest.models import ManifestValidationError, validate_manifest_payload
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 pytestmark = pytest.mark.property
 
@@ -109,20 +111,22 @@ def test_h_manifest_rejects_unknown_top_level(
     extras: dict[str, int],
 ) -> None:
     # Ensure we include at least one extra key that is not among allowed fields
-    for key in list(extras.keys()):
-        if key in {
+    filtered_extras = {
+        key: value
+        for key, value in extras.items()
+        if key
+        not in {
             "runs",
             "generatedAt",
             "projectRoot",
             "schemaVersion",
             "fingerprintTruncated",
             "toolVersions",
-        }:
-            del extras[key]
-    if not extras:
-        assume(False)
+        }
+    }
+    assume(bool(filtered_extras))
     manifest: dict[str, Any] = {"runs": runs}
     manifest["schemaVersion"] = CURRENT_MANIFEST_VERSION
-    manifest.update(extras)
-    with pytest.raises(ManifestValidationError):
+    manifest.update(filtered_extras)
+    with pytest.raises(ManifestValidationError, match="Extra inputs are not permitted"):
         consume(validate_manifest_payload(manifest))

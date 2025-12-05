@@ -7,21 +7,25 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Never, NoReturn, Protocol
 
+from typewiz.cli.helpers import echo, register_argument
 from typewiz.core.model_types import ManifestAction
 from typewiz.services.manifest import (
     manifest_json_schema,
     validate_manifest_file,
 )
 
-from ..helpers import echo, register_argument
-
 
 class SubparserRegistry(Protocol):
-    def add_parser(
-        self, *args: Any, **kwargs: Any
-    ) -> argparse.ArgumentParser: ...  # pragma: no cover - Protocol
+    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
+        """Register a CLI subcommand on an argparse subparser collection."""
+        ...  # pragma: no cover - Protocol helper
+
+
+def _raise_unknown_manifest_action(action: Never) -> NoReturn:
+    msg = f"Unknown manifest action: {action}"
+    raise SystemExit(msg)
 
 
 def register_manifest_command(subparsers: SubparserRegistry) -> None:
@@ -99,21 +103,27 @@ def _handle_schema(args: argparse.Namespace) -> int:
 
 
 def execute_manifest(args: argparse.Namespace) -> int:
-    """Execute the ``typewiz manifest`` command."""
+    """Execute the ``typewiz manifest`` command.
+
+    Args:
+        args: Parsed CLI namespace describing the requested action.
+
+    Returns:
+        ``0`` for success or ``2`` when validation fails.
+
+    Raises:
+        SystemExit: If the action is invalid.
+    """
     action_value = args.action
     try:
-        action = (
-            action_value
-            if isinstance(action_value, ManifestAction)
-            else ManifestAction.from_str(action_value)
-        )
+        action = action_value if isinstance(action_value, ManifestAction) else ManifestAction.from_str(action_value)
     except ValueError as exc:  # pragma: no cover - argparse prevents invalid choices
         raise SystemExit(str(exc)) from exc
     if action is ManifestAction.VALIDATE:
         return _handle_validate(args)
     if action is ManifestAction.SCHEMA:
         return _handle_schema(args)
-    raise SystemExit("Unknown manifest action")
+    _raise_unknown_manifest_action(action)
 
 
 __all__ = ["execute_manifest", "register_manifest_command"]

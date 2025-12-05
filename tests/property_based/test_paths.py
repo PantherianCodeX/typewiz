@@ -4,13 +4,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from hypothesis import HealthCheck, given, settings
 
 from tests.property_based.strategies import path_parts
 from typewiz.audit.paths import normalise_paths
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = pytest.mark.property
 

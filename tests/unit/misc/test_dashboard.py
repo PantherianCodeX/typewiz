@@ -7,16 +7,13 @@ from __future__ import annotations
 
 import copy
 from collections import Counter, defaultdict
-from collections.abc import Callable
-from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
 from typewiz._internal.utils import consume
 from typewiz.api import build_summary, load_manifest, render_html, render_markdown
 from typewiz.core.model_types import SeverityLevel
-from typewiz.core.summary_types import SummaryData
 from typewiz.core.type_aliases import RelPath, RunId
 from typewiz.dashboard.build import (
     _build_engine_options_payload,
@@ -26,9 +23,15 @@ from typewiz.dashboard.build import (
     _SummaryState,
 )
 from typewiz.manifest.models import ManifestValidationError
-from typewiz.manifest.typed import FileEntry, FolderEntry, ManifestData, RunPayload
 from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
-from typewiz.runtime import JSONValue
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    from typewiz.core.summary_types import SummaryData
+    from typewiz.manifest.typed import FileEntry, FolderEntry, ManifestData, RunPayload
+    from typewiz.runtime import JSONValue
 
 pytestmark = pytest.mark.unit
 
@@ -70,7 +73,8 @@ def test_load_manifest_reads_file(tmp_path: Path) -> None:
         ),
     )
     data = load_manifest(manifest_path)
-    assert "runs" in data and data["runs"] == []
+    assert "runs" in data
+    assert data["runs"] == []
 
 
 def test_load_manifest_discards_invalid_runs(tmp_path: Path) -> None:
@@ -81,7 +85,7 @@ def test_load_manifest_discards_invalid_runs(tmp_path: Path) -> None:
             encoding="utf-8",
         ),
     )
-    with pytest.raises(ManifestValidationError):
+    with pytest.raises(ManifestValidationError, match="Input should be a valid dictionary"):
         _ = load_manifest(manifest_path)
 
 
@@ -92,7 +96,7 @@ def test_build_summary_skips_missing_entries(tmp_path: Path) -> None:
         "schemaVersion": CURRENT_MANIFEST_VERSION,
         "runs": [
             cast(
-                RunPayload,
+                "RunPayload",
                 {
                     "tool": "stub",
                     "mode": "full",
@@ -106,11 +110,11 @@ def test_build_summary_skips_missing_entries(tmp_path: Path) -> None:
                     },
                     "engineOptions": {},
                     "perFolder": cast(
-                        list[FolderEntry],
+                        "list[FolderEntry]",
                         [{"path": None, "errors": 1, "warnings": 1}],
                     ),
                     "perFile": cast(
-                        list[FileEntry],
+                        "list[FileEntry]",
                         [{"path": "pkg/module.py", "errors": 0, "warnings": 0}],
                     ),
                 },
@@ -122,7 +126,8 @@ def test_build_summary_skips_missing_entries(tmp_path: Path) -> None:
     assert summary["topFiles"] == []
 
 
-def test_render_markdown_handles_empty_runs(snapshot_text: Callable[[str], str]) -> None:
+@pytest.mark.usefixtures("_snapshot_text")
+def test_render_markdown_handles_empty_runs() -> None:
     manifest: ManifestData = {
         "generatedAt": "now",
         "projectRoot": ".",
@@ -166,7 +171,7 @@ def test_prepare_run_payload_returns_expected_values() -> None:
 def test_build_engine_options_payload_normalises_lists() -> None:
     payload = _build_engine_options_payload(
         cast(
-            dict[str, JSONValue],
+            "dict[str, JSONValue]",
             {
                 "profile": "baseline",
                 "configFile": "pyrightconfig.json",

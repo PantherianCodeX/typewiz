@@ -5,14 +5,17 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from typewiz._internal.utils import CommandOutput, consume
 from typewiz.core.model_types import Mode, SeverityLevel
 from typewiz.engines.execution import run_pyright
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 pytestmark = pytest.mark.unit
 
@@ -39,6 +42,11 @@ def _patch_run_command(
         *,
         allowed: set[str] | None = None,
     ) -> CommandOutput:
+        assert args
+        if cwd is not None:
+            assert isinstance(cwd, Path)
+        if allowed is not None:
+            assert isinstance(allowed, set)
         return _command_output(payload, exit_code=exit_code)
 
     monkeypatch.setattr("typewiz.engines.execution.run_command", _run_command)
@@ -100,6 +108,7 @@ def test_run_pyright_logs_mismatch(
             warnings.append(message % args)
         else:
             warnings.append(message)
+        assert kwargs == {}
 
     monkeypatch.setattr("typewiz.engines.execution.logger.warning", fake_warning)
 

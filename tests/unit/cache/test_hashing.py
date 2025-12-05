@@ -4,17 +4,20 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from typewiz._internal import cache as cache_module
 from typewiz._internal.cache import collect_file_hashes
 from typewiz._internal.utils import consume
-from typewiz.core.model_types import FileHashPayload
 from typewiz.core.type_aliases import PathKey
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+    from typewiz.core.model_types import FileHashPayload
 
 pytestmark = pytest.mark.unit
 

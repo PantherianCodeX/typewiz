@@ -5,20 +5,17 @@
 from __future__ import annotations
 
 import argparse
-from typing import Any, Protocol
+from typing import Protocol
 
+from typewiz.cli.helpers import echo, register_argument, render_data
 from typewiz.core.model_types import DataFormat
 from typewiz.engines.registry import describe_engines
 
-from ..helpers import echo, register_argument, render_data
-
 
 class SubparserRegistry(Protocol):
-    def add_parser(
-        self,
-        *args: Any,
-        **kwargs: Any,
-    ) -> argparse.ArgumentParser: ...  # pragma: no cover - Protocol helper
+    def add_parser(self, *args: object, **kwargs: object) -> argparse.ArgumentParser:
+        """Register a CLI subcommand on an argparse subparser collection."""
+        ...  # pragma: no cover - Protocol helper
 
 
 def register_engines_command(subparsers: SubparserRegistry) -> None:
@@ -62,11 +59,22 @@ def _handle_list(args: argparse.Namespace) -> int:
 
 
 def execute_engines(args: argparse.Namespace) -> int:
-    """Execute the engines subcommand."""
+    """Execute the engines subcommand.
+
+    Args:
+        args: Parsed CLI namespace.
+
+    Returns:
+        ``0`` if the action completes successfully.
+
+    Raises:
+        SystemExit: If the requested action is unknown.
+    """
     action_value = getattr(args, "engines_action", None)
     if action_value == "list":
         return _handle_list(args)
-    raise SystemExit(f"Unknown engines action '{action_value}'")
+    msg = f"Unknown engines action '{action_value}'"
+    raise SystemExit(msg)
 
 
 __all__ = ["execute_engines", "register_engines_command"]

@@ -1,40 +1,64 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Build and write manifest files from type checking run results.
+
+This module provides the ManifestBuilder class for constructing typing audit
+manifests. The builder aggregates results from multiple type checking runs
+and writes them to JSON format with tool version detection and metadata.
+"""
+
 from __future__ import annotations
 
 import json
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from typewiz.core.model_types import LogComponent, clone_override_entries
-from typewiz.core.types import RunResult
 from typewiz.logging import structured_extra
 from typewiz.runtime import consume, detect_tool_versions, normalise_enums_for_json
 
-from .typed import (
-    AggregatedData,
-    EngineError,
-    EngineOptionsEntry,
-    ManifestData,
-    RunPayload,
-)
+from .aggregate import summarise_run
 from .versioning import CURRENT_MANIFEST_VERSION
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from typewiz.core.types import RunResult
+
+    from .typed import (
+        AggregatedData,
+        EngineError,
+        EngineOptionsEntry,
+        ManifestData,
+        RunPayload,
+    )
 
 logger: logging.Logger = logging.getLogger("typewiz.manifest.builder")
 
 
 @dataclass(slots=True)
 class ManifestBuilder:
+    """Builder for constructing typing audit manifest files.
+
+    Aggregates results from multiple type checking runs and generates a
+    structured manifest with metadata, summaries, and detailed diagnostics.
+
+    Attributes:
+        project_root: Root directory of the project being audited.
+        data: ManifestData dictionary containing all manifest content.
+        fingerprint_truncated: Whether fingerprint data was truncated.
+    """
+
     project_root: Path
     data: ManifestData = field(init=False)
     fingerprint_truncated: bool = False
 
     def __post_init__(self) -> None:
+        """Initialize manifest data with metadata and empty runs list."""
         self.data = cast(
-            ManifestData,
+            "ManifestData",
             {
                 "generatedAt": datetime.now(UTC).isoformat(),
                 "projectRoot": str(self.project_root),
@@ -44,8 +68,15 @@ class ManifestBuilder:
         )
 
     def add_run(self, run: RunResult, *, max_depth: int = 3) -> None:
-        from .aggregate import summarise_run
+        """Add a type checking run to the manifest.
 
+        Summarizes the run's diagnostics and appends it to the manifest's runs list.
+        Includes engine options, tool summary, and error information if available.
+
+        Args:
+            run: RunResult containing diagnostics and configuration.
+            max_depth: Maximum folder depth for aggregation (default: 3).
+        """
         logger.debug(
             "Adding run: tool=%s mode=%s",
             run.tool,
@@ -65,9 +96,7 @@ class ManifestBuilder:
             "include": list(run.include),
             "exclude": list(run.exclude),
             "overrides": clone_override_entries(run.overrides),
-            "categoryMapping": {
-                key: list(values) for key, values in sorted(run.category_mapping.items())
-            },
+            "categoryMapping": {key: list(values) for key, values in sorted(run.category_mapping.items())},
         }
         payload: RunPayload = {
             "tool": str(run.tool),
@@ -108,6 +137,14 @@ class ManifestBuilder:
         runs_list.append(payload)
 
     def write(self, path: Path) -> None:
+        """Write the manifest to a JSON file.
+
+        Creates parent directories if needed, detects tool versions from runs,
+        normalizes enums for JSON serialization, and writes formatted output.
+
+        Args:
+            path: Path where the manifest JSON file should be written.
+        """
         path.parent.mkdir(parents=True, exist_ok=True)
         logger.info(
             "Writing manifest to %s",

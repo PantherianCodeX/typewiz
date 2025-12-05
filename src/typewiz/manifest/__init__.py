@@ -1,5 +1,19 @@
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
+"""Manifest generation and validation for TypeWiz typing audits.
+
+This package provides the core functionality for creating, loading, and validating
+typing audit manifests. Manifests contain aggregated diagnostic information from
+type checking tools (mypy, pyright, etc.) and support structured analysis of
+typing health across projects.
+
+Key components:
+    - ManifestBuilder: Constructs manifests from type checking runs
+    - ManifestModel: Pydantic models for validation and schema generation
+    - ManifestData: TypedDict definitions for typed manifest structures
+    - Versioning: Schema version management and validation
+"""
+
 from __future__ import annotations
 
 from .builder import ManifestBuilder
@@ -39,8 +53,8 @@ from .versioning import (
 )
 
 __all__ = [
-    "AggregatedData",
     "CURRENT_MANIFEST_VERSION",
+    "AggregatedData",
     "EngineError",
     "EngineErrorModel",
     "EngineOptionsEntry",

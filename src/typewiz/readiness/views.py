@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from typewiz.config.validation import (
     coerce_int,
@@ -17,18 +17,30 @@ from typewiz.config.validation import (
 )
 from typewiz.core.categories import CATEGORY_DISPLAY_ORDER, coerce_category_key
 from typewiz.core.model_types import ReadinessLevel, ReadinessStatus, SeverityLevel
-from typewiz.core.summary_types import (
-    ReadinessOptionEntry,
-    ReadinessStrictEntry,
-    SummaryData,
-    SummaryTabs,
-)
 from typewiz.core.type_aliases import CategoryKey, CategoryName
 from typewiz.readiness.compute import DEFAULT_CLOSE_THRESHOLD, ReadinessOptions
+
+if TYPE_CHECKING:
+    from typewiz.core.summary_types import (
+        ReadinessOptionEntry,
+        ReadinessStrictEntry,
+        SummaryData,
+        SummaryTabs,
+    )
 
 
 @dataclass(frozen=True, slots=True)
 class FolderReadinessRecord:
+    """Record representing folder-level readiness metrics.
+
+    Attributes:
+        path (str): The folder path.
+        count (int): Total diagnostic count.
+        errors (int): Number of error-level diagnostics.
+        warnings (int): Number of warning-level diagnostics.
+        information (int): Number of information-level diagnostics.
+    """
+
     path: str
     count: int
     errors: int
@@ -36,6 +48,11 @@ class FolderReadinessRecord:
     information: int
 
     def to_payload(self) -> FolderReadinessPayload:
+        """Convert to a serializable payload.
+
+        Returns:
+            FolderReadinessPayload: A dictionary representation of the folder readiness.
+        """
         return FolderReadinessPayload(
             path=self.path,
             count=self.count,
@@ -46,6 +63,16 @@ class FolderReadinessRecord:
 
 
 class FolderReadinessPayload(TypedDict):
+    """Folder-level readiness data for serialization.
+
+    Attributes:
+        path (str): The folder path.
+        count (int): Total diagnostic count.
+        errors (int): Number of error-level diagnostics.
+        warnings (int): Number of warning-level diagnostics.
+        information (int): Number of information-level diagnostics.
+    """
+
     path: str
     count: int
     errors: int
@@ -54,6 +81,16 @@ class FolderReadinessPayload(TypedDict):
 
 
 class FileReadinessPayloadBase(TypedDict):
+    """Base file-level readiness data.
+
+    Attributes:
+        path (str): The file path.
+        diagnostics (int): Total diagnostic count.
+        errors (int): Number of error-level diagnostics.
+        warnings (int): Number of warning-level diagnostics.
+        information (int): Number of information-level diagnostics.
+    """
+
     path: str
     diagnostics: int
     errors: int
@@ -62,6 +99,15 @@ class FileReadinessPayloadBase(TypedDict):
 
 
 class FileReadinessPayload(FileReadinessPayloadBase, total=False):
+    """Complete file-level readiness data with optional fields.
+
+    Attributes:
+        notes (list[str]): Optional explanatory notes.
+        recommendations (list[str]): Optional improvement recommendations.
+        categories (dict[CategoryName, int]): Optional category-specific diagnostic counts.
+        categoryStatus (dict[CategoryName, ReadinessStatus]): Optional per-category readiness status.
+    """
+
     notes: list[str]
     recommendations: list[str]
     categories: dict[CategoryName, int]
@@ -70,6 +116,20 @@ class FileReadinessPayload(FileReadinessPayloadBase, total=False):
 
 @dataclass(frozen=True, slots=True)
 class FileReadinessRecord:
+    """Record representing file-level readiness metrics.
+
+    Attributes:
+        path (str): The file path.
+        diagnostics (int): Total diagnostic count.
+        errors (int): Number of error-level diagnostics.
+        warnings (int): Number of warning-level diagnostics.
+        information (int): Number of information-level diagnostics.
+        notes (tuple[str, ...]): Explanatory notes. Defaults to empty tuple.
+        recommendations (tuple[str, ...]): Improvement recommendations. Defaults to empty tuple.
+        categories (Mapping[CategoryName, int] | None): Category-specific diagnostic counts. Defaults to None.
+        category_status (Mapping[CategoryName, ReadinessStatus] | None): Per-category readiness status. Defaults to None
+    """
+
     path: str
     diagnostics: int
     errors: int
@@ -81,6 +141,11 @@ class FileReadinessRecord:
     category_status: Mapping[CategoryName, ReadinessStatus] | None = None
 
     def to_payload(self) -> FileReadinessPayload:
+        """Convert to a serializable payload.
+
+        Returns:
+            FileReadinessPayload: A dictionary representation of the file readiness.
+        """
         payload: FileReadinessPayload = {
             "path": self.path,
             "diagnostics": self.diagnostics,
@@ -105,6 +170,14 @@ class ReadinessValidationError(ValueError):
 
 
 def _build_option_entry(raw: Mapping[str, object]) -> ReadinessOptionEntry:
+    """Build a ReadinessOptionEntry from raw data.
+
+    Args:
+        raw (Mapping[str, object]): Raw entry data.
+
+    Returns:
+        ReadinessOptionEntry: A validated option entry.
+    """
     entry: ReadinessOptionEntry = {}
     path = raw.get("path")
     if isinstance(path, str):
@@ -122,6 +195,14 @@ def _build_option_entry(raw: Mapping[str, object]) -> ReadinessOptionEntry:
 
 
 def _coerce_status(value: object) -> ReadinessStatus:
+    """Coerce a value to a ReadinessStatus.
+
+    Args:
+        value (object): The value to coerce.
+
+    Returns:
+        ReadinessStatus: The coerced status, defaulting to BLOCKED if invalid.
+    """
     if isinstance(value, ReadinessStatus):
         return value
     if isinstance(value, str):
@@ -133,15 +214,31 @@ def _coerce_status(value: object) -> ReadinessStatus:
 
 
 def _coerce_option_entries(value: object) -> list[ReadinessOptionEntry]:
+    """Coerce a value to a list of ReadinessOptionEntry.
+
+    Args:
+        value (object): The value to coerce.
+
+    Returns:
+        list[ReadinessOptionEntry]: A list of validated option entries.
+    """
     entries: list[ReadinessOptionEntry] = []
     for entry in coerce_object_list(value):
         if isinstance(entry, Mapping):
-            entry_map = coerce_mapping(cast(Mapping[object, object], entry))
-            entries.append(_build_option_entry(cast(Mapping[str, object], entry_map)))
+            entry_map = coerce_mapping(cast("Mapping[object, object]", entry))
+            entries.append(_build_option_entry(cast("Mapping[str, object]", entry_map)))
     return entries
 
 
 def _build_strict_entry(raw: Mapping[str, object]) -> ReadinessStrictEntry:  # noqa: C901
+    """Build a ReadinessStrictEntry from raw data.
+
+    Args:
+        raw (Mapping[str, object]): Raw entry data.
+
+    Returns:
+        ReadinessStrictEntry: A validated strict entry.
+    """
     entry: ReadinessStrictEntry = {}
     path = raw.get("path")
     if isinstance(path, str):
@@ -166,15 +263,13 @@ def _build_strict_entry(raw: Mapping[str, object]) -> ReadinessStrictEntry:  # n
         entry["recommendations"] = recommendations
     categories_raw = raw.get("categories")
     if isinstance(categories_raw, Mapping):
-        categories_map = coerce_mapping(cast(Mapping[object, object], categories_raw))
-        entry["categories"] = {
-            CategoryName(str(key)): coerce_int(value) for key, value in categories_map.items()
-        }
+        categories_map = coerce_mapping(cast("Mapping[object, object]", categories_raw))
+        entry["categories"] = {CategoryName(str(key)): coerce_int(value) for key, value in categories_map.items()}
     category_status_raw = raw.get("categoryStatus")
     if isinstance(category_status_raw, Mapping):
         status_map: dict[CategoryName, ReadinessStatus] = {
             CategoryName(str(key)): _coerce_status(value)
-            for key, value in cast(Mapping[object, object], category_status_raw).items()
+            for key, value in cast("Mapping[object, object]", category_status_raw).items()
         }
         if status_map:
             entry["categoryStatus"] = status_map
@@ -182,15 +277,23 @@ def _build_strict_entry(raw: Mapping[str, object]) -> ReadinessStrictEntry:  # n
 
 
 def _coerce_options_bucket(value: object) -> ReadinessOptions:
+    """Coerce a value to a ReadinessOptions bucket.
+
+    Args:
+        value (object): The value to coerce.
+
+    Returns:
+        ReadinessOptions: A validated options bucket.
+    """
     if not isinstance(value, Mapping):
         return ReadinessOptions(threshold=DEFAULT_CLOSE_THRESHOLD)
-    mapping_value = coerce_mapping(cast(Mapping[object, object], value))
+    mapping_value = coerce_mapping(cast("Mapping[object, object]", value))
     threshold_val = mapping_value.get("threshold")
     threshold = threshold_val if isinstance(threshold_val, int) else DEFAULT_CLOSE_THRESHOLD
     bucket = ReadinessOptions(threshold=threshold)
     bucket_section = mapping_value.get("buckets")
     if isinstance(bucket_section, Mapping):
-        buckets_map = coerce_mapping(cast(Mapping[object, object], bucket_section))
+        buckets_map = coerce_mapping(cast("Mapping[object, object]", bucket_section))
         for key, entries_raw in buckets_map.items():
             status = _coerce_status(key)
             entries = _coerce_option_entries(entries_raw)
@@ -202,9 +305,17 @@ def _coerce_options_bucket(value: object) -> ReadinessOptions:
 
 
 def _coerce_options_map(raw: object) -> dict[CategoryKey, ReadinessOptions]:
+    """Coerce raw data to an options map.
+
+    Args:
+        raw (object): The raw data to coerce.
+
+    Returns:
+        dict[CategoryKey, ReadinessOptions]: A mapping of categories to options.
+    """
     if not isinstance(raw, Mapping):
         return {}
-    mapping_value = cast(Mapping[object, object], raw)
+    mapping_value = cast("Mapping[object, object]", raw)
     result: dict[CategoryKey, ReadinessOptions] = {}
     for key, value in mapping_value.items():
         category_key = coerce_category_key(key)
@@ -215,9 +326,17 @@ def _coerce_options_map(raw: object) -> dict[CategoryKey, ReadinessOptions]:
 
 
 def _coerce_strict_map(raw: object) -> dict[ReadinessStatus, list[ReadinessStrictEntry]]:
+    """Coerce raw data to a strict entries map.
+
+    Args:
+        raw (object): The raw data to coerce.
+
+    Returns:
+        dict[ReadinessStatus, list[ReadinessStrictEntry]]: A mapping of status to strict entries.
+    """
     if not isinstance(raw, Mapping):
         return {}
-    mapping_value = cast(Mapping[object, object], raw)
+    mapping_value = cast("Mapping[object, object]", raw)
     result: dict[ReadinessStatus, list[ReadinessStrictEntry]] = {}
     for key, value in mapping_value.items():
         status = _coerce_status(key)
@@ -226,17 +345,33 @@ def _coerce_strict_map(raw: object) -> dict[ReadinessStatus, list[ReadinessStric
 
 
 def _coerce_strict_entries(value: object) -> list[ReadinessStrictEntry]:
+    """Coerce a value to a list of ReadinessStrictEntry.
+
+    Args:
+        value (object): The value to coerce.
+
+    Returns:
+        list[ReadinessStrictEntry]: A list of validated strict entries.
+    """
     if not isinstance(value, Sequence) or isinstance(value, str | bytes | bytearray):
         return []
     entries: list[ReadinessStrictEntry] = []
-    for entry in cast(Sequence[object], value):
+    for entry in cast("Sequence[object]", value):
         if isinstance(entry, Mapping):
-            entry_map = coerce_mapping(cast(Mapping[object, object], entry))
-            entries.append(_build_strict_entry(cast(Mapping[str, object], entry_map)))
+            entry_map = coerce_mapping(cast("Mapping[object, object]", entry))
+            entries.append(_build_strict_entry(cast("Mapping[str, object]", entry_map)))
     return entries
 
 
 def _normalise_folder_entry(entry: ReadinessOptionEntry) -> FolderReadinessRecord:
+    """Normalize an option entry to a folder readiness record.
+
+    Args:
+        entry (ReadinessOptionEntry): The option entry to normalize.
+
+    Returns:
+        FolderReadinessRecord: A normalized folder readiness record.
+    """
     path = coerce_str(entry.get("path"), "<unknown>")
     count = coerce_int(entry.get("count"))
     errors = coerce_int(entry.get("errors"))
@@ -252,6 +387,17 @@ def _normalise_folder_entry(entry: ReadinessOptionEntry) -> FolderReadinessRecor
 
 
 def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
+    """Normalize a strict entry to a file readiness record.
+
+    Args:
+        entry (ReadinessStrictEntry): The strict entry to normalize.
+
+    Returns:
+        FileReadinessRecord: A normalized file readiness record.
+
+    Raises:
+        ValueError: If any count field is negative.
+    """
     path = coerce_str(entry.get("path"), "<unknown>")
     diagnostics = coerce_int(entry.get("diagnostics"))
     if diagnostics < 0:
@@ -274,15 +420,13 @@ def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
     categories_map = coerce_mapping(entry.get("categories"))
     categories: Mapping[CategoryName, int] | None = None
     if categories_map:
-        categories = {
-            CategoryName(str(key)): coerce_int(value) for key, value in categories_map.items()
-        }
+        categories = {CategoryName(str(key)): coerce_int(value) for key, value in categories_map.items()}
     status_source = entry.get("categoryStatus")
     category_status: Mapping[CategoryName, ReadinessStatus] | None = None
     if isinstance(status_source, Mapping) and status_source:
         converted: dict[CategoryName, ReadinessStatus] = {
             CategoryName(str(key)): _coerce_status(value)
-            for key, value in cast(Mapping[str, object], status_source).items()
+            for key, value in cast("Mapping[str, object]", status_source).items()
         }
         category_status = converted or None
     return FileReadinessRecord(
@@ -301,6 +445,14 @@ def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
 def _normalise_severity_filters(
     severities: Sequence[SeverityLevel] | None,
 ) -> tuple[SeverityLevel, ...]:
+    """Normalize and deduplicate severity filters.
+
+    Args:
+        severities (Sequence[SeverityLevel] | None): The severity filters to normalize.
+
+    Returns:
+        tuple[SeverityLevel, ...]: A deduplicated tuple of severity levels.
+    """
     if not severities:
         return ()
     ordered: list[SeverityLevel] = []
@@ -314,6 +466,15 @@ def _folder_matches_severity(
     record: FolderReadinessRecord,
     severities: Sequence[SeverityLevel],
 ) -> bool:
+    """Check if a folder record matches any of the given severities.
+
+    Args:
+        record (FolderReadinessRecord): The folder record to check.
+        severities (Sequence[SeverityLevel]): The severity levels to match against.
+
+    Returns:
+        bool: True if the record has diagnostics matching any of the severities.
+    """
     if not severities:
         return True
     for severity in severities:
@@ -330,6 +491,15 @@ def _file_matches_severity(
     record: FileReadinessRecord,
     severities: Sequence[SeverityLevel],
 ) -> bool:
+    """Check if a file record matches any of the given severities.
+
+    Args:
+        record (FileReadinessRecord): The file record to check.
+        severities (Sequence[SeverityLevel]): The severity levels to match against.
+
+    Returns:
+        bool: True if the record has diagnostics matching any of the severities.
+    """
     if not severities:
         return True
     for severity in severities:
@@ -346,6 +516,15 @@ def _extract_file_entries(
     strict_map: Mapping[ReadinessStatus, Sequence[ReadinessStrictEntry]],
     status: ReadinessStatus,
 ) -> list[ReadinessStrictEntry]:
+    """Extract file entries for a specific status from the strict map.
+
+    Args:
+        strict_map (Mapping[ReadinessStatus, Sequence[ReadinessStrictEntry]]): The map of strict entries.
+        status (ReadinessStatus): The status to extract entries for.
+
+    Returns:
+        list[ReadinessStrictEntry]: The entries matching the status.
+    """
     entries = strict_map.get(status)
     if isinstance(entries, list):
         return entries
@@ -355,6 +534,14 @@ def _extract_file_entries(
 def _normalise_status_filters(
     statuses: Sequence[ReadinessStatus] | None,
 ) -> list[ReadinessStatus]:
+    """Normalize and deduplicate status filters.
+
+    Args:
+        statuses (Sequence[ReadinessStatus] | None): The status filters to normalize.
+
+    Returns:
+        list[ReadinessStatus]: A deduplicated list, defaulting to [BLOCKED] if None or empty.
+    """
     if statuses is None:
         return [ReadinessStatus.BLOCKED]
     normalised: list[ReadinessStatus] = []
@@ -370,6 +557,20 @@ def _folder_payload_for_status(
     limit: int,
     severities: Sequence[SeverityLevel],
 ) -> list[FolderReadinessPayload]:
+    """Generate folder payloads for a specific readiness status.
+
+    Args:
+        options_tab (Mapping[CategoryKey, ReadinessOptions]): The options data by category.
+        status (ReadinessStatus): The status to filter for.
+        limit (int): Maximum number of entries to return (0 for no limit).
+        severities (Sequence[SeverityLevel]): Severity filters to apply.
+
+    Returns:
+        list[FolderReadinessPayload]: Filtered and limited folder payloads.
+
+    Raises:
+        ReadinessValidationError: If entry normalization fails.
+    """
     entries: list[ReadinessOptionEntry] = []
     for category in CATEGORY_DISPLAY_ORDER:
         bucket = options_tab.get(category)
@@ -399,6 +600,20 @@ def _file_payload_for_status(
     limit: int,
     severities: Sequence[SeverityLevel],
 ) -> list[FileReadinessPayload]:
+    """Generate file payloads for a specific readiness status.
+
+    Args:
+        strict_map (Mapping[ReadinessStatus, list[ReadinessStrictEntry]]): The strict entries by status.
+        status (ReadinessStatus): The status to filter for.
+        limit (int): Maximum number of entries to return (0 for no limit).
+        severities (Sequence[SeverityLevel]): Severity filters to apply.
+
+    Returns:
+        list[FileReadinessPayload]: Filtered and limited file payloads.
+
+    Raises:
+        ReadinessValidationError: If entry normalization fails.
+    """
     entries = _extract_file_entries(strict_map, status)
     records: list[FileReadinessRecord] = []
     for strict_entry in entries:
@@ -425,6 +640,18 @@ def collect_readiness_view(
     limit: int,
     severities: Sequence[SeverityLevel] | None = None,
 ) -> ReadinessViewResult:
+    """Collect readiness view data from a summary.
+
+    Args:
+        summary (SummaryData): The complete summary data containing readiness information.
+        level (ReadinessLevel): Whether to return FOLDER or FILE level data.
+        statuses (Sequence[ReadinessStatus] | None): Status filters to apply (defaults to [BLOCKED]).
+        limit (int): Maximum number of entries per status (0 for no limit).
+        severities (Sequence[SeverityLevel] | None, optional): Severity filters to apply. Defaults to None.
+
+    Returns:
+        ReadinessViewResult: A view mapping statuses to either folder or file payloads.
+    """
     tabs: SummaryTabs = summary["tabs"]
     readiness_tab = tabs.get("readiness") or {}
     options_tab = _coerce_options_map(readiness_tab.get("options"))
