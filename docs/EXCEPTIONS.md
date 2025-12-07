@@ -1,8 +1,6 @@
 # Exception Reference
 
-Typewiz raises a small set of structured exceptions to make it easy to handle
-errors programmatically. Each exception maps to a stable error code (see
-`typewiz.error_codes.error_code_for`) which can be used in logs or CI.
+Typewiz raises a small set of structured exceptions to make it easy to handle errors programmatically. Each exception maps to a stable error code (see `typewiz.error_codes.error_code_for`) which can be used in logs or CI.
 
 Core exceptions:
 

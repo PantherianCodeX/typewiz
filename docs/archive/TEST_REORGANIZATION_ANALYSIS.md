@@ -30,7 +30,8 @@
 #### What Was Accomplished
 
 1. **Directory Structure Created**:
-   ```
+
+   ```text
    tests/
    ├── unit/{api,cli,config,engines,manifest,readiness,ratchet,cache,utilities,models,misc}/
    ├── integration/workflows/
@@ -57,6 +58,7 @@
    - ✅ pytest (378 tests) passed
 
 **Key Files Created**:
+
 - `tests/README.md` - Comprehensive testing documentation
 - `tests/unit/conftest.py` - Unit test fixtures placeholder
 - `tests/integration/conftest.py` - Integration test fixtures
@@ -114,6 +116,7 @@
    - `test_ratchet_workflows.py`
 
 **Validation**:
+
 - ✅ All 378 tests still passing after moves
 - ✅ Git history preserved for all files
 - ✅ No files remaining in tests/ root
@@ -150,6 +153,7 @@
    - **Domain-specific conftest.py files**: Created for CLI, engines with domain-specific fixtures
 
 **Benefits Achieved**:
+
 - ✅ Eliminated test data duplication
 - ✅ Centralized test utilities
 - ✅ Improved test maintainability
@@ -165,6 +169,7 @@
 #### What Was Accomplished
 
 1. **Pytest Markers Defined** in `tests/conftest.py`:
+
    ```python
    def pytest_configure(config: pytest.Config) -> None:
        config.addinivalue_line("markers", "unit: Unit tests (fast, isolated)")
@@ -178,6 +183,7 @@
    ```
 
 2. **Pytest Configuration** added to `pyproject.toml`:
+
    ```toml
    [tool.pytest.ini_options]
    minversion = "8.4"
@@ -193,6 +199,7 @@
    - Enabled selective test execution by category
 
 **Test Execution Capabilities**:
+
 ```bash
 pytest tests/unit -m unit           # Run only unit tests (341 tests)
 pytest tests/integration            # Run integration tests (30 tests)
@@ -228,6 +235,7 @@ pytest -m "unit and not slow"       # Run fast unit tests only
    - Maintained docstring coverage
 
 **Quality Metrics**:
+
 - ✅ Test names follow convention: `test_<what>_<condition>_<expected_result>`
 - ✅ AAA pattern visible in test structure
 - ✅ Parametrized tests used appropriately (reduces duplication)
@@ -245,12 +253,14 @@ pytest -m "unit and not slow"       # Run fast unit tests only
 1. **CI Workflow Updates** in `.github/workflows/ci.yml`:
    - Added separate test stages by type
    - Implemented test matrix:
+
      ```yaml
      matrix:
        task: [lint, type, tests-unit, tests-integration, tests-property, tests-performance]
      ```
 
 2. **Make Targets Created**:
+
    ```makefile
    pytest.unit:         make pytest.unit
    pytest.integration:  make pytest.integration
@@ -264,6 +274,7 @@ pytest -m "unit and not slow"       # Run fast unit tests only
    - Added examples matching CI workflow
 
 **CI/CD Benefits**:
+
 - ✅ Parallel test execution by category enabled
 - ✅ Faster feedback loops (can run subsets)
 - ✅ Better failure diagnostics (category-specific failures)
@@ -278,6 +289,7 @@ pytest -m "unit and not slow"       # Run fast unit tests only
 #### Non-Negotiables Verification
 
 1. **✅ Strict Typing (mypy/pyright)**:
+
    ```bash
    $ mypy src/typewiz tests/
    Success: no issues found in 172 source files
@@ -285,10 +297,12 @@ pytest -m "unit and not slow"       # Run fast unit tests only
    $ pyright
    0 errors, 0 warnings, 0 informations
    ```
+
    - **Status**: PASSING
    - **Mode**: Strict (as configured in mypy.ini and pyrightconfig.json)
 
 2. **✅ Ruff Lint/Format**:
+
    ```bash
    $ ruff check .
    All checks passed!
@@ -296,13 +310,16 @@ pytest -m "unit and not slow"       # Run fast unit tests only
    $ ruff format --check .
    182 files already formatted
    ```
+
    - **Status**: PASSING
    - **Formatter**: Ruff (idempotent)
 
 3. **✅ ≥95% Coverage**:
+
    ```bash
    Coverage: 95.07%
    ```
+
    - **Status**: PASSING (exceeds requirement)
    - **Tool**: pytest-cov
    - **Report**: JSON and terminal output
@@ -454,12 +471,14 @@ pytest -m "unit and not slow"       # Run fast unit tests only
 **Issue**: The `make verifytypes` target fails with "No py.typed file found" error.
 
 **Root Cause**:
+
 - `pyright --verifytypes` requires the package to be installed via pip
 - Installation requires network access to fetch build dependencies (setuptools>=68)
 - Sandboxed codex environment blocks network access
 - Even with network access disabled sandbox, pip install attempts fail
 
 **Impact**:
+
 - `make ci.check` fails at verifytypes step
 - However, regular pyright type checking works perfectly (0 errors)
 - This only affects type completeness verification, not actual type safety
@@ -467,11 +486,13 @@ pytest -m "unit and not slow"       # Run fast unit tests only
 **Status**: DOCUMENTED (not resolved - known limitation)
 
 **Workaround**:
+
 - Skip `make verifytypes` in sandboxed environments
 - Regular pyright type checking provides sufficient validation
 - In production CI with network access, verifytypes would work
 
 **Recommendation for Future**:
+
 - Make `verifytypes` target optional in Makefile
 - Document this limitation in development docs
 - Consider CI-only execution of verifytypes
@@ -481,10 +502,12 @@ pytest -m "unit and not slow"       # Run fast unit tests only
 **Issue**: Pre-commit hooks attempt to download hook dependencies during commits.
 
 **Root Cause**:
+
 - pre-commit hooks try to fetch remote hook repositories
 - Network access blocked in sandbox
 
 **Resolution**: ✅ RESOLVED
+
 - Commits made with `--no-verify` flag when necessary
 - All required validations (mypy, pyright, ruff, pytest) run manually before commit
 - Proper validation still achieved
@@ -496,6 +519,7 @@ pytest -m "unit and not slow"       # Run fast unit tests only
 **Issue**: 2 files needed reformatting after all changes complete.
 
 **Resolution**: ✅ RESOLVED
+
 - Applied `ruff format .` to entire codebase
 - Committed with `7544aaf chore: apply ruff formatting`
 - All files now consistently formatted
@@ -752,7 +776,7 @@ The TypeWiz test suite reorganization has been **successfully completed** with a
 
 ### Final Status
 
-**✅ ALL PHASES COMPLETED SUCCESSFULLY**
+**✅ ALL PHASES COMPLETED SUCCESSFULLY:**
 
 - ✅ Phase 1: Foundation & Structure
 - ✅ Phase 2: Categorize & Refactor Tests
@@ -768,7 +792,7 @@ The TypeWiz test suite reorganization has been **successfully completed** with a
 
 ## Appendix A: Directory Structure (Final)
 
-```
+```text
 tests/
 ├── conftest.py                          # Global fixtures and pytest config
 ├── README.md                            # Comprehensive testing documentation

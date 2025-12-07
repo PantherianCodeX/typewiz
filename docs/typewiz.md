@@ -4,6 +4,8 @@ The `typewiz` package collects typing diagnostics from Pyright, mypy, and other 
 summarises them into a single manifest that highlights both the current enforcement surface
 and the remaining work across the repository.
 
+For installation and quick start, see [README.md](../README.md).
+
 ## Commands
 
 Run a full audit from the repository root:

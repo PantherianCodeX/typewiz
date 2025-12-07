@@ -2,6 +2,17 @@
 
 This project uses strict typing and automated hooks to keep quality high.
 
+## Versioning & Stability
+
+Typewiz follows **semantic versioning** with alpha-specific semantics:
+
+- **0.y.z-alpha**: Breaking changes allowed between minor versions
+- **Schema stability**: `schemaVersion: "1"` aims for additive-only changes
+- **Error codes**: Stable once documented; deprecation warnings for 6 months before removal
+- **CLI flags**: May change without deprecation in 0.y.z; deprecation warnings start at v1.0+
+
+See [ROADMAP.md](ROADMAP.md) for stability commitments per version.
+
 ## Getting started
 
 1. Create a virtual env (Python 3.12 recommended) and install dev deps:
@@ -66,3 +77,14 @@ make package.clean        # remove build/dist artifacts
 ```
 
 All CI jobs invoke these targets, so running them locally ensures parity.
+
+## Release Process
+
+1. **Version Bump**: Update `version` in `pyproject.toml`
+2. **CHANGELOG**: Add entry under `## Unreleased` with changes
+3. **Pre-release Validation**:
+   - Run `make ci.check` (all gates must pass)
+   - Run `make package.build && make package.check`
+4. **Git Tagging**: Create annotated tag `git tag -a v0.1.x -m \"Release v0.1.x\"`
+5. **Build Artifacts**: `make package.build`
+6. **Publication**: (Process TBD for first public release)

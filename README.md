@@ -1,18 +1,49 @@
 # typewiz
 
-typewiz collects typing diagnostics from Pyright, mypy, and custom plugins, aggregates them into a JSON
-manifest, and renders dashboards to help teams plan stricter typing rollouts.
+typewiz collects typing diagnostics from Pyright, mypy, and custom plugins,
+aggregates them into a JSON manifest, and renders dashboards to help teams plan
+stricter typing rollouts.
 
-> Status: `0.1.0` — see CHANGELOG.md for full release notes. This release inaugurates the commercial Typewiz distribution under the Typewiz Software License Agreement.
+> Status: `0.1.0` — see CHANGELOG.md for full release notes. This release
+> inaugurates the commercial Typewiz distribution under the Typewiz Software
+> License Agreement.
+
+## ⚠️ Alpha Status
+
+Typewiz is **alpha-quality software (v0.1.x)**. While the core functionality is
+solid and tested, expect:
+
+- API and CLI changes between minor versions
+- Dashboard layouts and features evolving
+- Schemas stabilizing but not yet guaranteed stable
+
+Production use is supported under commercial license, but be prepared for
+updates. See [ROADMAP.md](ROADMAP.md) for stability commitments.
 
 ## Features
 
-- Pluggable engine architecture with Pyright and mypy built in (extend via entry points)
-- Built-in incremental cache (`.typewiz_cache/cache.json`) keyed on file fingerprints and engine flags
-- Deterministic diagnostics (sorted by path/line) and per-folder aggregates with actionable hints
+- Pluggable engine architecture with Pyright and mypy built in (extend via entry
+  points)
+- Built-in incremental cache (`.typewiz_cache/cache.json`) keyed on file
+  fingerprints and engine flags
+- Deterministic diagnostics (sorted by path/line) and per-folder aggregates
+  with actionable hints
 - Exports dashboards in JSON, Markdown, and HTML for issue trackers and retros
-- Captures each engine’s own summary totals (`toolSummary`) alongside parsed counts, warning when the two disagree
+- Captures each engine’s own summary totals (`toolSummary`) alongside parsed
+  counts, warning when the two disagree
 - Designed for CI/nightly workflows with exit codes suitable for gating builds
+
+### Architecture
+
+Typewiz follows a **schema-first, plugin-friendly** design:
+
+- **Engines** (builtin or plugins) produce diagnostics
+- **Manifest builder** aggregates results with strict JSON Schema validation
+- **Dashboard system** renders summaries (JSON/Markdown/HTML)
+- **Ratchet system** enforces per-file budgets with signature tracking
+
+For deep-dive architecture documentation, see
+[docs/typewiz.md](docs/typewiz.md).
 
 ## Installation
 
@@ -30,9 +61,15 @@ python -m venv .venv
 pip install -e .[tests]
 ```
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding
+standards, and release process.
+
 ## Usage
 
-Generate a manifest and dashboards (typewiz auto-detects common Python folders when `full_paths` is not configured):
+Generate a manifest and dashboards (typewiz auto-detects common Python folders
+when `full_paths` is not configured):
 
 ```bash
 typewiz audit --max-depth 3 src tests --manifest typing_audit.json
@@ -45,15 +82,21 @@ typewiz audit --respect-gitignore --max-files 50000 --manifest typing_audit.json
 typewiz audit --hash-workers auto --dry-run
 ```
 
-Running `typewiz audit` with no additional arguments also works — typewiz will analyse the current project using its built-in Pyright and mypy defaults.
+Running `typewiz audit` with no additional arguments also works — typewiz will
+analyse the current project using its built-in Pyright and mypy defaults.
 
-Pass extra flags to engines with `--plugin-arg runner=VALUE` (repeatable). When the value itself starts with a dash, keep the `runner=value` form to avoid ambiguity, e.g. `--plugin-arg pyright=--verifytypes`.
+Pass extra flags to engines with `--plugin-arg runner=VALUE` (repeatable). When
+the value itself starts with a dash, keep the `runner=value` form to avoid
+ambiguity, e.g. `--plugin-arg pyright=--verifytypes`.
 
-Need faster fingerprints or a quick health check? Use `--hash-workers auto|N` to fan out hashing, and `--dry-run` to run engines without writing manifests/dashboards (the CLI summary still prints totals for CI logs).
+Need faster fingerprints or a quick health check? Use `--hash-workers auto|N`
+to fan out hashing, and `--dry-run` to run engines without writing
+manifests/dashboards (the CLI summary still prints totals for CI logs).
 
 ### Querying manifest summaries
 
-The `typewiz query` command exposes the most common manifest lookups directly—no more piping through `jq` or custom scripts.
+The `typewiz query` command exposes the most common manifest lookups
+directly—no more piping through `jq` or custom scripts.
 
 ```bash
 # Severity overview with per-run totals as a quick CI check (table or json)
@@ -81,11 +124,13 @@ typewiz query rules --manifest typing_audit.json --include-paths --limit 5
 typewiz query readiness --manifest typing_audit.json --severity warning --format table
 ```
 
-Each subcommand accepts `--format json` (default) or `--format table` for a human-friendly view.
+Each subcommand accepts `--format json` (default) or `--format table` for a
+human-friendly view.
 
 ### Inspect engines and caches
 
-Discover which engines are available (built-ins plus entry points) and clear stale caches:
+Discover which engines are available (built-ins plus entry points) and clear
+stale caches:
 
 ```bash
 typewiz engines list --format table
@@ -94,7 +139,8 @@ typewiz cache clear
 
 ### Per-file ratchets
 
-Lock today’s state in place and keep teams from backsliding by generating a ratchet budget and checking it in CI:
+Lock today’s state in place and keep teams from backsliding by generating a
+ratchet budget and checking it in CI:
 
 ```bash
 # capture current diagnostics per file
@@ -107,10 +153,14 @@ typewiz ratchet check --manifest typing_audit.json --ratchet .typewiz/ratchet.js
 typewiz ratchet update --manifest typing_audit.json --ratchet .typewiz/ratchet.json
 ```
 
-Ratchet files record the merged engine options (profiles, plugin args, overrides). If the configuration for a run changes—such as adding a new plugin or flipping profiles—the signature mismatch is called out so you can intentionally rebuild the baseline. This keeps future engines like Ruff aligned with the budgets you enforce today.
+Ratchet files record the merged engine options (profiles, plugin args,
+overrides). If the configuration for a run changes—such as adding a new plugin
+or flipping profiles—the signature mismatch is called out so you can
+intentionally rebuild the baseline. This keeps future engines like Ruff aligned
+with the budgets you enforce today.
 
-The on-disk format is documented in `schemas/ratchet.schema.json`, so you can validate, transform,
-or ingest ratchet budgets with your own tooling.
+The on-disk format is documented in `schemas/ratchet.schema.json`, so you can
+validate, transform, or ingest ratchet budgets with your own tooling.
 
 ### Typing & CI
 
@@ -188,35 +238,62 @@ Manifests must declare `schemaVersion` `"1"` exactly; older payloads or files mi
 
 ### Why both Pyright and mypy?
 
-Pyright and mypy have complementary strengths. Pyright provides fast, IDE-friendly diagnostics and excels at
-detecting optional/unknown typing issues (great for readiness), while mypy’s ecosystem and plugins catch
-different classes of errors and enforce strictness progressively. Running both yields broader coverage and a
-clearer plan to move toward stricter typing across packages. A common pattern is:
+Pyright and mypy have complementary strengths. Pyright provides fast,
+IDE-friendly diagnostics and excels at detecting optional/unknown typing issues
+(great for readiness), while mypy’s ecosystem and plugins catch different
+classes of errors and enforce strictness progressively. Running both yields
+broader coverage and a clearer plan to move toward stricter typing across
+packages. A common pattern is:
 
-- pyright baseline (warnings) across the monorepo, with `--strict` for green packages
-- mypy for projects using mypy plugins (e.g., pydantic, SQLAlchemy), with a strict profile in those packages
+- pyright baseline (warnings) across the monorepo, with `--strict` for green
+  packages
+- mypy for projects using mypy plugins (e.g., pydantic, SQLAlchemy), with a
+  strict profile in those packages
 
 ### Exception References
 
-A catalog of exceptions with stable error codes is available in docs/EXCEPTIONS.md: see how to catch precise error types and map them to codes for logs or CI.
+A catalog of exceptions with stable error codes is available in
+docs/EXCEPTIONS.md: see how to catch precise error types and map them to codes
+for logs or CI.
+
+## Limitations (Alpha)
+
+Current alpha limitations:
+
+- **Python-only engines**: Only mypy and pyright built-in (other languages
+  planned for v0.3.0+)
+- **File-level ratchets**: Budgets track per-file counts; per-rule and
+  per-signature ratchets coming in v0.2.0
+- **Dashboard optimization**: HTML dashboards work best with <10k diagnostics;
+  large manifest support improving
+- **Schema evolution**: `schemaVersion: "1"` is stabilizing but may have
+  additive changes in 0.1.x releases
+
+See [ROADMAP.md](ROADMAP.md) for planned improvements.
 
 ## Licensing & Commercial Use
 
 Typewiz is distributed under the **Typewiz Software License Agreement (Proprietary)**.
 
-- **Evaluation:** You may install and evaluate Typewiz internally for up to 30 days.
+- **Evaluation:** You may install and evaluate Typewiz internally for up to 30
+  days.
 - **Commercial/Production use:** Requires a commercial license.
-- **Prohibited:** Redistribution, sublicensing, hosting as a service, or sublicensing without written authorization.
-- **License keys:** Set `TYPEWIZ_LICENSE_KEY=<your-key>` in the environment to suppress the evaluation banner and unlock licensed features.
+- **Prohibited:** Redistribution, sublicensing, hosting as a service, or
+  sublicensing without written authorization.
+- **License keys:** Set `TYPEWIZ_LICENSE_KEY=<your-key>` in the environment to
+  suppress the evaluation banner and unlock licensed features.
 
-See [`LICENSE`](./LICENSE) and [`TERMS.md`](./TERMS.md) for the full agreement and summary.
-For commercial licensing or extended evaluations, contact **<pantheriancodex@pm.me>**.
+See [`LICENSE`](./LICENSE) and [`TERMS.md`](./TERMS.md) for the full agreement
+and summary. For commercial licensing or extended evaluations, contact
+**<pantheriancodex@pm.me>**.
 
-Historical OSS releases prior to the commercial reset remain available under their original terms in the legacy repository history.
+Historical OSS releases prior to the commercial reset remain available under
+their original terms in the legacy repository history.
 
 ### Custom engines (plugins)
 
-Write a small class implementing the `BaseEngine` protocol and expose it via the `typewiz.engines` entry point.
+Write a small class implementing the `BaseEngine` protocol and expose it via
+the `typewiz.engines` entry point.
 
 ```python
 # examples/plugins/simple_engine.py
@@ -253,9 +330,11 @@ class SimpleEngine(BaseEngine):
         )
 ```
 
-Built-in adapters live under `typewiz.engines.builtin` (see `pyright` and `mypy`) and are good templates for production
-plugins. Higher layers (CLI/services) consume public modules such as `typewiz.runtime`, `typewiz.logging`, and
-`typewiz.license`; direct imports from `typewiz._internal` are disallowed and enforced via tests.
+Built-in adapters live under `typewiz.engines.builtin` (see `pyright` and
+`mypy`) and are good templates for production plugins. Higher layers
+(CLI/services) consume public modules such as `typewiz.runtime`,
+`typewiz.logging`, and `typewiz.license`; direct imports from
+`typewiz._internal` are disallowed and enforced via tests.
 
 Declare the entry point in your `pyproject.toml`:
 
@@ -272,9 +351,12 @@ typewiz audit --runner simple
 
 ### Windows notes
 
-- Paths in manifests use forward slashes for determinism; Windows paths are normalized accordingly.
-- Subprocesses are invoked without shells, so argument quoting behaves consistently across OSes.
-- When using `--respect-gitignore`, ensure Git is available in `PATH` on Windows.
+- Paths in manifests use forward slashes for determinism; Windows paths are
+  normalized accordingly.
+- Subprocesses are invoked without shells, so argument quoting behaves
+  consistently across OSes.
+- When using `--respect-gitignore`, ensure Git is available in `PATH` on
+  Windows.
 
 ### CI deltas
 
@@ -288,7 +370,9 @@ Totals are printed along with `delta: errors=±N warnings=±N info=±N`.
 
 ### Configuration
 
-typewiz looks for `typewiz.toml` (or `.typewiz.toml`) and validates it with a schema version header. Run `typewiz init` to scaffold a commented starter configuration, or copy `examples/typewiz.sample.toml` as a starting point.
+typewiz looks for `typewiz.toml` (or `.typewiz.toml`) and validates it with a
+schema version header. Run `typewiz init` to scaffold a commented starter
+configuration, or copy `examples/typewiz.sample.toml` as a starting point.
 
 ```toml
 config_version = 0
@@ -322,7 +406,9 @@ plugin_args = ["--warnings"]
 exclude = ["packages/legacy"]
 ```
 
-`include` / `exclude` lists fine-tune the directories scanned per engine, while profiles encapsulate per-engine argument sets and optional config files. Select profiles through config or via the CLI using `--profile pyright strict`.
+`include` / `exclude` lists fine-tune the directories scanned per engine, while
+profiles encapsulate per-engine argument sets and optional config files. Select
+profiles through config or via the CLI using `--profile pyright strict`.
 
 CLI summaries stay compact by default; opt-in to richer output as needed:
 
@@ -332,13 +418,17 @@ typewiz audit --summary expanded --summary-fields profile,plugin-args
 
 ### Readiness tips
 
-The readiness tab groups diagnostics by categories (unknownChecks, optionalChecks, unusedSymbols, general). Reduce “unknown” items first, then optional checks. Use profiles to stage enforcement per package, and verify with:
+The readiness tab groups diagnostics by categories (unknownChecks,
+optionalChecks, unusedSymbols, general). Reduce “unknown” items first, then
+optional checks. Use profiles to stage enforcement per package, and verify
+with:
 
 ```bash
 typewiz dashboard --manifest typing_audit.json --format json | jq '.tabs.readiness'
 ```
 
-`--summary full` expands output and automatically includes every field (`profile`, `config`, `plugin-args`, `paths`, `overrides`).
+`--summary full` expands output and automatically includes every field
+(`profile`, `config`, `plugin-args`, `paths`, `overrides`).
 
 When you want a quick console view, run the audit with the readiness switch:
 
@@ -346,7 +436,9 @@ When you want a quick console view, run the audit with the readiness switch:
 typewiz audit src --readiness --readiness-status blocked --readiness-status ready
 ```
 
-This prints the top offenders for each requested bucket immediately after the audit completes. Use `--readiness-level file` for per-file output or bump `--readiness-limit` to see a larger slice.
+This prints the top offenders for each requested bucket immediately after the
+audit completes. Use `--readiness-level file` for per-file output or bump
+`--readiness-limit` to see a larger slice.
 
 The standalone readiness command mirrors the new behaviour:
 
@@ -370,7 +462,9 @@ include = ["."]
 exclude = ["legacy"]
 ```
 
-Overrides apply in addition to the root config: plugin arguments are merged and deduplicated, profiles cascade, and relative include/exclude paths are resolved from the directory containing the override file.
+Overrides apply in addition to the root config: plugin arguments are merged and
+deduplicated, profiles cascade, and relative include/exclude paths are resolved
+from the directory containing the override file.
 
 ### Incremental caching
 
@@ -382,20 +476,26 @@ Each engine stores its diagnostics in `.typewiz_cache/cache.json`. The cache key
 
 If nothing relevant changed, typewiz rehydrates diagnostics from the cache, keeping exit codes consistent while skipping the external tool invocation.
 
-Because the cache is based on source fingerprints rather than the full Python environment, installing new plugins or
-type stubs can keep stale results alive. Delete `.typewiz_cache/` after dependency or configuration changes that
-alter tool behaviour to force a fresh run. Cached runs still include the upstream `toolSummary` block so manifests
-capture the raw totals reported by each engine, even when served from the cache.
+Because the cache is based on source fingerprints rather than the full Python
+environment, installing new plugins or type stubs can keep stale results
+alive. Delete `.typewiz_cache/` after dependency or configuration changes that
+alter tool behaviour to force a fresh run. Cached runs still include the
+upstream `toolSummary` block so manifests capture the raw totals reported by
+each engine, even when served from the cache.
 
-Set `TYPEWIZ_HASH_WORKERS=auto` (or a positive integer) to parallelise fingerprint hashing across threads when large
-projects need faster cache refreshes. Leave it unset to keep the default sequential strategy.
+Set `TYPEWIZ_HASH_WORKERS=auto` (or a positive integer) to parallelise
+fingerprint hashing across threads when large projects need faster cache
+refreshes. Leave it unset to keep the default sequential strategy.
 
-Every manifest entry also records the resolved engine options (`engineOptions` block) so you can trace which profile, config file, include/exclude directives, and plugin arguments produced a run.
+Every manifest entry also records the resolved engine options (`engineOptions`
+block) so you can trace which profile, config file, include/exclude
+directives, and plugin arguments produced a run.
 
 ### Logging
 
-Typewiz exposes a dedicated logging façade so CLI runs, engines, ratchets, and dashboards all emit
-consistent, structured records. Configure it once and wire the output into your collector:
+Typewiz exposes a dedicated logging façade so CLI runs, engines, ratchets, and
+dashboards all emit consistent, structured records. Configure it once and wire
+the output into your collector:
 
 ```python
 from typewiz.logging import configure_logging, structured_extra
@@ -413,8 +513,9 @@ logger.info(
 - `--log-format` / `TYPEWIZ_LOG_FORMAT` (`text`, `json`)
 - `--log-level` / `TYPEWIZ_LOG_LEVEL` (`debug`, `info`, `warning`, `error`)
 
-`structured_extra` enforces the typed payload used throughout the CLI so downstream tooling can rely
-on fields such as `component`, `tool`, `mode`, `duration_ms`, `counts`, `cached`, and `exit_code`.
+`structured_extra` enforces the typed payload used throughout the CLI so
+downstream tooling can rely on fields such as `component`, `tool`, `mode`,
+`duration_ms`, `counts`, `cached`, and `exit_code`.
 
 Sample JSON line (truncated for brevity):
 
@@ -436,8 +537,10 @@ See the [docs](docs/typewiz.md) for a full breakdown of components and fields.
 
 ### Extending typewiz
 
-Engines implement the `typewiz.engines.base.BaseEngine` protocol and are discovered through the `typewiz.engines`
-entry-point group. See [`docs/typewiz.md`](docs/typewiz.md) for a minimal template and lifecycle notes.
+Engines implement the `typewiz.engines.base.BaseEngine` protocol and are
+discovered through the `typewiz.engines` entry-point group. See
+[`docs/typewiz.md`](docs/typewiz.md) for a minimal template and lifecycle
+notes.
 
 ### Python API
 
@@ -517,30 +620,13 @@ When `typewiz` writes dashboards during `audit`, you can control the default HTM
 
 ## Roadmap
 
-1. **Foundation hardening** *(in progress)*
-   - Make CLI outputs idempotent (rewrite dashboards even when files exist)
-   - Generalise project-root discovery beyond `pyrightconfig.json` and surface clearer errors
-   - Tighten engine command construction with richer typing and validation hooks
-2. **Config layering & strong typing** *(done)*
-   - Introduce `ProjectConfig` and `EngineSettings` models with explicit defaults and overrides
-   - Support engine-specific command templates, config files, and include/exclude directives
-   - Enforce schema via Pydantic 2, emitting helpful guidance for misconfiguration
-3. **Profiles & execution directives** *(done)*
-   - Add named profiles per engine (e.g. `pyright.strict`, `mypy.incremental`) selectable via CLI/config
-   - Allow profile inheritance for quick customization (base profile + overrides)
-   - Resolve active profile order: CLI > profile > engine overrides > global defaults
-4. **Path-scoped configuration** *(done)*
-   - Read directory/file-level overrides via `typewiz.dir.toml` to tweak runners and thresholds
-   - Merge include/exclude directives per engine profile and expose overrides in manifests and dashboards
-   - Add glob support for opt-in/out paths per engine and profile
-5. **Dashboard experience** *(in progress)*
-   - Provide tabbed HTML dashboards with compact defaults and detailed drill-down views
-   - Surface override analysis, readiness (strict-ready / close / blocked), run logs, and hotspots without overwhelming the main page
-   - Add CLI toggles for default dashboard views in both audit and standalone commands
-   - Align JSON/Markdown outputs with tab structure for downstream tooling (including readiness metrics)
-6. **Ecosystem integration**
-   - Ship VS Code/IDE tasks that hydrate profiles and dashboards
-   - Grow first-party engines (Pyre, Pytype) once profile API is stable
+See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
+
+**Next milestones**:
+
+- **v0.2.0**: Per-rule/per-signature ratchets, additional engines (Pylint, Ruff), VS Code extension
+- **v0.3.0**: Cross-language support (TypeScript, Kotlin, C++), monorepo features
+- **v1.0+**: Enterprise features, advanced analytics, HTTP API
 
 ### Manifest validation and schema
 

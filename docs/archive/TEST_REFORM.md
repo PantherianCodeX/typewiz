@@ -459,7 +459,7 @@ test:performance:
 5. **Move performance tests** - 15 minutes
 6. **Create tests/README.md** - 30 minutes
 
-**Total Quick Wins: ~3 hours of work for major improvements**  
+**Total Quick Wins: ~3 hours of work for major improvements**
 
 ---
 

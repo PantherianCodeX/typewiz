@@ -1,0 +1,9 @@
+config_version = 0
+
+[audit]
+full_paths = ["src"]
+runners = ["pyright"]
+fail_on = "errors"
+
+[audit.engines.pyright]
+plugin_args = ["--project", "pyrightconfig.json"]

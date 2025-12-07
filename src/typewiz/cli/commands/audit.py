@@ -142,10 +142,7 @@ def register_audit_command(subparsers: SubparserCollection) -> None:
         action="append",
         metavar="RUNNER=ARG",
         default=[],
-        help=(
-            "Pass an extra argument to a runner (repeatable).",
-            " Example: --plugin-arg pyright=--verifytypes",
-        ),
+        help=("Pass an extra argument to a runner (repeatable). Example: --plugin-arg pyright=--verifytypes"),
     )
     register_argument(
         audit,
@@ -179,10 +176,7 @@ def register_audit_command(subparsers: SubparserCollection) -> None:
         "--fail-on",
         choices=[policy.value for policy in FailOnPolicy],
         default=None,
-        help=(
-            "Non-zero exit when diagnostics reach this severity",
-            " (aliases: none=never, any=any finding).",
-        ),
+        help=("Non-zero exit when diagnostics reach this severity (aliases: none=never, any=any finding)."),
     )
     register_argument(
         audit,
@@ -210,10 +204,7 @@ def register_audit_command(subparsers: SubparserCollection) -> None:
         "--compare-to",
         type=Path,
         default=None,
-        help=(
-            "Optional path to a previous manifest to compare totals against",
-            " (adds deltas to CI line).",
-        ),
+        help=("Optional path to a previous manifest to compare totals against (adds deltas to CI line)."),
     )
     register_argument(
         audit,

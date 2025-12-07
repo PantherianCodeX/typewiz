@@ -85,13 +85,16 @@ all.fix: ## Apply ruff formatting and autofix lints
 	@$(MAKE) fix
 
 ##@ Lint & Format
-lint: lint.ruff lint.format ## Lint + format checks
+lint: lint.ruff lint.format lint.markdown ## Lint + format checks
 
 lint.ruff: ## Run ruff lint
 	$(RUFF) check
 
 lint.format: ## Run ruff format check (no changes)
 	$(RUFF) format --check
+
+lint.markdown: ## Run markdownlint on all markdown files
+	markdownlint '**/*.md' --ignore node_modules --ignore .venv --ignore dist --ignore build --ignore 'docs/archive/**' --ignore 'docs/release_docs_plan.md'
 
 format: ## Apply ruff formatter
 	$(RUFF) format

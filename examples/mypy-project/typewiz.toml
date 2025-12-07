@@ -1,0 +1,9 @@
+config_version = 0
+
+[audit]
+full_paths = ["src"]
+runners = ["mypy"]
+fail_on = "errors"
+
+[audit.engines.mypy]
+plugin_args = ["--config-file", "mypy.ini"]
