@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for API."""
 
@@ -8,25 +20,25 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.fixtures.stubs import AuditStubEngine, RecordingEngine
-from typewiz import AuditConfig, Config, run_audit
-from typewiz._internal.utils import consume
-from typewiz.api import build_summary as api_build_summary
-from typewiz.api import render_dashboard_summary, validate_manifest_file
-from typewiz.api import render_html as api_render_html
-from typewiz.api import render_markdown as api_render_markdown
-from typewiz.config import EngineProfile, EngineSettings
-from typewiz.core.model_types import (
+from ratchetr import AuditConfig, Config, run_audit
+from ratchetr._internal.utils import consume
+from ratchetr.api import build_summary as api_build_summary
+from ratchetr.api import render_dashboard_summary, validate_manifest_file
+from ratchetr.api import render_html as api_render_html
+from ratchetr.api import render_markdown as api_render_markdown
+from ratchetr.config import EngineProfile, EngineSettings
+from ratchetr.core.model_types import (
     DashboardFormat,
     DashboardView,
     Mode,
     ReadinessStatus,
     SeverityLevel,
 )
-from typewiz.core.type_aliases import EngineName, ProfileName, RunnerName, ToolName
-from typewiz.core.types import Diagnostic, RunResult
-from typewiz.manifest.typed import ManifestData, ToolSummary
-from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
+from ratchetr.core.type_aliases import EngineName, ProfileName, RunnerName, ToolName
+from ratchetr.core.types import Diagnostic, RunResult
+from ratchetr.manifest.typed import ManifestData, ToolSummary
+from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
+from tests.fixtures.stubs import AuditStubEngine, RecordingEngine
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -71,8 +83,8 @@ def test_run_audit_programmatic(
     def _resolve_stub(_: Sequence[str]) -> list[AuditStubEngine]:
         return [AuditStubEngine(fake_run_result)]
 
-    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_stub)
-    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve_stub)
+    monkeypatch.setattr("ratchetr.engines.resolve_engines", _resolve_stub)
+    monkeypatch.setattr("ratchetr.audit.api.resolve_engines", _resolve_stub)
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
@@ -133,8 +145,8 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     def _resolve_recording(_: Sequence[str]) -> list[RecordingEngine]:
         return [engine]
 
-    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_recording)
-    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve_recording)
+    monkeypatch.setattr("ratchetr.engines.resolve_engines", _resolve_recording)
+    monkeypatch.setattr("ratchetr.audit.api.resolve_engines", _resolve_recording)
     # ensure compatibility with new API method
     (tmp_path / "src").mkdir(parents=True, exist_ok=True)
     (tmp_path / "extra").mkdir(parents=True, exist_ok=True)
@@ -185,10 +197,10 @@ def test_run_audit_respects_folder_overrides(
     def _resolve_folder(_: Sequence[str]) -> list[RecordingEngine]:
         return [engine]
 
-    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_folder)
-    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve_folder)
+    monkeypatch.setattr("ratchetr.engines.resolve_engines", _resolve_folder)
+    monkeypatch.setattr("ratchetr.audit.api.resolve_engines", _resolve_folder)
 
-    root_config = tmp_path / "typewiz.toml"
+    root_config = tmp_path / "ratchetr.toml"
     consume(
         root_config.write_text(
             """
@@ -206,7 +218,7 @@ runners = ["stub"]
     billing = packages / "billing"
     billing.mkdir(parents=True, exist_ok=True)
     consume((billing / "module.py").write_text("x = 1\n", encoding="utf-8"))
-    override = billing / "typewiz.dir.toml"
+    override = billing / "ratchetr.dir.toml"
     consume(
         override.write_text(
             """
@@ -277,8 +289,8 @@ def test_run_audit_cache_preserves_tool_summary(
     def _resolve_cache(_: Sequence[str]) -> list[RecordingEngine]:
         return [engine]
 
-    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve_cache)
-    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve_cache)
+    monkeypatch.setattr("ratchetr.engines.resolve_engines", _resolve_cache)
+    monkeypatch.setattr("ratchetr.audit.api.resolve_engines", _resolve_cache)
 
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     consume((tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8"))
@@ -290,9 +302,9 @@ def test_run_audit_cache_preserves_tool_summary(
     first_full = next(run for run in first.runs if run.mode is Mode.FULL)
     assert first_full.cached is False
     assert first_full.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
-    cache_path = tmp_path / ".typewiz_cache" / "cache.json"
+    cache_path = tmp_path / ".ratchetr_cache" / "cache.json"
     assert cache_path.exists()
-    assert not (tmp_path / ".typewiz_cache.json").exists()
+    assert not (tmp_path / ".ratchetr_cache.json").exists()
     runs_first = first.manifest.get("runs") or []
     first_manifest_full = next(run for run in runs_first if run.get("mode") == "full")
     tool_summary = first_manifest_full.get("toolSummary") or {}

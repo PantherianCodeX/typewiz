@@ -1,16 +1,16 @@
-# typewiz
+# ratchetr
 
-typewiz collects typing diagnostics from Pyright, mypy, and custom plugins,
+ratchetr collects typing diagnostics from Pyright, mypy, and custom plugins,
 aggregates them into a JSON manifest, and renders dashboards to help teams plan
 stricter typing rollouts.
 
 > Status: `0.1.0` — see CHANGELOG.md for full release notes. This release
-> inaugurates the commercial Typewiz distribution under the Typewiz Software
+> inaugurates the commercial ratchetr distribution under the ratchetr Software
 > License Agreement.
 
 ## ⚠️ Alpha Status
 
-Typewiz is **alpha-quality software (v0.1.x)**. While the core functionality is
+ratchetr is **alpha-quality software (v0.1.x)**. While the core functionality is
 solid and tested, expect:
 
 - API and CLI changes between minor versions
@@ -24,7 +24,7 @@ updates. See [ROADMAP.md](ROADMAP.md) for stability commitments.
 
 - Pluggable engine architecture with Pyright and mypy built in (extend via entry
   points)
-- Built-in incremental cache (`.typewiz_cache/cache.json`) keyed on file
+- Built-in incremental cache (`.ratchetr_cache/cache.json`) keyed on file
   fingerprints and engine flags
 - Deterministic diagnostics (sorted by path/line) and per-folder aggregates
   with actionable hints
@@ -35,7 +35,7 @@ updates. See [ROADMAP.md](ROADMAP.md) for stability commitments.
 
 ### Architecture
 
-Typewiz follows a **schema-first, plugin-friendly** design:
+ratchetr follows a **schema-first, plugin-friendly** design:
 
 - **Engines** (builtin or plugins) produce diagnostics
 - **Manifest builder** aggregates results with strict JSON Schema validation
@@ -43,14 +43,14 @@ Typewiz follows a **schema-first, plugin-friendly** design:
 - **Ratchet system** enforces per-file budgets with signature tracking
 
 For deep-dive architecture documentation, see
-[docs/typewiz.md](docs/typewiz.md).
+[docs/ratchetr.md](docs/ratchetr.md).
 
 ## Installation
 
 Requires Python 3.12+.
 
 ```bash
-pip install typewiz
+pip install ratchetr
 ```
 
 ### Local development (Python 3.12+)
@@ -68,21 +68,21 @@ standards, and release process.
 
 ## Usage
 
-Generate a manifest and dashboards (typewiz auto-detects common Python folders
+Generate a manifest and dashboards (ratchetr auto-detects common Python folders
 when `full_paths` is not configured):
 
 ```bash
-typewiz audit --max-depth 3 src tests --manifest typing_audit.json
-typewiz dashboard --manifest typing_audit.json --format markdown --output dashboard.md
-typewiz dashboard --manifest typing_audit.json --format html --output dashboard.html
+ratchetr audit --max-depth 3 src tests --manifest typing_audit.json
+ratchetr dashboard --manifest typing_audit.json --format markdown --output dashboard.md
+ratchetr dashboard --manifest typing_audit.json --format html --output dashboard.html
 
 # fingerprinting options for large repos
-typewiz audit --respect-gitignore --max-files 50000 --manifest typing_audit.json
+ratchetr audit --respect-gitignore --max-files 50000 --manifest typing_audit.json
 # parallelise hashing or skip writes entirely
-typewiz audit --hash-workers auto --dry-run
+ratchetr audit --hash-workers auto --dry-run
 ```
 
-Running `typewiz audit` with no additional arguments also works — typewiz will
+Running `ratchetr audit` with no additional arguments also works — ratchetr will
 analyse the current project using its built-in Pyright and mypy defaults.
 
 Pass extra flags to engines with `--plugin-arg runner=VALUE` (repeatable). When
@@ -95,33 +95,33 @@ manifests/dashboards (the CLI summary still prints totals for CI logs).
 
 ### Querying manifest summaries
 
-The `typewiz query` command exposes the most common manifest lookups
+The `ratchetr query` command exposes the most common manifest lookups
 directly—no more piping through `jq` or custom scripts.
 
 ```bash
 # Severity overview with per-run totals as a quick CI check (table or json)
-typewiz query overview --manifest typing_audit.json --include-runs --format table
+ratchetr query overview --manifest typing_audit.json --include-runs --format table
 
 # Top error-producing files, limited to five entries
-typewiz query hotspots --manifest typing_audit.json --kind files --limit 5
+ratchetr query hotspots --manifest typing_audit.json --kind files --limit 5
 
 # Folder-level readiness buckets surfaced as JSON for dashboards
-typewiz query readiness --manifest typing_audit.json --level folder --status blocked --status close
+ratchetr query readiness --manifest typing_audit.json --level folder --status blocked --status close
 
 # Filter runs by tool/mode to see error pressure for specific engines
-typewiz query runs --manifest typing_audit.json --tool pyright --mode current --format table
+ratchetr query runs --manifest typing_audit.json --tool pyright --mode current --format table
 
 # Inspect engine profiles (plugin args, includes/excludes) captured in the manifest
-typewiz query engines --manifest typing_audit.json --format table
+ratchetr query engines --manifest typing_audit.json --format table
 
 # Quick snapshot of the most frequent diagnostic rules
-typewiz query rules --manifest typing_audit.json --limit 10
+ratchetr query rules --manifest typing_audit.json --limit 10
 
 # Include offending files per rule
-typewiz query rules --manifest typing_audit.json --include-paths --limit 5
+ratchetr query rules --manifest typing_audit.json --include-paths --limit 5
 
 # Filter readiness payloads by severity
-typewiz query readiness --manifest typing_audit.json --severity warning --format table
+ratchetr query readiness --manifest typing_audit.json --severity warning --format table
 ```
 
 Each subcommand accepts `--format json` (default) or `--format table` for a
@@ -133,8 +133,8 @@ Discover which engines are available (built-ins plus entry points) and clear
 stale caches:
 
 ```bash
-typewiz engines list --format table
-typewiz cache clear
+ratchetr engines list --format table
+ratchetr cache clear
 ```
 
 ### Per-file ratchets
@@ -144,13 +144,13 @@ ratchet budget and checking it in CI:
 
 ```bash
 # capture current diagnostics per file
-typewiz ratchet init --manifest typing_audit.json --output .typewiz/ratchet.json --run pyright:current --severities errors,warnings --target errors=0
+ratchetr ratchet init --manifest typing_audit.json --output .ratchetr/ratchet.json --run pyright:current --severities errors,warnings --target errors=0
 
 # fail builds when a file exceeds its allowance (also flags engine/profile drift)
-typewiz ratchet check --manifest typing_audit.json --ratchet .typewiz/ratchet.json
+ratchetr ratchet check --manifest typing_audit.json --ratchet .ratchetr/ratchet.json
 
 # auto-ratchet improvements down to new baselines after fixes land
-typewiz ratchet update --manifest typing_audit.json --ratchet .typewiz/ratchet.json
+ratchetr ratchet update --manifest typing_audit.json --ratchet .ratchetr/ratchet.json
 ```
 
 Ratchet files record the merged engine options (profiles, plugin args,
@@ -196,18 +196,18 @@ under the hood), so temporary or vendor folders aren’t touched unless you opt 
 
 ```bash
 # quick ad-hoc mapping
-python scripts/refactor_imports.py --map typewiz.logging_utils=typewiz.logging --map typewiz._internal.exceptions=typewiz.exceptions
+python scripts/refactor_imports.py --map ratchetr.logging_utils=ratchetr.logging --map ratchetr._internal.exceptions=ratchetr.exceptions
 
 # store large migrations in a file
 cat > mappings.txt <<'EOF'
-typewiz.logging_utils=typewiz.logging
-typewiz._internal.exceptions=typewiz.exceptions
+ratchetr.logging_utils=ratchetr.logging
+ratchetr._internal.exceptions=ratchetr.exceptions
 EOF
 python scripts/refactor_imports.py --mapping-file mappings.txt --apply
 
 # insert missing imports or update __all__ entries
 python scripts/refactor_imports.py \
-  --ensure-import src/typewiz/api.py:typewiz.runtime:new_helper \
+  --ensure-import src/ratchetr/api.py:ratchetr.runtime:new_helper \
   --export-map run_audit=execute_audit \
   --apply
 ```
@@ -220,21 +220,21 @@ It only touches `import`/`from` statements under `src/` by default; pass
 Downstream code should import shared helpers from the supported shims instead of
 the private `_internal` modules. The stable surfaces are:
 
-- `typewiz.runtime` for JSON/command helpers and path resolution utilities.
-- `typewiz.logging` for CLI logging setup.
-- `typewiz.exceptions` and `typewiz.error_codes` for structured error handling.
-- `typewiz.cache` and `typewiz.collections` for cache helpers and dedupe utilities.
+- `ratchetr.runtime` for JSON/command helpers and path resolution utilities.
+- `ratchetr.logging` for CLI logging setup.
+- `ratchetr.exceptions` and `ratchetr.error_codes` for structured error handling.
+- `ratchetr.cache` and `ratchetr.collections` for cache helpers and dedupe utilities.
 
 These modules are what the CLI and services layer use today; importing directly
-from `typewiz._internal` is blocked in CI and will fail guardrail tests.
+from `ratchetr._internal` is blocked in CI and will fail guardrail tests.
 
 Validate a manifest against the bundled JSON Schema:
 
 ```bash
-typewiz manifest validate typing_audit.json
+ratchetr manifest validate typing_audit.json
 ```
 
-Manifests must declare `schemaVersion` `"1"` exactly; older payloads or files missing the field now fail fast instead of being upgraded implicitly. Re-run `typewiz audit` to regenerate manifests before running query/ratchet commands if your artefacts predate the current schema.
+Manifests must declare `schemaVersion` `"1"` exactly; older payloads or files missing the field now fail fast instead of being upgraded implicitly. Re-run `ratchetr audit` to regenerate manifests before running query/ratchet commands if your artefacts predate the current schema.
 
 ### Why both Pyright and mypy?
 
@@ -273,14 +273,14 @@ See [ROADMAP.md](ROADMAP.md) for planned improvements.
 
 ## Licensing & Commercial Use
 
-Typewiz is distributed under the **Typewiz Software License Agreement (Proprietary)**.
+ratchetr is distributed under the **ratchetr Software License Agreement (Proprietary)**.
 
-- **Evaluation:** You may install and evaluate Typewiz internally for up to 30
+- **Evaluation:** You may install and evaluate ratchetr internally for up to 30
   days.
 - **Commercial/Production use:** Requires a commercial license.
 - **Prohibited:** Redistribution, sublicensing, hosting as a service, or
   sublicensing without written authorization.
-- **License keys:** Set `TYPEWIZ_LICENSE_KEY=<your-key>` in the environment to
+- **License keys:** Set `RATCHETR_LICENSE_KEY=<your-key>` in the environment to
   suppress the evaluation banner and unlock licensed features.
 
 See [`LICENSE`](./LICENSE) and [`TERMS.md`](./TERMS.md) for the full agreement
@@ -293,16 +293,16 @@ their original terms in the legacy repository history.
 ### Custom engines (plugins)
 
 Write a small class implementing the `BaseEngine` protocol and expose it via
-the `typewiz.engines` entry point.
+the `ratchetr.engines` entry point.
 
 ```python
 # examples/plugins/simple_engine.py
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
-from typewiz.core.model_types import SeverityLevel
-from typewiz.type_aliases import ToolName
-from typewiz.types import Diagnostic
+from ratchetr.engines.base import BaseEngine, EngineContext, EngineResult
+from ratchetr.core.model_types import SeverityLevel
+from ratchetr.type_aliases import ToolName
+from ratchetr.types import Diagnostic
 
 @dataclass
 class SimpleEngine(BaseEngine):
@@ -330,23 +330,23 @@ class SimpleEngine(BaseEngine):
         )
 ```
 
-Built-in adapters live under `typewiz.engines.builtin` (see `pyright` and
+Built-in adapters live under `ratchetr.engines.builtin` (see `pyright` and
 `mypy`) and are good templates for production plugins. Higher layers
-(CLI/services) consume public modules such as `typewiz.runtime`,
-`typewiz.logging`, and `typewiz.license`; direct imports from
-`typewiz._internal` are disallowed and enforced via tests.
+(CLI/services) consume public modules such as `ratchetr.runtime`,
+`ratchetr.logging`, and `ratchetr.license`; direct imports from
+`ratchetr._internal` are disallowed and enforced via tests.
 
 Declare the entry point in your `pyproject.toml`:
 
 ```toml
-[project.entry-points."typewiz.engines"]
+[project.entry-points."ratchetr.engines"]
 simple = "your_package.simple:SimpleEngine"
 ```
 
 Then run only your engine:
 
 ```bash
-typewiz audit --runner simple
+ratchetr audit --runner simple
 ```
 
 ### Windows notes
@@ -363,22 +363,22 @@ typewiz audit --runner simple
 Add deltas to the compact CI line by comparing against a previous manifest:
 
 ```bash
-typewiz audit --manifest typing_audit.json --compare-to last_manifest.json
+ratchetr audit --manifest typing_audit.json --compare-to last_manifest.json
 ```
 
 Totals are printed along with `delta: errors=±N warnings=±N info=±N`.
 
 ### Configuration
 
-typewiz looks for `typewiz.toml` (or `.typewiz.toml`) and validates it with a
-schema version header. Run `typewiz init` to scaffold a commented starter
-configuration, or copy `examples/typewiz.sample.toml` as a starting point.
+ratchetr looks for `ratchetr.toml` (or `.ratchetr.toml`) and validates it with a
+schema version header. Run `ratchetr init` to scaffold a commented starter
+configuration, or copy `examples/ratchetr.sample.toml` as a starting point.
 
 ```toml
 config_version = 0
 
 [audit]
-# Let typewiz auto-detect python packages by default. Uncomment to override.
+# Let ratchetr auto-detect python packages by default. Uncomment to override.
 # full_paths = ["src", "tests"]
 runners = ["pyright", "mypy"]
 fail_on = "errors"
@@ -413,7 +413,7 @@ profiles through config or via the CLI using `--profile pyright strict`.
 CLI summaries stay compact by default; opt-in to richer output as needed:
 
 ```bash
-typewiz audit --summary expanded --summary-fields profile,plugin-args
+ratchetr audit --summary expanded --summary-fields profile,plugin-args
 ```
 
 ### Readiness tips
@@ -424,7 +424,7 @@ optional checks. Use profiles to stage enforcement per package, and verify
 with:
 
 ```bash
-typewiz dashboard --manifest typing_audit.json --format json | jq '.tabs.readiness'
+ratchetr dashboard --manifest typing_audit.json --format json | jq '.tabs.readiness'
 ```
 
 `--summary full` expands output and automatically includes every field
@@ -433,7 +433,7 @@ typewiz dashboard --manifest typing_audit.json --format json | jq '.tabs.readine
 When you want a quick console view, run the audit with the readiness switch:
 
 ```bash
-typewiz audit src --readiness --readiness-status blocked --readiness-status ready
+ratchetr audit src --readiness --readiness-status blocked --readiness-status ready
 ```
 
 This prints the top offenders for each requested bucket immediately after the
@@ -443,14 +443,14 @@ audit completes. Use `--readiness-level file` for per-file output or bump
 The standalone readiness command mirrors the new behaviour:
 
 ```bash
-typewiz readiness --manifest typing_audit.json --status blocked --status ready
+ratchetr readiness --manifest typing_audit.json --status blocked --status ready
 ```
 
 It now accepts multiple `--status` arguments, renders headers for every bucket, and reports `<none>` when a bucket is empty so the output stays informative in CI logs. Pair it with `--severity error --severity warning` to focus on high-signal findings, and `--details` to include per-entry severity counts.
 
 ### Folder overrides
 
-Drop a `typewiz.dir.toml` (or `.typewizdir.toml`) inside any folder to tune engines for that subtree:
+Drop a `ratchetr.dir.toml` (or `.ratchetrdir.toml`) inside any folder to tune engines for that subtree:
 
 ```toml
 [active_profiles]
@@ -468,22 +468,22 @@ from the directory containing the override file.
 
 ### Incremental caching
 
-Each engine stores its diagnostics in `.typewiz_cache/cache.json`. The cache key captures:
+Each engine stores its diagnostics in `.ratchetr_cache/cache.json`. The cache key captures:
 
 - engine name and mode (`current` / `full`)
 - plugin arguments and resolved command flags
 - file fingerprints (mtime, size, content hash) for all scanned paths and configs
 
-If nothing relevant changed, typewiz rehydrates diagnostics from the cache, keeping exit codes consistent while skipping the external tool invocation.
+If nothing relevant changed, ratchetr rehydrates diagnostics from the cache, keeping exit codes consistent while skipping the external tool invocation.
 
 Because the cache is based on source fingerprints rather than the full Python
 environment, installing new plugins or type stubs can keep stale results
-alive. Delete `.typewiz_cache/` after dependency or configuration changes that
+alive. Delete `.ratchetr_cache/` after dependency or configuration changes that
 alter tool behaviour to force a fresh run. Cached runs still include the
 upstream `toolSummary` block so manifests capture the raw totals reported by
 each engine, even when served from the cache.
 
-Set `TYPEWIZ_HASH_WORKERS=auto` (or a positive integer) to parallelise
+Set `RATCHETR_HASH_WORKERS=auto` (or a positive integer) to parallelise
 fingerprint hashing across threads when large projects need faster cache
 refreshes. Leave it unset to keep the default sequential strategy.
 
@@ -493,25 +493,25 @@ directives, and plugin arguments produced a run.
 
 ### Logging
 
-Typewiz exposes a dedicated logging façade so CLI runs, engines, ratchets, and
+ratchetr exposes a dedicated logging façade so CLI runs, engines, ratchets, and
 dashboards all emit consistent, structured records. Configure it once and wire
 the output into your collector:
 
 ```python
-from typewiz.logging import configure_logging, structured_extra
-from typewiz.core.model_types import LogComponent
+from ratchetr.logging import configure_logging, structured_extra
+from ratchetr.core.model_types import LogComponent
 
 # CLI flags take precedence, then environment variables, then these defaults.
 configure_logging(log_format="json", log_level="info")
-logger = logging.getLogger("typewiz")
+logger = logging.getLogger("ratchetr")
 logger.info(
-    "typewiz audit starting",
+    "ratchetr audit starting",
     extra=structured_extra(component=LogComponent.CLI, details={"runs": 2}),
 )
 ```
 
-- `--log-format` / `TYPEWIZ_LOG_FORMAT` (`text`, `json`)
-- `--log-level` / `TYPEWIZ_LOG_LEVEL` (`debug`, `info`, `warning`, `error`)
+- `--log-format` / `RATCHETR_LOG_FORMAT` (`text`, `json`)
+- `--log-level` / `RATCHETR_LOG_LEVEL` (`debug`, `info`, `warning`, `error`)
 
 `structured_extra` enforces the typed payload used throughout the CLI so
 downstream tooling can rely on fields such as `component`, `tool`, `mode`,
@@ -523,7 +523,7 @@ Sample JSON line (truncated for brevity):
 {
   "timestamp": "2025-01-12T12:12:01.234567+00:00",
   "level": "info",
-  "logger": "typewiz.audit.execution",
+  "logger": "ratchetr.audit.execution",
   "message": "Running pyright:current (pyright --outputjson ...)",
   "component": "cli",
   "tool": "pyright",
@@ -533,22 +533,22 @@ Sample JSON line (truncated for brevity):
 }
 ```
 
-See the [docs](docs/typewiz.md) for a full breakdown of components and fields.
+See the [docs](docs/ratchetr.md) for a full breakdown of components and fields.
 
-### Extending typewiz
+### Extending ratchetr
 
-Engines implement the `typewiz.engines.base.BaseEngine` protocol and are
-discovered through the `typewiz.engines` entry-point group. See
-[`docs/typewiz.md`](docs/typewiz.md) for a minimal template and lifecycle
+Engines implement the `ratchetr.engines.base.BaseEngine` protocol and are
+discovered through the `ratchetr.engines` entry-point group. See
+[`docs/ratchetr.md`](docs/ratchetr.md) for a minimal template and lifecycle
 notes.
 
 ### Python API
 
-Use typewiz programmatically without the CLI:
+Use ratchetr programmatically without the CLI:
 
 ```python
 from pathlib import Path
-from typewiz import run_audit, AuditConfig
+from ratchetr import run_audit, AuditConfig
 
 # Minimal: discover config and run
 result = run_audit(project_root=Path.cwd(), build_summary_output=True)
@@ -574,16 +574,16 @@ print(result.summary["topFolders"][:3])
 manifest = result.manifest
 ```
 
-### Public API (`typewiz.api`)
+### Public API (`ratchetr.api`)
 
-The `typewiz.api` module re-exports the high-level orchestration helpers so you can script audits,
+The `ratchetr.api` module re-exports the high-level orchestration helpers so you can script audits,
 dashboards, and manifest validation without digging into internal packages.
 
 ```python
 from pathlib import Path
 
-from typewiz import AuditConfig
-from typewiz.api import (
+from ratchetr import AuditConfig
+from ratchetr.api import (
     build_summary,
     render_markdown,
     run_audit,
@@ -608,15 +608,15 @@ assert validation.is_valid, validation.payload_errors
 Render dashboards from any manifest:
 
 ```bash
-python -m typewiz dashboard --manifest typing_audit_manifest.json --format markdown --output typing_dashboard.md
-python -m typewiz dashboard --manifest typing_audit_manifest.json --format html --view engines --output typing_dashboard.html
+python -m ratchetr dashboard --manifest typing_audit_manifest.json --format markdown --output typing_dashboard.md
+python -m ratchetr dashboard --manifest typing_audit_manifest.json --format html --view engines --output typing_dashboard.html
 ```
 
 - `json` (default) – machine-readable summary with per-tab sections under `tabs.*` (overview, engines, hotspots, readiness, runs).
 - `markdown` – lightweight output for issues and PR comments (mirrors the tab content with override digests and readiness notes).
 - `html` – interactive report with tabs for Overview, Engine Details, Hotspots, Readiness, and Run Logs (choose the initial tab with `--view`).
 
-When `typewiz` writes dashboards during `audit`, you can control the default HTML tab with `--dashboard-view`, and the standalone `dashboard` command mirrors the same tabs across HTML/Markdown/JSON outputs.
+When `ratchetr` writes dashboards during `audit`, you can control the default HTML tab with `--dashboard-view`, and the standalone `dashboard` command mirrors the same tabs across HTML/Markdown/JSON outputs.
 
 ## Roadmap
 
@@ -630,33 +630,33 @@ See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
 
 ### Manifest validation and schema
 
-Typewiz includes a Pydantic-backed manifest validator and a CLI to emit the JSON Schema:
+ratchetr includes a Pydantic-backed manifest validator and a CLI to emit the JSON Schema:
 
 - Validate an existing manifest file:
 
-  `typewiz manifest validate path/to/manifest.json`
+  `ratchetr manifest validate path/to/manifest.json`
 
   If the optional `jsonschema` package is available, the CLI also validates against the
   generated schema and reports any schema errors.
 
 - Emit the manifest JSON Schema:
 
-  `typewiz manifest schema --output schemas/typing-manifest.schema.json`
+  `ratchetr manifest schema --output schemas/typing-manifest.schema.json`
 
-Programmatic validation is available via `typewiz.api.validate_manifest_file` (payload plus optional
-JSON Schema) or the lower-level `typewiz.manifest_models.validate_manifest_payload`. Validation errors
-raise `TypewizValidationError` with access to the underlying Pydantic `ValidationError` for detailed
+Programmatic validation is available via `ratchetr.api.validate_manifest_file` (payload plus optional
+JSON Schema) or the lower-level `ratchetr.manifest_models.validate_manifest_payload`. Validation errors
+raise `RatchetrValidationError` with access to the underlying Pydantic `ValidationError` for detailed
 diagnostics.
 
 ### Exception Reference
 
-Typewiz exposes a small, precise exception hierarchy to enable robust error handling.
+ratchetr exposes a small, precise exception hierarchy to enable robust error handling.
 
-- `typewiz.TypewizError` (base): Base class for all Typewiz-specific exceptions.
-- `typewiz.TypewizValidationError`: Raised for validation failures (e.g., manifest or config parsing).
-- `typewiz.TypewizTypeError`: Raised when runtime inputs have invalid types.
+- `ratchetr.RatchetrError` (base): Base class for all Ratchetr-specific exceptions.
+- `ratchetr.RatchetrValidationError`: Raised for validation failures (e.g., manifest or config parsing).
+- `ratchetr.RatchetrTypeError`: Raised when runtime inputs have invalid types.
 
-Config-specific exceptions (raised from `typewiz.config`):
+Config-specific exceptions (raised from `ratchetr.config`):
 
 - `ConfigValidationError`: Base for config validation issues.
 - `ConfigFieldTypeError`: Field has the wrong type (e.g., `fail_on` not a string).
@@ -679,12 +679,12 @@ Manifest:
 Example usage:
 
 ```python
-from typewiz import TypewizValidationError
-from typewiz.config import load_config
+from ratchetr import RatchetrValidationError
+from ratchetr.config import load_config
 
 try:
     cfg = load_config()
-except TypewizValidationError as exc:
+except RatchetrValidationError as exc:
     # Handle or log validation details
     print("Config invalid:", exc)
 ```
@@ -702,7 +702,7 @@ Use the Makefile to run common workflows with consistent settings:
 - Typing
   - `make type` – Run mypy + pyright
   - `make typing.run` – Baseline (pyright + mypy) and strict pass
-  - `make typing.ci` – Generate Typewiz manifest and dashboards (JSON/MD/HTML)
+  - `make typing.ci` – Generate ratchetr manifest and dashboards (JSON/MD/HTML)
   - `make verifytypes` – Run pyright `--verifytypes` for API contracts
 
 - Tests

@@ -19,7 +19,7 @@ ifeq ($(OS_NAME),Windows_NT)
   MYPY ?= $(BIN_DIR)/mypy.exe
   PYRIGHT ?= $(BIN_DIR)/pyright.exe
   PYTEST ?= $(BIN_DIR)/pytest.exe
-  TYPEWIZ ?= $(BIN_DIR)/typewiz.exe
+  RATCHETR ?= $(BIN_DIR)/ratchetr.exe
 else
   BIN_DIR := $(VENV)/bin
   PYTHON ?= $(BIN_DIR)/python
@@ -28,20 +28,20 @@ else
   MYPY ?= $(BIN_DIR)/mypy
   PYRIGHT ?= $(BIN_DIR)/pyright
   PYTEST ?= $(BIN_DIR)/pytest
-  TYPEWIZ ?= $(BIN_DIR)/typewiz
+  RATCHETR ?= $(BIN_DIR)/ratchetr
 endif
 
 # Reports / defaults
 REPORTS_DIR ?= reports
 TYPING_REPORT_DIR ?= $(REPORTS_DIR)/typing
 MANIFEST_PATH ?= $(TYPING_REPORT_DIR)/typing_audit.json
-TYPEWIZ_STATUSES ?= blocked ready
-TYPEWIZ_LEVEL ?= folder
-TYPEWIZ_LIMIT ?= 20
+RATCHETR_STATUSES ?= blocked ready
+RATCHETR_LEVEL ?= folder
+RATCHETR_LIMIT ?= 20
 # NOTE: pyright --verifytypes only works when the package has been pip-installed (requires network).
 # Sandbox environments cannot perform that install today, so keep the gate opt-in.
 VERIFYTYPES_ENABLED ?= 0
-VERIFYTYPES_PACKAGE ?= typewiz
+VERIFYTYPES_PACKAGE ?= ratchetr
 
 .PHONY: \
   help %.help \
@@ -58,7 +58,7 @@ VERIFYTYPES_PACKAGE ?= typewiz
   package.build package.check package.clean package.install-test \
   check.error-codes \
   precommit.check \
-  typewiz.audit typewiz.dashboard typewiz.readiness typewiz.clean \
+  ratchetr.audit ratchetr.dashboard ratchetr.readiness ratchetr.clean \
   clean.all clean.mypy clean.pyright clean.pycache clean.coverage
 
 ##@ CI
@@ -88,20 +88,20 @@ all.fix: ## Apply ruff formatting and autofix lints
 lint: lint.ruff lint.format lint.markdown ## Lint + format checks
 
 lint.ruff: ## Run ruff lint
-	$(RUFF) check
+	uv run $(RUFF) check
 
 lint.format: ## Run ruff format check (no changes)
-	$(RUFF) format --check
+	uv run $(RUFF) format --check
 
 lint.markdown: ## Run markdownlint on all markdown files
-	markdownlint '**/*.md' --ignore node_modules --ignore .venv --ignore dist --ignore build --ignore 'docs/archive/**' --ignore 'docs/release_docs_plan.md'
+	uv run markdownlint '**/*.md' --ignore node_modules --ignore .venv --ignore dist --ignore build --ignore 'docs/archive/**' --ignore 'docs/release_docs_plan.md'
 
 format: ## Apply ruff formatter
-	$(RUFF) format
+	uv run $(RUFF) format
 
 fix: ## Apply ruff formatter and autofix lints
-	$(RUFF) format
-	$(RUFF) check --fix
+	uv run $(RUFF) format
+	uv run $(RUFF) check --fix
 
 ##@ Pre-commit
 precommit.check: ## Run lint (ruff) and typing checks in parallel (used by pre-commit)
@@ -120,16 +120,16 @@ precommit.check: ## Run lint (ruff) and typing checks in parallel (used by pre-c
 type: type.mypy type.pyright ## Run mypy + pyright
 
 type.mypy: ## Run mypy (strict)
-	$(MYPY) --no-incremental
+	uv run $(MYPY) --no-incremental
 
 type.pyright: ## Run pyright using repo config from pyproject.toml
-	$(PYRIGHT)
+	uv run $(PYRIGHT)
 
 type.verify: ## Verify public typing completeness via pyright (opt-in via VERIFYTYPES_ENABLED=1)
 ifeq ($(VERIFYTYPES_ENABLED),1)
-	PYTHONPATH=src $(PYRIGHT) --verifytypes $(VERIFYTYPES_PACKAGE) --ignoreexternal
+	PYTHONPATH=src uv run $(PYRIGHT) --verifytypes $(VERIFYTYPES_PACKAGE) --ignoreexternal
 else
-	@echo "[skip] pyright --verifytypes requires $(VERIFYTYPES_PACKAGE) to be pip-installed; set VERIFYTYPES_ENABLED=1 after installing it."
+	@echo "[skip] uv run pyright --verifytypes requires $(VERIFYTYPES_PACKAGE) to be pip-installed; set VERIFYTYPES_ENABLED=1 after installing it."
 endif
 
 verifytypes: ## Alias for type.verify (pyright --verifytypes)
@@ -138,70 +138,70 @@ verifytypes: ## Alias for type.verify (pyright --verifytypes)
 typing.run: typing.baseline typing.strict type.verify ## Run baseline then strict checks plus public typing
 
 typing.baseline: ## Run pyright then mypy checks
-	$(PYRIGHT)
-	$(MYPY) --no-incremental
-	$(MYPY) --no-incremental
+	uv run $(PYRIGHT)
+	uv run $(MYPY) --no-incremental
+	uv run $(MYPY) --no-incremental
 
 typing.strict: ## Enforce strict gates (ruff + mypy strict again)
-	$(RUFF) check
-	$(MYPY) --no-incremental
+	uv run $(RUFF) check
+	uv run $(MYPY) --no-incremental
 
-typing.ci: ## Generate Typewiz outputs (JSON/MD/HTML) for CI insight
+typing.ci: ## Generate Ratchetr outputs (JSON/MD/HTML) for CI insight
 	mkdir -p $(TYPING_REPORT_DIR)
-	$(TYPEWIZ) audit --max-depth 3 --mode full --manifest $(MANIFEST_PATH) --readiness --readiness-status blocked --readiness-status ready || true
-	$(TYPEWIZ) dashboard --manifest $(MANIFEST_PATH) --format json --output $(TYPING_REPORT_DIR)/dashboard.json || true
-	$(TYPEWIZ) dashboard --manifest $(MANIFEST_PATH) --format markdown --output $(TYPING_REPORT_DIR)/dashboard.md || true
-	$(TYPEWIZ) dashboard --manifest $(MANIFEST_PATH) --format html --output $(TYPING_REPORT_DIR)/dashboard.html || true
+	uv run $(RATCHETR) audit --max-depth 3 --mode full --manifest $(MANIFEST_PATH) --readiness --readiness-status blocked --readiness-status ready || true
+	uv run $(RATCHETR) dashboard --manifest $(MANIFEST_PATH) --format json --output $(TYPING_REPORT_DIR)/dashboard.json || true
+	uv run $(RATCHETR) dashboard --manifest $(MANIFEST_PATH) --format markdown --output $(TYPING_REPORT_DIR)/dashboard.md || true
+	uv run $(RATCHETR) dashboard --manifest $(MANIFEST_PATH) --format html --output $(TYPING_REPORT_DIR)/dashboard.html || true
 
 ##@ Tests
 pytest.all: ## Run pytest quietly
-	$(PYTEST) -q
+	uv run $(PYTEST) -q
 
 pytest.verbose: ## Run pytest verbosely
-	$(PYTEST) -v
+	uv run $(PYTEST) -v
 
 pytest.failfast: ## Run pytest, stopping on first failure
-	$(PYTEST) -x
+	uv run $(PYTEST) -x
 
 pytest.unit: ## Run only unit suites (tests/unit)
-	$(PYTEST) -q tests/unit
+	uv run $(PYTEST) -q tests/unit
 
 pytest.integration: ## Run only integration suites (tests/integration)
-	$(PYTEST) -q tests/integration
+	uv run $(PYTEST) -q tests/integration
 
 pytest.property: ## Run only property-based suites (tests/property_based)
-	$(PYTEST) -q tests/property_based
+	uv run $(PYTEST) -q tests/property_based
 
 pytest.performance: ## Run only performance suites (tests/performance)
-	$(PYTEST) -q tests/performance
+	uv run $(PYTEST) -q tests/performance
 
-pytest.cov: ## Run pytest with coverage on src/typewiz (95% gate)
-	$(PYTEST) --cov=src/typewiz --cov-report=term --cov-fail-under=95
+pytest.cov: ## Run pytest with coverage on src/ratchetr (95% gate)
+	uv run $(PYTEST) --cov=src/ratchetr --cov-report=term --cov-fail-under=95
 
 pytest.clean: ## Clean pytest cache
 	rm -rf .pytest_cache
 
-##@ Typewiz
-typewiz.audit: ## Generate Typewiz audit manifest
+##@ Ratchetr
+ratchetr.audit: ## Generate Ratchetr audit manifest
 	mkdir -p $(TYPING_REPORT_DIR)
-	$(TYPEWIZ) audit --max-depth 3 --manifest $(MANIFEST_PATH) --readiness --readiness-status blocked --readiness-status ready
+	uv run $(RATCHETR) audit --max-depth 3 --manifest $(MANIFEST_PATH) --readiness --readiness-status blocked --readiness-status ready
 
-typewiz.dashboard: ## Render Typewiz dashboards (MD + HTML)
-	@$(MAKE) typewiz.audit
-	$(TYPEWIZ) dashboard --manifest $(MANIFEST_PATH) --format markdown --output $(TYPING_REPORT_DIR)/dashboard.md
-	$(TYPEWIZ) dashboard --manifest $(MANIFEST_PATH) --format html --output $(TYPING_REPORT_DIR)/dashboard.html
+ratchetr.dashboard: ## Render Ratchetr dashboards (MD + HTML)
+	@$(MAKE) ratchetr.audit
+	uv run $(RATCHETR) dashboard --manifest $(MANIFEST_PATH) --format markdown --output $(TYPING_REPORT_DIR)/dashboard.md
+	uv run $(RATCHETR) dashboard --manifest $(MANIFEST_PATH) --format html --output $(TYPING_REPORT_DIR)/dashboard.html
 
-typewiz.readiness: ## Show Typewiz readiness summary
-	@$(MAKE) typewiz.audit
-	$(TYPEWIZ) readiness --manifest $(MANIFEST_PATH) --level $(TYPEWIZ_LEVEL) $(foreach status,$(TYPEWIZ_STATUSES),--status $(status)) --limit $(TYPEWIZ_LIMIT) || true
+ratchetr.readiness: ## Show Ratchetr readiness summary
+	@$(MAKE) ratchetr.audit
+	uv run $(RATCHETR) readiness --manifest $(MANIFEST_PATH) --level $(RATCHETR_LEVEL) $(foreach status,$(RATCHETR_STATUSES),--status $(status)) --limit $(RATCHETR_LIMIT) || true
 
-typewiz.clean: ## Remove Typewiz caches and reports
-	rm -rf .typewiz_cache
+ratchetr.clean: ## Remove Ratchetr caches and reports
+	rm -rf .ratchetr_cache
 	rm -rf $(TYPING_REPORT_DIR)
 
 ##@ Internal checks
 check.error-codes: ## Verify error code registry and documentation are in sync
-	$(PYTHON) scripts/check_error_codes.py
+	uv run $(PYTHON) scripts/check_error_codes.py
 
 ##@ Cleaning
 clean.mypy: ## Remove mypy cache directory
@@ -218,7 +218,7 @@ clean.coverage: ## Remove coverage artifacts
 	rm -f .coverage
 	rm -rf htmlcov
 
-clean.all: typewiz.clean pytest.clean clean.mypy clean.pyright clean.coverage clean.pycache ## Remove all local caches
+clean.all: ratchetr.clean pytest.clean clean.mypy clean.pyright clean.coverage clean.pycache ## Remove all local caches
 
 
 .DEFAULT_GOAL := help
@@ -226,7 +226,7 @@ HELP_GROUP_FORMAT := "\n\033[1m%s\033[0m\n"
 HELP_CMD_FORMAT := "  \033[36m%-32s\033[0m %s\n"
 
 help:
-	@printf $(HELP_GROUP_FORMAT) "Typewiz Makefile Commands"
+	@printf $(HELP_GROUP_FORMAT) "Ratchetr Makefile Commands"
 	@printf $(HELP_GROUP_FORMAT) "Usage:"
 	@printf "  \033[36m%s\033[0m%s\033[36m%-26s\033[0m%s\n" "make " "or" " make help" " View this help message"
 	@awk 'BEGIN {FS=":.*##"} \
@@ -235,9 +235,9 @@ help:
 		$(MAKEFILE_LIST)
 	@printf "\n"
 	@printf $(HELP_GROUP_FORMAT) "Common arguments (override per call):"
-	@printf $(HELP_CMD_FORMAT) "TYPEWIZ_LEVEL=folder|file" " Scope readiness view"
-	@printf $(HELP_CMD_FORMAT) "TYPEWIZ_STATUSES=blocked\ ready" " Filter readiness statuses"
-	@printf $(HELP_CMD_FORMAT) "TYPEWIZ_LIMIT=20" " Limit entries in readiness view"
+	@printf $(HELP_CMD_FORMAT) "RATCHETR_LEVEL=folder|file" " Scope readiness view"
+	@printf $(HELP_CMD_FORMAT) "RATCHETR_STATUSES=blocked\ ready" " Filter readiness statuses"
+	@printf $(HELP_CMD_FORMAT) "RATCHETR_LIMIT=20" " Limit entries in readiness view"
 	@printf "\nHint: run \033[36mmake <group>.help\033[0m for a specific group (e.g., 'tests.help', 'lint.help', 'type.help').\n"
 
 %.help:
@@ -268,27 +268,27 @@ tests.performance: ## Alias for pytest.performance
 
 ##@ Benchmarks
 bench: ## Run performance benchmarks (requires pytest-benchmark plugin)
-	$(PYTEST) tests/performance/benchmarks --benchmark-only
+	uv run $(PYTEST) tests/performance/benchmarks --benchmark-only
 
 ##@ Hooks
 hooks.update: ## Update pre-commit hooks to latest versions
-	$(PIP) install --quiet pre-commit || true
-	pre-commit autoupdate
+	uv $(PIP) install --quiet pre-commit || true
+	uv run pre-commit autoupdate
 
 ##@ Packaging
 package.build: ## Build sdist and wheel into dist/
-	$(PYTHON) -m build --no-isolation
+	uv run $(PYTHON) -m build --no-isolation
 
 package.check: package.build ## Run Twine check on built artifacts
-	$(PYTHON) -m twine check dist/*
+	uv run $(PYTHON) -m twine check dist/*
 
 
 package.install-test: package.build ## Install built wheel in a temporary venv to ensure installability
-	$(PYTHON) scripts/install_test_wheel.py
+	uv run $(PYTHON) scripts/install_test_wheel.py
 
 
 package.clean: ## Remove build artifacts
-	$(PYTHON) scripts/clean_build_artifacts.py
+	uv run $(PYTHON) scripts/clean_build_artifacts.py
 
 tests.cov: ## Alias for pytest.cov
 	@$(MAKE) pytest.cov
@@ -297,16 +297,16 @@ tests.clean: ## Alias for pytest.clean
 	@$(MAKE) pytest.clean
 ##@ Security
 sec.lint: ## Advisory security lint (ruff S-rules)
-	$(RUFF) check --select S
+	uv run $(RUFF) check --select S
 
 sec.bandit: ## Run Bandit security scanner
 	@mkdir -p out/security
-	$(BIN_DIR)/bandit -c pyproject.toml -r src/ -f json -o out/security/bandit-report.json || true
+	uv run $(BIN_DIR)/bandit -c pyproject.toml -r src/ -f json -o out/security/bandit-report.json || true
 	@echo "Bandit report: out/security/bandit-report.json"
 
 sec.safety: ## Run Safety dependency vulnerability scanner
 	@mkdir -p out/security
-	$(BIN_DIR)/safety scan --json > out/security/safety-report.json || true
+	uv run $(BIN_DIR)/safety scan --json > out/security/safety-report.json || true
 	@echo "Safety report: out/security/safety-report.json"
 
 sec.all: sec.lint sec.bandit sec.safety ## Run all security checks
@@ -314,5 +314,5 @@ sec.all: sec.lint sec.bandit sec.safety ## Run all security checks
 ##@ Code Quality
 lint.pylint: ## Run Pylint code quality checks
 	@mkdir -p out/lint
-	$(BIN_DIR)/pylint --output-format=json --reports=n src/ > out/lint/pylint.json || true
+	uv run $(BIN_DIR)/pylint --output-format=json --reports=n src/ > out/lint/pylint.json || true
 	@echo "Pylint report: out/lint/pylint.json"

@@ -7,12 +7,6 @@
   "python.testing.pytestArgs": [
     "-q"
   ],
-  // mypy runs using project config
-  "mypy-type-checker.enabled": true,
-  "mypy-type-checker.args": [
-    "--config-file",
-    "mypy.ini"
-  ],
   // Surface local JSON schemas for manifests and ratchet budgets
   "json.schemas": [
     {
@@ -26,14 +20,12 @@
     },
     {
       "fileMatch": [
-        "/.typewiz/ratchet.json",
+        "/.ratchetr/ratchet.json",
         "/ratchet.json"
       ],
       "url": "${workspaceFolder}/schemas/ratchet.schema.json"
     }
   ],
-  // Disable legacy mypy integration from Python extension
-  "python.linting.mypyEnabled": false,
   // Pylance/pyright reads [tool.pyright] from pyproject.toml
   // Don't override typeCheckingMode here; use repo config
   // Formatting and linting to match repo tools (Ruff-only)

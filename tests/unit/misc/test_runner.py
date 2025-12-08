@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Misc Runner."""
 
@@ -10,9 +22,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from typewiz._internal.utils import CommandOutput, consume
-from typewiz.core.model_types import Mode, SeverityLevel
-from typewiz.engines.execution import run_pyright
+from ratchetr._internal.utils import CommandOutput, consume
+from ratchetr.core.model_types import Mode, SeverityLevel
+from ratchetr.engines.execution import run_pyright
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -49,7 +61,7 @@ def _patch_run_command(
             assert isinstance(allowed, set)
         return _command_output(payload, exit_code=exit_code)
 
-    monkeypatch.setattr("typewiz.engines.execution.run_command", _run_command)
+    monkeypatch.setattr("ratchetr.engines.execution.run_command", _run_command)
 
 
 def test_run_pyright_records_tool_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -111,7 +123,7 @@ def test_run_pyright_logs_mismatch(
         # Allow structured logging extras; this test only cares about the message.
         assert not kwargs or set(kwargs.keys()) <= {"extra"}
 
-    monkeypatch.setattr("typewiz.engines.execution.logger.warning", fake_warning)
+    monkeypatch.setattr("ratchetr.engines.execution.logger.warning", fake_warning)
 
     result = run_pyright(tmp_path, mode=Mode.CURRENT, command=["pyright", "--outputjson"])
 

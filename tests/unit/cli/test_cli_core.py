@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests exercising CLI helper normalization and formatting behavior."""
 
@@ -8,23 +20,22 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from tests.fixtures.builders import build_diagnostic, build_readiness_summary
-from typewiz._internal.utils import consume
-from typewiz.cli.app import write_config_template
-from typewiz.cli.commands.audit import normalise_modes_tuple
-from typewiz.cli.helpers import (
+from ratchetr._internal.utils import consume
+from ratchetr.cli.app import write_config_template
+from ratchetr.cli.commands.audit import normalise_modes_tuple
+from ratchetr.cli.helpers import (
     collect_plugin_args,
     collect_profile_args,
     normalise_modes,
     parse_summary_fields,
 )
-from typewiz.cli.helpers.formatting import (
+from ratchetr.cli.helpers.formatting import (
     SUMMARY_FIELD_CHOICES,
     print_readiness_summary,
     print_summary,
     query_readiness,
 )
-from typewiz.core.model_types import (
+from ratchetr.core.model_types import (
     Mode,
     OverrideEntry,
     ReadinessLevel,
@@ -32,13 +43,14 @@ from typewiz.core.model_types import (
     SummaryField,
     SummaryStyle,
 )
-from typewiz.core.type_aliases import RelPath, ToolName
-from typewiz.core.types import RunResult
+from ratchetr.core.type_aliases import RelPath, ToolName
+from ratchetr.core.types import RunResult
+from tests.fixtures.builders import build_diagnostic, build_readiness_summary
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from typewiz.core.summary_types import ReadinessOptionEntry, ReadinessStrictEntry, SummaryData
+    from ratchetr.core.summary_types import ReadinessOptionEntry, ReadinessStrictEntry, SummaryData
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
 
@@ -222,7 +234,7 @@ def test_write_config_template_preserves_existing_file(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     # Arrange
-    target = tmp_path / "typewiz.toml"
+    target = tmp_path / "ratchetr.toml"
     consume(target.write_text("original", encoding="utf-8"))
 
     # Act
@@ -232,7 +244,7 @@ def test_write_config_template_preserves_existing_file(
     assert exit_code == 1
     assert target.read_text(encoding="utf-8") == "original"
     output = capsys.readouterr().out
-    assert "[typewiz] Refusing to overwrite" in output
+    assert "[ratchetr] Refusing to overwrite" in output
 
 
 def test_write_config_template_overwrites_when_forced(
@@ -240,7 +252,7 @@ def test_write_config_template_overwrites_when_forced(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     # Arrange
-    target = tmp_path / "typewiz.toml"
+    target = tmp_path / "ratchetr.toml"
     consume(target.write_text("original", encoding="utf-8"))
 
     # Act
@@ -248,7 +260,7 @@ def test_write_config_template_overwrites_when_forced(
 
     # Assert
     assert exit_code == 0
-    assert "[typewiz] Wrote starter config" in capsys.readouterr().out
+    assert "[ratchetr] Wrote starter config" in capsys.readouterr().out
     assert "[audit]" in target.read_text(encoding="utf-8")
 
 
@@ -268,7 +280,7 @@ def test_print_readiness_summary_reports_folder_entries(
 
     # Assert
     output = capsys.readouterr().out
-    assert "[typewiz] readiness folder status=blocked" in output
+    assert "[ratchetr] readiness folder status=blocked" in output
     assert "pkg: 2" in output
     assert "<none>" in output
 
@@ -309,7 +321,7 @@ def test_print_readiness_summary_defaults_to_blocked_when_limit_zero(
 
     # Assert
     output = capsys.readouterr().out
-    assert "[typewiz] readiness folder status=blocked" in output
+    assert "[ratchetr] readiness folder status=blocked" in output
 
 
 def test_query_readiness_invalid_data_raises() -> None:

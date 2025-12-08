@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Manifest Builder."""
 
@@ -9,10 +21,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from typewiz.core.model_types import Mode, SeverityLevel
-from typewiz.core.type_aliases import RelPath, ToolName
-from typewiz.core.types import Diagnostic, RunResult
-from typewiz.manifest.builder import ManifestBuilder
+from ratchetr.core.model_types import Mode, SeverityLevel
+from ratchetr.core.type_aliases import RelPath, ToolName
+from ratchetr.core.types import Diagnostic, RunResult
+from ratchetr.manifest.builder import ManifestBuilder
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -60,7 +72,7 @@ def test_manifest_builder_adds_run_and_writes(tmp_path: Path, monkeypatch: pytes
     def fake_detect_tool_versions(_: Sequence[str]) -> dict[str, str]:
         return versions
 
-    monkeypatch.setattr("typewiz.manifest.builder.detect_tool_versions", fake_detect_tool_versions)
+    monkeypatch.setattr("ratchetr.manifest.builder.detect_tool_versions", fake_detect_tool_versions)
 
     output_path = tmp_path / "reports" / "typing_audit.json"
     builder.write(output_path)

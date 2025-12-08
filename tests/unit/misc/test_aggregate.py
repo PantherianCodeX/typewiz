@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Misc Aggregate."""
 
@@ -8,10 +20,10 @@ from pathlib import Path
 
 import pytest
 
-from typewiz.core.model_types import Mode, SeverityLevel
-from typewiz.core.type_aliases import ToolName
-from typewiz.core.types import Diagnostic, RunResult
-from typewiz.manifest.aggregate import summarise_run
+from ratchetr.core.model_types import Mode, SeverityLevel
+from ratchetr.core.type_aliases import ToolName
+from ratchetr.core.types import Diagnostic, RunResult
+from ratchetr.manifest.aggregate import summarise_run
 
 pytestmark = pytest.mark.unit
 

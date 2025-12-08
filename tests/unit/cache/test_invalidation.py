@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Cache Invalidation."""
 
@@ -8,12 +20,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from ratchetr._internal.utils import consume
+from ratchetr.api import run_audit
+from ratchetr.config import AuditConfig, Config, EngineSettings
+from ratchetr.core.model_types import Mode
+from ratchetr.core.type_aliases import EngineName, RunnerName
 from tests.fixtures.stubs import RecordingEngine
-from typewiz._internal.utils import consume
-from typewiz.api import run_audit
-from typewiz.config import AuditConfig, Config, EngineSettings
-from typewiz.core.model_types import Mode
-from typewiz.core.type_aliases import EngineName, RunnerName
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -26,8 +38,8 @@ def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: RecordingE
     def _resolve(_: Sequence[str]) -> list[RecordingEngine]:
         return [engine]
 
-    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve)
-    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve)
+    monkeypatch.setattr("ratchetr.engines.resolve_engines", _resolve)
+    monkeypatch.setattr("ratchetr.audit.api.resolve_engines", _resolve)
 
 
 def _prepare_workspace(tmp_path: Path) -> None:
@@ -51,7 +63,7 @@ def test_cache_invalidation_on_tool_version_change(
     def _versions_v1(_: Sequence[str]) -> dict[str, str]:
         return {"stub": "1.0"}
 
-    monkeypatch.setattr("typewiz.audit.api.detect_tool_versions", _versions_v1)
+    monkeypatch.setattr("ratchetr.audit.api.detect_tool_versions", _versions_v1)
     override = AuditConfig(full_paths=["src"], runners=[STUB_RUNNER])
     consume(run_audit(project_root=tmp_path, override=override))
     assert _full_invocation_count(engine) == 1
@@ -60,7 +72,7 @@ def test_cache_invalidation_on_tool_version_change(
     def _versions_v2(_: Sequence[str]) -> dict[str, str]:
         return {"stub": "2.0"}
 
-    monkeypatch.setattr("typewiz.audit.api.detect_tool_versions", _versions_v2)
+    monkeypatch.setattr("ratchetr.audit.api.detect_tool_versions", _versions_v2)
     consume(run_audit(project_root=tmp_path, override=override))
     assert _full_invocation_count(engine) == 2
 

@@ -1,11 +1,11 @@
-# Typewiz Mypy Example
+# ratchetr Mypy Example
 
-This example demonstrates using typewiz to audit Python code with mypy.
+This example demonstrates using ratchetr to audit Python code with mypy.
 
 ## Setup
 
 1. Ensure Python 3.12+ is installed
-2. Install typewiz: `pip install typewiz`
+2. Install ratchetr: `pip install ratchetr`
 3. Navigate to this directory: `cd examples/mypy-project`
 
 ## Running the Example
@@ -13,21 +13,21 @@ This example demonstrates using typewiz to audit Python code with mypy.
 Generate a typing audit manifest:
 
 ```bash
-typewiz audit src --manifest typing_audit.json
+ratchetr audit src --manifest typing_audit.json
 ```
 
 View the results in different formats:
 
 ```bash
 # Markdown dashboard
-typewiz dashboard --manifest typing_audit.json --format markdown --output dashboard.md
+ratchetr dashboard --manifest typing_audit.json --format markdown --output dashboard.md
 
 # HTML dashboard
-typewiz dashboard --manifest typing_audit.json --format html --output dashboard.html
+ratchetr dashboard --manifest typing_audit.json --format html --output dashboard.html
 
 # Query specific information
-typewiz query overview --manifest typing_audit.json --format table
-typewiz query hotspots --manifest typing_audit.json --kind files --limit 5
+ratchetr query overview --manifest typing_audit.json --format table
+ratchetr query hotspots --manifest typing_audit.json --kind files --limit 5
 ```
 
 ## Expected Diagnostics
@@ -45,8 +45,8 @@ Lock in current diagnostic counts to prevent regressions:
 
 ```bash
 # Initialize ratchet budget
-typewiz ratchet init --manifest typing_audit.json --output ratchet.json --run mypy:current
+ratchetr ratchet init --manifest typing_audit.json --output ratchet.json --run mypy:current
 
 # Check for new violations
-typewiz ratchet check --manifest typing_audit.json --ratchet ratchet.json
+ratchetr ratchet check --manifest typing_audit.json --ratchet ratchet.json
 ```

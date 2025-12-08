@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Cache Hashing."""
 
@@ -8,16 +20,16 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from typewiz._internal import cache as cache_module
-from typewiz._internal.cache import collect_file_hashes
-from typewiz._internal.utils import consume
-from typewiz.core.type_aliases import PathKey
+from ratchetr._internal import cache as cache_module
+from ratchetr._internal.cache import collect_file_hashes
+from ratchetr._internal.utils import consume
+from ratchetr.core.type_aliases import PathKey
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from typewiz.core.model_types import FileHashPayload
+    from ratchetr.core.model_types import FileHashPayload
 
 pytestmark = pytest.mark.unit
 
@@ -52,8 +64,8 @@ def test_collect_file_hashes_respects_gitignore(
     def fake_git_list(root: Path) -> set[str]:
         return {"project/keep.py"} if root == repo_root else set()
 
-    monkeypatch.setattr("typewiz._internal.cache._git_repo_root", fake_repo_root)
-    monkeypatch.setattr("typewiz._internal.cache._git_list_files", fake_git_list)
+    monkeypatch.setattr("ratchetr._internal.cache._git_repo_root", fake_repo_root)
+    monkeypatch.setattr("ratchetr._internal.cache._git_list_files", fake_git_list)
 
     hashes, _ = collect_file_hashes(project_root, paths=["."], respect_gitignore=True)
 
@@ -76,7 +88,7 @@ def test_collect_file_hashes_reuses_baseline(
         assert path.name == "sample.py"
         return {"hash": "stub", "mtime": 0, "size": 0}
 
-    monkeypatch.setattr("typewiz._internal.cache._fingerprint", record_fingerprint)
+    monkeypatch.setattr("ratchetr._internal.cache._fingerprint", record_fingerprint)
 
     hashes, truncated = collect_file_hashes(
         tmp_path,
@@ -103,8 +115,8 @@ def test_collect_file_hashes_honours_worker_env(
         recorded["workers"] = workers
         return {key: {"hash": "stub", "mtime": 0, "size": 0} for key, _ in pending}
 
-    monkeypatch.setenv("TYPEWIZ_HASH_WORKERS", "4")
-    monkeypatch.setattr("typewiz._internal.cache._compute_hashes", fake_compute)
+    monkeypatch.setenv("RATCHETR_HASH_WORKERS", "4")
+    monkeypatch.setattr("ratchetr._internal.cache._compute_hashes", fake_compute)
 
     hashes, _ = collect_file_hashes(tmp_path, paths=["worker.py"])
 

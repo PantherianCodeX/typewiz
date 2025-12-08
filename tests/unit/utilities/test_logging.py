@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Utilities Logging."""
 
@@ -11,8 +23,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from typewiz._internal.logging_utils import LOG_LEVELS, configure_logging, structured_extra
-from typewiz.core.model_types import LogComponent, Mode, SeverityLevel
+from ratchetr._internal.logging_utils import LOG_LEVELS, configure_logging, structured_extra
+from ratchetr.core.model_types import LogComponent, Mode, SeverityLevel
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -23,7 +35,7 @@ pytestmark = pytest.mark.unit
 
 def test_configure_logging_json_emits_structured_logs(capsys: pytest.CaptureFixture[str]) -> None:
     _ = configure_logging("json")
-    logger = logging.getLogger("typewiz")
+    logger = logging.getLogger("ratchetr")
     logger.info(
         "hello",
         extra=structured_extra(
@@ -50,7 +62,7 @@ def test_configure_logging_json_emits_structured_logs(capsys: pytest.CaptureFixt
     payload = json.loads(lines[-2])
     assert payload["message"] == "hello"
     assert payload["level"] == "info"
-    assert payload["logger"] == "typewiz"
+    assert payload["logger"] == "ratchetr"
     assert payload["component"] == "engine"
     assert payload["tool"] == "pyright"
     assert payload["mode"] == "current"
@@ -66,7 +78,7 @@ def test_configure_logging_json_emits_structured_logs(capsys: pytest.CaptureFixt
 def test_configure_logging_respects_level(capsys: pytest.CaptureFixture[str]) -> None:
     assert LOG_LEVELS == ("debug", "info", "warning", "error")
     _ = configure_logging("text", log_level="warning")
-    logger = logging.getLogger("typewiz")
+    logger = logging.getLogger("ratchetr")
     logger.info("ignored")
     logger.warning("recorded")
     captured = capsys.readouterr()
@@ -79,10 +91,10 @@ def test_configure_logging_honors_env_overrides(
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("TYPEWIZ_LOG_FORMAT", "json")
-    monkeypatch.setenv("TYPEWIZ_LOG_LEVEL", "error")
+    monkeypatch.setenv("RATCHETR_LOG_FORMAT", "json")
+    monkeypatch.setenv("RATCHETR_LOG_LEVEL", "error")
     _ = configure_logging()
-    logger = logging.getLogger("typewiz")
+    logger = logging.getLogger("ratchetr")
     logger.warning("warned")
     logger.error(
         "failed",
@@ -117,23 +129,23 @@ def test_structured_extra_normalises_inputs(tmp_path: Path) -> None:
 
 
 @pytest.fixture(autouse=True)
-def reset_typewiz_logging() -> Generator[None, None, None]:
-    logger = logging.getLogger("typewiz")
+def reset_ratchetr_logging() -> Generator[None, None, None]:
+    logger = logging.getLogger("ratchetr")
     handlers = list(logger.handlers)
     level = logger.level
     propagate = logger.propagate
-    env_log_format = os.environ.get("TYPEWIZ_LOG_FORMAT")
-    env_log_level = os.environ.get("TYPEWIZ_LOG_LEVEL")
+    env_log_format = os.environ.get("RATCHETR_LOG_FORMAT")
+    env_log_level = os.environ.get("RATCHETR_LOG_LEVEL")
     yield
     logger.handlers.clear()
     logger.handlers.extend(handlers)
     logger.setLevel(level)
     logger.propagate = propagate
     if env_log_format is None:
-        _ = os.environ.pop("TYPEWIZ_LOG_FORMAT", None)
+        _ = os.environ.pop("RATCHETR_LOG_FORMAT", None)
     else:
-        os.environ["TYPEWIZ_LOG_FORMAT"] = env_log_format
+        os.environ["RATCHETR_LOG_FORMAT"] = env_log_format
     if env_log_level is None:
-        _ = os.environ.pop("TYPEWIZ_LOG_LEVEL", None)
+        _ = os.environ.pop("RATCHETR_LOG_LEVEL", None)
     else:
-        os.environ["TYPEWIZ_LOG_LEVEL"] = env_log_level
+        os.environ["RATCHETR_LOG_LEVEL"] = env_log_level

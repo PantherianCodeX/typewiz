@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Cache Internal."""
 
@@ -9,11 +21,11 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from typewiz._internal import cache as cache_module
-from typewiz._internal.cache import EngineCache
-from typewiz.core.model_types import FileHashPayload, Mode, SeverityLevel
-from typewiz.core.type_aliases import PathKey, RelPath, ToolName
-from typewiz.core.types import Diagnostic
+from ratchetr._internal import cache as cache_module
+from ratchetr._internal.cache import EngineCache
+from ratchetr.core.model_types import FileHashPayload, Mode, SeverityLevel
+from ratchetr.core.type_aliases import PathKey, RelPath, ToolName
+from ratchetr.core.types import Diagnostic
 
 if TYPE_CHECKING:
     from collections.abc import Callable

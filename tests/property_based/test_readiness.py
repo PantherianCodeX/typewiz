@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Property-based tests for Readiness."""
 
@@ -10,9 +22,8 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import HealthCheck, given, settings
 
-from tests.property_based.strategies import path_strings, severity_counts
-from typewiz.core.model_types import ReadinessLevel, ReadinessStatus
-from typewiz.core.summary_types import (
+from ratchetr.core.model_types import ReadinessLevel, ReadinessStatus
+from ratchetr.core.summary_types import (
     ReadinessOptionEntry,
     ReadinessOptionsPayload,
     ReadinessStrictEntry,
@@ -20,14 +31,15 @@ from typewiz.core.summary_types import (
     SummaryData,
     SummaryTabs,
 )
-from typewiz.readiness.views import (
+from ratchetr.readiness.views import (
     FileReadinessPayload,
     FolderReadinessPayload,
     collect_readiness_view,
 )
+from tests.property_based.strategies import path_strings, severity_counts
 
 if TYPE_CHECKING:
-    from typewiz.core.type_aliases import CategoryKey
+    from ratchetr.core.type_aliases import CategoryKey
 
 pytestmark = pytest.mark.property
 

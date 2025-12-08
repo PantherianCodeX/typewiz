@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Manifest Schema."""
 
@@ -10,22 +22,22 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
+from ratchetr._internal.utils import consume
+from ratchetr.api import run_audit
+from ratchetr.cli import main
+from ratchetr.config import AuditConfig
+from ratchetr.core.model_types import Mode
+from ratchetr.core.type_aliases import EngineName, RunnerName
+from ratchetr.manifest.loader import load_manifest_data
+from ratchetr.manifest.models import ManifestValidationError, manifest_json_schema, validate_manifest_payload
+from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
 from tests.fixtures.stubs import RecordingEngine
-from typewiz._internal.utils import consume
-from typewiz.api import run_audit
-from typewiz.cli import main
-from typewiz.config import AuditConfig
-from typewiz.core.model_types import Mode
-from typewiz.core.type_aliases import EngineName, RunnerName
-from typewiz.manifest.loader import load_manifest_data
-from typewiz.manifest.models import ManifestValidationError, manifest_json_schema, validate_manifest_payload
-from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from typewiz.manifest.typed import ManifestData
+    from ratchetr.manifest.typed import ManifestData
 
 pytestmark = pytest.mark.unit
 
@@ -34,8 +46,8 @@ def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: RecordingE
     def _resolve(_: Sequence[str]) -> list[RecordingEngine]:
         return [engine]
 
-    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve)
-    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve)
+    monkeypatch.setattr("ratchetr.engines.resolve_engines", _resolve)
+    monkeypatch.setattr("ratchetr.audit.api.resolve_engines", _resolve)
 
 
 def _sample_manifest() -> ManifestData:

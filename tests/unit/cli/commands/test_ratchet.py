@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for CLI Commands Ratchet."""
 
@@ -13,8 +25,8 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from typewiz.cli.commands import ratchet as ratchet_cmd
-from typewiz.cli.commands.ratchet import (
+from ratchetr.cli.commands import ratchet as ratchet_cmd
+from ratchetr.cli.commands.ratchet import (
     RatchetContext,
     handle_check,
     handle_info,
@@ -22,13 +34,13 @@ from typewiz.cli.commands.ratchet import (
     handle_rebaseline,
     handle_update,
 )
-from typewiz.config import Config, RatchetConfig
-from typewiz.core.model_types import RatchetAction, SeverityLevel, SignaturePolicy
-from typewiz.core.type_aliases import RunId
-from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
-from typewiz.ratchet.models import RatchetModel
-from typewiz.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
-from typewiz.services.ratchet import (
+from ratchetr.config import Config, RatchetConfig
+from ratchetr.core.model_types import RatchetAction, SeverityLevel, SignaturePolicy
+from ratchetr.core.type_aliases import RunId
+from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
+from ratchetr.ratchet.models import RatchetModel
+from ratchetr.ratchet.summary import RatchetFinding, RatchetReport, RatchetRunReport
+from ratchetr.services.ratchet import (
     RatchetCheckResult,
     RatchetInitResult,
     RatchetRebaselineResult,
@@ -39,7 +51,7 @@ from typewiz.services.ratchet import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from typewiz.manifest.typed import ManifestData
+    from ratchetr.manifest.typed import ManifestData
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli, pytest.mark.ratchet]
 
@@ -206,7 +218,7 @@ def test_handle_init_defaults_output_path(
 
     exit_code = handle_init(context, args)
     assert exit_code == 0
-    assert captured["output_path"] == (tmp_path / ".typewiz" / "ratchet.json").resolve()
+    assert captured["output_path"] == (tmp_path / ".ratchetr" / "ratchet.json").resolve()
 
 
 def test_handle_update_dry_run_skips_write(
@@ -253,7 +265,7 @@ def test_handle_update_dry_run_skips_write(
     assert exit_code == 0
     assert captured_kwargs["target_overrides"] == {"error": 5}
     captured = capsys.readouterr().out
-    assert "[typewiz] Dry-run mode; ratchet not written." in captured
+    assert "[ratchetr] Dry-run mode; ratchet not written." in captured
 
 
 def test_handle_update_returns_error_on_service_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -462,7 +474,7 @@ def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) 
     def fake_load_config(_: object) -> Config:
         return fake_config
 
-    tmp_root = Path(tempfile.gettempdir()) / "typewiz-cli"
+    tmp_root = Path(tempfile.gettempdir()) / "ratchetr-cli"
 
     def fake_project_root(_: object) -> Path:
         return tmp_root / "project"

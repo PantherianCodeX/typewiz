@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for API Helpers."""
 
@@ -6,27 +18,28 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 import pytest
 
-from typewiz._internal.utils import consume
-from typewiz.audit.execution import apply_engine_paths, resolve_engine_options
-from typewiz.audit.options import merge_engine_settings_map
-from typewiz.audit.paths import (
+from ratchetr._internal.utils import consume
+from ratchetr.audit.execution import apply_engine_paths, resolve_engine_options
+from ratchetr.audit.options import merge_engine_settings_map
+from ratchetr.audit.paths import (
     fingerprint_targets,
     normalise_override_entries,
     normalise_paths,
     relative_override_path,
 )
-from typewiz.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
-from typewiz.core.type_aliases import EngineName, ProfileName, RelPath
-from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from ratchetr.compat.python import override
+from ratchetr.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
+from ratchetr.core.type_aliases import EngineName, ProfileName, RelPath
+from ratchetr.engines.base import BaseEngine, EngineContext, EngineResult
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from typewiz.core.model_types import CategoryMapping
+    from ratchetr.core.model_types import CategoryMapping
 
 pytestmark = pytest.mark.unit
 

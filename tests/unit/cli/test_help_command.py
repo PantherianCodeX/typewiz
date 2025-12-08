@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for the CLI help command topics."""
 
@@ -9,7 +21,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from typewiz.cli.commands.help import execute_help
+from ratchetr.cli.commands.help import execute_help
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -39,7 +51,7 @@ def test_execute_help_lists_topics(
     # Assert
     assert exit_code == 0
     output = capsys.readouterr().out
-    assert "[typewiz] Available help topics:" in output
+    assert "[ratchetr] Available help topics:" in output
     assert "overview" in output
     # Underscores should be normalised to hyphenated topic names.
     assert "ratchet-basics" in output
@@ -61,7 +73,7 @@ def test_execute_help_unknown_topic_lists_choices(
     # Assert
     assert exit_code == 2
     captured = capsys.readouterr().out
-    assert "[typewiz] Unknown topic 'missing'." in captured
+    assert "[ratchetr] Unknown topic 'missing'." in captured
     assert "overview" in captured
 
 

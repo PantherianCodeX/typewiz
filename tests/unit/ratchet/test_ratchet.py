@@ -1,29 +1,42 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Tests for the ratchet helpers."""
 
 from __future__ import annotations
 
 from collections import Counter
-from typing import TYPE_CHECKING, Any, TypedDict, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from typewiz.core.model_types import SeverityLevel, SignaturePolicy
-from typewiz.core.type_aliases import RelPath, RunId
-from typewiz.ratchet import (
+from ratchetr.compat.python import TypedDict
+from ratchetr.core.model_types import SeverityLevel, SignaturePolicy
+from ratchetr.core.type_aliases import RelPath, RunId
+from ratchetr.ratchet import (
     apply_auto_update,
     build_ratchet_from_manifest,
     compare_manifest_to_ratchet,
     refresh_signatures,
 )
-from typewiz.ratchet.models import RatchetModel
-from typewiz.ratchet.policies import compare_signatures
+from ratchetr.ratchet.models import RatchetModel
+from ratchetr.ratchet.policies import compare_signatures
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from typewiz.manifest.typed import (
+    from ratchetr.manifest.typed import (
         EngineOptionsEntry,
         FileEntry,
         ManifestData,

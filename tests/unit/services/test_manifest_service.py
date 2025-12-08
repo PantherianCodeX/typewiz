@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for manifest validation helpers."""
 
@@ -7,7 +19,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from typewiz.services import manifest as manifest_service
+from ratchetr.services import manifest as manifest_service
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -72,7 +84,7 @@ def test_manifest_validation_warns_when_jsonschema_missing(tmp_path: Path, monke
 
     monkeypatch.setattr(manifest_service.importlib, "import_module", fake_import)
     result = manifest_service.validate_manifest_file(manifest_path, schema_path=schema_path)
-    assert "[typewiz] jsonschema module not available" in result.warnings[0]
+    assert "[ratchetr] jsonschema module not available" in result.warnings[0]
     assert result.schema_errors == []
 
 

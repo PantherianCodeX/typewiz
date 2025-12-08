@@ -1,11 +1,11 @@
-# Typewiz Pyright Example
+# ratchetr Pyright Example
 
-This example demonstrates using typewiz to audit Python code with pyright.
+This example demonstrates using ratchetr to audit Python code with pyright.
 
 ## Setup
 
 1. Ensure Python 3.12+ is installed
-2. Install typewiz: `pip install typewiz`
+2. Install ratchetr: `pip install ratchetr`
 3. Navigate to this directory: `cd examples/pyright-project`
 
 ## Running the Example
@@ -13,20 +13,20 @@ This example demonstrates using typewiz to audit Python code with pyright.
 Generate a typing audit manifest:
 
 ```bash
-typewiz audit src --manifest typing_audit.json
+ratchetr audit src --manifest typing_audit.json
 ```
 
 View the results:
 
 ```bash
 # Markdown dashboard
-typewiz dashboard --manifest typing_audit.json --format markdown --output dashboard.md
+ratchetr dashboard --manifest typing_audit.json --format markdown --output dashboard.md
 
 # HTML dashboard
-typewiz dashboard --manifest typing_audit.json --format html --output dashboard.html
+ratchetr dashboard --manifest typing_audit.json --format html --output dashboard.html
 
 # Query readiness metrics
-typewiz query readiness --manifest typing_audit.json --level file --format table
+ratchetr query readiness --manifest typing_audit.json --level file --format table
 ```
 
 ## Expected Diagnostics
@@ -45,8 +45,8 @@ Create a typing budget to prevent regressions:
 
 ```bash
 # Initialize with current state
-typewiz ratchet init --manifest typing_audit.json --output ratchet.json --run pyright:current --severities errors,warnings
+ratchetr ratchet init --manifest typing_audit.json --output ratchet.json --run pyright:current --severities errors,warnings
 
 # Enforce budget in CI
-typewiz ratchet check --manifest typing_audit.json --ratchet ratchet.json
+ratchetr ratchet check --manifest typing_audit.json --ratchet ratchet.json
 ```

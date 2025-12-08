@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Config."""
 
@@ -10,11 +22,11 @@ from typing import cast
 import pytest
 from pydantic import ValidationError
 
-import typewiz.config as config_module
-import typewiz.config.models as config_models
-from typewiz._internal.utils import consume
-from typewiz.audit.options import merge_audit_configs
-from typewiz.config import (
+import ratchetr.config as config_module
+import ratchetr.config.models as config_models
+from ratchetr._internal.utils import consume
+from ratchetr.audit.options import merge_audit_configs
+from ratchetr.config import (
     AuditConfig,
     AuditConfigModel,
     ConfigFieldChoiceError,
@@ -32,8 +44,8 @@ from typewiz.config import (
     UnsupportedConfigVersionError,
     load_config,
 )
-from typewiz.core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
-from typewiz.core.type_aliases import EngineName, ProfileName, RunId, RunnerName
+from ratchetr.core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
+from ratchetr.core.type_aliases import EngineName, ProfileName, RunId, RunnerName
 
 pytestmark = pytest.mark.unit
 
@@ -49,7 +61,7 @@ LENIENT = ProfileName("lenient")
 
 
 def test_load_config_from_toml(tmp_path: Path) -> None:
-    config_path = tmp_path / "typewiz.toml"
+    config_path = tmp_path / "ratchetr.toml"
     consume(
         config_path.write_text(
             """
@@ -74,7 +86,7 @@ dashboard_html = "reports/dashboard.html"
 
 
 def test_load_config_engine_profiles(tmp_path: Path) -> None:
-    config_path = tmp_path / "typewiz.toml"
+    config_path = tmp_path / "ratchetr.toml"
     consume(
         config_path.write_text(
             """
@@ -160,7 +172,7 @@ def test_merge_config_merges_engine_settings() -> None:
 
 
 def test_load_config_discovers_folder_overrides(tmp_path: Path) -> None:
-    config_path = tmp_path / "typewiz.toml"
+    config_path = tmp_path / "ratchetr.toml"
     consume(
         config_path.write_text(
             """
@@ -174,7 +186,7 @@ full_paths = ["src"]
     )
     package_dir = tmp_path / "packages" / "billing"
     package_dir.mkdir(parents=True, exist_ok=True)
-    override = package_dir / "typewiz.dir.toml"
+    override = package_dir / "ratchetr.dir.toml"
     consume(
         override.write_text(
             """
@@ -210,7 +222,7 @@ def test_load_config_defaults_without_file(monkeypatch: pytest.MonkeyPatch, tmp_
 
 
 def test_load_config_raises_for_unknown_default_profile(tmp_path: Path) -> None:
-    config_path = tmp_path / "typewiz.toml"
+    config_path = tmp_path / "ratchetr.toml"
     consume(
         config_path.write_text(
             """
@@ -228,7 +240,7 @@ default_profile = "strict"
 
 
 def test_load_config_normalises_policy_enums(tmp_path: Path) -> None:
-    config_path = tmp_path / "typewiz.toml"
+    config_path = tmp_path / "ratchetr.toml"
     consume(
         config_path.write_text(
             """
@@ -249,7 +261,7 @@ signature = "ignore"
 
 def test_directory_override_validation_error_message(tmp_path: Path) -> None:
     error = config_models.DirectoryOverrideValidationError(tmp_path, ValueError("boom"))
-    assert str(error).startswith(f"Invalid typewiz directory override in {tmp_path}")
+    assert str(error).startswith(f"Invalid ratchetr directory override in {tmp_path}")
 
 
 def test_engine_profile_model_requires_string_inherit() -> None:
@@ -469,4 +481,4 @@ def test_config_exception_messages(tmp_path: Path) -> None:
     assert "Unknown profile" in str(UnknownEngineProfileError("pyright", "strict"))
     assert "Unsupported config_version" in str(UnsupportedConfigVersionError(2, 0))
     assert "Unable to read" in str(ConfigReadError(tmp_path / "cfg.toml", OSError("boom")))
-    assert "Invalid typewiz" in str(InvalidConfigFileError(tmp_path / "cfg.toml", ValueError("bad")))
+    assert "Invalid ratchetr" in str(InvalidConfigFileError(tmp_path / "cfg.toml", ValueError("bad")))

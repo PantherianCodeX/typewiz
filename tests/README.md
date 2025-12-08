@@ -1,6 +1,6 @@
-# TypeWiz Test Suite
+# ratchetr Test Suite
 
-The TypeWiz tests follow a pyramid-aligned layout that separates fast, deterministic unit tests from slower integration, property-based, and performance suites. The directory structure mirrors product domains to make it obvious where new coverage belongs.
+The ratchetr tests follow a pyramid-aligned layout that separates fast, deterministic unit tests from slower integration, property-based, and performance suites. The directory structure mirrors product domains to make it obvious where new coverage belongs.
 
 ```text
 tests/
@@ -18,9 +18,9 @@ Use the dedicated Make targets to match the subsets executed in CI:
 
 | Suite / Goal | Make target | Equivalent pytest command |
 | --- | --- | --- |
-| Full CI-equivalent run | `make ci.check` | `PYTHONPATH=src pytest --cov=src/typewiz ...` |
+| Full CI-equivalent run | `make ci.check` | `PYTHONPATH=src pytest --cov=src/ratchetr ...` |
 | Lint + typing gates | `make lint && make type` | n/a |
-| Coverage-focused pytest run | `make pytest.cov` | `pytest --cov=src/typewiz --cov-report=term --cov-fail-under=95` |
+| Coverage-focused pytest run | `make pytest.cov` | `pytest --cov=src/ratchetr --cov-report=term --cov-fail-under=95` |
 | Unit tests (fast suites under `tests/unit`) | `make pytest.unit` | `pytest tests/unit` |
 | Integration workflows | `make pytest.integration` | `pytest tests/integration` |
 | Property-based suites | `make pytest.property` | `pytest tests/property_based` |

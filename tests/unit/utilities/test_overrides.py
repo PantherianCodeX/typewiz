@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Utilities Overrides."""
 
@@ -8,7 +20,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from typewiz.common.override_utils import (
+from ratchetr.common.override_utils import (
     format_override_inline,
     format_overrides_block,
     get_override_components,
@@ -16,7 +28,7 @@ from typewiz.common.override_utils import (
 )
 
 if TYPE_CHECKING:
-    from typewiz.core.model_types import OverrideEntry
+    from ratchetr.core.model_types import OverrideEntry
 
 pytestmark = pytest.mark.unit
 

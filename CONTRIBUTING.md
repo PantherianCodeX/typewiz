@@ -1,10 +1,10 @@
-# Contributing to typewiz
+# Contributing to ratchetr
 
 This project uses strict typing and automated hooks to keep quality high.
 
 ## Versioning & Stability
 
-Typewiz follows **semantic versioning** with alpha-specific semantics:
+ratchetr follows **semantic versioning** with alpha-specific semantics:
 
 - **0.y.z-alpha**: Breaking changes allowed between minor versions
 - **Schema stability**: `schemaVersion: "1"` aims for additive-only changes

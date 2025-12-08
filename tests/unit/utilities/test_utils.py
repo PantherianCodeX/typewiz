@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Utilities Utils."""
 
@@ -11,7 +23,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from typewiz._internal.utils import (
+from ratchetr._internal.utils import (
     CommandOutput,
     consume,
     default_full_paths,
@@ -20,10 +32,10 @@ from typewiz._internal.utils import (
     resolve_project_root,
     run_command,
 )
-from typewiz._internal.utils import locks as locks_mod
-from typewiz._internal.utils import versions as versions_mod
-from typewiz.core.model_types import ReadinessStatus, SeverityLevel
-from typewiz.json import as_int, as_list, as_mapping, as_str, normalise_enums_for_json, require_json
+from ratchetr._internal.utils import locks as locks_mod
+from ratchetr._internal.utils import versions as versions_mod
+from ratchetr.core.model_types import ReadinessStatus, SeverityLevel
+from ratchetr.json import as_int, as_list, as_mapping, as_str, normalise_enums_for_json, require_json
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -35,7 +47,7 @@ def test_resolve_project_root_prefers_local_markers(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     nested = workspace / "pkg"
     nested.mkdir(parents=True)
-    consume((workspace / "typewiz.toml").write_text("config_version = 0\n", encoding="utf-8"))
+    consume((workspace / "ratchetr.toml").write_text("config_version = 0\n", encoding="utf-8"))
 
     assert resolve_project_root(nested) == workspace
 
@@ -223,7 +235,7 @@ def test_run_command_requires_arguments() -> None:
 
 
 def test_run_command_logs_warning_on_failure(caplog: pytest.LogCaptureFixture) -> None:
-    caplog.set_level(logging.WARNING, logger="typewiz.internal.process")
+    caplog.set_level(logging.WARNING, logger="ratchetr.internal.process")
     result = run_command([sys.executable, "-c", "import sys; sys.exit(1)"])
     assert result.exit_code != 0
     assert any("Command failed" in record.message for record in caplog.records)

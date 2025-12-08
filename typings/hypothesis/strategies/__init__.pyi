@@ -1,4 +1,3 @@
-# ruff: noqa: UP047  # JUSTIFIED: compatibility shim mirrors hypothesis API that still exposes deprecated typing patterns
 # Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
 
 from collections.abc import Callable, Mapping, Sequence

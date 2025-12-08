@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for helper utilities in ``ratchet.core``."""
 
@@ -9,16 +21,16 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from typewiz.core.model_types import DEFAULT_SEVERITIES, Mode, SeverityLevel
-from typewiz.core.type_aliases import RunId
-from typewiz.ratchet import core as ratchet_core
-from typewiz.ratchet.models import RatchetModel, RatchetPathBudgetModel, RatchetRunBudgetModel
+from ratchetr.core.model_types import DEFAULT_SEVERITIES, Mode, SeverityLevel
+from ratchetr.core.type_aliases import RunId
+from ratchetr.ratchet import core as ratchet_core
+from ratchetr.ratchet.models import RatchetModel, RatchetPathBudgetModel, RatchetRunBudgetModel
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-    from typewiz.json import JSONValue
-    from typewiz.manifest.typed import ManifestData
+    from ratchetr.json import JSONValue
+    from ratchetr.manifest.typed import ManifestData
 
 pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
 

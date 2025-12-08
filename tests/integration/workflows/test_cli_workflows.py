@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Integration tests for Workflows CLI Workflows."""
 
@@ -12,28 +24,28 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from tests.fixtures.builders import build_cli_manifest, build_empty_summary
-from tests.fixtures.stubs import StubEngine
-from typewiz._internal.utils import consume
-from typewiz.api import AuditResult
-from typewiz.cli.app import main
-from typewiz.config import Config
-from typewiz.core.model_types import (
+from ratchetr._internal.utils import consume
+from ratchetr.api import AuditResult
+from ratchetr.cli.app import main
+from ratchetr.config import Config
+from ratchetr.core.model_types import (
     DashboardFormat,
     DashboardView,
     Mode,
     OverrideEntry,
     SeverityLevel,
 )
-from typewiz.core.type_aliases import EngineName, RelPath, RunnerName, ToolName
-from typewiz.core.types import Diagnostic, RunResult
-from typewiz.manifest.versioning import CURRENT_MANIFEST_VERSION
+from ratchetr.core.type_aliases import EngineName, RelPath, RunnerName, ToolName
+from ratchetr.core.types import Diagnostic, RunResult
+from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
+from tests.fixtures.builders import build_cli_manifest, build_empty_summary
+from tests.fixtures.stubs import StubEngine
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
     from pathlib import Path
 
-    from typewiz.core.summary_types import SummaryData
+    from ratchetr.core.summary_types import SummaryData
 
 pytestmark = [pytest.mark.integration, pytest.mark.cli]
 
@@ -57,8 +69,8 @@ def _patch_engine_resolution(monkeypatch: pytest.MonkeyPatch, engine: StubEngine
     def _resolve(_: Sequence[str]) -> list[StubEngine]:
         return [engine]
 
-    monkeypatch.setattr("typewiz.engines.resolve_engines", _resolve)
-    monkeypatch.setattr("typewiz.audit.api.resolve_engines", _resolve)
+    monkeypatch.setattr("ratchetr.engines.resolve_engines", _resolve)
+    monkeypatch.setattr("ratchetr.audit.api.resolve_engines", _resolve)
 
 
 def _run_cli_command(args: Sequence[str]) -> int:
@@ -157,10 +169,10 @@ def _arrange_cli_audit_full_outputs(
     def _run_audit_stub(**_: object) -> AuditResult:
         return audit_result
 
-    monkeypatch.setattr("typewiz.cli.commands.audit.load_config", _load_config)
-    monkeypatch.setattr("typewiz.cli.commands.audit.resolve_project_root", _resolve_root)
-    monkeypatch.setattr("typewiz.cli.commands.audit.default_full_paths", _default_paths)
-    monkeypatch.setattr("typewiz.cli.commands.audit.run_audit", _run_audit_stub)
+    monkeypatch.setattr("ratchetr.cli.commands.audit.load_config", _load_config)
+    monkeypatch.setattr("ratchetr.cli.commands.audit.resolve_project_root", _resolve_root)
+    monkeypatch.setattr("ratchetr.cli.commands.audit.default_full_paths", _default_paths)
+    monkeypatch.setattr("ratchetr.cli.commands.audit.run_audit", _run_audit_stub)
 
     def _fake_build_summary(data: object) -> SummaryData:
         if isinstance(data, dict):
@@ -169,13 +181,13 @@ def _arrange_cli_audit_full_outputs(
                 return prev_summary
         return summary
 
-    monkeypatch.setattr("typewiz.cli.commands.audit.build_summary", _fake_build_summary)
+    monkeypatch.setattr("ratchetr.cli.commands.audit.build_summary", _fake_build_summary)
 
     def _load_prev_summary(_: Path) -> SummaryData:
         return prev_summary
 
     monkeypatch.setattr(
-        "typewiz.cli.commands.audit.load_summary_from_manifest",
+        "ratchetr.cli.commands.audit.load_summary_from_manifest",
         _load_prev_summary,
     )
 
@@ -184,7 +196,7 @@ def _arrange_cli_audit_full_outputs(
         allowed_views={"engines", "overview", "hotspots", "readiness", "runs"},
     )
     monkeypatch.setattr(
-        "typewiz.services.dashboard.render_dashboard_summary",
+        "ratchetr.services.dashboard.render_dashboard_summary",
         renderer,
     )
 
@@ -314,15 +326,15 @@ def test_cli_dashboard_output(tmp_path: Path) -> None:
 
 
 def test_cli_version_flag(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
-    monkeypatch.setenv("TYPEWIZ_LICENSE_KEY", "test")
+    monkeypatch.setenv("RATCHETR_LICENSE_KEY", "test")
     exit_code = _run_cli_command(["--version"])
     assert exit_code == 0
     output = capsys.readouterr().out
-    assert "typewiz" in output.lower()
+    assert "ratchetr" in output.lower()
 
 
 def test_cli_engines_list(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
-    monkeypatch.setenv("TYPEWIZ_LICENSE_KEY", "test")
+    monkeypatch.setenv("RATCHETR_LICENSE_KEY", "test")
     exit_code = _run_cli_command(["engines", "list", "--format", "json"])
     assert exit_code == 0
     data = json.loads(capsys.readouterr().out)
@@ -330,11 +342,11 @@ def test_cli_engines_list(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Captur
 
 
 def test_cli_cache_clear(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    cache_dir = tmp_path / ".typewiz_cache"
+    cache_dir = tmp_path / ".ratchetr_cache"
     cache_dir.mkdir()
     consume((cache_dir / "cache.json").write_text("{}", encoding="utf-8"))
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("TYPEWIZ_LICENSE_KEY", "test")
+    monkeypatch.setenv("RATCHETR_LICENSE_KEY", "test")
     exit_code = _run_cli_command(["cache", "clear"])
     assert exit_code == 0
     assert not cache_dir.exists()
@@ -378,7 +390,7 @@ def test_cli_audit_readiness_summary(
     assert exit_code == 0
 
     captured = capsys.readouterr()
-    assert "[typewiz] readiness folder status=blocked" in captured.out
+    assert "[ratchetr] readiness folder status=blocked" in captured.out
     assert "pkg" in captured.out
 
     exit_code_readiness = _run_cli_command(
@@ -398,7 +410,7 @@ def test_cli_audit_readiness_summary(
     )
     assert exit_code_readiness == 0
     readiness_output = capsys.readouterr().out
-    assert "[typewiz] readiness file status=blocked" in readiness_output
+    assert "[ratchetr] readiness file status=blocked" in readiness_output
 
 
 def test_cli_readiness_details_and_severity(
@@ -438,7 +450,7 @@ def test_cli_summary_extras(
     consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
     (tmp_path / "src").mkdir(exist_ok=True)
     (tmp_path / "extras").mkdir(exist_ok=True)
-    config_path = tmp_path / "typewiz.toml"
+    config_path = tmp_path / "ratchetr.toml"
     consume(
         config_path.write_text(
             """
@@ -454,7 +466,7 @@ plugin_args = ["--strict"]
             encoding="utf-8",
         ),
     )
-    override_path = tmp_path / "extras" / "typewiz.dir.toml"
+    override_path = tmp_path / "extras" / "ratchetr.dir.toml"
     consume(
         override_path.write_text(
             """
@@ -588,9 +600,9 @@ def test_cli_audit_hash_workers_override(
     def _noop(*_args: object, **_kwargs: object) -> None:
         return None
 
-    monkeypatch.setattr("typewiz.cli.commands.audit.run_audit", _run_audit_stub)
-    monkeypatch.setattr("typewiz.cli.commands.audit.print_summary", _noop)
-    monkeypatch.setattr("typewiz.cli.commands.audit._maybe_print_readiness", _noop)
+    monkeypatch.setattr("ratchetr.cli.commands.audit.run_audit", _run_audit_stub)
+    monkeypatch.setattr("ratchetr.cli.commands.audit.print_summary", _noop)
+    monkeypatch.setattr("ratchetr.cli.commands.audit._maybe_print_readiness", _noop)
 
     (tmp_path / "pkg").mkdir(exist_ok=True)
     consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
@@ -670,7 +682,7 @@ def test_cli_plugin_arg_validation(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
 
 
 def test_cli_init_writes_template(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    target = tmp_path / "typewiz.toml"
+    target = tmp_path / "ratchetr.toml"
     exit_code = _run_cli_command(["init", "--output", str(target)])
     assert exit_code == 0
     out = capsys.readouterr().out
@@ -714,8 +726,8 @@ def test_cli_audit_requires_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     def _default_paths(_: Path) -> list[str]:
         return []
 
-    monkeypatch.setattr("typewiz.cli.commands.audit.load_config", _load_config)
-    monkeypatch.setattr("typewiz.cli.commands.audit.default_full_paths", _default_paths)
+    monkeypatch.setattr("ratchetr.cli.commands.audit.load_config", _load_config)
+    monkeypatch.setattr("ratchetr.cli.commands.audit.default_full_paths", _default_paths)
 
     with pytest.raises(SystemExit, match=r".*"):
         consume(main(["audit"]))
@@ -755,7 +767,7 @@ def test_cli_dashboard_outputs(
         return summary
 
     monkeypatch.setattr(
-        "typewiz.cli.app.load_summary_from_manifest",
+        "ratchetr.cli.app.load_summary_from_manifest",
         _load_summary,
     )
     renderer = _make_dashboard_renderer(
@@ -763,7 +775,7 @@ def test_cli_dashboard_outputs(
         allowed_views={"overview", "engines", "hotspots", "readiness", "runs"},
     )
     monkeypatch.setattr(
-        "typewiz.cli.app.render_dashboard_summary",
+        "ratchetr.cli.app.render_dashboard_summary",
         renderer,
     )
 

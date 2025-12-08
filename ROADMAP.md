@@ -1,12 +1,12 @@
-# Typewiz Roadmap
+# ratchetr Roadmap
 
-This document outlines the development roadmap for Typewiz, a universal typing & static-analysis aggregator.
+This document outlines the development roadmap for ratchetr, a universal typing & static-analysis aggregator.
 
 For current usage and features, see [README.md](README.md).
 
 ## Current Status: Alpha (v0.1.x)
 
-Typewiz is in **alpha** status. APIs, CLI flags, and dashboards may change without deprecation, but schemas and error codes are converging toward stability.
+ratchetr is in **alpha** status. APIs, CLI flags, and dashboards may change without deprecation, but schemas and error codes are converging toward stability.
 
 ---
 
@@ -16,17 +16,17 @@ Typewiz is in **alpha** status. APIs, CLI flags, and dashboards may change witho
 
 - **Engine abstraction layer** with pluggable architecture
 - **Builtin engines**: mypy and pyright with full integration
-- **Plugin discovery** via entry points (`typewiz.engines`)
+- **Plugin discovery** via entry points (`ratchetr.engines`)
 - **Manifest builder** with strict JSON Schema validation (`schemaVersion: "1"`)
 - **Dashboard system** with JSON, Markdown, and HTML outputs
 - **Incremental caching** keyed on file fingerprints and engine flags
 
 ### Configuration & Profiles ✅
 
-- **Config layering**: Project config (`typewiz.toml`) with Pydantic 2 validation
+- **Config layering**: Project config (`ratchetr.toml`) with Pydantic 2 validation
 - **Named profiles** per engine (e.g., `pyright.strict`, `mypy.incremental`)
 - **Profile inheritance** for customization (base profile + overrides)
-- **Directory overrides** via `typewiz.dir.toml` for per-folder configuration
+- **Directory overrides** via `ratchetr.dir.toml` for per-folder configuration
 - **Engine-specific settings**: plugin args, config files, include/exclude directives
 
 ### Ratcheting System ✅
@@ -89,9 +89,9 @@ Typewiz is in **alpha** status. APIs, CLI flags, and dashboards may change witho
 
 #### Developer Experience
 
-- [ ] **VS Code extension**: Tasks and problem matchers for Typewiz workflows
+- [ ] **VS Code extension**: Tasks and problem matchers for ratchetr workflows
 - [ ] **Pre-commit hooks**: Official pre-commit integration for ratchet checks
-- [ ] **Watch mode**: `typewiz audit --watch` for live feedback during development
+- [ ] **Watch mode**: `ratchetr audit --watch` for live feedback during development
 
 ---
 
@@ -130,7 +130,7 @@ Typewiz is in **alpha** status. APIs, CLI flags, and dashboards may change witho
 
 #### External Tool Integration
 
-- [ ] **IDE language servers**: Provide Typewiz diagnostics via LSP
+- [ ] **IDE language servers**: Provide ratchetr diagnostics via LSP
 - [ ] **Code review tools**: Integrate ratchet checks into review workflows
 - [ ] **Project management**: Export typing debt to Jira, Linear, etc.
 
@@ -176,7 +176,7 @@ Breaking schema changes will increment the major version (v1.0, v2.0, etc.).
 
 We welcome feedback on roadmap priorities! To suggest features:
 
-1. **Check existing issues**: Search [GitHub Issues](https://github.com/PantherianCodeX/typewiz/issues)
+1. **Check existing issues**: Search [GitHub Issues](https://github.com/CrownOps/ratchetr/issues)
 2. **Open a feature request**: Use the "Feature Request" template
 3. **Discuss in proposals**: Large features may require RFC-style proposals
 

@@ -1,16 +1,29 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-"""Minimal typewiz engine implementation used for documentation and tests."""
+"""Minimal ratchetr engine implementation used for documentation and tests."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
-from typewiz.core.model_types import SeverityLevel
-from typewiz.core.type_aliases import ToolName
-from typewiz.core.types import Diagnostic
-from typewiz.engines.base import BaseEngine, EngineContext, EngineResult
+from ratchetr.compat.python import override
+from ratchetr.core.model_types import SeverityLevel
+from ratchetr.core.type_aliases import ToolName
+from ratchetr.core.types import Diagnostic
+from ratchetr.engines.base import BaseEngine, EngineContext, EngineResult
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -20,8 +33,8 @@ if TYPE_CHECKING:
 class SimpleEngine(BaseEngine):
     """A minimal example engine that emits a single information diagnostic.
 
-    This demonstrates the engine protocol used by typewiz. You can package
-    engines and expose them via entry points to integrate with typewiz.
+    This demonstrates the engine protocol used by ratchetr. You can package
+    engines and expose them via entry points to integrate with ratchetr.
     """
 
     name: str = "simple"
@@ -32,7 +45,7 @@ class SimpleEngine(BaseEngine):
 
         Args:
             context: Execution context containing the project root and mode.
-            paths: The file paths typewiz asked the engine to analyse (unused in
+            paths: The file paths ratchetr asked the engine to analyse (unused in
                 this sample engine).
 
         Returns:

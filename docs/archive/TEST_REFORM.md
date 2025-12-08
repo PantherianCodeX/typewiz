@@ -1,4 +1,4 @@
-# TypeWiz Test Suite Reorganization Plan
+# ratchetr Test Suite Reorganization Plan
 
 ## Executive Summary
 
@@ -369,7 +369,7 @@ Suggested workflow stages:
 
 ```yaml
 test:unit:
-  script: pytest tests/unit -m unit --cov=typewiz
+  script: pytest tests/unit -m unit --cov=ratchetr
 
 test:integration:
   script: pytest tests/integration -m integration

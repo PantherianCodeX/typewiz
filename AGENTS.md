@@ -12,7 +12,7 @@
 
 ## Code Structure
 
-- Use the existing src layout. Primary package lives under `src/typewiz` and entry points under `src/typewiz/cli`.
+- Use the existing src layout. Primary package lives under `src/ratchetr` and entry points under `src/ratchetr/cli`.
 - Main modules orchestrate flow and I/O; helpers/utilities hold pure functions and small adapters. Do not embed business logic in CLI/arg parsing.
 - Keep top-level imports fast and side-effect free. No I/O at import time.
 - Use absolute imports within the package; avoid relative imports across distant modules.
@@ -21,8 +21,8 @@
 
 - Typing is non-optional: annotate every function, method, variable, constant, and attribute. No `Any` except in rare, justified containment boundaries.
 - Type checkers: `mypy` and `pyright` must pass in strict mode. Config is in `mypy.ini` and `pyrightconfig.json` and already strict.
-- Public typing: maintain `src/typewiz/py.typed` and run `make verifytypes` to validate exported types.
-- Pydantic v2 is the canonical way to model/validate internal configuration and data interchange (see `src/typewiz/config/models.py`).
+- Public typing: maintain `src/ratchetr/py.typed` and run `make verifytypes` to validate exported types.
+- Pydantic v2 is the canonical way to model/validate internal configuration and data interchange (see `src/ratchetr/config/models.py`).
 - External/interop formats must be specified with JSON Schema (see `schemas/typing_audit_manifest.schema.json`). Keep schema and code in sync.
 
 ## Design & Patterns
@@ -32,7 +32,7 @@
 - Module constants are UPPER_SNAKE_CASE and typed. Expose public surface via `__all__` where helpful.
 - Always start Python modules with `from __future__ import annotations`.
 - Favor `pathlib.Path`, `datetime` with timezone awareness, and pure functions. Avoid ambient state; inject dependencies.
-- Logging via `logging.getLogger("typewiz")`; no `print` in library code.
+- Logging via `logging.getLogger("ratchetr")`; no `print` in library code.
 
 ## Style, Lint, Format
 
@@ -58,7 +58,7 @@
 
 ## CI/CD
 
-- GitHub Actions workflow in `.github/workflows/ci.yml` runs: lint, type checks (mypy + pyright), tests (with coverage), packaging validation, and optional Typewiz dashboards.
+- GitHub Actions workflow in `.github/workflows/ci.yml` runs: lint, type checks (mypy + pyright), tests (with coverage), packaging validation, and optional ratchetr dashboards.
 - Caching: pip, virtualenv, Ruff, mypy caches are preserved across jobs; honor these paths locally.
 - The CI matrix covers Linux/macOS/Windows and Python 3.12, with 3.13 as continue-on-error. Local runs should match CI targets via `make ci.check`.
 
@@ -68,12 +68,12 @@
 - `make lint` / `make fix` — Ruff lint/format (check or autofix).
 - `make type` — mypy + pyright strict. `make verifytypes` validates public typing.
 - `make pytest.cov` — tests with coverage ≥95%.
-- `make typewiz.dashboard` — build typing dashboards. `make typewiz.clean` clears cache.
+- `make ratchetr.dashboard` — build typing dashboards. `make ratchetr.clean` clears cache.
 - `make check.error-codes` — ensure exception code registry matches docs.
 
 ## Error Handling & Codes
 
-- Raise precise, typed exceptions (see `src/typewiz/_internal/exceptions.py`) and map to stable error codes (see `src/typewiz/_internal/error_codes.py`).
+- Raise precise, typed exceptions (see `src/ratchetr/_internal/exceptions.py`) and map to stable error codes (see `src/ratchetr/_internal/error_codes.py`).
 - Keep docs synchronized with `docs/EXCEPTIONS.md`; CI enforces via `make check.error-codes`.
 
 ## Documentation
@@ -84,7 +84,7 @@
 ## Dependencies & Security
 
 - Keep runtime deps minimal and typed. Pin with compatible upper bounds as in `requirements*.txt`. Do not vendor dependencies.
-- No secrets in code or tests. Use environment variables for keys (e.g., `TYPEWIZ_LICENSE_KEY`).
+- No secrets in code or tests. Use environment variables for keys (e.g., `RATCHETR_LICENSE_KEY`).
 
 ## Contribution Workflow
 

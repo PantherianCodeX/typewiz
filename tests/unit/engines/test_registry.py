@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Engines Registry."""
 
@@ -9,11 +21,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from typewiz.config import AuditConfig
-from typewiz.core.model_types import Mode
-from typewiz.core.type_aliases import EngineName, RelPath
-from typewiz.engines.base import EngineContext, EngineOptions
-from typewiz.engines.registry import (
+from ratchetr.config import AuditConfig
+from ratchetr.core.model_types import Mode
+from ratchetr.core.type_aliases import EngineName, RelPath
+from ratchetr.engines.base import EngineContext, EngineOptions
+from ratchetr.engines.registry import (
     ENTRY_POINT_GROUP,
     EngineDescriptor,
     builtin_engines,
@@ -84,7 +96,7 @@ def test_entrypoint_engines_loads_and_validates(monkeypatch: pytest.MonkeyPatch)
     def fake_metadata_entry_points() -> _EntryPoints:
         return entry_points
 
-    monkeypatch.setattr("typewiz.engines.registry.metadata.entry_points", fake_metadata_entry_points)
+    monkeypatch.setattr("ratchetr.engines.registry.metadata.entry_points", fake_metadata_entry_points)
     engines = entrypoint_engines()
     assert EngineName("dummy") in engines
     assert isinstance(engines[EngineName("dummy")], DummyEngine)
@@ -98,7 +110,7 @@ def test_entrypoint_engines_ignores_invalid(monkeypatch: pytest.MonkeyPatch) -> 
     def fake_metadata_entry_points() -> _EntryPoints:
         return entry_points
 
-    monkeypatch.setattr("typewiz.engines.registry.metadata.entry_points", fake_metadata_entry_points)
+    monkeypatch.setattr("ratchetr.engines.registry.metadata.entry_points", fake_metadata_entry_points)
     engines = entrypoint_engines()
     assert engines == {}
 
@@ -107,7 +119,7 @@ def test_describe_engines_reports_builtin(monkeypatch: pytest.MonkeyPatch) -> No
     def fake_entrypoint_engines() -> dict[EngineName, object]:
         return {}
 
-    monkeypatch.setattr("typewiz.engines.registry.entrypoint_engines", fake_entrypoint_engines)
+    monkeypatch.setattr("ratchetr.engines.registry.entrypoint_engines", fake_entrypoint_engines)
     descriptors = describe_engines()
     assert any(desc.origin == "builtin" for desc in descriptors)
     assert all(isinstance(desc, EngineDescriptor) for desc in descriptors)
@@ -117,7 +129,7 @@ def test_resolve_engines_known_and_unknown(monkeypatch: pytest.MonkeyPatch) -> N
     def fake_entrypoint_engines() -> dict[EngineName, object]:
         return {}
 
-    monkeypatch.setattr("typewiz.engines.registry.entrypoint_engines", fake_entrypoint_engines)
+    monkeypatch.setattr("ratchetr.engines.registry.entrypoint_engines", fake_entrypoint_engines)
     engines = resolve_engines([EngineName("pyright")])
     assert len(engines) == 1
     with pytest.raises(ValueError, match="Unknown engine 'missing'"):

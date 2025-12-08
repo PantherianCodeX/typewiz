@@ -1,4 +1,16 @@
-# Copyright (c) 2025 PantherianCodeX. All Rights Reserved.
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 """Unit tests for Engines Builtin."""
 
@@ -8,12 +20,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from typewiz.config import AuditConfig
-from typewiz.core.model_types import CategoryMapping, Mode
-from typewiz.core.type_aliases import ProfileName, RelPath, ToolName
-from typewiz.engines.base import EngineContext, EngineOptions, EngineResult
-from typewiz.engines.builtin.mypy import MypyEngine
-from typewiz.engines.builtin.pyright import PyrightEngine
+from ratchetr.config import AuditConfig
+from ratchetr.core.model_types import CategoryMapping, Mode
+from ratchetr.core.type_aliases import ProfileName, RelPath, ToolName
+from ratchetr.engines.base import EngineContext, EngineOptions, EngineResult
+from ratchetr.engines.builtin.mypy import MypyEngine
+from ratchetr.engines.builtin.pyright import PyrightEngine
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -47,7 +59,7 @@ def _make_context(
 def test_mypy_engine_builds_command_with_defaults(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     engine = MypyEngine()
     _ = (tmp_path / "mypy.ini").write_text("[mypy]\n", encoding="utf-8")
-    monkeypatch.setattr("typewiz.engines.builtin.mypy.python_executable", lambda: "py")
+    monkeypatch.setattr("ratchetr.engines.builtin.mypy.python_executable", lambda: "py")
     context = _make_context(tmp_path, plugin_args=["--strict"])
 
     def fake_run_mypy(root: Path, *, mode: Mode, command: list[str]) -> EngineResult:
@@ -64,13 +76,13 @@ def test_mypy_engine_builds_command_with_defaults(tmp_path: Path, monkeypatch: p
             diagnostics=[],
         )
 
-    monkeypatch.setattr("typewiz.engines.builtin.mypy.run_mypy", fake_run_mypy)
+    monkeypatch.setattr("ratchetr.engines.builtin.mypy.run_mypy", fake_run_mypy)
     _ = engine.run(context, [])
 
 
 def test_mypy_engine_full_mode_appends_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     engine = MypyEngine()
-    monkeypatch.setattr("typewiz.engines.builtin.mypy.python_executable", lambda: "py")
+    monkeypatch.setattr("ratchetr.engines.builtin.mypy.python_executable", lambda: "py")
     context = _make_context(tmp_path, mode=Mode.FULL)
     paths = [RelPath("pkg/app.py"), RelPath("pkg/utils.py")]
 
@@ -88,7 +100,7 @@ def test_mypy_engine_full_mode_appends_paths(tmp_path: Path, monkeypatch: pytest
             diagnostics=[],
         )
 
-    monkeypatch.setattr("typewiz.engines.builtin.mypy.run_mypy", fake_run_mypy)
+    monkeypatch.setattr("ratchetr.engines.builtin.mypy.run_mypy", fake_run_mypy)
     _ = engine.run(context, paths)
 
 
@@ -103,7 +115,7 @@ def test_mypy_engine_run_invokes_runner(tmp_path: Path, monkeypatch: pytest.Monk
         captured["command"] = command
         return "result"
 
-    monkeypatch.setattr("typewiz.engines.builtin.mypy.run_mypy", fake_run_mypy)
+    monkeypatch.setattr("ratchetr.engines.builtin.mypy.run_mypy", fake_run_mypy)
     _ = engine.run(context, [])
     assert captured["root"] == tmp_path
     assert captured["mode"] == Mode.CURRENT
@@ -129,7 +141,7 @@ def test_pyright_engine_current_prefers_default_config(tmp_path: Path, monkeypat
             diagnostics=[],
         )
 
-    monkeypatch.setattr("typewiz.engines.builtin.pyright.run_pyright", fake_run_pyright)
+    monkeypatch.setattr("ratchetr.engines.builtin.pyright.run_pyright", fake_run_pyright)
     _ = engine.run(context, [])
     assert "--project" in recorded["command"]
     assert str(default_config) in recorded["command"]
@@ -158,7 +170,7 @@ def test_pyright_engine_full_with_paths(tmp_path: Path, monkeypatch: pytest.Monk
             diagnostics=[],
         )
 
-    monkeypatch.setattr("typewiz.engines.builtin.pyright.run_pyright", fake_run_pyright)
+    monkeypatch.setattr("ratchetr.engines.builtin.pyright.run_pyright", fake_run_pyright)
     _ = engine.run(context, paths)
     _ = engine.run(context_no_paths, [])
     # when no explicit paths are provided, engine uses project root
@@ -216,7 +228,7 @@ def test_pyright_engine_current_without_config_uses_project_root(
             diagnostics=[],
         )
 
-    monkeypatch.setattr("typewiz.engines.builtin.pyright.run_pyright", fake_run_pyright)
+    monkeypatch.setattr("ratchetr.engines.builtin.pyright.run_pyright", fake_run_pyright)
     _ = engine.run(context, [])
 
 
