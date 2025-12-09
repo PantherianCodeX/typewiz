@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ratchetr.compat.python import override
+from ratchetr.compat import override
 from ratchetr.core.model_types import CategoryMapping, Mode
 from ratchetr.engines.base import BaseEngine, EngineContext, EngineResult
 from ratchetr.engines.execution import run_pyright

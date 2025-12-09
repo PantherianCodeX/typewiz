@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from ratchetr.compat.python import TypedDict
+from ratchetr.compat import TypedDict
 from ratchetr.core.model_types import SeverityLevel, SignaturePolicy
 from ratchetr.core.type_aliases import RelPath, RunId
 from ratchetr.ratchet import (

@@ -22,7 +22,7 @@ from typing import Any, ClassVar, Final, Literal, TypeAlias, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from ratchetr.compat.python import TypedDict
+from ratchetr.compat import TypedDict
 from ratchetr.core.model_types import Mode, SeverityLevel
 from ratchetr.core.type_aliases import RunId
 from ratchetr.json import JSONValue  # noqa: TC001  # used in runtime model annotations

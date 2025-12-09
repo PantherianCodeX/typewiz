@@ -20,7 +20,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
-from ratchetr.compat.python import TypedDict
+from ratchetr.compat import TypedDict
 from ratchetr.config.validation import (
     coerce_int,
     coerce_mapping,

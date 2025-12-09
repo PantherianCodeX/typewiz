@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from ratchetr.compat.python import TypedDict
+from ratchetr.compat import TypedDict
 from ratchetr.core.model_types import SeverityLevel
 from ratchetr.core.type_aliases import RelPath
 from ratchetr.ratchet.core import build_ratchet_from_manifest

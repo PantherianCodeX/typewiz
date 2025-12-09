@@ -2,228 +2,330 @@ MAKEFLAGS += --warn-undefined-variables
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
-# Tooling
-VENV ?= .venv
 
-ifeq ($(origin OS), undefined)
-  OS_NAME := $(shell uname -s 2>/dev/null)
-else
-  OS_NAME := $(OS)
-endif
+# ----------------------------------------------------------------------
+# Core tool wiring
+# ----------------------------------------------------------------------
 
-ifeq ($(OS_NAME),Windows_NT)
-  BIN_DIR := $(VENV)/Scripts
-  PYTHON ?= $(BIN_DIR)/python.exe
-  PIP ?= $(BIN_DIR)/pip.exe
-  RUFF ?= $(BIN_DIR)/ruff.exe
-  MYPY ?= $(BIN_DIR)/mypy.exe
-  PYRIGHT ?= $(BIN_DIR)/pyright.exe
-  PYTEST ?= $(BIN_DIR)/pytest.exe
-  RATCHETR ?= $(BIN_DIR)/ratchetr.exe
-else
-  BIN_DIR := $(VENV)/bin
-  PYTHON ?= $(BIN_DIR)/python
-  PIP ?= $(BIN_DIR)/pip
-  RUFF ?= $(BIN_DIR)/ruff
-  MYPY ?= $(BIN_DIR)/mypy
-  PYRIGHT ?= $(BIN_DIR)/pyright
-  PYTEST ?= $(BIN_DIR)/pytest
-  RATCHETR ?= $(BIN_DIR)/ratchetr
-endif
+UV := uv run
 
-# Reports / defaults
-REPORTS_DIR ?= reports
-TYPING_REPORT_DIR ?= $(REPORTS_DIR)/typing
-MANIFEST_PATH ?= $(TYPING_REPORT_DIR)/typing_audit.json
-RATCHETR_STATUSES ?= blocked ready
-RATCHETR_LEVEL ?= folder
-RATCHETR_LIMIT ?= 20
-# NOTE: pyright --verifytypes only works when the package has been pip-installed (requires network).
-# Sandbox environments cannot perform that install today, so keep the gate opt-in.
-VERIFYTYPES_ENABLED ?= 0
-VERIFYTYPES_PACKAGE ?= ratchetr
+OUTPUT_DIR         ?= out
+TYPING_REPORT_DIR  ?= $(OUTPUT_DIR)/ratchetr
+MANIFEST_PATH      ?= $(TYPING_REPORT_DIR)/typing_audit.json
+
+RATCHETR_STATUSES  ?= blocked ready
+RATCHETR_LEVEL     ?= folder
+RATCHETR_LIMIT     ?= 20
+# Extra flags forwarded directly to `ratchetr audit` (e.g., --root src/ratchetr)
+RATCHETR_FLAGS     ?=
+
+VERIFYTYPES_DISABLED ?= 0
+VERIFYTYPES_PACKAGE  ?= ratchetr
+
+.DEFAULT_GOAL := help
 
 .PHONY: \
-  help %.help \
-  ci.precommit.install ci.check \
-  all.test all.lint all.type all.format all.fix \
-  lint lint.ruff lint.format lint.pylint format fix \
-  type type.mypy type.pyright type.verify typing.run typing.baseline typing.strict typing.ci \
-  pytest.all pytest.verbose pytest.failfast pytest.unit pytest.integration pytest.property pytest.performance pytest.cov pytest.clean \
-  tests.all tests.verbose tests.failfast tests.unit tests.integration tests.property tests.performance tests.cov tests.clean \
-  sec.lint sec.bandit sec.safety sec.all \
-  bench \
-  verifytypes \
-  hooks.update \
-  package.build package.check package.clean package.install-test \
+  all all.full all.test all.lint all.type all.format all.fix all.sec all.ratchetr \
+  lint lint.ruff lint.ruff.fix lint.format lint.format.fix lint.markdown lint.pylint lint.fix \
+  type type.mypy type.pyright type.verify type.clean \
+  test test.verbose test.failfast test.unit test.integration test.property test.performance test.cov test.bench \
+  test.clean test.clean.pytest test.clean.coverage test.clean.hypothesis test.clean.benchmarks \
+  ratchetr ratchetr.audit ratchetr.dashboard ratchetr.dashboard.json ratchetr.readiness ratchetr.clean ratchetr.all \
+  sec sec.lint sec.bandit sec.safety \
+  package.build package.check package.install-test package.clean \
   check.error-codes \
-  precommit.check \
-  ratchetr.audit ratchetr.dashboard ratchetr.readiness ratchetr.clean \
-  clean.all clean.mypy clean.pyright clean.pycache clean.coverage
+  clean clean.pycache clean.cache clean.caches clean.mypy clean.pyright clean.type clean.ruff clean.pylint clean.lint \
+  clean.coverage clean.pytest clean.hypothesis clean.benchmarks clean.test \
+  clean.bandit clean.safety clean.sec clean.package clean.ratchetr clean.full \
+  ci.check ci.package ci.all \
+  precommit.check precommit.update precommit.install \
+  help
 
-##@ CI
-ci.precommit.install: ## Install pre-commit and register hooks
-	$(PIP) install --quiet pre-commit || true
-	pre-commit install
 
-ci.check: typing.run all.lint all.type pytest.cov ## Run typing, lint, and tests with coverage gate (CI parity)
-
+# ----------------------------------------------------------------------
 ##@ Aggregate
-all.test: ## Run full pytest suite quietly
-	$(PYTEST) -q
+# ----------------------------------------------------------------------
 
-all.lint: ## Run ruff lint + formatter check
-	@$(MAKE) lint
+all.test: test ## Run full test suite
+all.lint: lint ## Run all lint checks (ruff, pylint, markdown)
+all.type: type ## Run mypy + pyright (+ verify-types unless VERIFYTYPES_DISABLED=1)
+all.format: lint.format ## Check formatting (no changes)
+all.fix: lint.fix ## Apply formatter and autofix lints
+all.sec: sec ## Run all security checks
+all.ratchetr: ratchetr.all ## Run full Ratchetr report generation
+all: all.lint all.type test.cov all.sec ## Run lint, typing, tests (w/coverage), and security
+all.full: all.fix all all.ratchetr ## Run all checks, fixes, and report generation
 
-all.type: ## Run mypy + pyright
-	@$(MAKE) type
 
-all.format: ## Apply ruff formatting to the codebase
-	@$(MAKE) format
-
-all.fix: ## Apply ruff formatting and autofix lints
-	@$(MAKE) fix
-
+# ----------------------------------------------------------------------
 ##@ Lint & Format
-lint: lint.ruff lint.format lint.markdown ## Lint + format checks
+# ----------------------------------------------------------------------
+
+lint: lint.ruff lint.format lint.pylint lint.markdown ## Lint code and docs 
 
 lint.ruff: ## Run ruff lint
-	uv run $(RUFF) check
+	$(UV) ruff check
 
-lint.format: ## Run ruff format check (no changes)
-	uv run $(RUFF) format --check
+lint.ruff.fix: ## Apply ruff formatter
+	$(UV) ruff check --fix
 
-lint.markdown: ## Run markdownlint on all markdown files
-	uv run markdownlint '**/*.md' --ignore node_modules --ignore .venv --ignore dist --ignore build --ignore 'docs/archive/**' --ignore 'docs/release_docs_plan.md'
+lint.format: ## Check ruff formatting (no changes)
+	$(UV) ruff format --check
 
-format: ## Apply ruff formatter
-	uv run $(RUFF) format
+lint.format.fix: ## Apply ruff formatter
+	$(UV) ruff format
 
-fix: ## Apply ruff formatter and autofix lints
-	uv run $(RUFF) format
-	uv run $(RUFF) check --fix
+lint.markdown: ## Run pymarkdownlnt on markdown files
+	$(UV) pymarkdownlnt scan .
 
-##@ Pre-commit
-precommit.check: ## Run lint (ruff) and typing checks in parallel (used by pre-commit)
-	@set -euo pipefail; \
-	 $(MAKE) lint.ruff & \
-	 lint_pid=$$!; \
-	 $(MAKE) type.mypy & \
-	 mypy_pid=$$!; \
-	 $(MAKE) type.pyright & \
-	 pyright_pid=$$!; \
-	 wait $$lint_pid; \
-	 wait $$mypy_pid; \
-	 wait $$pyright_pid
+lint.pylint: ## Run Pylint code quality checks
+	@mkdir -p $(OUTPUT_DIR)/lint
+	$(UV) pylint src/ratchetr --output-format=json --reports=n > $(OUTPUT_DIR)/lint/pylint.json || true
+	@echo "Pylint report: $(OUTPUT_DIR)/lint/pylint.json"
 
+lint.fix: lint.ruff.fix lint.format.fix ## Apply formatter and autofix lints
+
+
+# ----------------------------------------------------------------------
 ##@ Typing
-type: type.mypy type.pyright ## Run mypy + pyright
+# ----------------------------------------------------------------------
 
-type.mypy: ## Run mypy (strict)
-	uv run $(MYPY) --no-incremental
+type: type.mypy type.pyright type.verify ## Run mypy + pyright (+ verify-types unless VERIFYTYPES_DISABLED=1)
 
-type.pyright: ## Run pyright using repo config from pyproject.toml
-	uv run $(PYRIGHT)
+type.mypy: ## Run mypy
+	$(UV) mypy
 
-type.verify: ## Verify public typing completeness via pyright (opt-in via VERIFYTYPES_ENABLED=1)
-ifeq ($(VERIFYTYPES_ENABLED),1)
-	PYTHONPATH=src uv run $(PYRIGHT) --verifytypes $(VERIFYTYPES_PACKAGE) --ignoreexternal
+type.pyright: ## Run pyright
+	$(UV) pyright
+
+type.verify: ## Verify public typing completeness via pyright (opt-out via VERIFYTYPES_DISABLED=1)
+ifeq ($(VERIFYTYPES_DISABLED),0)
+	PYTHONPATH=src $(UV) pyright --verifytypes $(VERIFYTYPES_PACKAGE) --ignoreexternal
 else
-	@echo "[skip] uv run pyright --verifytypes requires $(VERIFYTYPES_PACKAGE) to be pip-installed; set VERIFYTYPES_ENABLED=1 after installing it."
+	@echo "[skip] pyright --verifytypes disabled via VERIFYTYPES_DISABLED=1 (package: $(VERIFYTYPES_PACKAGE))"
 endif
 
-verifytypes: ## Alias for type.verify (pyright --verifytypes)
-	@$(MAKE) type.verify
+type.clean: clean.type ## Clean all typing caches
 
-typing.run: typing.baseline typing.strict type.verify ## Run baseline then strict checks plus public typing
 
-typing.baseline: ## Run pyright then mypy checks
-	uv run $(PYRIGHT)
-	uv run $(MYPY) --no-incremental
-	uv run $(MYPY) --no-incremental
-
-typing.strict: ## Enforce strict gates (ruff + mypy strict again)
-	uv run $(RUFF) check
-	uv run $(MYPY) --no-incremental
-
-typing.ci: ## Generate Ratchetr outputs (JSON/MD/HTML) for CI insight
-	mkdir -p $(TYPING_REPORT_DIR)
-	uv run $(RATCHETR) audit --max-depth 3 --mode full --manifest $(MANIFEST_PATH) --readiness --readiness-status blocked --readiness-status ready || true
-	uv run $(RATCHETR) dashboard --manifest $(MANIFEST_PATH) --format json --output $(TYPING_REPORT_DIR)/dashboard.json || true
-	uv run $(RATCHETR) dashboard --manifest $(MANIFEST_PATH) --format markdown --output $(TYPING_REPORT_DIR)/dashboard.md || true
-	uv run $(RATCHETR) dashboard --manifest $(MANIFEST_PATH) --format html --output $(TYPING_REPORT_DIR)/dashboard.html || true
-
+# ----------------------------------------------------------------------
 ##@ Tests
-pytest.all: ## Run pytest quietly
-	uv run $(PYTEST) -q
+# ----------------------------------------------------------------------
 
-pytest.verbose: ## Run pytest verbosely
-	uv run $(PYTEST) -v
+test: ## Run pytest (quiet)
+	$(UV) pytest -q
 
-pytest.failfast: ## Run pytest, stopping on first failure
-	uv run $(PYTEST) -x
+test.verbose: ## Run pytest verbosely
+	$(UV) pytest -v
 
-pytest.unit: ## Run only unit suites (tests/unit)
-	uv run $(PYTEST) -q tests/unit
+test.failfast: ## Run pytest, stopping on first failure
+	$(UV) pytest -x
 
-pytest.integration: ## Run only integration suites (tests/integration)
-	uv run $(PYTEST) -q tests/integration
+test.unit: ## Run unit tests (tests/unit)
+	$(UV) pytest -q tests/unit
 
-pytest.property: ## Run only property-based suites (tests/property_based)
-	uv run $(PYTEST) -q tests/property_based
+test.integration: ## Run integration tests (tests/integration)
+	$(UV) pytest -q tests/integration
 
-pytest.performance: ## Run only performance suites (tests/performance)
-	uv run $(PYTEST) -q tests/performance
+test.property: ## Run property-based tests (tests/property_based)
+	$(UV) pytest -q tests/property_based
 
-pytest.cov: ## Run pytest with coverage on src/ratchetr (95% gate)
-	uv run $(PYTEST) --cov=src/ratchetr --cov-report=term --cov-fail-under=95
+test.performance: ## Run performance tests (tests/performance)
+	$(UV) pytest -q tests/performance
 
-pytest.clean: ## Clean pytest cache
-	rm -rf .pytest_cache
+test.cov: ## Run pytest with coverage (95% gate) on src/ratchetr
+	$(UV) pytest --cov=src/ratchetr --cov-report=term --cov-fail-under=95
 
+test.bench: ## Run performance benchmarks (requires pytest-benchmark plugin)
+	$(UV) pytest tests/performance/benchmarks --benchmark-only
+
+test.clean.pytest: clean.pytest ## Clean pytest cache
+test.clean.coverage: clean.coverage ## Clean coverage artifacts
+test.clean.hypothesis: clean.hypothesis ## Clean Hypothesis cache
+test.clean.benchmarks: clean.benchmarks ## Clean pytest-benchmark cache
+test.clean: clean.test ## Clean all test caches and artifacts
+
+
+# ----------------------------------------------------------------------
 ##@ Ratchetr
-ratchetr.audit: ## Generate Ratchetr audit manifest
+# ----------------------------------------------------------------------
+
+$(MANIFEST_PATH):  ## Generate Ratchetr audit manifest
 	mkdir -p $(TYPING_REPORT_DIR)
-	uv run $(RATCHETR) audit --max-depth 3 --manifest $(MANIFEST_PATH) --readiness --readiness-status blocked --readiness-status ready
+	$(UV) ratchetr audit \
+		--manifest $(MANIFEST_PATH) \
+		$(RATCHETR_FLAGS)
+		--readiness \
+		$(foreach status,$(RATCHETR_STATUSES),--readiness-status $(status)) \
 
-ratchetr.dashboard: ## Render Ratchetr dashboards (MD + HTML)
-	@$(MAKE) ratchetr.audit
-	uv run $(RATCHETR) dashboard --manifest $(MANIFEST_PATH) --format markdown --output $(TYPING_REPORT_DIR)/dashboard.md
-	uv run $(RATCHETR) dashboard --manifest $(MANIFEST_PATH) --format html --output $(TYPING_REPORT_DIR)/dashboard.html
+ratchetr: ratchetr.audit ratchetr.dashboard ratchetr.readiness ## Run all Ratchetr typing report generation steps
 
-ratchetr.readiness: ## Show Ratchetr readiness summary
-	@$(MAKE) ratchetr.audit
-	uv run $(RATCHETR) readiness --manifest $(MANIFEST_PATH) --level $(RATCHETR_LEVEL) $(foreach status,$(RATCHETR_STATUSES),--status $(status)) --limit $(RATCHETR_LIMIT) || true
+ratchetr.audit: $(MANIFEST_PATH) ## Logical alias
+	@:
 
-ratchetr.clean: ## Remove Ratchetr caches and reports
-	rm -rf .ratchetr_cache
-	rm -rf $(TYPING_REPORT_DIR)
+ratchetr.dashboard: $(MANIFEST_PATH) ## Render Ratchetr dashboards (Markdown + HTML)
+	$(UV) ratchetr dashboard --manifest $(MANIFEST_PATH) --format markdown --output $(TYPING_REPORT_DIR)/dashboard.md
+	$(UV) ratchetr dashboard --manifest $(MANIFEST_PATH) --format html     --output $(TYPING_REPORT_DIR)/dashboard.html
 
+ratchetr.dashboard.json: $(MANIFEST_PATH) ## Render Ratchetr dashboard in JSON format
+	$(UV) ratchetr dashboard --manifest $(MANIFEST_PATH) --format json     --output $(TYPING_REPORT_DIR)/dashboard.json
+
+ratchetr.readiness: $(MANIFEST_PATH) ## Show Ratchetr readiness summary
+	$(UV) ratchetr readiness \
+		--manifest $(MANIFEST_PATH) \
+		--level $(RATCHETR_LEVEL) \
+		$(foreach status,$(RATCHETR_STATUSES),--status $(status)) \
+		--limit $(RATCHETR_LIMIT) || true
+
+ratchetr.all: ratchetr ratchetr.dashboard.json ## Include json report format with full run
+
+ratchetr.clean: clean.ratchetr ## Remove Ratchetr caches and reports
+
+
+# ----------------------------------------------------------------------
+##@ Security
+# ----------------------------------------------------------------------
+
+sec: sec.lint sec.bandit sec.safety ## Run all security checks
+
+sec.lint: ## Security lint via ruff S-rules
+	$(UV) ruff check --select S
+
+sec.bandit: ## Run Bandit security scanner
+	mkdir -p $(OUTPUT_DIR)/security
+	$(UV) bandit -c pyproject.toml -r src/ -f json -o $(OUTPUT_DIR)/security/bandit-report.json || true
+	@echo "Bandit report: $(OUTPUT_DIR)/security/bandit-report.json"
+
+sec.safety: ## Run Safety dependency scanner
+	mkdir -p $(OUTPUT_DIR)/security
+	$(UV) safety scan --json > $(OUTPUT_DIR)/security/safety-report.json || true
+	@echo "Safety report: $(OUTPUT_DIR)/security/safety-report.json"
+
+
+# ----------------------------------------------------------------------
+##@ Packaging
+# ----------------------------------------------------------------------
+
+package.build: ## Build sdist and wheel into dist/
+	$(UV) python -m build --no-isolation
+
+package.check: ## Run Twine check on built artifacts
+	$(UV) twine check dist/*
+
+package.install-test: ## Install built wheel in a temporary venv to ensure installability
+	$(UV) python scripts/install_test_wheel.py
+
+package.clean: ## Remove build artifacts
+	$(UV) python scripts/clean_build_artifacts.py
+
+
+# ----------------------------------------------------------------------
 ##@ Internal checks
-check.error-codes: ## Verify error code registry and documentation are in sync
-	uv run $(PYTHON) scripts/check_error_codes.py
+# ----------------------------------------------------------------------
 
+check.error-codes: ## Verify error code registry and documentation are in sync
+	$(UV) python scripts/check_error_codes.py
+
+
+# ----------------------------------------------------------------------
 ##@ Cleaning
-clean.mypy: ## Remove mypy cache directory
+# ----------------------------------------------------------------------
+
+clean.mypy: ## Remove mypy cache
 	rm -rf .mypy_cache
 
-clean.pyright: ## Remove Pyright cache directory
+clean.pyright: ## Remove pyright cache
 	rm -rf .pyrightcache
 
-clean.pycache: ## Remove Python bytecode and __pycache__ dirs across repo
+clean.type: clean.mypy clean.pyright ## Remove typing caches
+
+clean.ruff: ## Remove ruff cache
+	rm -rf .ruff_cache
+
+clean.pylint: ## Remove pylint cache
+	rm -rf .pylint.d
+	rm -f $(OUTPUT_DIR)/lint/pylint.json
+
+clean.lint: clean.ruff clean.pylint ## Remove lint caches
+
+clean.pycache: ## Remove Python bytecode and __pycache__ dirs
 	find . -type f \( -name '*.pyc' -o -name '*.pyo' -o -name '*.py[co]' \) -delete
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
+
+clean.cache: ## Remove .cache directories
+	find . -type d -name .cache -prune -exec rm -rf {} +
+
+clean.caches: clean.pycache clean.cache ## Remove all common caches
 
 clean.coverage: ## Remove coverage artifacts
 	rm -f .coverage
 	rm -rf htmlcov
 
-clean.all: ratchetr.clean pytest.clean clean.mypy clean.pyright clean.coverage clean.pycache ## Remove all local caches
+clean.pytest: ## Clean test caches
+	rm -rf .pytest_cache
+
+clean.hypothesis: ## Remove Hypothesis caches
+	rm -rf .hypothesis
+
+clean.benchmarks: ## Remove pytest-benchmark caches
+	rm -rf .benchmarks
+
+clean.test: clean.pytest clean.coverage clean.hypothesis clean.benchmarks ## Remove test caches and coverage artifacts
+
+clean.bandit: ## Remove Bandit report
+	rm -f $(OUTPUT_DIR)/security/bandit-report.json
+
+clean.safety: ## Remove Safety report
+	rm -f $(OUTPUT_DIR)/security/safety-report.json
+
+clean.sec: clean.bandit clean.safety ## Remove security reports
+	rm -rf $(OUTPUT_DIR)/security
+
+clean.package: package.clean ## Remove packaging build artifacts
+
+clean.ratchetr: ## Clean Ratchetr caches
+	rm -rf .ratchetr_cache
+	rm -rf $(TYPING_REPORT_DIR)
+
+clean: clean.caches clean.type clean.lint clean.test clean.sec ## Remove all local caches
+
+clean.full: clean clean.package clean.ratchetr ## Remove all local caches and packaging
 
 
-.DEFAULT_GOAL := help
+# ----------------------------------------------------------------------
+##@ CI
+# ----------------------------------------------------------------------
+
+ci.check: ratchetr.all all.lint all.type test.cov all.sec ## Run ratchetr, lint, typing, tests (w/coverage), and security (CI parity)
+	@echo "CI checks completed."
+
+ci.package: package.build package.check ## Build and sanity-check distribution artifacts
+	@echo "Packaging checks completed."
+
+ci.all: ci.check ci.package ## Full CI: checks + packaging
+	@echo "Full CI (checks + packaging) completed."
+
+
+# ----------------------------------------------------------------------
+##@ Pre-commit
+# ----------------------------------------------------------------------
+
+precommit.check: ## Run all pre-commit hooks on the repo
+	$(UV) pre-commit run --all-files
+
+precommit.update: ## Update pre-commit hooks to latest versions
+	$(UV) pre-commit autoupdate
+
+precommit.install: ## Install pre-commit hooks using uv
+	$(UV) pre-commit install
+
+
+# ----------------------------------------------------------------------
+# Help
+# ----------------------------------------------------------------------
+
 HELP_GROUP_FORMAT := "\n\033[1m%s\033[0m\n"
-HELP_CMD_FORMAT := "  \033[36m%-32s\033[0m %s\n"
+HELP_CMD_FORMAT   := "  \033[36m%-32s\033[0m %s\n"
 
 help:
 	@printf $(HELP_GROUP_FORMAT) "Ratchetr Makefile Commands"
@@ -238,81 +340,10 @@ help:
 	@printf $(HELP_CMD_FORMAT) "RATCHETR_LEVEL=folder|file" " Scope readiness view"
 	@printf $(HELP_CMD_FORMAT) "RATCHETR_STATUSES=blocked\ ready" " Filter readiness statuses"
 	@printf $(HELP_CMD_FORMAT) "RATCHETR_LIMIT=20" " Limit entries in readiness view"
-	@printf "\nHint: run \033[36mmake <group>.help\033[0m for a specific group (e.g., 'tests.help', 'lint.help', 'type.help').\n"
+	@printf $(HELP_CMD_FORMAT) "RATCHETR_FLAGS='...'" " Extra args forwarded to 'ratchetr audit'"
+	@printf $(HELP_CMD_FORMAT) "VERIFYTYPES_DISABLED=1" " Skip pyright --verifytypes in 'type'"
+	@printf "\nHint: run \033[36mmake <group>.help\033[0m for a specific group (e.g., 'test.help', 'lint.help', 'type.help').\n"
 
 %.help:
 	@awk 'BEGIN {FS=":.*##"} \
 		/^[a-zA-Z0-9_.-•]+:.*##/ { printf "  \033[36m%-32s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST) | grep "^  .*$(firstword $(MAKECMDGOALS))\..*" || true
-
-##@ Tests (aliases)
-tests.all: ## Alias for pytest.all
-	@$(MAKE) pytest.all
-
-tests.verbose: ## Alias for pytest.verbose
-	@$(MAKE) pytest.verbose
-
-tests.failfast: ## Alias for pytest.failfast
-	@$(MAKE) pytest.failfast
-
-tests.unit: ## Alias for pytest.unit
-	@$(MAKE) pytest.unit
-
-tests.integration: ## Alias for pytest.integration
-	@$(MAKE) pytest.integration
-
-tests.property: ## Alias for pytest.property
-	@$(MAKE) pytest.property
-
-tests.performance: ## Alias for pytest.performance
-	@$(MAKE) pytest.performance
-
-##@ Benchmarks
-bench: ## Run performance benchmarks (requires pytest-benchmark plugin)
-	uv run $(PYTEST) tests/performance/benchmarks --benchmark-only
-
-##@ Hooks
-hooks.update: ## Update pre-commit hooks to latest versions
-	uv $(PIP) install --quiet pre-commit || true
-	uv run pre-commit autoupdate
-
-##@ Packaging
-package.build: ## Build sdist and wheel into dist/
-	uv run $(PYTHON) -m build --no-isolation
-
-package.check: package.build ## Run Twine check on built artifacts
-	uv run $(PYTHON) -m twine check dist/*
-
-
-package.install-test: package.build ## Install built wheel in a temporary venv to ensure installability
-	uv run $(PYTHON) scripts/install_test_wheel.py
-
-
-package.clean: ## Remove build artifacts
-	uv run $(PYTHON) scripts/clean_build_artifacts.py
-
-tests.cov: ## Alias for pytest.cov
-	@$(MAKE) pytest.cov
-
-tests.clean: ## Alias for pytest.clean
-	@$(MAKE) pytest.clean
-##@ Security
-sec.lint: ## Advisory security lint (ruff S-rules)
-	uv run $(RUFF) check --select S
-
-sec.bandit: ## Run Bandit security scanner
-	@mkdir -p out/security
-	uv run $(BIN_DIR)/bandit -c pyproject.toml -r src/ -f json -o out/security/bandit-report.json || true
-	@echo "Bandit report: out/security/bandit-report.json"
-
-sec.safety: ## Run Safety dependency vulnerability scanner
-	@mkdir -p out/security
-	uv run $(BIN_DIR)/safety scan --json > out/security/safety-report.json || true
-	@echo "Safety report: out/security/safety-report.json"
-
-sec.all: sec.lint sec.bandit sec.safety ## Run all security checks
-
-##@ Code Quality
-lint.pylint: ## Run Pylint code quality checks
-	@mkdir -p out/lint
-	uv run $(BIN_DIR)/pylint --output-format=json --reports=n src/ > out/lint/pylint.json || true
-	@echo "Pylint report: out/lint/pylint.json"

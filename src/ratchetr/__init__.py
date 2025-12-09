@@ -26,7 +26,6 @@ from ratchetr.exceptions import (
     RatchetrTypeError,
     RatchetrValidationError,
 )
-from ratchetr.license import LICENSE_KEY_ENV, has_commercial_license, license_mode
 
 from .api import (
     AuditResult,
@@ -61,7 +60,6 @@ from .ratchet import (
 )
 
 __all__ = [
-    "LICENSE_KEY_ENV",
     "AuditConfig",
     "AuditResult",
     "Config",
@@ -77,8 +75,6 @@ __all__ = [
     "__version__",
     "build_summary",
     "emit_dashboard_outputs",
-    "has_commercial_license",
-    "license_mode",
     "load_config",
     "load_manifest",
     "load_summary_from_manifest",

@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final, TypeAlias, cast
 
-from ratchetr.compat.python import StrEnum, TypedDict
+from ratchetr.compat import StrEnum, TypedDict
 
 from .type_aliases import CategoryKey, RelPath
 
@@ -246,38 +246,6 @@ class LogComponent(StrEnum):
             return cls(value)
         except ValueError as exc:
             msg = f"Unknown log component '{raw}'"
-            raise ValueError(msg) from exc
-
-
-class LicenseMode(StrEnum):
-    """Enumeration of license modes for ratchetr.
-
-    Attributes:
-        COMMERCIAL: Commercial license mode.
-        EVALUATION: Evaluation/trial license mode.
-    """
-
-    COMMERCIAL = "commercial"
-    EVALUATION = "evaluation"
-
-    @classmethod
-    def from_str(cls, raw: str) -> LicenseMode:
-        """Create a LicenseMode enum from a string value.
-
-        Args:
-            raw: String representation of the license mode.
-
-        Returns:
-            LicenseMode enum value.
-
-        Raises:
-            ValueError: If the string does not match any LicenseMode value.
-        """
-        value = raw.strip().lower()
-        try:
-            return cls(value)
-        except ValueError as exc:
-            msg = f"Unknown license mode '{raw}'"
             raise ValueError(msg) from exc
 
 

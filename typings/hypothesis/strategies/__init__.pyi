@@ -6,7 +6,7 @@ from typing import Any, Generic, TypeVar
 _T = TypeVar("_T")
 _U = TypeVar("_U")
 
-class SearchStrategy(Generic[_T]):  # noqa: UP046  # JUSTIFIED: public stub mirrors upstream generic class name
+class SearchStrategy(Generic[_T]):  # JUSTIFIED: public stub mirrors upstream generic class name
     def map(self, function: Callable[[_T], _U]) -> SearchStrategy[_U]: ...
     def filter(self, predicate: Callable[[_T], bool]) -> SearchStrategy[_T]: ...
 

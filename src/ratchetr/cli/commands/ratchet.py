@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from ratchetr.cli.types import SubparserCollection
-    from ratchetr.compat.python import Never
+    from ratchetr.compat import Never
     from ratchetr.core.type_aliases import RunId
     from ratchetr.manifest.typed import ManifestData
 

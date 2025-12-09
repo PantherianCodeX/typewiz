@@ -26,7 +26,6 @@ from ratchetr.core.model_types import (
     DataFormat,
     FailOnPolicy,
     HotspotKind,
-    LicenseMode,
     LogComponent,
     LogFormat,
     ManifestAction,
@@ -129,7 +128,6 @@ def test_severity_level_coerce_plural_and_alias() -> None:
         ("fail", SignaturePolicy),
         ("validate", ManifestAction),
         ("runs", QuerySection),
-        ("commercial", LicenseMode),
         ("readiness", DashboardView),
     ],
 )
@@ -142,7 +140,6 @@ def test_various_enum_parsers_accept_values(value: str, enum_cls: EnumType) -> N
     [
         LogFormat,
         LogComponent,
-        LicenseMode,
         DashboardFormat,
         DashboardView,
         ReadinessLevel,

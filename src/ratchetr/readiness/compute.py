@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Final, cast
 
-from ratchetr.compat.python import TypedDict
+from ratchetr.compat import TypedDict
 from ratchetr.core.categories import CATEGORY_NAMES
 from ratchetr.core.model_types import ReadinessStatus
 from ratchetr.core.summary_types import (

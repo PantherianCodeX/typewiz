@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ratchetr.compat.python import TypedDict
+from ratchetr.compat import TypedDict
 
 if TYPE_CHECKING:
     from ratchetr.core.model_types import CategoryMapping, Mode, OverrideEntry, SeverityLevel
@@ -84,7 +84,7 @@ class FolderEntryRequired(TypedDict):
     errors: int
     warnings: int
     information: int
-    codeCounts: dict[str, int]
+    code_counts: dict[str, int]
     recommendations: list[str]
 
 

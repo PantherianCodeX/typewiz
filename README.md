@@ -17,8 +17,7 @@ solid and tested, expect:
 - Dashboard layouts and features evolving
 - Schemas stabilizing but not yet guaranteed stable
 
-Production use is supported under commercial license, but be prepared for
-updates. See [ROADMAP.md](ROADMAP.md) for stability commitments.
+See [ROADMAP.md](ROADMAP.md) for stability commitments.
 
 ## Features
 
@@ -271,24 +270,13 @@ Current alpha limitations:
 
 See [ROADMAP.md](ROADMAP.md) for planned improvements.
 
-## Licensing & Commercial Use
+## Licensing
 
-ratchetr is distributed under the **ratchetr Software License Agreement (Proprietary)**.
+ratchetr is distributed under the **Apache License, Version 2.0**.
 
-- **Evaluation:** You may install and evaluate ratchetr internally for up to 30
-  days.
-- **Commercial/Production use:** Requires a commercial license.
-- **Prohibited:** Redistribution, sublicensing, hosting as a service, or
-  sublicensing without written authorization.
-- **License keys:** Set `RATCHETR_LICENSE_KEY=<your-key>` in the environment to
-  suppress the evaluation banner and unlock licensed features.
-
-See [`LICENSE`](./LICENSE) and [`TERMS.md`](./TERMS.md) for the full agreement
-and summary. For commercial licensing or extended evaluations, contact
-**<pantheriancodex@pm.me>**.
-
-Historical OSS releases prior to the commercial reset remain available under
-their original terms in the legacy repository history.
+See [`LICENSE`](./LICENSE) for the full agreement
+and summary. For custom development and support, contact
+**<crownops-eng@pm.me>**.
 
 ### Custom engines (plugins)
 
@@ -332,8 +320,8 @@ class SimpleEngine(BaseEngine):
 
 Built-in adapters live under `ratchetr.engines.builtin` (see `pyright` and
 `mypy`) and are good templates for production plugins. Higher layers
-(CLI/services) consume public modules such as `ratchetr.runtime`,
-`ratchetr.logging`, and `ratchetr.license`; direct imports from
+(CLI/services) consume public modules such as `ratchetr.runtime` and
+`ratchetr.logging`; direct imports from
 `ratchetr._internal` are disallowed and enforced via tests.
 
 Declare the entry point in your `pyproject.toml`:

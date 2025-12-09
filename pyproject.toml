@@ -26,8 +26,8 @@ dependencies = [
   "pyright>=1.1.407,<2.0.0",
   "mypy>=1.18.2,<2.0.0",
   "pydantic>=2.12.4,<3.0.0",
-  "typing-extensions>=4.15.0,<5.0.0; python_version < 3.12",
-  "tomli>=2.3.0,<3.0.0; python_version < 3.11"
+  "typing-extensions>=4.15.0,<5.0.0; python_version < '3.12'",
+  "tomli>=2.3.0,<3.0.0; python_version < '3.11'"
 ]
 
 [project.urls]

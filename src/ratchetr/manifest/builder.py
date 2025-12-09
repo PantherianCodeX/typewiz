@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, cast
 
-from ratchetr.compat.python import UTC
+from ratchetr.compat import UTC
 from ratchetr.core.model_types import LogComponent, clone_override_entries
 from ratchetr.json import normalise_enums_for_json
 from ratchetr.logging import structured_extra

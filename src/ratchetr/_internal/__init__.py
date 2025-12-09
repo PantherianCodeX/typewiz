@@ -26,7 +26,6 @@ if TYPE_CHECKING:
     collection_utils: ModuleType
     error_codes: ModuleType
     exceptions: ModuleType
-    license: ModuleType  # noqa: A001  # JUSTIFIED: module attribute name must match public API ratchetr._internal.license
     logging_utils: ModuleType
     utils: ModuleType
 
@@ -35,7 +34,6 @@ _EXPOSED_MODULES: Final[tuple[str, ...]] = (
     "collection_utils",
     "error_codes",
     "exceptions",
-    "license",
     "logging_utils",
     "utils",
 )

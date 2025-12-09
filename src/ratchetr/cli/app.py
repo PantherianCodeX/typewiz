@@ -44,7 +44,6 @@ from ratchetr.core.model_types import (
     ReadinessStatus,
     SeverityLevel,
 )
-from ratchetr.license import maybe_emit_evaluation_notice
 from ratchetr.logging import LOG_FORMATS, LOG_LEVELS, configure_logging
 from ratchetr.runtime import consume
 from ratchetr.services.dashboard import (
@@ -157,7 +156,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     Returns:
         int: Exit code from the executed command handler (0 for success, non-zero for failure).
     """
-    maybe_emit_evaluation_notice(lambda message: _echo(message, err=True))
     parser = _build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
     if args.version:

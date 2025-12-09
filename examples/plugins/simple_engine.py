@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ratchetr.compat.python import override
+from ratchetr.compat import override
 from ratchetr.core.model_types import SeverityLevel
 from ratchetr.core.type_aliases import ToolName
 from ratchetr.core.types import Diagnostic

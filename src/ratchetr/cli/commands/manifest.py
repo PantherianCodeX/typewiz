@@ -30,7 +30,7 @@ from ratchetr.services.manifest import (
 
 if TYPE_CHECKING:
     from ratchetr.cli.types import SubparserCollection
-    from ratchetr.compat.python import Never
+    from ratchetr.compat import Never
 
 
 def _raise_unknown_manifest_action(action: Never) -> NoReturn:

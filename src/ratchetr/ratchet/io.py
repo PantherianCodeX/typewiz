@@ -20,7 +20,7 @@ import json
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from ratchetr.compat.python import UTC
+from ratchetr.compat import UTC
 from ratchetr.json import normalise_enums_for_json
 from ratchetr.manifest.loader import load_manifest_data
 

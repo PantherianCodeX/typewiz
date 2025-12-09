@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ratchetr.compat.python import TypedDict
+from ratchetr.compat import TypedDict
 
 from .model_types import ReadinessStatus, SeverityLevel
 from .type_aliases import CategoryKey, CategoryName, Command, RunId

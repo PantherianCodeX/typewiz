@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Final, Literal, cast
 
 from ratchetr._internal.utils import consume, file_lock
 from ratchetr._internal.utils.process import CommandOutput, run_command
-from ratchetr.compat.python import TypedDict
+from ratchetr.compat import TypedDict
 from ratchetr.config.validation import coerce_int, coerce_object_list, coerce_str_list
 from ratchetr.core.categories import coerce_category_key
 from ratchetr.core.model_types import LogComponent, SeverityLevel, clone_override_entries

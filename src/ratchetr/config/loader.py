@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Final, Literal, TypeAlias, cast
 
 from pydantic import ValidationError
 
-from ratchetr.compat.python import tomllib
+from ratchetr.compat import tomllib
 from ratchetr.core.type_aliases import EngineName, RunnerName
 
 from .models import (

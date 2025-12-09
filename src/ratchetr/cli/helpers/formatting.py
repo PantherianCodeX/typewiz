@@ -21,7 +21,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Literal, TypeAlias, cast
 
 from ratchetr.common.override_utils import format_override_inline, override_detail_lines
-from ratchetr.compat.python import TypedDict
+from ratchetr.compat import TypedDict
 from ratchetr.config.validation import (
     coerce_int,
     coerce_mapping,

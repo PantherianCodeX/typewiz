@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Final, Literal, SupportsFloat, SupportsInt, cast
 
-from ratchetr.compat.python import UTC, TypedDict, Unpack, override
+from ratchetr.compat import UTC, TypedDict, Unpack, override
 from ratchetr.core.model_types import LogComponent, LogFormat, Mode, SeverityLevel
 from ratchetr.json import normalise_enums_for_json
 
