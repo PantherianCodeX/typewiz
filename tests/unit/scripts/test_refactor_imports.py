@@ -19,10 +19,9 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import shutil
-import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -37,6 +36,9 @@ _module = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = _module
 SPEC.loader.exec_module(_module)
 MODULE: Any = _module
+
+if TYPE_CHECKING:
+    from _pytest.monkeypatch import MonkeyPatch
 
 
 def test_rewrite_content_updates_from_import() -> None:
@@ -154,37 +156,24 @@ def test_export_map_updates_real_module(tmp_path: Path) -> None:
     assert '"execute_audit"' in text
 
 
-def _init_repo(path: Path) -> None:
-    _ = subprocess.run(["git", "init"], cwd=path, check=True, capture_output=True)
-    _ = subprocess.run(
-        ["git", "config", "user.name", "Codex"],
-        cwd=path,
-        check=True,
-        capture_output=True,
-    )
-    _ = subprocess.run(
-        ["git", "config", "user.email", "codex@example.com"],
-        cwd=path,
-        check=True,
-        capture_output=True,
-    )
-
-
 def _write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     _ = path.write_text(text, encoding="utf-8")
 
 
-def test_git_discovery_limits_to_tracked_files(tmp_path: Path) -> None:
+def test_git_discovery_limits_to_tracked_files(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
-    _init_repo(repo)
     tracked = repo / "pkg" / "tracked.py"
     untracked = repo / "pkg" / "untracked.py"
     _write(tracked, "import alpha.module\n")
     _write(untracked, "import alpha.module\n")
-    _ = subprocess.run(["git", "add", str(tracked.relative_to(repo))], cwd=repo, check=True)
-    _ = subprocess.run(["git", "commit", "-m", "add tracked"], cwd=repo, check=True, capture_output=True)
+
+    def _fake_tracked_python_files(root: Path) -> list[Path]:
+        assert root == repo
+        return [tracked]
+
+    monkeypatch.setattr(MODULE, "_git_tracked_python_files", _fake_tracked_python_files)
 
     exit_code = MODULE.main([
         "--root",
@@ -202,13 +191,10 @@ def test_git_discovery_limits_to_tracked_files(tmp_path: Path) -> None:
 def test_no_use_git_processes_untracked_files(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
-    _init_repo(repo)
     tracked = repo / "pkg" / "tracked.py"
     untracked = repo / "pkg" / "untracked.py"
     _write(tracked, "from source import item\n")
     _write(untracked, "from source import item\n")
-    _ = subprocess.run(["git", "add", str(tracked.relative_to(repo))], cwd=repo, check=True)
-    _ = subprocess.run(["git", "commit", "-m", "add tracked"], cwd=repo, check=True, capture_output=True)
 
     exit_code = MODULE.main([
         "--root",

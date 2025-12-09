@@ -325,6 +325,11 @@ unfixable = []
 "tests/unit/misc/test_refactor_imports.py" = ["S404", "S603", "S607"]
 # Scripts: Utility scripts have different standards
 "scripts/**/*.py" = ["T201"]
+# TypedDict modules mirror external schemas that require camelCase keys
+# TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
+"src/ratchetr/core/model_types.py" = ["N815"]
+"src/ratchetr/core/summary_types.py" = ["N815"]
+"src/ratchetr/manifest/typed.py" = ["N815"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

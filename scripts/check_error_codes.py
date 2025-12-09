@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Copyright 2025 CrownOps Engineering
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Sequence
 
 """
 This script must work whether the package is installed or not. It prepends the
@@ -41,7 +42,28 @@ def _load_error_codes(src_path: Path) -> Iterable[str]:
     if src_str not in sys.path:
         sys.path.insert(0, src_str)
     module = importlib.import_module("ratchetr._internal.error_codes")
-    return module.error_code_catalog().values()
+    error_catalog = module.error_code_catalog()
+    return [str(code) for code in error_catalog.values()]
+
+
+def _load_documented_codes(doc_path: Path) -> set[str]:
+    """Load the set of documented error codes from the exceptions guide.
+
+    Args:
+        doc_path: Path to `EXCEPTIONS.md` containing the public registry.
+
+    Returns:
+        Set of error-code strings (e.g., `"TW001"`) discovered in the
+        documentation.
+
+    Raises:
+        FileNotFoundError: If the documentation file is missing.
+    """
+    if not doc_path.exists():
+        msg = f"documentation missing: {doc_path}"
+        raise FileNotFoundError(msg)
+    content = doc_path.read_text(encoding="utf-8")
+    return set(re.findall(r"TW\d{3}", content))
 
 
 def _discover_duplicates(codes: Iterable[str]) -> set[str]:
@@ -55,13 +77,16 @@ def _discover_duplicates(codes: Iterable[str]) -> set[str]:
     return duplicates
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Validate that the error-code registry matches the public docs.
 
     Returns:
-        ``0`` if the registry and documentation list identical codes; ``1`` if
+        `0` if the registry and documentation list identical codes; `1` if
         duplicate, missing, or orphaned codes are detected.
     """
+    if argv:
+        _emit("[ratchetr] check_error_codes does not accept CLI arguments; ignoring argv")
+
     repo_root = Path(__file__).resolve().parents[1]
     src_path = repo_root / "src"
 
@@ -71,16 +96,15 @@ def main() -> int:
         _emit(f"[ratchetr] {exc}", error=True)
         return 1
 
-    duplicates = _discover_duplicates(codes)
-    registry_codes = set(codes)
-
     doc_path = repo_root / "docs" / "EXCEPTIONS.md"
-    if not doc_path.exists():
-        _emit(f"[ratchetr] documentation missing: {doc_path}", error=True)
+    try:
+        documented_codes = _load_documented_codes(doc_path)
+    except FileNotFoundError as exc:
+        _emit(f"[ratchetr] {exc}", error=True)
         return 1
 
-    content = doc_path.read_text(encoding="utf-8")
-    documented_codes = set(re.findall(r"TW\d{3}", content))
+    duplicates = _discover_duplicates(codes)
+    registry_codes = set(codes)
 
     missing_in_docs = registry_codes - documented_codes
     orphaned_codes = documented_codes - registry_codes

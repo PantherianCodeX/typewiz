@@ -34,6 +34,13 @@ from ratchetr.core.model_types import (
     SeverityLevel,
     SummaryTabName,
 )
+from ratchetr.core.summary_types import (
+    TAB_KEY_ENGINES,
+    TAB_KEY_HOTSPOTS,
+    TAB_KEY_OVERVIEW,
+    TAB_KEY_READINESS,
+    TAB_KEY_RUNS,
+)
 from ratchetr.readiness.compute import CATEGORY_LABELS
 
 if TYPE_CHECKING:
@@ -96,14 +103,14 @@ class _DashboardContext:
 
     def __post_init__(self) -> None:
         self.tabs = self.summary["tabs"]
-        self.overview = self.tabs[SummaryTabName.OVERVIEW.value]
+        self.overview = self.tabs[TAB_KEY_OVERVIEW]
         self.severity_totals = self.overview["severityTotals"]
         self.category_totals = self.overview.get("categoryTotals", {})
         self.run_summary = cast("dict[str, dict[str, object]]", self.overview["runSummary"])
-        self.hotspots = self.tabs[SummaryTabName.HOTSPOTS.value]
-        self.readiness = self.tabs[SummaryTabName.READINESS.value]
-        engines_tab = self.tabs[SummaryTabName.ENGINES.value]
-        runs_tab = self.tabs[SummaryTabName.RUNS.value]
+        self.hotspots = self.tabs[TAB_KEY_HOTSPOTS]
+        self.readiness = self.tabs[TAB_KEY_READINESS]
+        engines_tab = self.tabs[TAB_KEY_ENGINES]
+        runs_tab = self.tabs[TAB_KEY_RUNS]
         self.engines = cast("dict[str, dict[str, object]]", engines_tab.get("runSummary", self.run_summary))
         self.runs_tab = cast("dict[str, dict[str, object]]", runs_tab.get("runSummary", self.run_summary))
         self.rule_files = cast("dict[str, list[dict[str, object]]]", self.hotspots.get("ruleFiles", {}))

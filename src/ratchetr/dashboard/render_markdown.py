@@ -26,7 +26,13 @@ from typing import TYPE_CHECKING, cast
 
 from ratchetr.common.override_utils import format_overrides_block
 from ratchetr.config.validation import coerce_int, coerce_mapping, coerce_object_list
-from ratchetr.core.model_types import OverrideEntry, ReadinessStatus, SeverityLevel, SummaryTabName
+from ratchetr.core.model_types import OverrideEntry, ReadinessStatus, SeverityLevel
+from ratchetr.core.summary_types import (
+    TAB_KEY_HOTSPOTS,
+    TAB_KEY_OVERVIEW,
+    TAB_KEY_READINESS,
+    TAB_KEY_RUNS,
+)
 from ratchetr.readiness.compute import CATEGORY_LABELS
 
 if TYPE_CHECKING:
@@ -265,7 +271,7 @@ def _md_run_logs(
 
 def _md_readiness(tabs: Mapping[str, object]) -> list[str]:
     lines = ["", "### Readiness snapshot", ""]
-    raw = tabs.get(SummaryTabName.READINESS.value)
+    raw = tabs.get(TAB_KEY_READINESS)
     rs: ReadinessTab = cast("ReadinessTab", raw) if isinstance(raw, Mapping) else _empty_readiness_tab()
     strict_section_raw = cast("dict[ReadinessStatus, list[dict[str, object]]]", rs.get("strict", {}))
     ready_entries = _materialise_dict_list(strict_section_raw.get(ReadinessStatus.READY, []))
@@ -308,10 +314,10 @@ def render_markdown(summary: SummaryData) -> str:
         Formatted Markdown document as a string with headers, tables, and lists.
     """
     tabs = summary["tabs"]
-    overview = tabs[SummaryTabName.OVERVIEW.value]
+    overview = tabs[TAB_KEY_OVERVIEW]
     run_summary = overview["runSummary"]
     severity = overview["severityTotals"]
-    hotspots = tabs[SummaryTabName.HOTSPOTS.value]
+    hotspots = tabs[TAB_KEY_HOTSPOTS]
 
     lines: list[str] = []
     lines.extend(_md_header(summary))
@@ -319,7 +325,7 @@ def render_markdown(summary: SummaryData) -> str:
     lines.extend(_md_run_summary(run_summary))
     lines.extend(_md_engine_details(run_summary))
     lines.extend(_md_hotspots(hotspots, summary))
-    lines.extend(_md_run_logs(tabs[SummaryTabName.RUNS.value], run_summary))
+    lines.extend(_md_run_logs(tabs[TAB_KEY_RUNS], run_summary))
     lines.extend(_md_readiness(tabs))
     lines.append("")
     return "\n".join(lines)

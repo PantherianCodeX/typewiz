@@ -166,7 +166,11 @@ class MypyEngine(BaseEngine):
         }
 
     @override
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[RelPath]) -> Sequence[str]:
+    def fingerprint_targets(
+        self,
+        context: EngineContext,
+        paths: Sequence[RelPath],  # noqa: ARG002  # JUSTIFIED: Protocol requires paths parameter
+    ) -> Sequence[str]:
         """Specify mypy config files for cache invalidation.
 
         Returns the path to mypy.ini if it exists, ensuring that cached results

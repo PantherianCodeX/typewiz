@@ -3,23 +3,52 @@ default_language_version:
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
       - id: end-of-file-fixer
       - id: trailing-whitespace
+      - id: check-ast
       - id: check-yaml
       - id: check-toml
+      - id: check-json
+      - id: check-xml
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-illegal-windows-names
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: debug-statements
+      - id: destroyed-symlinks
+      - id: detect-private-key
+      - id: forbid-submodules
+      - id: name-tests-test
+        args: [--pytest-test-first]
+        exclude: ^tests/fixtures/
 
   # Use Makefile targets as the single source of truth
   - repo: local
     hooks:
-      - id: ruff-format
-        name: ruff-format (make)
-        entry: make format
+      - id: check-license-header
+        name: Check license header (*.py)
+        entry: uv run python scripts/check_license_headers.py
+        language: system
+        types: [python]
+        files: ^(src/|tests/|scripts).+\.py$
+      - id: check-error-codes
+        name: Check error codes are synced with document
+        entry: uv run python scripts/check_error_codes.py
         language: system
         pass_filenames: false
-      - id: precommit-check
-        name: lint + typing (make)
-        entry: make precommit.check
+      - id: lint-fix
+        name: ruff check and format autofix
+        entry: make fix
+        language: system
+        pass_filenames: false
+      - id: typing-pyright
+        name: pyright w/verifytypes
+        entry: make type.pyright type.verifytypes
         language: system
         pass_filenames: false

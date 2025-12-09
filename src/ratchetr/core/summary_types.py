@@ -21,7 +21,7 @@ are used for JSON serialization and dashboard rendering.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from ratchetr.compat import TypedDict
 
@@ -248,6 +248,13 @@ class SummaryTabs(TypedDict):
     runs: RunsTab
 
 
+TAB_KEY_OVERVIEW: Final = "overview"
+TAB_KEY_ENGINES: Final = "engines"
+TAB_KEY_HOTSPOTS: Final = "hotspots"
+TAB_KEY_READINESS: Final = "readiness"
+TAB_KEY_RUNS: Final = "runs"
+
+
 class SummaryData(TypedDict):
     """Complete summary data structure for type checking analysis.
 
@@ -274,3 +281,29 @@ class SummaryData(TypedDict):
     topFiles: list[SummaryFileEntry]
     ruleFiles: dict[str, list[RulePathEntry]]
     tabs: SummaryTabs
+
+
+__all__ = [
+    "TAB_KEY_ENGINES",
+    "TAB_KEY_HOTSPOTS",
+    "TAB_KEY_OVERVIEW",
+    "TAB_KEY_READINESS",
+    "TAB_KEY_RUNS",
+    "CountsByCategory",
+    "CountsByRule",
+    "CountsBySeverity",
+    "EnginesTab",
+    "HotspotsTab",
+    "OverviewTab",
+    "ReadinessOptionEntry",
+    "ReadinessOptionsPayload",
+    "ReadinessStrictEntry",
+    "ReadinessTab",
+    "RulePathEntry",
+    "RunsTab",
+    "SummaryData",
+    "SummaryFileEntry",
+    "SummaryFolderEntry",
+    "SummaryRunEntry",
+    "SummaryTabs",
+]

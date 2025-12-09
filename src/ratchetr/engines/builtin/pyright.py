@@ -146,7 +146,11 @@ class PyrightEngine(BaseEngine):
         }
 
     @override
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[RelPath]) -> Sequence[str]:
+    def fingerprint_targets(  # noqa: PLR6301  # JUSTIFIED: Protocol requires instance method signature
+        self,
+        context: EngineContext,
+        paths: Sequence[RelPath],  # noqa: ARG002  # JUSTIFIED: Protocol requires paths parameter
+    ) -> Sequence[str]:
         """Specify pyright config files for cache invalidation.
 
         Returns the path to pyrightconfig.json (explicit or default) if it

@@ -1,13 +1,11 @@
 {
   "chatgpt.cliExecutable": "${workspaceFolder}/scripts/codex-vscode.sh",
   "python.analysis.diagnosticMode": "workspace",
-  // Use pytest with quiet default like tox
   "python.testing.pytestEnabled": true,
   "python.testing.unittestEnabled": false,
   "python.testing.pytestArgs": [
     "-q"
   ],
-  // Surface local JSON schemas for manifests and ratchet budgets
   "json.schemas": [
     {
       "fileMatch": [
@@ -26,12 +24,8 @@
       "url": "${workspaceFolder}/schemas/ratchet.schema.json"
     }
   ],
-  // Pylance/pyright reads [tool.pyright] from pyproject.toml
-  // Don't override typeCheckingMode here; use repo config
-  // Formatting and linting to match repo tools (Ruff-only)
   "editor.formatOnSave": true,
   "ruff.enable": true,
-  // Use Ruff as the default formatter for Python files
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff"
   }

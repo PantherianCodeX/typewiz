@@ -1,3 +1,8 @@
+# Repository-specific ignores
+out/
+# temporary ignore for example schema bindings
+src/ratchetr/**/*.example
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

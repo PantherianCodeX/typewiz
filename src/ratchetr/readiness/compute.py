@@ -95,8 +95,8 @@ class ReadinessEntry(TypedDict):
     errors: int
     warnings: int
     information: int
-    codeCounts: dict[str, int]
-    categoryCounts: dict[CategoryKey, int]
+    codeCounts: dict[str, int]  # noqa: N815,TD002,FIX002,TD003 # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
+    categoryCounts: dict[CategoryKey, int]  # noqa: N815,TD002,FIX002,TD003 # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
     recommendations: list[str]
 
 

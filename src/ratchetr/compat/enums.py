@@ -34,22 +34,40 @@ Notes:
 from __future__ import annotations
 
 import enum as _enum
-from typing import cast
+from typing import TYPE_CHECKING, cast
+
+from ratchetr.compat.typing import override
 
 
 class _StrEnumBase(str, _enum.Enum):
     """Type base for StrEnum-like enums."""
 
 
-_StrEnum = getattr(_enum, "StrEnum", None)
+if TYPE_CHECKING:
 
-if _StrEnum is None:
+    class StrEnum(_StrEnumBase):
+        """Type-checker view of StrEnum."""
 
-    class _CompatStrEnum(_StrEnumBase):
-        """Backport of enum.StrEnum for Python 3.10."""
+        @override
+        def __str__(self) -> str:
+            """Return the enum member's value, matching stdlib StrEnum."""
+            ...
 
-    StrEnum: type[_StrEnumBase] = _CompatStrEnum
 else:
-    StrEnum = cast("type[_StrEnumBase]", _StrEnum)
+    _StrEnum = getattr(_enum, "StrEnum", None)
+
+    if _StrEnum is None:
+
+        class _CompatStrEnum(_StrEnumBase):
+            """Backport of enum.StrEnum for Python 3.10."""
+
+            @override
+            def __str__(self) -> str:
+                """Return the enum member's value, matching stdlib StrEnum."""
+                return str(self.value)
+
+        StrEnum: type[_StrEnumBase] = _CompatStrEnum
+    else:
+        StrEnum = cast("type[_StrEnumBase]", _StrEnum)
 
 __all__ = ["StrEnum"]

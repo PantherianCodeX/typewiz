@@ -31,7 +31,7 @@ from ratchetr.audit.paths import (
     normalise_paths,
     relative_override_path,
 )
-from ratchetr.compat.python import override
+from ratchetr.compat import override
 from ratchetr.config import AuditConfig, EngineProfile, EngineSettings, PathOverride
 from ratchetr.core.type_aliases import EngineName, ProfileName, RelPath
 from ratchetr.engines.base import BaseEngine, EngineContext, EngineResult
@@ -141,7 +141,11 @@ class MinimalEngine(BaseEngine):
         raise NotImplementedError
 
     @override
-    def fingerprint_targets(self, context: EngineContext, paths: Sequence[RelPath]) -> list[str]:
+    def fingerprint_targets(  # noqa: PLR6301  # JUSTIFIED: Minimal test stub for protocol
+        self,
+        context: EngineContext,  # noqa: ARG002  # JUSTIFIED: Minimal test stub for protocol
+        paths: Sequence[RelPath],  # noqa: ARG002  # JUSTIFIED: Minimal test stub for protocol
+    ) -> list[str]:
         return []
 
     @staticmethod

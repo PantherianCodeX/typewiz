@@ -174,13 +174,20 @@ class RuleEntry(RuleEntryRequired, total=False):
 ReadinessQueryPayload: TypeAlias = ReadinessViewResult
 
 
-FormatInput = Literal["json", "table"] | DataFormat
+def _normalise_format(fmt: Literal["json", "table"] | DataFormat) -> Literal["json", "table"]:
+    """Normalize CLI format inputs to literal strings.
 
+    Args:
+        fmt: Literal format string or ``DataFormat`` enum value supplied by callers.
 
-def _normalise_format(fmt: FormatInput) -> Literal["json", "table"]:
-    if isinstance(fmt, DataFormat):
-        return fmt.value
-    return fmt
+    Returns:
+        The literal string ``"json"`` or ``"table"`` preserving type information.
+    """
+    match fmt:
+        case "json" | DataFormat.JSON:
+            return "json"
+        case "table" | DataFormat.TABLE:
+            return "table"
 
 
 def _parse_run_identifier(raw: str) -> tuple[RunId, str, str]:
@@ -413,7 +420,7 @@ def print_readiness_summary(
         echo(line)
 
 
-def render_data(data: object, fmt: FormatInput) -> list[str]:
+def render_data(data: object, fmt: Literal["json", "table"] | DataFormat) -> list[str]:
     """Render Python data for CLI output.
 
     Args:

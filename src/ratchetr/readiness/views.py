@@ -124,7 +124,7 @@ class FileReadinessPayload(FileReadinessPayloadBase, total=False):
     notes: list[str]
     recommendations: list[str]
     categories: dict[CategoryName, int]
-    categoryStatus: dict[CategoryName, ReadinessStatus]
+    categoryStatus: dict[CategoryName, ReadinessStatus]  # noqa: N815,TD002,FIX002,TD003 # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
 
 
 @dataclass(frozen=True, slots=True)
@@ -599,7 +599,7 @@ def _folder_payload_for_status(
     for option_entry in entries:
         try:
             records.append(_normalise_folder_entry(option_entry))
-        except ValueError as exc:
+        except ValueError as exc:  # noqa: PERF203 - JUSTIFIED: Preserves entry-level error context for debugging
             raise ReadinessValidationError(str(exc)) from exc
     records = [record for record in records if _folder_matches_severity(record, severities)]
     if limit > 0:
@@ -632,7 +632,7 @@ def _file_payload_for_status(
     for strict_entry in entries:
         try:
             records.append(_normalise_file_entry(strict_entry))
-        except ValueError as exc:
+        except ValueError as exc:  # noqa: PERF203 - JUSTIFIED: Preserves entry-level error context for debugging
             raise ReadinessValidationError(str(exc)) from exc
     records = [record for record in records if _file_matches_severity(record, severities)]
     if limit > 0:

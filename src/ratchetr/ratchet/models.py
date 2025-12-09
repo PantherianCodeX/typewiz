@@ -248,7 +248,7 @@ class EngineSignaturePayload(TypedDict):
 
     tool: str | None
     mode: Mode | None
-    engineOptions: dict[str, JSONValue]
+    engineOptions: dict[str, JSONValue]  # noqa: N815,TD002,FIX002,TD003 # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
 
 
 class EngineSignaturePayloadWithHash(EngineSignaturePayload, total=False):

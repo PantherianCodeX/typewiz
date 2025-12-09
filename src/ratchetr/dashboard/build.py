@@ -45,6 +45,11 @@ from ratchetr.core.model_types import (
     clone_override_entries,
 )
 from ratchetr.core.summary_types import (
+    TAB_KEY_ENGINES,
+    TAB_KEY_HOTSPOTS,
+    TAB_KEY_OVERVIEW,
+    TAB_KEY_READINESS,
+    TAB_KEY_RUNS,
     CountsByCategory,
     CountsByRule,
     CountsBySeverity,
@@ -607,22 +612,22 @@ def _compose_tabs_payload(
     hotspots: _HotspotPayload,
 ) -> SummaryTabs:
     return {
-        SummaryTabName.OVERVIEW.value: {
+        TAB_KEY_OVERVIEW: {
             "severityTotals": dict(severity_totals),
             "categoryTotals": dict(category_totals),
             "runSummary": run_summary,
         },
-        SummaryTabName.ENGINES.value: {
+        TAB_KEY_ENGINES: {
             "runSummary": run_summary,
         },
-        SummaryTabName.HOTSPOTS.value: {
+        TAB_KEY_HOTSPOTS: {
             "topRules": hotspots.top_rules,
             "topFolders": hotspots.top_folders,
             "topFiles": hotspots.top_files,
             "ruleFiles": hotspots.rule_files,
         },
-        SummaryTabName.READINESS.value: readiness_tab,
-        SummaryTabName.RUNS.value: {
+        TAB_KEY_READINESS: readiness_tab,
+        TAB_KEY_RUNS: {
             "runSummary": run_summary,
         },
     }
@@ -764,3 +769,6 @@ def build_summary(manifest: ManifestData) -> SummaryData:
             "tabs": tabs_payload,
         },
     )
+
+
+SummaryTabsKeys = SummaryTabName
