@@ -51,7 +51,7 @@
 ## Testing Standards
 
 - Tests are mandatory for all user-visible code paths and bug fixes. Include good/bad/edge cases.
-- Use `pytest` with coverage gate ≥95% (`make pytest.cov`). Property-based tests via Hypothesis for invariants (`tests/test_prop_*.py` patterns are encouraged).
+- Use `pytest` with coverage gate ≥95% (`make test.cov`). Property-based tests via Hypothesis for invariants (`tests/test_prop_*.py` patterns are encouraged).
 - Test types of failures: invalid inputs, boundary conditions, concurrency/ordering where relevant, and golden/snapshot outputs when appropriate.
 - Avoid network, time, and filesystem flakiness; use `tmp_path`, dependency injection, and deterministic seeds. No sleeps; use fakes.
 - Keep tests isolated, fast, and readable. Prefer explicit fixtures in `tests/conftest.py` and factory helpers over complex fixtures.
@@ -67,7 +67,7 @@
 - `make ci.check` — lint, type, tests (coverage gate). CI parity.
 - `make lint` / `make fix` — Ruff lint/format (check or autofix).
 - `make type` — mypy + pyright strict. `make verifytypes` validates public typing.
-- `make pytest.cov` — tests with coverage ≥95%.
+- `make test.cov` — tests with coverage ≥95%.
 - `make ratchetr.dashboard` — build typing dashboards. `make ratchetr.clean` clears cache.
 - `make check.error-codes` — ensure exception code registry matches docs.
 

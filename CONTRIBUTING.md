@@ -15,12 +15,14 @@ See [ROADMAP.md](ROADMAP.md) for stability commitments per version.
 
 ## Getting started
 
-1. Create a virtual env (Python 3.12 recommended) and install dev deps:
+1. Create a virtual env (Python 3.12 recommended) and install dev deps via uv:
 
    ```bash
    python -m venv .venv
    source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
-   pip install -r requirements-dev.txt
+   pip install -U pip
+   pip install uv
+   uv sync --group dev
    ```
 
    Windows developers should also install GNU Make once via `choco install make -y` so the Make targets used locally and in CI are available.
@@ -42,7 +44,7 @@ See [ROADMAP.md](ROADMAP.md) for stability commitments per version.
 - Formatting and imports: Ruff (formatter + I rules)
 - Linting: Ruff (with autofix)
 - Typing: pyright (strict) and mypy (strict)
-- Tests: `make pytest.cov` (pytest under the hood, 95% coverage gate)
+- Tests: `make test.cov` (pytest under the hood, 95% coverage gate)
 - Error code sync: `make check.error-codes`
 
 If any hook fails, fix the issues and commit again.
@@ -66,7 +68,7 @@ Settings applied by `.vscode/settings.json`:
 make ci.check            # run lint, type checks, tests (coverage gate)
 make all.lint            # lint + format check (Ruff)
 make type                # mypy + pyright (strict)
-make pytest.cov          # pytest with coverage ≥95%
+make test.cov            # pytest with coverage ≥95%
 make check.error-codes   # ensure error code registry matches docs
 make verifytypes         # pyright --verifytypes for public typing
 make hooks.update        # autoupdate pre-commit hook versions

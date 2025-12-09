@@ -694,10 +694,11 @@ Use the Makefile to run common workflows with consistent settings:
   - `make verifytypes` – Run pyright `--verifytypes` for API contracts
 
 - Tests
-  - `make pytest.all` or `make tests.all` – Run pytest
-  - `make pytest.verbose` or `make tests.verbose`
-  - `make pytest.failfast` or `make tests.failfast`
-  - `make pytest.cov` or `make tests.cov` – Run tests with coverage (enforces ≥95%)
+  - `make test` – Run pytest (all tests)
+  - `make test.verbose`
+  - `make test.failfast`
+  - `make test.unit` / `make test.integration` / `make test.property` / `make test.performance`
+  - `make test.cov` – Run tests with coverage (enforces ≥95%)
 - Benchmarks
   - `make bench` – Run readiness/aggregate benchmarks (skips if `pytest-benchmark` is unavailable)
 

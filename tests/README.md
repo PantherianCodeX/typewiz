@@ -20,11 +20,11 @@ Use the dedicated Make targets to match the subsets executed in CI:
 | --- | --- | --- |
 | Full CI-equivalent run | `make ci.check` | `PYTHONPATH=src pytest --cov=src/ratchetr ...` |
 | Lint + typing gates | `make lint && make type` | n/a |
-| Coverage-focused pytest run | `make pytest.cov` | `pytest --cov=src/ratchetr --cov-report=term --cov-fail-under=95` |
-| Unit tests (fast suites under `tests/unit`) | `make pytest.unit` | `pytest tests/unit` |
-| Integration workflows | `make pytest.integration` | `pytest tests/integration` |
-| Property-based suites | `make pytest.property` | `pytest tests/property_based` |
-| Performance benchmarks | `make pytest.performance` | `pytest tests/performance` |
+| Coverage-focused pytest run | `make test.cov` | `pytest --cov=src/ratchetr --cov-report=term --cov-fail-under=95` |
+| Unit tests (fast suites under `tests/unit`) | `make test.unit` | `pytest tests/unit` |
+| Integration workflows | `make test.integration` | `pytest tests/integration` |
+| Property-based suites | `make test.property` | `pytest tests/property_based` |
+| Performance benchmarks | `make test.performance` | `pytest tests/performance` |
 
 Additional tips:
 
@@ -68,7 +68,7 @@ If a test suite truly needs to suppress an additional rule, justify it inline wi
 
 ## Coverage Requirements
 
-- Overall coverage may never drop below **95%** (validated via `make pytest.cov`).
+- Overall coverage may never drop below **95%** (validated via `make test.cov`).
 - Each module must preserve **≥80%** line coverage; ratcheting will enforce this as suites migrate.
 - When adding tests, update or create builders/stubs so future contributors can extend coverage without duplication.
 - Before any commit, ensure `ruff`, `mypy`, `pyright`, and the full `pytest` suite all pass cleanly in this layout.
