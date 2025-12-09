@@ -12,6 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        python-version: ["3.10", "3.11", "3.12"]
         task: [lint, type, tests-unit, tests-integration, tests-property, tests-performance]
     steps:
       - name: Checkout
@@ -20,65 +21,30 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
 
-      - name: Install GNU Make (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: choco install make --yes
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
 
-      - name: Cache pip
+      - name: Cache uv and virtualenv
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          path: |
+            .venv
+            ~/.cache/uv
+            .ruff_cache
+            .mypy_cache
+          key: ${{ runner.os }}-py${{ matrix.python-version }}-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-py${{ matrix.python-version }}-uv-
 
-      - name: Cache virtualenv
-        id: cache-venv
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-
-
-      - name: Cache Ruff cache
-        uses: actions/cache@v4
-        with:
-          path: .ruff_cache
-          key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-ruff-
-
-      - name: Cache mypy cache
-        uses: actions/cache@v4
-        with:
-          path: .mypy_cache
-          key: ${{ runner.os }}-mypy-${{ hashFiles('mypy.ini', 'pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-mypy-
-
-      - name: Install dependencies
-        run: |
-          if [ ! -d .venv ]; then
-            python -m venv .venv
-          fi
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            PY_EXE=.venv/Scripts/python.exe
-            PIP_EXE=.venv/Scripts/pip.exe
-          else
-            PY_EXE=.venv/bin/python
-            PIP_EXE=.venv/bin/pip
-          fi
-          $PY_EXE -m pip install -U pip
-          $PIP_EXE install -r requirements-dev.txt
+      - name: Sync dependencies (dev profile)
+        run: uv sync --group dev
 
       - name: Run task
         run: |
           # Each matrix entry maps to a dedicated make target so developers can rerun the same subset locally
-          # via `make pytest.<category>` (see tests/README.md for the full matrix of suites).
+          # via the corresponding `make test.<category>` targets (see tests/README.md for the full matrix of suites).
           case "${{ matrix.task }}" in
             lint)
               make lint
@@ -88,16 +54,16 @@ jobs:
               make type
               ;;
             tests-unit)
-              make pytest.unit
+              make test.unit
               ;;
             tests-integration)
-              make pytest.integration
+              make test.integration
               ;;
             tests-property)
-              make pytest.property
+              make test.property
               ;;
             tests-performance)
-              make pytest.performance
+              make test.performance
               ;;
           esac
 
@@ -111,15 +77,15 @@ jobs:
           - check_name: "Bandit"
             run: |
               mkdir -p out/security
-              .venv/bin/bandit -c pyproject.toml -r src/ -f json -o out/security/bandit-report.json || true
+              uv run bandit -c pyproject.toml -r src/ -f json -o out/security/bandit-report.json || true
           - check_name: "Safety"
             run: |
               mkdir -p out/security
-              .venv/bin/safety scan --json > out/security/safety-report.json || true
+              uv run safety scan --json > out/security/safety-report.json || true
           - check_name: "Pylint"
             run: |
               mkdir -p out/lint
-              .venv/bin/pylint --output-format=json --reports=n src/ > out/lint/pylint.json || true
+              uv run pylint --output-format=json --reports=n src/ > out/lint/pylint.json || true
 
     steps:
       - name: Checkout
@@ -128,34 +94,23 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
-      - name: Cache pip
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Cache uv and virtualenv
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          path: |
+            .venv
+            ~/.cache/uv
+          key: ${{ runner.os }}-security-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-security-uv-
 
-      - name: Cache virtualenv
-        id: cache-venv
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-
-
-      - name: Install dependencies
-        run: |
-          if [ ! -d .venv ]; then
-            python -m venv .venv
-          fi
-          PY_EXE=.venv/bin/python
-          PIP_EXE=.venv/bin/pip
-          $PY_EXE -m pip install -U pip
-          $PIP_EXE install -r requirements-dev.txt
+      - name: Sync dependencies (dev profile)
+        run: uv sync --group dev
 
       - name: Run ${{ matrix.check_name }}
         run: ${{ matrix.run }}
@@ -175,6 +130,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.12"]
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -186,58 +142,28 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
 
-      - name: Cache pip
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Cache uv, virtualenv, and type/lint caches
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          path: |
+            .venv
+            ~/.cache/uv
+            .ruff_cache
+            .mypy_cache
+          key: ${{ matrix.os }}-py${{ matrix.python-version }}-tests-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ matrix.os }}-py${{ matrix.python-version }}-tests-uv-
 
-      - name: Cache virtualenv
-        id: cache-venv
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-
-
-      - name: Cache Ruff cache
-        uses: actions/cache@v4
-        with:
-          path: .ruff_cache
-          key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-ruff-
-
-      - name: Cache mypy cache
-        uses: actions/cache@v4
-        with:
-          path: .mypy_cache
-          key: ${{ runner.os }}-mypy-${{ hashFiles('mypy.ini', 'pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-mypy-
-
-      - name: Install dependencies
-        run: |
-          if [ ! -d .venv ]; then
-            python -m venv .venv
-          fi
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            PY_EXE=.venv/Scripts/python.exe
-            PIP_EXE=.venv/Scripts/pip.exe
-          else
-            PY_EXE=.venv/bin/python
-            PIP_EXE=.venv/bin/pip
-          fi
-          $PY_EXE -m pip install -U pip
-          $PIP_EXE install -r requirements-dev.txt
+      - name: Sync dependencies (dev profile)
+        run: uv sync --group dev
 
       - name: Run tests with coverage (make)
-        run: make pytest.cov
+        run: make test.cov
 
   tests-python-313:
     needs: quality
@@ -250,53 +176,28 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: "3.13"
 
-      - name: Cache pip
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Cache uv, virtualenv, and type/lint caches
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-py313-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          path: |
+            .venv
+            ~/.cache/uv
+            .ruff_cache
+            .mypy_cache
+          key: ${{ runner.os }}-py3.13-tests-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-py3.13-tests-uv-
 
-      - name: Cache virtualenv
-        id: cache-venv
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: ${{ runner.os }}-venv-py313-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-
-
-      - name: Cache Ruff cache
-        uses: actions/cache@v4
-        with:
-          path: .ruff_cache
-          key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-ruff-
-
-      - name: Cache mypy cache
-        uses: actions/cache@v4
-        with:
-          path: .mypy_cache
-          key: ${{ runner.os }}-mypy-${{ hashFiles('mypy.ini', 'pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-mypy-
-
-      - name: Install dependencies
-        run: |
-          if [ ! -d .venv ]; then
-            python -m venv .venv
-          fi
-          PY_EXE=.venv/bin/python
-          PIP_EXE=.venv/bin/pip
-          $PY_EXE -m pip install -U pip
-          $PIP_EXE install -r requirements-dev.txt
+      - name: Sync dependencies (dev profile)
+        run: uv sync --group dev
 
       - name: Run tests with coverage (Python 3.13)
-        run: make pytest.cov
+        run: make test.cov
 
   ratchetr:
     runs-on: ubuntu-latest
@@ -310,53 +211,25 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
-      - name: Cache pip
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Cache uv, virtualenv, and type/lint caches
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+          path: |
+            .venv
+            ~/.cache/uv
+            .ruff_cache
+            .mypy_cache
+          key: ${{ runner.os }}-ratchetr-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-ratchetr-uv-
 
-      - name: Cache virtualenv
-        id: cache-venv
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-
-
-      - name: Cache Ruff cache
-        uses: actions/cache@v4
-        with:
-          path: .ruff_cache
-          key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-ruff-
-
-      - name: Cache mypy cache
-        uses: actions/cache@v4
-        with:
-          path: .mypy_cache
-          key: ${{ runner.os }}-mypy-${{ hashFiles('mypy.ini', 'pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-mypy-
-
-      - name: Install dependencies
-        run: |
-          if [ ! -d .venv ]; then
-            python -m venv .venv
-          fi
-          if [ -f .venv/bin/activate ]; then
-            source .venv/bin/activate
-          else
-            source .venv/Scripts/activate
-          fi
-          python -m pip install -U pip
-          pip install -r requirements-dev.txt
+      - name: Sync dependencies (dev profile)
+        run: uv sync --group dev
 
       - name: Ratchetr CI dashboard (optional)
         run: make typing.ci || true
