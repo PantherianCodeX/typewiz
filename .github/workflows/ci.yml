@@ -206,6 +206,7 @@ jobs:
     needs:
       - typing
       - linting
+      - tests
     strategy:
       fail-fast: false
       matrix:
@@ -249,7 +250,8 @@ jobs:
     needs:
       - typing
       - linting
-      - tests-matrix
+      - tests
+      - security
     steps:
       - name: Checkout
         uses: actions/checkout@v4
