@@ -1780,9 +1780,7 @@ name = "ratchetr"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "mypy" },
     { name = "pydantic" },
-    { name = "pyright" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "typing-extensions", marker = "python_full_version < '3.12'" },
 ]
@@ -1790,9 +1788,7 @@ dependencies = [
 [package.optional-dependencies]
 build = [
     { name = "build" },
-    { name = "setuptools" },
     { name = "twine" },
-    { name = "wheel" },
 ]
 dev = [
     { name = "anyio" },
@@ -1813,12 +1809,14 @@ dev = [
     { name = "pytest-xdist" },
     { name = "ruff" },
     { name = "safety" },
-    { name = "setuptools" },
     { name = "twine" },
-    { name = "wheel" },
 ]
 docs = [
     { name = "pymarkdownlnt" },
+]
+engines = [
+    { name = "mypy" },
+    { name = "pyright" },
 ]
 lint = [
     { name = "pylint" },
@@ -1842,10 +1840,6 @@ tools = [
     { name = "jsonschema" },
     { name = "pre-commit" },
 ]
-type = [
-    { name = "mypy" },
-    { name = "pyright" },
-]
 
 [package.metadata]
 requires-dist = [
@@ -1855,27 +1849,23 @@ requires-dist = [
     { name = "commitizen", marker = "extra == 'tools'", specifier = ">=4.10.0,<5.0.0" },
     { name = "hypothesis", marker = "extra == 'test'", specifier = ">=6.148.7,<7.0.0" },
     { name = "jsonschema", marker = "extra == 'tools'", specifier = ">=4.25.1,<5.0.0" },
-    { name = "mypy", specifier = ">=1.18.2,<2.0.0" },
-    { name = "mypy", marker = "extra == 'type'", specifier = ">=1.19.0,<2.0.0" },
+    { name = "mypy", marker = "extra == 'engines'", specifier = ">=1.19.0,<2.0.0" },
     { name = "pre-commit", marker = "extra == 'tools'", specifier = ">=4.5.0,<5.0.0" },
     { name = "pydantic", specifier = ">=2.12.4,<3.0.0" },
     { name = "pylint", marker = "extra == 'lint'", specifier = ">=4.0.4,<5.0.0" },
     { name = "pymarkdownlnt", marker = "extra == 'docs'", specifier = ">=0.9.33,<0.10.0" },
-    { name = "pyright", specifier = ">=1.1.407,<2.0.0" },
-    { name = "pyright", marker = "extra == 'type'", specifier = ">=1.1.407,<2.0.0" },
+    { name = "pyright", marker = "extra == 'engines'", specifier = ">=1.1.407,<2.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=9.0.2,<10.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=1.3.0,<2.0.0" },
     { name = "pytest-benchmark", marker = "extra == 'test'", specifier = ">=5.2.3,<6.0.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=7.0.0,<8.0.0" },
     { name = "pytest-xdist", marker = "extra == 'test'", specifier = ">=3.8.0,<4.0.0" },
-    { name = "ratchetr", extras = ["test", "lint", "security", "type", "build", "tools", "docs"], marker = "extra == 'dev'" },
+    { name = "ratchetr", extras = ["test", "lint", "security", "engines", "build", "tools", "docs"], marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'lint'", specifier = ">=0.14.8,<0.15.0" },
     { name = "safety", marker = "extra == 'security'", specifier = ">=3.7.0,<4.0.0" },
-    { name = "setuptools", marker = "extra == 'build'", specifier = ">=80.9.0,<81.0.0" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.3.0,<3.0.0" },
     { name = "twine", marker = "extra == 'build'", specifier = ">=6.2.0,<7.0.0" },
     { name = "typing-extensions", marker = "python_full_version < '3.12'", specifier = ">=4.15.0,<5.0.0" },
-    { name = "wheel", marker = "extra == 'build'", specifier = ">=0.45.1,<0.46.0" },
 ]
 
 [[package]]
@@ -2339,15 +2329,6 @@ wheels = [
 ]
 
 [[package]]
-name = "setuptools"
-version = "80.9.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/18/5d/3bf57dcd21979b887f014ea83c24ae194cfcd12b9e0fda66b957c69d1fca/setuptools-80.9.0.tar.gz", hash = "sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c", size = 1319958 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl", hash = "sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922", size = 1201486 },
-]
-
-[[package]]
 name = "shellingham"
 version = "1.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -2558,15 +2539,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/24/30/6b0809f4510673dc723187aeaf24c7f5459922d01e2f794277a3dfb90345/wcwidth-0.2.14.tar.gz", hash = "sha256:4d478375d31bc5395a3c55c40ccdf3354688364cd61c4f6adacaa9215d0b3605", size = 102293 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/af/b5/123f13c975e9f27ab9c0770f514345bd406d0e8d3b7a0723af9d43f710af/wcwidth-0.2.14-py2.py3-none-any.whl", hash = "sha256:a7bb560c8aee30f9957e5f9895805edd20602f2d7f720186dfd906e82b4982e1", size = 37286 },
-]
-
-[[package]]
-name = "wheel"
-version = "0.45.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8a/98/2d9906746cdc6a6ef809ae6338005b3f21bb568bea3165cfc6a243fdc25c/wheel-0.45.1.tar.gz", hash = "sha256:661e1abd9198507b1409a20c02106d9670b2576e916d58f520316666abca6729", size = 107545 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl", hash = "sha256:708e7481cc80179af0e556bbf0cc00b8444c7321e2700b8d8580231d13017248", size = 72494 },
 ]
 
 [[package]]

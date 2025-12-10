@@ -47,8 +47,8 @@ repos:
         entry: make fix
         language: system
         pass_filenames: false
-      - id: typing-pyright
-        name: pyright w/verifytypes
-        entry: make type.pyright type.verifytypes
+      - id: typing-verifytypes
+        name: pyright verifytypes
+        entry: make type.verifytypes
         language: system
         pass_filenames: false

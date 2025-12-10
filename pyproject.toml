@@ -1,15 +1,15 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=80.9.0,<81.0.0", "wheel>=0.45.1,<0.46.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ratchetr"
 version = "0.1.0"
-description = "Multi-language code diagnostics aggregator with pluggable runners"
+description = "Type-checking and lint diagnostics aggregator with ratcheted readiness dashboards and pluggable engines."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "CrownOps Engineering", email = "crownops.eng@pm.me" }]
+authors = [{ name = "CrownOps Engineering", email = "crownops-eng@pm.me" }]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -23,8 +23,6 @@ classifiers = [
   "Topic :: Software Development :: Build Tools",
 ]
 dependencies = [
-  "pyright>=1.1.407,<2.0.0",
-  "mypy>=1.18.2,<2.0.0",
   "pydantic>=2.12.4,<3.0.0",
   "typing-extensions>=4.15.0,<5.0.0; python_version < '3.12'",
   "tomli>=2.3.0,<3.0.0; python_version < '3.11'"
@@ -39,6 +37,11 @@ Documentation = "https://github.com/CrownOps/ratchetr"
 ratchetr = "ratchetr.cli:main"
 
 [project.optional-dependencies]
+engines = [
+  "pyright>=1.1.407,<2.0.0",
+  "mypy>=1.19.0,<2.0.0",
+]
+
 test = [
   "pytest>=9.0.2,<10.0.0",
   "pytest-benchmark>=5.2.3,<6.0.0",
@@ -59,16 +62,9 @@ security = [
   "safety>=3.7.0,<4.0.0",
 ]
 
-type = [
-  "pyright>=1.1.407,<2.0.0",
-  "mypy>=1.19.0,<2.0.0",
-]
-
 build = [
   "build>=1.3.0,<2.0.0",
   "twine>=6.2.0,<7.0.0",
-  "setuptools>=80.9.0,<81.0.0",
-  "wheel>=0.45.1,<0.46.0",
 ]
 
 tools = [
@@ -82,7 +78,7 @@ docs = [
 ]
 
 dev = [
-  "ratchetr[test,lint,security,type,build,tools,docs]",
+  "ratchetr[test,lint,security,engines,build,tools,docs]",
 ]
 
 
@@ -177,79 +173,19 @@ pythonVersion = "3.10"
 pythonPlatform = "Linux"
 stubPath = "typings"
 typeCheckingMode = "strict"
-reportMissingImports = true
-reportMissingTypeStubs = false
-reportImportCycles = true
-reportUnusedImport = true
-reportUnusedClass = true
-reportUnusedFunction = true
-reportUnusedVariable = true
-reportDuplicateImport = true
-reportWildcardImportFromLibrary = true
-reportOptionalSubscript = true
-reportOptionalMemberAccess = true
-reportOptionalCall = true
-reportOptionalIterable = true
-reportOptionalContextManager = true
-reportOptionalOperand = true
-reportTypedDictNotRequiredAccess = true
-reportUntypedFunctionDecorator = true
-reportUntypedClassDecorator = true
-reportUntypedBaseClass = true
-reportUntypedNamedTuple = true
-reportPrivateUsage = true
-reportConstantRedefinition = true
-reportIncompatibleMethodOverride = true
-reportIncompatibleVariableOverride = true
-reportInvalidTypeVarUse = true
-reportUnnecessaryIsInstance = true
-reportUnnecessaryCast = true
-reportUnnecessaryComparison = true
-reportUnnecessaryContains = true
-reportAssertAlwaysTrue = true
-reportSelfClsParameterName = true
-reportImplicitStringConcatenation = false
-reportUndefinedVariable = true
-reportUnboundVariable = true
-reportInvalidStubStatement = true
-reportIncompleteStub = true
-reportUnsupportedDunderAll = true
-reportUnusedCallResult = false
-reportUnusedCoroutine = true
-reportUnusedExpression = true
-reportMatchNotExhaustive = true
-reportPropertyTypeMismatch = true
-reportFunctionMemberAccess = true
-reportMissingSuperCall = false
-reportUninitializedInstanceVariable = true
-reportInvalidStringEscapeSequence = true
-reportUnknownParameterType = true
-reportUnknownArgumentType = true
-reportUnknownLambdaType = true
-reportUnknownVariableType = true
-reportUnknownMemberType = true
-reportMissingParameterType = true
-reportMissingTypeArgument = true
-reportCallInDefaultInitializer = true
-reportUnnecessaryTypeIgnoreComment = true
-reportImplicitOverride = true
-reportTypeCommentUsage = "error"
+reportCallInDefaultInitializer = "error"
+reportImplicitOverride = "error"
+reportImportCycles = "error"
+reportMissingSuperCall = "error"
+reportPropertyTypeMismatch = "error"
+reportUninitializedInstanceVariable = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
 reportUnreachable = "error"
-reportDeprecated = "error"
-reportArgumentType = true
-reportGeneralTypeIssues = true
-reportAssignmentType = true
-strictListInference = true
-strictDictionaryInference = true
-strictSetInference = true
-strictParameterNoneValue = true
-enableTypeIgnoreComments = true
 
 [[tool.pyright.executionEnvironments]]
 root = "scripts"
 extraPaths = ["src"]
 reportPrivateUsage = false
-reportImplicitOverride = false
 
 [[tool.pyright.executionEnvironments]]
 root = "tests"
@@ -261,13 +197,9 @@ reportUnknownLambdaType = false
 reportUnknownVariableType = false
 reportUnknownMemberType = false
 reportUnknownParameterType = false
-reportUnnecessaryTypeIgnoreComment = false
 reportImplicitOverride = false
 reportArgumentType = false
 reportGeneralTypeIssues = false
-reportAssignmentType = false
-reportMissingImports = false
-reportUntypedFunctionDecorator = false
 
 [[tool.pyright.executionEnvironments]]
 root = "src"
@@ -565,7 +497,7 @@ exclude_lines = [
     "def __repr__",
     "raise AssertionError",
     "raise NotImplementedError",
-    "if __name__ == .__main__.:",
+    'if __name__ == "__main__":',
     "if TYPE_CHECKING:",
 ]
 

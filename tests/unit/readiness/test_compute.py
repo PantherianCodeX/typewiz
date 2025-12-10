@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from ratchetr.core.model_types import ReadinessStatus
 from ratchetr.core.type_aliases import CategoryName
 from ratchetr.readiness.compute import (
@@ -45,15 +47,18 @@ def test_readiness_options_from_payload_handles_varied_entries() -> None:
 
 
 def test_category_counts_from_entry_ignores_invalid_values() -> None:
-    entry: ReadinessEntry = {
-        "path": "src",
-        "errors": 1,
-        "warnings": 0,
-        "information": 0,
-        "codeCounts": {},
-        "categoryCounts": {"general": 2, "unknown": "bad"},
-        "recommendations": [],
-    }
+    entry = cast(
+        "ReadinessEntry",
+        {
+            "path": "src",
+            "errors": 1,
+            "warnings": 0,
+            "information": 0,
+            "codeCounts": {},
+            "categoryCounts": {"general": 2, "unknown": "bad"},
+            "recommendations": [],
+        },
+    )
     categories = _category_counts_from_entry(entry)
     assert categories[CategoryName("general")] == 2
     assert categories[CategoryName("unknownChecks")] >= 0
