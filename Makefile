@@ -96,13 +96,13 @@ lint.markdown: ## Run pymarkdownlnt on markdown files
 
 lint.pylint: ## Run Pylint code quality checks
 	@printf "=+= Running Pylint... =+=\n"
-	$(UV) pylint src/ratchetr --output-format=colorized --reports=n || true
+	$(UV) pylint src/ratchetr --output-format=colorized
 	@printf "=+= Pylint run completed =+=\n\n"
 
 lint.pylint.report: ## Run Pylint and write JSON report to out/lint/pylint.json
 	@printf "=+= Running Pylint (JSON report)... =+=\n"
 	@mkdir -p $(OUTPUT_DIR)/lint
-	$(UV) pylint src/ratchetr --output-format=json --reports=n > $(OUTPUT_DIR)/lint/pylint.json || true
+	$(UV) pylint src/ratchetr --output-format=json --reports=n > $(OUTPUT_DIR)/lint/pylint.json
 	@printf "Pylint report: $(OUTPUT_DIR)/lint/pylint.json\n"
 	@printf "=+= Pylint JSON report completed =+=\n\n"
 
@@ -293,7 +293,7 @@ ratchetr.readiness: $(MANIFEST_PATH) ## Show Ratchetr readiness summary
 		--manifest $(MANIFEST_PATH) \
 		--level $(RATCHETR_LEVEL) \
 		$(foreach status,$(RATCHETR_STATUSES),--status $(status)) \
-		--limit $(RATCHETR_LIMIT) || true
+		--limit $(RATCHETR_LIMIT)
 	@printf "=+= End of Ratchetr Readiness View =+=\n\n"
 
 ratchetr.all: ratchetr ratchetr.dashboard.json ## Include json report format with full run
@@ -318,14 +318,14 @@ sec.lint: ## Security lint via ruff S-rules
 sec.bandit: ## Run Bandit security scanner
 	@printf "=+= Running Bandit scan... =+=\n"
 	mkdir -p $(OUTPUT_DIR)/security
-	$(UV) bandit -c pyproject.toml -r src/ -f json -o $(OUTPUT_DIR)/security/bandit-report.json || true
+	$(UV) bandit -c pyproject.toml -r src/ -f json -o $(OUTPUT_DIR)/security/bandit-report.json
 	@printf "Bandit report: $(OUTPUT_DIR)/security/bandit-report.json\n"
 	@printf "=+= Bandit scan completed =+=\n\n"
 
 sec.safety: ## Run Safety dependency scanner
 	@printf "=+= Running Safety scan... =+=\n"
 	mkdir -p $(OUTPUT_DIR)/security
-	$(UV) safety scan --json > $(OUTPUT_DIR)/security/safety-report.json || true
+	$(UV) safety scan --json > $(OUTPUT_DIR)/security/safety-report.json
 	@printf "Safety report: $(OUTPUT_DIR)/security/safety-report.json\n"
 	@printf "=+= Safety scan completed =+=\n\n"
 

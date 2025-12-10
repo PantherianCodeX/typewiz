@@ -18,11 +18,11 @@ env:
     UV_CACHE_DIR: ~/.cache/uv
 
 jobs:
-    # -------------------------------------------------------------------
-    # 1. Build & test the tagged release
-    # -------------------------------------------------------------------
+    # ---------------------------------------------------------------
+    # 1. Build & validate distribution artifacts (artifact-level gates)
+    # ---------------------------------------------------------------
     build:
-        name: Build & test
+        name: Build & validate package artifacts
         runs-on: ubuntu-latest
 
         steps:
@@ -39,16 +39,12 @@ jobs:
             - name: Install uv
               uses: astral-sh/setup-uv@v2
 
-            - name: Cache virtualenv & tools
+            - name: Cache uv env
               uses: actions/cache@v4
               with:
                   path: |
                       .venv
                       ~/.cache/uv
-                      .ruff_cache
-                      .mypy_cache
-                      .pyrightcache
-                      .pytest_cache
                   key: release-${{ runner.os }}-py${{ env.PYTHON_DEFAULT }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
                   restore-keys: |
                       release-${{ runner.os }}-py${{ env.PYTHON_DEFAULT }}-
@@ -56,15 +52,18 @@ jobs:
             - name: Sync dependencies (dev extra)
               run: uv sync --extra dev
 
-            - name: Run release check suite
-              run: |
-                  make all.check
-                  make test.cov
+            # Optional: ultra-fast source-level smoke
+            # - name: Smoke tests (fast)
+            #   run: make test.smoke
 
-            - name: Build distributions
-              run: |
-                  make package.build
-                  make package.check
+            - name: Build distributions (sdist + wheel)
+              run: make package.build
+
+            - name: Check distributions (twine check)
+              run: make package.check
+
+            - name: Install-test built wheel (artifact-level smoke)
+              run: make package.install-test
 
             - name: Upload dist artifacts
               uses: actions/upload-artifact@v4
@@ -73,17 +72,17 @@ jobs:
                   path: dist/
                   if-no-files-found: error
 
-    # -------------------------------------------------------------------
-    # 2. Generate build provenance attestations for dist/*
-    # -------------------------------------------------------------------
+    # ---------------------------------------------------------------
+    # 2. Attest build provenance for dist/*
+    # ---------------------------------------------------------------
     attest:
         name: Attest build provenance
         needs: build
         runs-on: ubuntu-latest
         permissions:
             contents: read
-            id-token: write # required for OIDC
-            attestations: write # required for attest API
+            id-token: write
+            attestations: write
 
         steps:
             - name: Download dist artifacts
@@ -97,18 +96,18 @@ jobs:
               with:
                   subject-path: "dist/*"
 
-    # -------------------------------------------------------------------
-    # 3. Publish to PyPI (Trusted Publisher)
-    # -------------------------------------------------------------------
+    # ---------------------------------------------------------------
+    # 3. Publish to PyPI via Trusted Publisher
+    # ---------------------------------------------------------------
     publish-pypi:
         name: Publish to PyPI (Trusted Publisher)
         needs:
             - build
-            - attest # optional, but keeps ordering clean
+            - attest
         runs-on: ubuntu-latest
         permissions:
             contents: read
-            id-token: write # REQUIRED for Trusted Publisher
+            id-token: write # REQUIRED for OIDC / Trusted Publisher
 
         steps:
             - name: Download dist artifacts
@@ -122,14 +121,14 @@ jobs:
               with:
                   packages-dir: dist/
 
-    # -------------------------------------------------------------------
-    # 4. Create GitHub Release with assets
-    # -------------------------------------------------------------------
+    # ---------------------------------------------------------------
+    # 4. Create GitHub Release with attached dists
+    # ---------------------------------------------------------------
     github-release:
         name: GitHub Release
         needs:
             - build
-            - attest # ensures provenance exists before release
+            - attest
         runs-on: ubuntu-latest
         permissions:
             contents: write

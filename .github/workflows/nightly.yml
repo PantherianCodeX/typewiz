@@ -2,7 +2,7 @@ name: Nightly
 
 on:
     schedule:
-        - cron: "0 5 * * *" # daily at 05:00 UTC
+        - cron: "0 5 * * *" # daily at 05:00 UTC (adjust to taste)
     workflow_dispatch:
 
 concurrency:
@@ -18,20 +18,13 @@ env:
 
 jobs:
     full-tests:
-        name: Nightly tests - py${{ matrix.python-version }} / ${{ matrix.task }}
+        name: Nightly tests – py${{ matrix.python-version }} / ${{ matrix.task }}
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
             matrix:
                 python-version: ["3.10", "3.11", "3.12", "3.13"]
-                task:
-                    [
-                        tests-unit,
-                        tests-integration,
-                        tests-property,
-                        tests-performance,
-                        tests-e2e,
-                    ]
+                task: [unit, integration, property, performance]
 
         steps:
             - uses: actions/checkout@v4
@@ -42,7 +35,7 @@ jobs:
 
             - uses: astral-sh/setup-uv@v2
 
-            - name: Cache virtualenv & pytest
+            - name: Cache uv env & pytest cache
               uses: actions/cache@v4
               with:
                   path: |
@@ -59,23 +52,16 @@ jobs:
             - name: Run tests
               run: |
                   case "${{ matrix.task }}" in
-                    tests-unit)         make test.unit ;;
-                    tests-integration)  make test.integration ;;
-                    tests-property)     make test.property ;;
-                    tests-performance)  make test.performance ;;
-                    tests-e2e)          make test.e2e ;;
+                    unit)        make test.unit ;;
+                    integration) make test.integration ;;
+                    property)    make test.property ;;
+                    performance) make test.performance ;;
                   esac
 
-    full-quality:
-        name: Nightly quality - ${{ matrix.task }}
+    full-ci-checks:
+        name: Nightly full CI checks (ci.check)
         runs-on: ubuntu-latest
-        strategy:
-            fail-fast: false
-            matrix:
-                task:
-                    - all.lint
-                    - all.type
-                    - all.sec
+        needs: full-tests
 
         steps:
             - uses: actions/checkout@v4
@@ -86,7 +72,7 @@ jobs:
 
             - uses: astral-sh/setup-uv@v2
 
-            - name: Cache virtualenv & tools
+            - name: Cache uv env & tools
               uses: actions/cache@v4
               with:
                   path: |
@@ -95,22 +81,21 @@ jobs:
                       .ruff_cache
                       .mypy_cache
                       .pyrightcache
-                  key: nightly-${{ runner.os }}-quality-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+                      .pytest_cache
+                  key: nightly-${{ runner.os }}-ci-check-${{ hashFiles('pyproject.toml', 'uv.lock') }}
                   restore-keys: |
-                      nightly-${{ runner.os }}-quality-
+                      nightly-${{ runner.os }}-ci-check-
 
             - name: Sync dependencies (dev extra)
               run: uv sync --extra dev
 
-            - name: Run ${{ matrix.task }}
-              run: make ${{ matrix.task }}
+            - name: Run full CI parity check (ratchetr + lint + type + tests + sec + checks)
+              run: make ci.check
 
     ratchetr-nightly:
-        name: Ratchetr nightly audit
+        name: Ratchetr dashboards & readiness
         runs-on: ubuntu-latest
-        needs:
-            - full-tests
-            - full-quality
+        needs: full-ci-checks
         env:
             RATCHETR_LIMIT: 100
 
@@ -123,7 +108,7 @@ jobs:
 
             - uses: astral-sh/setup-uv@v2
 
-            - name: Cache uv & typing caches
+            - name: Cache uv env & ratchetr caches
               uses: actions/cache@v4
               with:
                   path: |
@@ -139,10 +124,8 @@ jobs:
             - name: Sync dependencies (dev extra)
               run: uv sync --extra dev
 
-            - name: Nightly ratchetr checks
-              run: |
-                  make all.ratchetr
-                  make type.all
+            - name: Nightly ratchetr all (audit + dashboards + readiness)
+              run: make all.ratchetr
 
             - name: Upload ratchetr artifacts
               if: always()
@@ -150,6 +133,6 @@ jobs:
               with:
                   name: ratchetr-nightly
                   path: |
-                      reports/typing
-                      out/
+                      out/ratchetr
+                      out/security
                   if-no-files-found: ignore

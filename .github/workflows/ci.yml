@@ -20,23 +20,15 @@ env:
 
 jobs:
   # ---------------------------------------------------------------
-  # 1. Fast feedback on PRs: lint + types
+  # 1. Lint + types + internal + security (single Python)
   # ---------------------------------------------------------------
   quality:
-    name: Quality (lint + types) – ${{ matrix.task }}
+    name: Quality (lint + types + internal + security)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.13"]
-        task:
-          - ruff
-          - format
-          - pylint
-          - mypy
-          - pyright
-          - pyright-verifytypes
-          - markdown
 
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +39,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@v2
 
-      - name: Cache virtualenv & tooling
+      - name: Cache uv env & tooling
         uses: actions/cache@v4
         with:
           path: |
@@ -63,33 +55,29 @@ jobs:
       - name: Sync dependencies (dev extra)
         run: uv sync --extra dev
 
-      - name: Run ${{ matrix.task }}
-        run: |
-          case "${{ matrix.task }}" in
-            ruff)               make lint.ruff ;;
-            format)             make lint.format ;;
-            pylint)             make lint.pylint ;;
-            mypy)               make type.mypy ;;
-            pyright)            make type.pyright ;;
-            pyright-verifytypes)make type.verifytypes ;;
-            markdown)           make lint.markdown ;;
-          esac
+      - name: Lint (ruff, format, pylint, markdown)
+        run: make all.lint
+
+      - name: Typing (mypy + pyright + verifytypes)
+        run: make all.type
+
+      - name: Internal checks (error codes + license headers)
+        run: make all.check
+
+      - name: Security checks (ruff S, Bandit, Safety)
+        run: make all.sec
 
   # ---------------------------------------------------------------
-  # 2. Core tests: Linux + full Python support
-  #    - PRs: unit + integration only (fast)
-  #    - main pushes: same, still reasonably fast
+  # 2. Core tests: unit + integration on all supported Pythons
   # ---------------------------------------------------------------
   tests:
-    name: Tests (Linux) – py${{ matrix.python-version }} / ${{ matrix.task }}
+    name: Tests (Linux) – py${{ matrix.python-version }}
     runs-on: ubuntu-latest
     needs: quality
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
-        # keep PR runs fast: no property/perf here
-        task: [tests-unit, tests-integration]
 
     steps:
       - uses: actions/checkout@v4
@@ -100,7 +88,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@v2
 
-      - name: Cache virtualenv & pytest
+      - name: Cache uv env & pytest cache
         uses: actions/cache@v4
         with:
           path: |
@@ -114,111 +102,42 @@ jobs:
       - name: Sync dependencies (dev extra)
         run: uv sync --extra dev
 
-      - name: Run tests
-        run: |
-          case "${{ matrix.task }}" in
-            tests-unit)        make test.unit ;;
-            tests-integration) make test.integration ;;
-          esac
+      - name: Unit tests
+        run: make test.unit
+
+      - name: Integration tests
+        run: make test.integration
 
   # ---------------------------------------------------------------
-  # 3. Cross-platform smoke + coverage
-  #    - Only on push to main/master (not PR)
+  # 3. Coverage on default Python (95% gate)
   # ---------------------------------------------------------------
-  tests-platform:
-    name: Smoke (X-platform) – ${{ matrix.os }} / py${{ matrix.python-version }}
-    if: github.event_name == 'push'
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
     needs: tests
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.12"]
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.PYTHON_DEFAULT }}
 
       - uses: astral-sh/setup-uv@v2
 
-      - name: Cache virtualenv & pytest
+      - name: Cache uv env & pytest cache
         uses: actions/cache@v4
         with:
           path: |
             .venv
             ~/.cache/uv
             .pytest_cache
-          key: ${{ matrix.os }}-platform-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          key: ${{ runner.os }}-cov-py${{ env.PYTHON_DEFAULT }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
-            ${{ matrix.os }}-platform-py${{ matrix.python-version }}-
+            ${{ runner.os }}-cov-py${{ env.PYTHON_DEFAULT }}-
 
       - name: Sync dependencies (dev extra)
         run: uv sync --extra dev
 
-      - name: Run coverage suite
+      - name: Tests with coverage (95% gate)
         run: make test.cov
-
-      - name: Upload coverage artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
-          path: |
-            coverage.xml
-            htmlcov/
-          if-no-files-found: ignore
-
-  # ---------------------------------------------------------------
-  # 4. Security & packaging sanity on main only
-  # ---------------------------------------------------------------
-  security-and-packaging:
-    name: Security & packaging
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    needs:
-      - tests
-      - tests-platform
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - uses: astral-sh/setup-uv@v2
-
-      - name: Cache uv & tooling
-        uses: actions/cache@v4
-        with:
-          path: |
-            .venv
-            ~/.cache/uv
-            .ruff_cache
-            .mypy_cache
-            .pyrightcache
-          key: ${{ runner.os }}-sec-pack-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-sec-pack-
-
-      - name: Sync dependencies (dev extra)
-        run: uv sync --extra dev
-
-      - name: Security checks
-        run: |
-          make sec.bandit
-          make sec.safety
-
-      - name: Packaging validation
-        run: |
-          make package.build
-          make package.check
-          make package.install-test
-          make package.clean
