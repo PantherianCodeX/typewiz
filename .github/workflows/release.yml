@@ -18,20 +18,26 @@ env:
     UV_CACHE_DIR: ~/.cache/uv
 
 jobs:
+    # -------------------------------------------------------------------
+    # 1. Build & test the tagged release
+    # -------------------------------------------------------------------
     build:
         name: Build & test
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout
+              uses: actions/checkout@v4
               with:
                   fetch-depth: 0
 
-            - uses: actions/setup-python@v5
+            - name: Set up Python
+              uses: actions/setup-python@v5
               with:
                   python-version: ${{ env.PYTHON_DEFAULT }}
 
-            - uses: astral-sh/setup-uv@v2
+            - name: Install uv
+              uses: astral-sh/setup-uv@v2
 
             - name: Cache virtualenv & tools
               uses: actions/cache@v4
@@ -67,13 +73,42 @@ jobs:
                   path: dist/
                   if-no-files-found: error
 
-    publish-pypi:
-        name: Publish to PyPI (Trusted Publisher)
+    # -------------------------------------------------------------------
+    # 2. Generate build provenance attestations for dist/*
+    # -------------------------------------------------------------------
+    attest:
+        name: Attest build provenance
         needs: build
         runs-on: ubuntu-latest
         permissions:
             contents: read
-            id-token: write # REQUIRED for trusted publisher
+            id-token: write # required for OIDC
+            attestations: write # required for attest API
+
+        steps:
+            - name: Download dist artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  name: dist
+                  path: dist/
+
+            - name: Generate build provenance attestation
+              uses: actions/attest-build-provenance@v1
+              with:
+                  subject-path: "dist/*"
+
+    # -------------------------------------------------------------------
+    # 3. Publish to PyPI (Trusted Publisher)
+    # -------------------------------------------------------------------
+    publish-pypi:
+        name: Publish to PyPI (Trusted Publisher)
+        needs:
+            - build
+            - attest # optional, but keeps ordering clean
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write # REQUIRED for Trusted Publisher
 
         steps:
             - name: Download dist artifacts
@@ -87,9 +122,14 @@ jobs:
               with:
                   packages-dir: dist/
 
+    # -------------------------------------------------------------------
+    # 4. Create GitHub Release with assets
+    # -------------------------------------------------------------------
     github-release:
         name: GitHub Release
-        needs: build
+        needs:
+            - build
+            - attest # ensures provenance exists before release
         runs-on: ubuntu-latest
         permissions:
             contents: write
@@ -102,9 +142,9 @@ jobs:
                   path: dist/
 
             - name: Create GitHub Release
-              run: |
-                  gh release create "${GITHUB_REF_NAME}" \
-                  --generate-notes \
-                  dist/*
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: dist/*
+                  generate_release_notes: true
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
