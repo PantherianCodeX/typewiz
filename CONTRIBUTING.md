@@ -22,7 +22,7 @@ See [ROADMAP.md](ROADMAP.md) for stability commitments per version.
    source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
    pip install -U pip
    pip install uv
-   uv sync --group dev
+   uv sync --extra dev
    ```
 
    Windows developers should also install GNU Make once via `choco install make -y` so the Make targets used locally and in CI are available.

@@ -38,8 +38,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-py${{ matrix.python-version }}-uv-
 
-      - name: Sync dependencies (dev profile)
-        run: uv sync --group dev
+      - name: Sync dependencies (dev extra)
+        run: uv sync --extra dev
 
       - name: Run task
         run: |
@@ -109,8 +109,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-security-uv-
 
-      - name: Sync dependencies (dev profile)
-        run: uv sync --group dev
+      - name: Sync dependencies (dev extra)
+        run: uv sync --extra dev
 
       - name: Run ${{ matrix.check_name }}
         run: ${{ matrix.run }}
@@ -159,8 +159,8 @@ jobs:
           restore-keys: |
             ${{ matrix.os }}-py${{ matrix.python-version }}-tests-uv-
 
-      - name: Sync dependencies (dev profile)
-        run: uv sync --group dev
+      - name: Sync dependencies (dev extra)
+        run: uv sync --extra dev
 
       - name: Run tests with coverage (make)
         run: make test.cov
@@ -193,8 +193,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-py3.13-tests-uv-
 
-      - name: Sync dependencies (dev profile)
-        run: uv sync --group dev
+      - name: Sync dependencies (dev extra)
+        run: uv sync --extra dev
 
       - name: Run tests with coverage (Python 3.13)
         run: make test.cov
@@ -228,8 +228,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-ratchetr-uv-
 
-      - name: Sync dependencies (dev profile)
-        run: uv sync --group dev
+      - name: Sync dependencies (dev extra)
+        run: uv sync --extra dev
 
       - name: Ratchetr CI dashboard (optional)
         run: make typing.ci || true
