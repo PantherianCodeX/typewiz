@@ -52,3 +52,8 @@ repos:
         entry: make type.verifytypes
         language: system
         pass_filenames: false
+      - id: test
+        name: pytest run tests
+        entry: make test.fast
+        language: system
+        pass_filenames: false
