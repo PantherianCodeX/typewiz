@@ -2,18 +2,18 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
-  quality:
+  tests:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-        task: [lint, type, tests-unit, tests-integration, tests-property, tests-performance]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        task: [tests-unit, tests-integration, tests-property, tests-performance]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,14 +26,13 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v2
 
-      - name: Cache uv and virtualenv
+      - name: Cache virtualenv, uv and pytest
         uses: actions/cache@v4
         with:
           path: |
             .venv
             ~/.cache/uv
-            .ruff_cache
-            .mypy_cache
+            .pytest_cache
           key: ${{ runner.os }}-py${{ matrix.python-version }}-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
             ${{ runner.os }}-py${{ matrix.python-version }}-uv-
@@ -43,16 +42,7 @@ jobs:
 
       - name: Run task
         run: |
-          # Each matrix entry maps to a dedicated make target so developers can rerun the same subset locally
-          # via the corresponding `make test.<category>` targets (see tests/README.md for the full matrix of suites).
           case "${{ matrix.task }}" in
-            lint)
-              make lint
-              make check.error-codes
-              ;;
-            type)
-              make type
-              ;;
             tests-unit)
               make test.unit
               ;;
@@ -67,6 +57,102 @@ jobs:
               ;;
           esac
 
+  linting:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        task: [ruff, pylint, markdown]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Cache virtualenv, uv and ruff
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            ~/.cache/uv
+            .ruff_cache
+          key: ${{ runner.os }}-py${{ matrix.python-version }}-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ matrix.python-version }}-uv-
+
+      - name: Sync dependencies (dev extra)
+        run: uv sync --extra dev
+
+      - name: Run task
+        run: |
+          case "${{ matrix.task }}" in
+            ruff)
+              make lint.ruff
+              make lint.format
+              ;;
+            pylint)
+              make lint.pylint
+              ;;
+            markdown)
+              make lint.markdown
+              ;;
+          esac
+
+  typing:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        task: [mypy, pyright, pyright-verifytypes]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Cache virtualenv, uv, mypy, and pyright
+        uses: actions/cache@v4
+        with:
+          path: |
+            .venv
+            ~/.cache/uv
+            .mypy_cache
+            .pyrightcache
+          key: ${{ runner.os }}-py${{ matrix.python-version }}-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-py${{ matrix.python-version }}-uv-
+
+      - name: Sync dependencies (dev extra)
+        run: uv sync --extra dev
+
+      - name: Run task
+        run: |
+          case "${{ matrix.task }}" in
+            mypy)
+              make type.mypy
+              ;;
+            pyright)
+              make type.pyright
+              ;;
+            pyright-verifytypes)
+              make type.verifytypes
+              ;;
+          esac
+
   security:
     name: Security ${{ matrix.check_name }}
     runs-on: ubuntu-latest
@@ -76,17 +162,10 @@ jobs:
         include:
           - check_name: "Bandit"
             run: |
-              mkdir -p out/security
-              uv run bandit -c pyproject.toml -r src/ -f json -o out/security/bandit-report.json || true
+              make sec.bandit
           - check_name: "Safety"
             run: |
-              mkdir -p out/security
-              uv run safety scan --json > out/security/safety-report.json || true
-          - check_name: "Pylint"
-            run: |
-              mkdir -p out/lint
-              uv run pylint --output-format=json --reports=n src/ > out/lint/pylint.json || true
-
+              make sec.safety
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -99,7 +178,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v2
 
-      - name: Cache uv and virtualenv
+      - name: Cache virtualenv and uv
         uses: actions/cache@v4
         with:
           path: |
@@ -114,7 +193,6 @@ jobs:
 
       - name: Run ${{ matrix.check_name }}
         run: ${{ matrix.run }}
-        continue-on-error: true
 
       - name: Upload security reports
         if: always()
@@ -125,7 +203,9 @@ jobs:
           if-no-files-found: ignore
 
   tests-matrix:
-    needs: quality
+    needs:
+      - typing
+      - linting
     strategy:
       fail-fast: false
       matrix:
@@ -147,14 +227,13 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v2
 
-      - name: Cache uv, virtualenv, and type/lint caches
+      - name: Cache virtualenv, uv, and pytest
         uses: actions/cache@v4
         with:
           path: |
             .venv
             ~/.cache/uv
-            .ruff_cache
-            .mypy_cache
+            .pytest_cache
           key: ${{ matrix.os }}-py${{ matrix.python-version }}-tests-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
             ${{ matrix.os }}-py${{ matrix.python-version }}-tests-uv-
@@ -165,44 +244,11 @@ jobs:
       - name: Run tests with coverage (make)
         run: make test.cov
 
-  tests-python-313:
-    needs: quality
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v2
-
-      - name: Cache uv, virtualenv, and type/lint caches
-        uses: actions/cache@v4
-        with:
-          path: |
-            .venv
-            ~/.cache/uv
-            .ruff_cache
-            .mypy_cache
-          key: ${{ runner.os }}-py3.13-tests-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-py3.13-tests-uv-
-
-      - name: Sync dependencies (dev extra)
-        run: uv sync --extra dev
-
-      - name: Run tests with coverage (Python 3.13)
-        run: make test.cov
-
   ratchetr:
     runs-on: ubuntu-latest
     needs:
-      - quality
+      - typing
+      - linting
       - tests-matrix
     steps:
       - name: Checkout
@@ -216,7 +262,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v2
 
-      - name: Cache uv, virtualenv, and type/lint caches
+      - name: Cache uv, virtualenv, and type/lint
         uses: actions/cache@v4
         with:
           path: |
@@ -224,12 +270,16 @@ jobs:
             ~/.cache/uv
             .ruff_cache
             .mypy_cache
+            .pyrightcache
           key: ${{ runner.os }}-ratchetr-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
           restore-keys: |
             ${{ runner.os }}-ratchetr-uv-
 
       - name: Sync dependencies (dev extra)
         run: uv sync --extra dev
+
+      - name: Run internal checks
+        run: make check
 
       - name: Ratchetr CI dashboard (optional)
         run: make typing.ci || true
