@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ratchetr"
 version = "0.1.0"
-description = "Type-checking and lint diagnostics aggregator with ratcheted readiness dashboards and pluggable engines."
+description = "Type-checking, lint, and other diagnostics aggregator with ratcheted readiness dashboards and pluggable engines."
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

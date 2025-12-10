@@ -1,0 +1,155 @@
+name: Nightly
+
+on:
+    schedule:
+        - cron: "0 5 * * *" # daily at 05:00 UTC
+    workflow_dispatch:
+
+concurrency:
+    group: nightly-${{ github.workflow }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+env:
+    PYTHON_DEFAULT: "3.12"
+    UV_CACHE_DIR: ~/.cache/uv
+
+jobs:
+    full-tests:
+        name: Nightly tests - py${{ matrix.python-version }} / ${{ matrix.task }}
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                python-version: ["3.10", "3.11", "3.12", "3.13"]
+                task:
+                    [
+                        tests-unit,
+                        tests-integration,
+                        tests-property,
+                        tests-performance,
+                        tests-e2e,
+                    ]
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ matrix.python-version }}
+
+            - uses: astral-sh/setup-uv@v2
+
+            - name: Cache virtualenv & pytest
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      .venv
+                      ~/.cache/uv
+                      .pytest_cache
+                  key: nightly-${{ runner.os }}-tests-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+                  restore-keys: |
+                      nightly-${{ runner.os }}-tests-py${{ matrix.python-version }}-
+
+            - name: Sync dependencies (dev extra)
+              run: uv sync --extra dev
+
+            - name: Run tests
+              run: |
+                  case "${{ matrix.task }}" in
+                    tests-unit)         make test.unit ;;
+                    tests-integration)  make test.integration ;;
+                    tests-property)     make test.property ;;
+                    tests-performance)  make test.performance ;;
+                    tests-e2e)          make test.e2e ;;
+                  esac
+
+    full-quality:
+        name: Nightly quality - ${{ matrix.task }}
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                task:
+                    - all.lint
+                    - all.type
+                    - all.sec
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - uses: astral-sh/setup-uv@v2
+
+            - name: Cache virtualenv & tools
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      .venv
+                      ~/.cache/uv
+                      .ruff_cache
+                      .mypy_cache
+                      .pyrightcache
+                  key: nightly-${{ runner.os }}-quality-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+                  restore-keys: |
+                      nightly-${{ runner.os }}-quality-
+
+            - name: Sync dependencies (dev extra)
+              run: uv sync --extra dev
+
+            - name: Run ${{ matrix.task }}
+              run: make ${{ matrix.task }}
+
+    ratchetr-nightly:
+        name: Ratchetr nightly audit
+        runs-on: ubuntu-latest
+        needs:
+            - full-tests
+            - full-quality
+        env:
+            RATCHETR_LIMIT: 100
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - uses: astral-sh/setup-uv@v2
+
+            - name: Cache uv & typing caches
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      .venv
+                      ~/.cache/uv
+                      .ruff_cache
+                      .mypy_cache
+                      .pyrightcache
+                  key: nightly-${{ runner.os }}-ratchetr-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+                  restore-keys: |
+                      nightly-${{ runner.os }}-ratchetr-
+
+            - name: Sync dependencies (dev extra)
+              run: uv sync --extra dev
+
+            - name: Nightly ratchetr checks
+              run: |
+                  make all.ratchetr
+                  make type.all
+
+            - name: Upload ratchetr artifacts
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ratchetr-nightly
+                  path: |
+                      reports/typing
+                      out/
+                  if-no-files-found: ignore

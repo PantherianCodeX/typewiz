@@ -1,0 +1,110 @@
+name: Release
+
+on:
+    push:
+        tags:
+            - "v*.*.*"
+    workflow_dispatch:
+
+concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+env:
+    PYTHON_DEFAULT: "3.12"
+    UV_CACHE_DIR: ~/.cache/uv
+
+jobs:
+    build:
+        name: Build & test
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ env.PYTHON_DEFAULT }}
+
+            - uses: astral-sh/setup-uv@v2
+
+            - name: Cache virtualenv & tools
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      .venv
+                      ~/.cache/uv
+                      .ruff_cache
+                      .mypy_cache
+                      .pyrightcache
+                      .pytest_cache
+                  key: release-${{ runner.os }}-py${{ env.PYTHON_DEFAULT }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+                  restore-keys: |
+                      release-${{ runner.os }}-py${{ env.PYTHON_DEFAULT }}-
+
+            - name: Sync dependencies (dev extra)
+              run: uv sync --extra dev
+
+            - name: Run release check suite
+              run: |
+                  make all.check
+                  make test.cov
+
+            - name: Build distributions
+              run: |
+                  make package.build
+                  make package.check
+
+            - name: Upload dist artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: dist
+                  path: dist/
+                  if-no-files-found: error
+
+    publish-pypi:
+        name: Publish to PyPI (Trusted Publisher)
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write # REQUIRED for trusted publisher
+
+        steps:
+            - name: Download dist artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  name: dist
+                  path: dist/
+
+            - name: Publish package distributions to PyPI
+              uses: pypa/gh-action-pypi-publish@release/v1
+              with:
+                  packages-dir: dist/
+
+    github-release:
+        name: GitHub Release
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+
+        steps:
+            - name: Download dist artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  name: dist
+                  path: dist/
+
+            - name: Create GitHub Release
+              run: |
+                  gh release create "${GITHUB_REF_NAME}" \
+                  --generate-notes \
+                  dist/*
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
