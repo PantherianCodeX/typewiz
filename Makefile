@@ -151,7 +151,6 @@ else
 endif
 
 type.clean: clean.type ## Clean all typing caches
-	@printf "=+= Typing caches cleaned =+=\n\n"
 
 
 # ----------------------------------------------------------------------
@@ -378,70 +377,99 @@ check: check.error-codes check.license-headers ## Run all internal checks
 # ----------------------------------------------------------------------
 
 clean.mypy: ## Remove mypy cache
+	@printf "=+= Removing Mypy cache... =+=\n"
 	rm -rf .mypy_cache
+	@printf "=+= Mypy cache removed =+=\n\n"
 
 clean.pyright: ## Remove pyright cache
+	@printf "=+= Removing Pyright cache... =+=\n"
 	rm -rf .pyrightcache
+	@printf "=+= Pyright cache removed =+=\n\n"
 
 clean.type: clean.mypy clean.pyright ## Remove typing caches
-	@printf "=+= Typing caches removed =+=\n\n"
+	@printf "  =+= All typing caches removed =+=\n\n"
 
 clean.ruff: ## Remove ruff cache
+	@printf "=+= Removing Ruff cache... =+=\n"
 	rm -rf .ruff_cache
+	@printf "=+= Ruff cache removed =+=\n\n"
 
 clean.pylint: ## Remove pylint cache
+	@printf "=+= Removing Pylint cache... =+=\n"
 	rm -rf .pylint.d
 	rm -f $(OUTPUT_DIR)/lint/pylint.json
+	@printf "=+= Pylint cache removed =+=\n\n"
 
 clean.lint: clean.ruff clean.pylint ## Remove lint caches
-	@printf "=+= Lint caches removed =+=\n\n"
+	rm -rf $(OUTPUT_DIR)/lint
+	@printf "  =+= All lint caches removed =+=\n\n"
 
 clean.pycache: ## Remove Python bytecode and __pycache__ dirs
+	@printf "=+= Removing Python bytecode and __pycache__ directories... =+=\n"
 	find . -type f \( -name '*.pyc' -o -name '*.pyo' -o -name '*.py[co]' \) -delete
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
+	@printf "=+= Python bytecode and __pycache__ directories removed =+=\n\n"
 
 clean.cache: ## Remove .cache directories
+	@printf "=+= Removing .cache directories... =+=\n"
 	find . -type d -name .cache -prune -exec rm -rf {} +
+	@printf "=+= .cache directories removed =+=\n\n"
 
 clean.caches: clean.pycache clean.cache ## Remove all common caches
 	@printf "  =+= All common caches removed =+=\n\n"
 
 clean.coverage: ## Remove coverage artifacts
+	@printf "=+= Removing coverage artifacts... =+=\n"
 	rm -f .coverage
 	rm -rf htmlcov
+	@printf "=+= Coverage artifacts removed =+=\n\n"
 
 clean.pytest: ## Clean test caches
+	@printf "=+= Removing pytest caches... =+=\n"
 	rm -rf .pytest_cache
+	@printf "=+= Pytest caches removed =+=\n\n"
 
 clean.hypothesis: ## Remove Hypothesis caches
+	@printf "=+= Removing Hypothesis caches... =+=\n"
 	rm -rf .hypothesis
+	@printf "=+= Hypothesis caches removed =+=\n\n"
 
 clean.benchmarks: ## Remove pytest-benchmark caches
+	@printf "=+= Removing pytest-benchmark caches... =+=\n"
 	rm -rf .benchmarks
+	@printf "=+= Pytest-benchmark caches removed =+=\n\n"
 
 clean.test: clean.pytest clean.coverage clean.hypothesis clean.benchmarks ## Remove test caches and coverage artifacts
 	@printf "  =+= All test caches and artifacts removed =+=\n\n"
 
 clean.bandit: ## Remove Bandit report
+	@printf "=+= Removing Bandit report... =+=\n"
 	rm -f $(OUTPUT_DIR)/security/bandit-report.json
+	@printf "=+= Bandit report removed =+=\n\n"
 
 clean.safety: ## Remove Safety report
+	@printf "=+= Removing Safety report... =+=\n"
 	rm -f $(OUTPUT_DIR)/security/safety-report.json
+	@printf "=+= Safety report removed =+=\n\n"
 
 clean.sec: clean.bandit clean.safety ## Remove security reports
 	rm -rf $(OUTPUT_DIR)/security
+	@printf "  =+= All security reports removed =+=\n\n"
 
 clean.package: package.clean ## Remove packaging build artifacts
 
 clean.ratchetr: ## Clean Ratchetr caches
+	@printf "=+= Cleaning Ratchetr caches and reports... =+=\n"
 	rm -rf .ratchetr_cache
 	rm -rf $(TYPING_REPORT_DIR)
+	@printf "=+= Ratchetr caches and reports removed =+=\n\n"
 
 clean: clean.caches clean.type clean.lint clean.test clean.sec ## Remove all local caches
 	@printf "  =+= All local caches removed =+=\n\n"
 
 clean.full: clean clean.package clean.ratchetr ## Remove all local caches and packaging
-	@printf "=+= Full clean completed =+=\n\n"
+	rm -rf $(OUTPUT_DIR)
+	@printf "  =+= Full clean completed =+=\n\n"
 
 
 # ----------------------------------------------------------------------
