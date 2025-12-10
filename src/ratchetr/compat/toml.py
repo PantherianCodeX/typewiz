@@ -1,4 +1,4 @@
-# Copyright 2025 CrownOps Engineering
+# # Copyright 2025 CrownOps Engineering
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# pyright: reportMissingModuleSource=false
 
 """Compatibility layer for TOML parsing across Python versions.
 
@@ -39,6 +41,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     # For type checking under py310, tomllib doesn't exist, but tomli should.
     import tomli as tomllib
+
 else:
     try:
         import tomllib  # py311+

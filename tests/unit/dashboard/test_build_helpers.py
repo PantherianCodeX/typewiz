@@ -30,6 +30,9 @@ if TYPE_CHECKING:
     from ratchetr.manifest.typed import ManifestData
 
 
+pytestmark = pytest.mark.unit
+
+
 def _minimal_run(tool: str = "pyright") -> dict[str, object]:
     return {
         "tool": tool,

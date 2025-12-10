@@ -16,7 +16,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from ratchetr.common import override_utils
+
+pytestmark = pytest.mark.unit
 
 
 def test_format_override_inline_with_details() -> None:

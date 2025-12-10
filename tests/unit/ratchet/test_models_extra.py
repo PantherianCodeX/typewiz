@@ -26,6 +26,8 @@ from ratchetr.ratchet.models import (
     RatchetRunBudgetModel,
 )
 
+pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
+
 
 def test_path_budget_requires_mapping() -> None:
     with pytest.raises(TypeError, match="severities must be a mapping"):

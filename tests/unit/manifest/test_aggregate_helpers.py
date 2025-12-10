@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from collections import Counter
 
+import pytest
+
 from ratchetr.core.model_types import RecommendationCode, SeverityLevel
 from ratchetr.core.type_aliases import RuleName
 from ratchetr.manifest.aggregate import (
@@ -28,6 +30,8 @@ from ratchetr.manifest.aggregate import (
     _split_rel_path,
     _update_file_summary,
 )
+
+pytestmark = pytest.mark.unit
 
 
 def test_canonical_category_mapping_filters_and_orders() -> None:

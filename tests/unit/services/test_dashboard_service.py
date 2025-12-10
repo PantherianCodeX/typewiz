@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from ratchetr.core.model_types import DashboardFormat, DashboardView
 from ratchetr.services import dashboard as dashboard_service
 
@@ -25,6 +27,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from ratchetr.core.summary_types import SummaryData
+
+
+pytestmark = pytest.mark.unit
 
 
 def test_render_dashboard_summary_formats(sample_summary: SummaryData) -> None:

@@ -49,6 +49,9 @@ if TYPE_CHECKING:
     from ratchetr.core.summary_types import SummaryData
 
 
+pytestmark = pytest.mark.unit
+
+
 def test_coerce_status_handles_invalid_values() -> None:
     assert _coerce_status("invalid") == ReadinessStatus.BLOCKED
     assert _coerce_status(ReadinessStatus.READY) == ReadinessStatus.READY

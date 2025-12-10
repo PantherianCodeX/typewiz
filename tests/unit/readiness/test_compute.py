@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from typing import cast
 
+import pytest
+
 from ratchetr.core.model_types import ReadinessStatus
 from ratchetr.core.type_aliases import CategoryName
 from ratchetr.readiness.compute import (
@@ -28,6 +30,8 @@ from ratchetr.readiness.compute import (
     _category_counts_from_entry,
     _status_for_category,
 )
+
+pytestmark = pytest.mark.unit
 
 
 def test_readiness_options_from_payload_handles_varied_entries() -> None:

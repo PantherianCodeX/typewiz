@@ -19,13 +19,13 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+import pytest
+
 from ratchetr.services import manifest as manifest_service
 
 if TYPE_CHECKING:
     from pathlib import Path
     from types import ModuleType
-
-    import pytest
 
 
 def _write_manifest(path: Path, payload: dict[str, object]) -> None:
@@ -112,3 +112,6 @@ def test_validate_schema_warns_when_jsonschema_missing(monkeypatch: pytest.Monke
     schema_errors, warnings = manifest_service._validate_schema(payload, schema_path)
     assert schema_errors == []
     assert warnings
+
+
+pytestmark = pytest.mark.unit

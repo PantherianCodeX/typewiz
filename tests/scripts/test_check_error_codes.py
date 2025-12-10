@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from scripts import check_error_codes
 
 if TYPE_CHECKING:
@@ -26,6 +28,8 @@ if TYPE_CHECKING:
 
     from _pytest.capture import CaptureFixture
     from _pytest.monkeypatch import MonkeyPatch
+
+pytestmark = pytest.mark.unit
 
 
 def test_discover_duplicates_identifies_only_repeated_codes() -> None:

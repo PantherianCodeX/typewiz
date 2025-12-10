@@ -12,17 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for CLI type helpers."""
+from typing import Any
 
-from __future__ import annotations
+def loads(s: str, /, *, parse_float: type[Any] | None = ...) -> dict[str, object]: ...
 
-import pytest
-
-from ratchetr.cli import types
-
-pytestmark = [pytest.mark.unit, pytest.mark.cli]
-
-
-def test_subparser_collection_exported_via_all() -> None:
-    """Ensure the shared CLI protocol is publicly re-exported."""
-    assert "SubparserCollection" in types.__all__
+__all__ = ["loads"]

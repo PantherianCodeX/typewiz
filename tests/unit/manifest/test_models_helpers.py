@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from ratchetr.manifest.models import (
     _empty_override_list,
     _empty_run_payload_list,
@@ -23,6 +25,8 @@ from ratchetr.manifest.models import (
     manifest_json_schema,
     manifest_to_model,
 )
+
+pytestmark = pytest.mark.unit
 
 
 def test_empty_override_and_run_lists_are_empty() -> None:

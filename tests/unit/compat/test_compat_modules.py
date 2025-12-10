@@ -41,6 +41,8 @@ from ratchetr.compat import enums as compat_enums
 from ratchetr.compat import toml as compat_toml
 from ratchetr.compat import typing as compat_typing
 
+pytestmark = pytest.mark.unit
+
 
 class _CompatEnumsModule(_typing.Protocol):
     """Protocol describing the compat.enums module."""
@@ -84,9 +86,10 @@ def test_utc_timezone_matches_stdlib() -> None:
 def test_tomllib_proxy_can_parse_documents() -> None:
     """Tomllib proxy should parse TOML payloads."""
     assert tomllib is compat_toml.tomllib
-    parsed = tomllib.loads('name = "ratchetr"\n[tool]\ncount = 1\n')
+    parsed: dict[str, object] = tomllib.loads('name = "ratchetr"\n[tool]\ncount = 1\n')
+    tool_table = _typing.cast("dict[str, object]", parsed["tool"])
     assert parsed["name"] == "ratchetr"
-    assert parsed["tool"]["count"] == 1
+    assert tool_table["count"] == 1
 
 
 def test_typing_exports_are_available() -> None:

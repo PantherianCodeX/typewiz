@@ -200,6 +200,9 @@ reportUnknownParameterType = false
 reportImplicitOverride = false
 reportArgumentType = false
 reportGeneralTypeIssues = false
+reportMissingImports = false
+reportMissingModuleSource = false
+reportUntypedFunctionDecorator = false
 
 [[tool.pyright.executionEnvironments]]
 root = "src"

@@ -27,6 +27,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+pytestmark = pytest.mark.unit
+
+
 # ---------------------------------------------------------------------------
 # Fixtures / shared test data
 # ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@ The ratchetr tests follow a pyramid-aligned layout that separates fast, determin
 tests/
 ├── unit/                # Domain-focused unit tests and fixtures
 ├── integration/         # Workflow and multi-component coverage
+├── e2e/                 # End-to-end CLI and workflow tests
 ├── property_based/      # Hypothesis-powered invariants
 ├── performance/         # Benchmarks and micro/perf tests
 ├── fixtures/            # Shared data builders, stubs, and snapshots
@@ -23,8 +24,10 @@ Use the dedicated Make targets to match the subsets executed in CI:
 | Coverage-focused pytest run | `make test.cov` | `pytest --cov=src/ratchetr --cov-report=term --cov-fail-under=95` |
 | Unit tests (fast suites under `tests/unit`) | `make test.unit` | `pytest tests/unit` |
 | Integration workflows | `make test.integration` | `pytest tests/integration` |
+| End-to-end workflows (marked `e2e`) | `make test.e2e` | `pytest -m e2e tests/e2e` |
 | Property-based suites | `make test.property` | `pytest tests/property_based` |
 | Performance benchmarks | `make test.performance` | `pytest tests/performance` |
+| Fast pre-commit subset (unit + smoke, no slow/property/benchmarks) | `make test.fast` | `pytest -m '(unit or smoke) and not slow and not benchmark and not property'` |
 
 Additional tips:
 

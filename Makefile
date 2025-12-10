@@ -26,10 +26,10 @@ VERIFYTYPES_PACKAGE  ?= ratchetr
 
 .PHONY: \
   all all.full all.test all.lint all.type all.format all.fix all.sec all.check all.ratchetr \
-  lint lint.ruff lint.ruff.fix lint.format lint.format.fix lint.markdown lint.pylint lint.fix \
+  lint lint.ruff lint.ruff.fix lint.format lint.format.fix lint.markdown lint.pylint lint.pylint.report lint.fix \
   fix fix.format fix.ruff \
   type type.mypy type.pyright type.verifytypes type.clean \
-  test test.verbose test.failfast test.unit test.integration test.property test.performance test.cov test.bench \
+  test test.verbose test.failfast test.unit test.integration test.property test.performance test.e2e test.smoke test.fast test.cov test.cov.report test.bench test.bench.report \
   test.clean test.clean.pytest test.clean.coverage test.clean.hypothesis test.clean.benchmarks \
   ratchetr ratchetr.audit ratchetr.dashboard ratchetr.dashboard.json ratchetr.readiness ratchetr.clean ratchetr.all \
   sec sec.lint sec.bandit sec.safety \
@@ -96,10 +96,15 @@ lint.markdown: ## Run pymarkdownlnt on markdown files
 
 lint.pylint: ## Run Pylint code quality checks
 	@printf "=+= Running Pylint... =+=\n"
+	$(UV) pylint src/ratchetr --output-format=colorized --reports=n || true
+	@printf "=+= Pylint run completed =+=\n\n"
+
+lint.pylint.report: ## Run Pylint and write JSON report to out/lint/pylint.json
+	@printf "=+= Running Pylint (JSON report)... =+=\n"
 	@mkdir -p $(OUTPUT_DIR)/lint
 	$(UV) pylint src/ratchetr --output-format=json --reports=n > $(OUTPUT_DIR)/lint/pylint.json || true
 	@printf "Pylint report: $(OUTPUT_DIR)/lint/pylint.json\n"
-	@printf "=+= Pylint run completed =+=\n\n"
+	@printf "=+= Pylint JSON report completed =+=\n\n"
 
 lint.fix: lint.ruff.fix lint.format.fix ## Apply formatter and safe autofix lints
 	@printf "  =+= All fixes applied =+=\n\n"
@@ -188,15 +193,50 @@ test.performance: ## Run performance tests (tests/performance)
 	$(UV) pytest -q tests/performance
 	@printf "=+= Performance tests completed =+=\n\n"
 
+test.e2e: ## Run end-to-end tests (tests/e2e, marked e2e)
+	@printf "=+= Running end-to-end tests... =+=\n"
+	$(UV) pytest -q -m 'e2e' tests/e2e
+	@printf "=+= End-to-end tests completed =+=\n\n"
+
+test.smoke: ## Run smoke tests (marked smoke)
+	@printf "=+= Running smoke tests... =+=\n"
+	$(UV) pytest -q -m 'smoke'
+	@printf "=+= Smoke tests completed =+=\n\n"
+
+test.fast: ## Run fast test subset (unit+smoke, excluding slow/property/benchmarks)
+	@printf "=+= Running fast tests (unit+smoke, no slow/property/benchmarks)... =+=\n"
+	$(UV) pytest -q -m '(unit or smoke) and not slow and not benchmark and not property'
+	@printf "=+= Fast tests completed =+=\n\n"
+
 test.cov: ## Run pytest with coverage (95% gate) on src/ratchetr
 	@printf "=+= Running tests with coverage... =+=\n"
 	$(UV) pytest --cov=src/ratchetr --cov-report=term --cov-fail-under=95
 	@printf "=+= Tests with coverage completed =+=\n\n"
 
+test.cov.report: ## Run pytest with coverage and write reports under out/coverage
+	@printf "=+= Running tests with coverage (with reports)... =+=\n"
+	@mkdir -p $(OUTPUT_DIR)/coverage
+	$(UV) pytest \
+		--cov=src/ratchetr \
+		--cov-report=term \
+		--cov-report=xml:$(OUTPUT_DIR)/coverage/coverage.xml \
+		--cov-report=html:$(OUTPUT_DIR)/coverage/htmlcov \
+		--cov-fail-under=95
+	@printf "Coverage XML: $(OUTPUT_DIR)/coverage/coverage.xml\n"
+	@printf "Coverage HTML: $(OUTPUT_DIR)/coverage/htmlcov\n"
+	@printf "=+= Tests with coverage + reports completed =+=\n\n"
+
 test.bench: ## Run performance benchmarks (requires pytest-benchmark plugin)
 	@printf "=+= Running performance benchmarks... =+=\n"
 	$(UV) pytest tests/performance/benchmarks --benchmark-only
 	@printf "=+= Performance benchmarks completed =+=\n\n"
+
+test.bench.report: ## Run benchmarks and write JSON report to out/benchmarks/benchmarks.json
+	@printf "=+= Running performance benchmarks (with report)... =+=\n"
+	@mkdir -p $(OUTPUT_DIR)/benchmarks
+	$(UV) pytest tests/performance/benchmarks --benchmark-only --benchmark-json=$(OUTPUT_DIR)/benchmarks/benchmarks.json
+	@printf "Benchmark report: $(OUTPUT_DIR)/benchmarks/benchmarks.json\n"
+	@printf "=+= Performance benchmarks + report completed =+=\n\n"
 
 test.clean.pytest: clean.pytest ## Clean pytest cache
 	@printf "=+= Pytest cache cleaned =+=\n\n"
@@ -297,7 +337,7 @@ sec.safety: ## Run Safety dependency scanner
 
 package.build: ## Build sdist and wheel into dist/
 	@printf "=+= Building distribution artifacts... =+=\n"
-	$(UV) python -m build --no-isolation
+	$(UV) python -m build
 	@printf "=+= Distribution artifacts built in dist/ =+=\n\n"
 
 package.check: ## Run Twine check on built artifacts

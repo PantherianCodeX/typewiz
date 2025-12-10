@@ -41,6 +41,8 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "property: Property-based tests")
     config.addinivalue_line("markers", "benchmark: Performance benchmark tests")
     config.addinivalue_line("markers", "slow: Slow-running tests")
+    config.addinivalue_line("markers", "smoke: Smoke tests (fast end-to-end checks)")
+    config.addinivalue_line("markers", "e2e: End-to-end workflow tests")
     config.addinivalue_line("markers", "cli: CLI-related tests")
     config.addinivalue_line("markers", "engine: Engine-related tests")
     config.addinivalue_line("markers", "ratchet: Ratchet feature tests")

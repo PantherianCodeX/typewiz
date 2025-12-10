@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Integration tests for Workflows End To End."""
+"""End-to-end workflow tests for multi-component CLI scenarios."""
 
 from __future__ import annotations
 
 import pytest
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.e2e, pytest.mark.integration]
 
-# End-to-end workflow integration tests live here.
+# End-to-end workflow tests live here.
