@@ -236,14 +236,13 @@ def parse_hash_workers(value: str | None) -> int | Literal["auto"] | None:
     """
     if value is None:
         return None
-    token = value.strip().lower()
-    if not token:
+    stripped_value = value.strip().lower()
+    if not stripped_value:
         return None
-    # ignore JUSTIFIED: token is a CLI mode selector, not a password or credential
-    if token == "auto":  # noqa: S105
+    if stripped_value == "auto":
         return "auto"
     try:
-        workers = int(token)
+        workers = int(stripped_value)
     except ValueError as exc:
         msg = "--hash-workers must be 'auto' or a non-negative integer"
         raise SystemExit(msg) from exc

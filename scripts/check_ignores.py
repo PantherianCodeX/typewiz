@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Validate ignore justifications for linting, typing, and coverage.
+"""Validate ignore justifications for linting, typing, coverage and nosec.
 
 This checker enforces the `# ignore JUSTIFIED: <reason>` convention described
 in `CONTRIBUTING.md`. It scans Python source and stub files for:
@@ -22,6 +22,7 @@ in `CONTRIBUTING.md`. It scans Python source and stub files for:
 - Pylint ignores (`# pylint: disable=...`, `# pylint: skip-file`)
 - Type-checker ignores (`# type: ignore[...]`, `# pyright: ignore[...]`)
 - Coverage ignores (`# pragma: no cover`)
+- SafetyCLI ignores (`# nosec B105`)
 
 For every such line, the *immediately preceding* line must be a justification
 comment that begins with `# ignore JUSTIFIED:` and contains a short,
@@ -91,10 +92,11 @@ BASE_IGNORE_MARKERS: tuple[str, ...] = (
     "noqa:",
     "ruff:",
     "pylint:",
-    "mypy:",
     "pyright:",
-    "type:",
-    "pragma:",
+    "type: ignore",
+    "pragma: no cover",
+    "nosec:",
+    "nosec",
 )
 
 JUSTIFICATION_PREFIX = "# ignore JUSTIFIED:"
@@ -167,16 +169,18 @@ def _detect_sources(comment: str) -> tuple[str, ...]:
     """
     lowered = comment.lower()
     sources: list[str] = []
-    if "# noqa" in lowered or "#noqa" in lowered or "noqa:" in lowered or "ruff:" in lowered:
+    if "noqa:" in lowered or "ruff:" in lowered:
         sources.append("ruff")
     if "pylint:" in lowered:
         sources.append("pylint")
-    if "mypy:" in lowered or "type: ignore" in lowered:
+    if "type: ignore" in lowered:
         sources.append("mypy")
     if "pyright:" in lowered:
         sources.append("pyright")
-    if "pragma:" in lowered:
+    if "pragma: no cover" in lowered:
         sources.append("coverage")
+    if "nosec:" in lowered or "nosec" in lowered:
+        sources.append("safety")
     # Deduplicate while preserving order.
     seen: set[str] = set()
     unique_sources: list[str] = []
@@ -227,7 +231,7 @@ def _iter_python_files(root: Path, paths: Sequence[Path] | None) -> Iterable[Pat
 def _comment_contains_ignore(comment: str) -> bool:
     """Return True if a comment line contains an ignore pragma.
 
-    This uses root markers (e.g. `noqa:`, `pylint:`, `type:`) and only
+    This uses root markers (e.g. `noqa:`, `pylint:`, `type: ignore`) and only
     considers text that appears after the initial `#` in the comment. This
     avoids treating explanatory comments that merely *mention* these words as
     pragmas.
@@ -289,28 +293,28 @@ def _adjacent_justification(lines: list[str], index: int) -> str | None:
     return lines[start].strip()
 
 
-def _detect_ignore_kind(text: str) -> str:
+def _detect_ignore_source(text: str) -> str:
     """Classify the type of ignore present in a comment.
 
     Returns:
-        A short kind label such as `ruff-line` or `coverage-ignore`.
+        A short source label such as `ruff` or `coverage`.
     """
     lowered = text.lower()
     markers = [
-        ("ruff: noqa", "ruff-file"),
-        ("pylint: skip-file", "pylint-file"),
-        ("mypy: ignore-errors", "mypy-file"),
-        ("pyright: ignore", "pyright-ignore"),
-        ("pyright:", "pyright-file"),
-        ("noqa", "ruff-line"),
-        ("pylint: disable", "pylint-line"),
-        ("type: ignore", "type-ignore"),
-        ("pragma: no cover", "coverage-ignore"),
-        ("coverage:", "coverage-ignore"),
+        ("ruff: noqa", "ruff"),
+        ("pylint: skip-file", "pylint"),
+        ("pyright: ignore", "pyright"),
+        ("pyright:", "pyright"),
+        ("noqa:", "ruff"),
+        ("pylint: disable", "pylint"),
+        ("type: ignore", "mypy"),
+        ("pragma: no cover", "coverage"),
+        ("nosec:", "safety"),
+        ("nosec", "safety"),
     ]
-    for marker, kind in markers:
+    for marker, source in markers:
         if marker in lowered:
-            return kind
+            return source
     return "unknown"
 
 
@@ -426,8 +430,8 @@ def _check_file(path: Path) -> tuple[list[IgnoreViolation], int]:  # noqa: C901,
                     break
 
         # File-level placement rules: apply when the comment looks like a file-level pragma.
-        kind = _detect_ignore_kind(comment)
-        if kind in {"ruff-file", "pylint-file", "mypy-file", "pyright-file"}:
+        source = _detect_ignore_source(comment)
+        if source in {"ruff", "pylint", "mypy", "pyright", "safety"}:
             violations.extend(
                 _validate_file_level_placement(
                     file=path,
@@ -475,7 +479,7 @@ def _compute_anchor_line(text: str) -> int | None:
 
 # ignore JUSTIFIED: pragma formatting rules share state/branches; keeping them together
 # avoids duplicate parsing and scattered validation logic
-def _validate_pragma_format(  # noqa: C901, PLR0912
+def _validate_pragma_format(  # noqa: C901, PLR0912, PLR0915
     *,
     file: Path,
     line: int,
@@ -594,12 +598,14 @@ def _validate_pragma_format(  # noqa: C901, PLR0912
             src_for_hash = "ruff"
         elif segment.startswith(("# pylint:", "#pylint:")):
             src_for_hash = "pylint"
-        elif segment.startswith(("# mypy:", "#mypy:", "# type: ignore", "#type: ignore")):
+        elif segment.startswith(("# type: ignore", "#type: ignore")):
             src_for_hash = "mypy"
         elif segment.startswith(("# pyright:", "#pyright:")):
             src_for_hash = "pyright"
         elif segment.startswith(("# pragma: no cover", "#pragma: no cover", "# coverage:", "#coverage:")):
             src_for_hash = "coverage"
+        elif segment.startswith(("# nosec", "#nosec")):
+            src_for_hash = "safety"
 
         if src_for_hash is None:
             continue
@@ -641,7 +647,11 @@ def _validate_file_level_placement(
         A list of placement-related violations for this file-level ignore.
     """
     placements: list[IgnoreViolation] = []
-    if anchor_line is None:
+
+    # Only treat *comment-only* pragma lines as file-level candidates.
+    # Abort if anchor line isn't set or line isn't comment-only
+    line_text = lines[idx] if 0 <= idx < len(lines) else ""
+    if anchor_line is None or not line_text.lstrip().startswith("#"):
         return placements
 
     block = _find_justification_block(lines, idx)
@@ -718,7 +728,7 @@ def _validate_file_level_placement(
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Check that ignore comments (noqa, pylint, type: ignore, pyright, coverage) are justified.",
+        description="Check that ignore comments (noqa, pylint, type: ignore, pyright, coverage, nosec) are justified.",
     )
     parser.add_argument(
         "--json",

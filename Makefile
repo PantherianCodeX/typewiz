@@ -8,16 +8,21 @@ SHELL := /bin/bash
 # ----------------------------------------------------------------------
 
 UV := uv run
+PY := $(UV) python -m
 
-OUTPUT_DIR         ?= out
-TYPING_REPORT_DIR  ?= $(OUTPUT_DIR)/ratchetr
-MANIFEST_PATH      ?= $(TYPING_REPORT_DIR)/typing_audit.json
+OUTPUT_DIR           ?= out
+SEC_DIR              ?= $(OUTPUT_DIR)/security
+LINT_DIR		     ?= $(OUTPUT_DIR)/lint
+TYPE_DIR		     ?= $(OUTPUT_DIR)/type
 
-RATCHETR_STATUSES  ?= blocked ready
-RATCHETR_LEVEL     ?= folder
-RATCHETR_LIMIT     ?= 20
+RATCHETR_DIR  	     ?= $(OUTPUT_DIR)/ratchetr
+MANIFEST_PATH        ?= $(RATCHETR_DIR)/typing_audit.json
+
+RATCHETR_STATUSES    ?= blocked ready
+RATCHETR_LEVEL       ?= folder
+RATCHETR_LIMIT       ?= 20
 # Extra flags forwarded directly to `ratchetr audit` (e.g., --root src/ratchetr)
-RATCHETR_FLAGS     ?=
+RATCHETR_FLAGS       ?=
 
 VERIFYTYPES_DISABLED ?= 0
 VERIFYTYPES_PACKAGE  ?= ratchetr
@@ -32,7 +37,7 @@ VERIFYTYPES_PACKAGE  ?= ratchetr
   test test.verbose test.failfast test.unit test.integration test.property test.performance test.e2e test.smoke test.fast test.cov test.cov.report test.bench test.bench.report \
   test.clean test.clean.pytest test.clean.coverage test.clean.hypothesis test.clean.benchmarks \
   ratchetr ratchetr.audit ratchetr.dashboard ratchetr.dashboard.json ratchetr.readiness ratchetr.clean ratchetr.all \
-  sec sec.lint sec.bandit sec.safety \
+  sec sec.lint sec.bandit sec.bandit.report sec.safety sec.safety.report \
   package.build package.check package.install-test package.clean \
   check check.license-headers check.error-codes check.ignores check.ignores.report \
   clean clean.pycache clean.cache clean.caches clean.mypy clean.pyright clean.type clean.ruff clean.pylint clean.lint \
@@ -99,11 +104,11 @@ lint.pylint: ## Run Pylint code quality checks
 	$(UV) pylint src/ratchetr --output-format=colorized
 	@printf "=+= Pylint run completed =+=\n\n"
 
-lint.pylint.report: ## Run Pylint and write JSON report to out/lint/pylint.json
+lint.pylint.report: ## Run Pylint and write JSON report
 	@printf "=+= Running Pylint (JSON report)... =+=\n"
-	@mkdir -p $(OUTPUT_DIR)/lint
-	$(UV) pylint src/ratchetr --output-format=json --reports=n > $(OUTPUT_DIR)/lint/pylint.json
-	@printf "Pylint report: $(OUTPUT_DIR)/lint/pylint.json\n"
+	@mkdir -p $(LINT_DIR)
+	$(UV) pylint src/ratchetr --output-format=json --reports=n > $(LINT_DIR)/pylint.json
+	@printf "Pylint report: $(LINT_DIR)/pylint.json\n"
 	@printf "=+= Pylint JSON report completed =+=\n\n"
 
 lint.fix: lint.ruff.fix lint.format.fix ## Apply formatter and safe autofix lints
@@ -259,7 +264,7 @@ test.clean: clean.test ## Clean all test caches and artifacts
 
 $(MANIFEST_PATH):  ## Generate Ratchetr audit manifest
 	@printf "=+= Generating Ratchetr audit manifest at $(MANIFEST_PATH)... =+=\n"
-	mkdir -p $(TYPING_REPORT_DIR)
+	mkdir -p $(RATCHETR_DIR)
 	$(UV) ratchetr audit \
 		$(RATCHETR_FLAGS) \
 		--manifest $(MANIFEST_PATH) \
@@ -275,20 +280,20 @@ ratchetr.audit: $(MANIFEST_PATH) ## Logical alias
 
 ratchetr.dashboard: $(MANIFEST_PATH) ## Render Ratchetr dashboards (Markdown + HTML)
 	@printf "=+= Generating Ratchetr dashboard reports... =+=\n"
-	mkdir -p $(TYPING_REPORT_DIR)
-	$(UV) ratchetr dashboard --manifest $(MANIFEST_PATH) --format markdown --output $(TYPING_REPORT_DIR)/dashboard.md
-	$(UV) ratchetr dashboard --manifest $(MANIFEST_PATH) --format html     --output $(TYPING_REPORT_DIR)/dashboard.html
-	@printf "=+= Ratchetr dashboard reports: $(TYPING_REPORT_DIR)/dashboard.{md,html} =+=\n\n"
+	mkdir -p $(RATCHETR_DIR)
+	$(UV) ratchetr dashboard --manifest $(MANIFEST_PATH) --format markdown --output $(RATCHETR_DIR)/dashboard.md
+	$(UV) ratchetr dashboard --manifest $(MANIFEST_PATH) --format html     --output $(RATCHETR_DIR)/dashboard.html
+	@printf "=+= Ratchetr dashboard reports: $(RATCHETR_DIR)/dashboard.{md,html} =+=\n\n"
 
 ratchetr.dashboard.json: $(MANIFEST_PATH) ## Render Ratchetr dashboard in JSON format
 	@printf "=+= Generating Ratchetr dashboard JSON report... =+=\n"
-	mkdir -p $(TYPING_REPORT_DIR)
-	$(UV) ratchetr dashboard --manifest $(MANIFEST_PATH) --format json     --output $(TYPING_REPORT_DIR)/dashboard.json
-	@printf "=+= Ratchetr dashboard JSON report: $(TYPING_REPORT_DIR)/dashboard.json =+=\n\n"
+	mkdir -p $(RATCHETR_DIR)
+	$(UV) ratchetr dashboard --manifest $(MANIFEST_PATH) --format json     --output $(RATCHETR_DIR)/dashboard.json
+	@printf "=+= Ratchetr dashboard JSON report: $(RATCHETR_DIR)/dashboard.json =+=\n\n"
 
 ratchetr.readiness: $(MANIFEST_PATH) ## Show Ratchetr readiness summary
 	@printf "=+= Ratchetr Readiness View (level: $(RATCHETR_LEVEL), statuses: $(RATCHETR_STATUSES), limit: $(RATCHETR_LIMIT)): =+=\n"
-	mkdir -p $(TYPING_REPORT_DIR)
+	mkdir -p $(RATCHETR_DIR)
 	$(UV) ratchetr readiness \
 		--manifest $(MANIFEST_PATH) \
 		--level $(RATCHETR_LEVEL) \
@@ -318,15 +323,28 @@ sec.lint: ## Security lint via ruff S-rules
 sec.bandit: ## Run Bandit security scanner
 	@printf "=+= Running Bandit scan... =+=\n"
 	mkdir -p $(OUTPUT_DIR)/security
-	$(UV) bandit -c pyproject.toml -r src/ -f json -o $(OUTPUT_DIR)/security/bandit-report.json
-	@printf "Bandit report: $(OUTPUT_DIR)/security/bandit-report.json\n"
+	$(UV) bandit -c pyproject.toml -r src/
+	@printf "=+= Bandit scan completed =+=\n\n"
+
+sec.bandit.report: ## Run Bandit security scanner w/JSON report
+	@printf "=+= Running Bandit scan... =+=\n"
+	mkdir -p $(SEC_DIR)
+	$(UV) bandit -c pyproject.toml -r src/ -f json -o $(SEC_DIR)/bandit-report.json
+	@printf "Bandit report: $(SEC_DIR)/bandit-report.json\n"
 	@printf "=+= Bandit scan completed =+=\n\n"
 
 sec.safety: ## Run Safety dependency scanner
 	@printf "=+= Running Safety scan... =+=\n"
-	mkdir -p $(OUTPUT_DIR)/security
-	$(UV) safety scan --json > $(OUTPUT_DIR)/security/safety-report.json
-	@printf "Safety report: $(OUTPUT_DIR)/security/safety-report.json\n"
+	$(UV) safety scan
+	@printf "=+= Safety scan completed =+=\n\n"
+
+sec.safety.report: ## Run Safety dependency scanner
+	@printf "=+= Running Safety scan... =+=\n"
+	mkdir -p $(SEC_DIR)
+	$(UV) safety scan --save-as json $(SEC_DIR)/safety-report.json
+	$(PY) json.tool $(SEC_DIR)/safety-report.json > $(SEC_DIR)/tmp.json
+	mv $(SEC_DIR)/tmp.json $(SEC_DIR)/safety-report.json
+	@printf "Safety report: $(SEC_DIR)/safety-report.json\n"
 	@printf "=+= Safety scan completed =+=\n\n"
 
 
@@ -336,7 +354,7 @@ sec.safety: ## Run Safety dependency scanner
 
 package.build: ## Build sdist and wheel into dist/
 	@printf "=+= Building distribution artifacts... =+=\n"
-	$(UV) python -m build
+	$(PY) build
 	@printf "=+= Distribution artifacts built in dist/ =+=\n\n"
 
 package.check: ## Run Twine check on built artifacts
@@ -366,14 +384,14 @@ check.error-codes: ## Verify error code registry and documentation are in sync
 
 check.ignores: ## Verify that ignores (noqa, pylint, type: ignore, pyright, coverage) are justified
 	@printf "=+= Checking ignore justifications... =+=\n"
-	$(UV) python -m scripts.check_ignores
+	$(PY) scripts.check_ignores
 	@printf "=+= Ignore justification check completed =+=\n\n"
 
-check.ignores.report: ## Write ignore justification report to out/lint/ignore_justifications.json
+check.ignores.report: ## Write ignore justification report
 	@printf "=+= Generating ignore justification report... =+=\n"
-	@mkdir -p $(OUTPUT_DIR)/lint
-	$(UV) python -m scripts.check_ignoress --json > $(OUTPUT_DIR)/lint/ignore_justifications.json
-	@printf "Ignore justification report: $(OUTPUT_DIR)/lint/ignore_justifications.json\n"
+	@mkdir -p $(LINT_DIR)
+	$(PY) scripts.check_ignores --json > $(LINT_DIR)/ignores.json
+	@printf "Ignore justification report: $(LINT_DIR)/ignores.json\n"
 	@printf "=+= Ignore justification report completed =+=\n\n"
 
 check.license-headers: ## Verify Apache 2.0 license headers in source files
@@ -409,11 +427,11 @@ clean.ruff: ## Remove ruff cache
 clean.pylint: ## Remove pylint cache
 	@printf "=+= Removing Pylint cache... =+=\n"
 	rm -rf .pylint.d
-	rm -f $(OUTPUT_DIR)/lint/pylint.json
+	rm -f $(LINT_DIR)/pylint.json
 	@printf "=+= Pylint cache removed =+=\n\n"
 
 clean.lint: clean.ruff clean.pylint ## Remove lint caches
-	rm -rf $(OUTPUT_DIR)/lint
+	rm -rf $(LINT_DIR)
 	@printf "  =+= All lint caches removed =+=\n\n"
 
 clean.pycache: ## Remove Python bytecode and __pycache__ dirs
@@ -456,16 +474,16 @@ clean.test: clean.pytest clean.coverage clean.hypothesis clean.benchmarks ## Rem
 
 clean.bandit: ## Remove Bandit report
 	@printf "=+= Removing Bandit report... =+=\n"
-	rm -f $(OUTPUT_DIR)/security/bandit-report.json
+	rm -f $(SEC_DIR)/bandit-report.json
 	@printf "=+= Bandit report removed =+=\n\n"
 
 clean.safety: ## Remove Safety report
 	@printf "=+= Removing Safety report... =+=\n"
-	rm -f $(OUTPUT_DIR)/security/safety-report.json
+	rm -f $(SEC_DIR)/safety-report.json
 	@printf "=+= Safety report removed =+=\n\n"
 
 clean.sec: clean.bandit clean.safety ## Remove security reports
-	rm -rf $(OUTPUT_DIR)/security
+	rm -rf $(SEC_DIR)
 	@printf "  =+= All security reports removed =+=\n\n"
 
 clean.package: package.clean ## Remove packaging build artifacts
@@ -473,7 +491,7 @@ clean.package: package.clean ## Remove packaging build artifacts
 clean.ratchetr: ## Clean Ratchetr caches
 	@printf "=+= Cleaning Ratchetr caches and reports... =+=\n"
 	rm -rf .ratchetr_cache
-	rm -rf $(TYPING_REPORT_DIR)
+	rm -rf $(RATCHETR_DIR)
 	@printf "=+= Ratchetr caches and reports removed =+=\n\n"
 
 clean: clean.caches clean.type clean.lint clean.test clean.sec ## Remove all local caches

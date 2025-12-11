@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ignore JUSTIFIED: StrEnum inheritance stack exceeds pylint threshold; review later
+# pylint: disable=too-many-ancestors, useless-suppression  # noqa: FIX002,TD003  # TODO@PantherianCodeX: Revisit StrEnum ancestry once enum layering is simplified
+
 """Model types and enumerations for ratchetr.
 
 This module defines core model types, enumerations, and TypedDict classes used
@@ -24,9 +27,6 @@ throughout ratchetr. It includes:
 - TypedDict definitions for data payloads
 - Utility functions for type coercion and validation
 """
-
-# ignore JUSTIFIED: StrEnum inheritance stack exceeds pylint threshold; review later
-# pylint: disable=too-many-ancestors, useless-suppression  # noqa: FIX002,TD003  # TODO@PantherianCodeX: Revisit StrEnum ancestry once enum layering is simplified
 
 from __future__ import annotations
 

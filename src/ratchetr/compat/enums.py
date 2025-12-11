@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 
 else:
     # ignore JUSTIFIED: keep private sentinel name to mirror stdlib lookup path
-    _STR_ENUM = getattr(_enum, "StrEnum", None)  # pylint: disable=invalid-name
+    _STR_ENUM = getattr(_enum, "StrEnum", None)  # pylint: disable=invalid-name,useless-suppression
 
     if _STR_ENUM is None:
 

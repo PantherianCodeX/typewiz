@@ -89,6 +89,57 @@ def bad() -> None:
     assert exit_code == 1
 
 
+def test_json_sources_labels_for_all_tools(tmp_path: Path, capsys: CaptureFixture[str]) -> None:
+    content = """from __future__ import annotations
+
+
+def ruff_case() -> None:
+    value = 1  # noqa: F401
+
+
+def pylint_case() -> None:
+    value = 2  # pylint: disable=unused-variable
+
+
+def mypy_case(raw: object) -> None:
+    value = raw  # type: ignore[assignment]
+    _ = value
+
+
+def pyright_case(config: dict) -> None:
+    value = config.get("key")  # pyright: ignore[reportUnknownArgumentType]
+    _ = value
+
+
+def coverage_case() -> None:
+    value = 3  # pragma: no cover
+
+
+def safety_case() -> None:
+    secret = "x"  # nosec B105
+    _ = secret
+"""
+    target = tmp_path / "sample.py"
+    target.write_text(content, encoding="utf-8")
+
+    exit_code = check_main(["--json", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert exit_code == 1  # missing justifications
+
+    payload = json.loads(captured.out)
+    # Collect all unique sources tuples from violations.
+    seen_sources = {tuple(item["sources"]) for item in payload}
+
+    # We don't care which IGN00x code each has, only that every logical source
+    # shows up exactly as expected.
+    assert ("ruff",) in seen_sources
+    assert ("pylint",) in seen_sources
+    assert ("mypy",) in seen_sources
+    assert ("pyright",) in seen_sources
+    assert ("coverage",) in seen_sources
+    assert ("safety",) in seen_sources
+
+
 def test_checker_json_output(tmp_path: Path, capsys: CaptureFixture[str]) -> None:
     content = """from __future__ import annotations
 
@@ -218,6 +269,12 @@ def combined_ignores() -> None:
     # ignore JUSTIFIED: combined ignore markers
     value = 1 / 0  # pragma: no cover  # type: ignore[assignment]  # noqa: F401
     _ = value
+
+
+def bandit_nosec_ignore() -> None:
+    # ignore JUSTIFIED: bandit nosec marker requires justification
+    secret = "auto"  # nosec B105
+    _ = secret
 """
     exit_code = _run_checker(tmp_path, content)
     assert exit_code == 0
@@ -254,6 +311,18 @@ def test_checker_flags_pragmas_not_at_comment_start(tmp_path: Path) -> None:
 def bad() -> None:
     # ignore JUSTIFIED: pragma should not be hidden behind other text
     value = 1  # explanation before pragma # noqa: ANN001
+"""
+    exit_code = _run_checker(tmp_path, content)
+    assert exit_code == 1
+
+
+def test_checker_requires_justification_for_nosec(tmp_path: Path) -> None:
+    content = """from __future__ import annotations
+
+
+def bad() -> None:
+    password = "auto"  # nosec B105
+    _ = password
 """
     exit_code = _run_checker(tmp_path, content)
     assert exit_code == 1
@@ -321,7 +390,7 @@ def test_file_level_mypy_ignore_errors_block(tmp_path: Path) -> None:
     content = (
         HEADER_BLOCK
         + """# ignore JUSTIFIED: mypy file-level ignore
-# mypy: ignore-errors
+# type: ignore[attr-defined]
 
 
 def foo() -> None:
@@ -343,7 +412,25 @@ def foo() -> None:
 
 
 # ignore JUSTIFIED: late mypy file-level ignore
-# mypy: ignore-errors
+# type: ignore[attr-defined]
+"""
+    )
+    exit_code = _run_checker(tmp_path, content)
+    assert exit_code == 1
+
+
+def test_file_level_nosec_block_wrong_position(tmp_path: Path) -> None:
+    content = (
+        HEADER_BLOCK
+        + """
+
+
+def foo() -> None:
+    secret = "x"
+
+
+# ignore JUSTIFIED: late safety file-level ignore
+# nosec B105
 """
     )
     exit_code = _run_checker(tmp_path, content)

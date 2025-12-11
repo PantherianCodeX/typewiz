@@ -18,9 +18,9 @@ from __future__ import annotations
 
 import logging
 
-# ignore JUSTIFIED: centralised subprocess wrapper is the single, audited place where
-# `subprocess` is allowed
-import subprocess  # noqa: S404
+# ignore JUSTIFIED: subprocess wrapper is the audited allowlist entry point
+# calls are allowlisted by callers; import is expected here
+import subprocess  # noqa: S404  # nosec B404
 import sys
 import time
 from dataclasses import dataclass
@@ -95,14 +95,15 @@ def run_command(
         " ".join(argv),
         extra=_structured_extra(details=debug_details),
     )
-    # ignore JUSTIFIED: subprocess is invoked without shell and executable is optionally
-    # allowlisted by caller
-    completed = subprocess.run(  # noqa: S603
+    # ignore JUSTIFIED: subprocess is invoked with shell disabled;
+    # argv is allowlisted by caller
+    completed = subprocess.run(  # noqa: S603  # nosec B603
         argv,
         check=False,
         cwd=str(cwd) if cwd else None,
         capture_output=True,
         text=True,
+        shell=False,
     )
     duration_ms = (time.perf_counter() - start) * 1000
     if completed.returncode:
