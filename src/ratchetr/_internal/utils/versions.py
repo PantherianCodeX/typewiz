@@ -61,12 +61,15 @@ def detect_tool_versions(tools: Sequence[str | ToolName]) -> dict[str, str]:
             continue
         seen.add(name)
         try:
+            # ignore JUSTIFIED: explicit branching keeps tool-specific commands clear
+            # refactor would obscure per-tool invocation details
             if name == "pyright":
                 out = run_command(["pyright", "--version"], allowed={"pyright"}).stdout
                 ver = _safe_version_from_output(out)
                 if ver:
                     versions[name] = ver
-            elif name == "mypy":
+                continue
+            if name == "mypy":
                 py = python_executable()
                 out = run_command([py, "-m", "mypy", "--version"], allowed={py}).stdout
                 ver = _safe_version_from_output(out)

@@ -104,7 +104,9 @@ def _merge_base_paths(
     return include_raw, exclude_raw
 
 
-def _initial_option_state(
+# ignore JUSTIFIED: initial state gathers settings/profile variants;
+# Refactor pending
+def _initial_option_state(  # noqa: PLR0917, FIX002, TD003  # TODO@PantherianCodeX: Consolidate settings/profile inputs to reduce positional args
     project_root: Path,
     audit_config: AuditConfig,
     engine_name: EngineName,

@@ -65,7 +65,8 @@ if TYPE_CHECKING:
 
 
 @dataclass(slots=True)
-class RatchetContext:
+# ignore JUSTIFIED: CLI context aggregates parsed options; attribute count expected
+class RatchetContext:  # pylint: disable=too-many-instance-attributes
     """Context object holding all configuration and data for ratchet operations.
 
     Attributes:

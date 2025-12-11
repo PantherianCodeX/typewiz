@@ -250,7 +250,8 @@ def _default_ratchet_severity_levels() -> list[SeverityLevel]:
 
 
 @dataclass(slots=True)
-class AuditConfig:
+# ignore JUSTIFIED: Intentional - audit config aggregates many related options
+class AuditConfig:  # pylint: disable=too-many-instance-attributes
     """Configuration settings for type checking audits.
 
     This class contains all configuration options for running type checking audits,

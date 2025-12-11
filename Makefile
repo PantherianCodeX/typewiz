@@ -71,12 +71,12 @@ lint: lint.ruff lint.format lint.pylint lint.markdown ## Lint code and docs
 
 lint.ruff: ## Run ruff lint
 	@printf "=+= Running ruff lint... =+=\n"
-	$(UV) ruff check
+	$(UV) ruff check --preview
 	@printf "=+= Ruff lint completed =+=\n\n"
 
 lint.ruff.fix: ## Apply ruff formatter
 	@printf "=+= Applying ruff safe autofixes... =+=\n"
-	$(UV) ruff check --fix
+	$(UV) ruff check --preview --fix
 	@printf "=+= Ruff safe autofixes applied =+=\n\n"
 
 lint.format: ## Check ruff formatting (no changes)
@@ -366,13 +366,13 @@ check.error-codes: ## Verify error code registry and documentation are in sync
 
 check.ignores: ## Verify that ignores (noqa, pylint, type: ignore, pyright, coverage) are justified
 	@printf "=+= Checking ignore justifications... =+=\n"
-	$(UV) python -m scripts.check_ignore_justifications
+	$(UV) python -m scripts.check_ignores
 	@printf "=+= Ignore justification check completed =+=\n\n"
 
 check.ignores.report: ## Write ignore justification report to out/lint/ignore_justifications.json
 	@printf "=+= Generating ignore justification report... =+=\n"
 	@mkdir -p $(OUTPUT_DIR)/lint
-	$(UV) python -m scripts.check_ignore_justifications --json > $(OUTPUT_DIR)/lint/ignore_justifications.json
+	$(UV) python -m scripts.check_ignoress --json > $(OUTPUT_DIR)/lint/ignore_justifications.json
 	@printf "Ignore justification report: $(OUTPUT_DIR)/lint/ignore_justifications.json\n"
 	@printf "=+= Ignore justification report completed =+=\n\n"
 

@@ -64,7 +64,8 @@ _TAB_LABELS: Final[dict[SummaryTabName, str]] = {
 
 
 @dataclass
-class _DashboardContext:
+# ignore JUSTIFIED: dashboard context caches derived data; attribute count expected
+class _DashboardContext:  # pylint: disable=too-many-instance-attributes
     """Context object for HTML dashboard rendering.
 
     This class extracts and organizes summary data for convenient access during

@@ -80,7 +80,8 @@ def _default_dict_str_liststr() -> CategoryMapping:
 
 
 @dataclass(slots=True)
-class CacheEntry:
+# ignore JUSTIFIED: cache entry mirrors on-disk payload; attribute count intentional
+class CacheEntry:  # pylint: disable=too-many-instance-attributes
     """Raw cache entry persisted to disk.
 
     Attributes:
@@ -115,7 +116,8 @@ class CacheEntry:
 
 
 @dataclass(slots=True)
-class CachedRun:
+# ignore JUSTIFIED: intentional - cached run stores full execution snapshot
+class CachedRun:  # pylint: disable=too-many-instance-attributes
     """Materialised cache entry suitable for reuse during execution.
 
     Attributes mirror `CacheEntry`but with richer types for consumers.
@@ -318,9 +320,11 @@ def fingerprint_path(path: Path) -> FileHashPayload:
     return _fingerprint(path)
 
 
-# ignore JUSTIFIED: cache entries mirror on-disk JSON; a single helper keeps coercion
-# logic coherent and testable
-def _parse_cache_entry(key_str: str, entry: _EntryJson) -> tuple[CacheKey, CacheEntry] | None:  # noqa: PLR0914
+# ignore JUSTIFIED: keep parse/normalise coupled for single-pass run; refactor later
+def _parse_cache_entry(  # noqa: PLR0914, FIX002, TD003  # TODO@PantherianCodeX: Split parsing/normalisation to reduce locals
+    key_str: str,
+    entry: _EntryJson,
+) -> tuple[CacheKey, CacheEntry] | None:
     cache_key = CacheKey(key_str)
     diagnostics_any = entry.get("diagnostics", []) or []
     file_hashes_any = entry.get("file_hashes", {}) or {}
@@ -552,8 +556,8 @@ class EngineCache:
             tool_summary=(cast("ToolSummary", dict(entry.tool_summary)) if entry.tool_summary is not None else None),
         )
 
-    # ignore JUSTIFIED: update aggregates many cache fields in one write to keep consistency
-    def update(  # noqa: PLR0913
+    # ignore JUSTIFIED: update writes cache fields atomically; refactor later
+    def update(  # noqa: PLR0913, PLR0917, FIX002, TD003  # TODO@PantherianCodeX: Restructure update inputs to reduce positional arguments
         self,
         key: CacheKey,
         file_hashes: dict[PathKey, FileHashPayload],
@@ -684,9 +688,8 @@ def _git_list_files(repo_root: Path) -> set[str]:
     return {line.strip() for line in result.stdout.splitlines() if line.strip()}
 
 
-# ignore JUSTIFIED: central hashing pipeline coordinates limits, baselines, and
-# budgets; splitting would harm coherence
-def collect_file_hashes(  # noqa: C901, PLR0912, PLR0914, PLR0915
+# ignore JUSTIFIED: hashing pipeline coordinates limits/baselines; extraction planned
+def collect_file_hashes(  # noqa: C901, PLR0912, PLR0914, PLR0915, FIX002, TD003  # pylint: disable=confusing-consecutive-elif  # TODO@PantherianCodeX: Extract git/file handling into helpers to shrink locals
     project_root: Path,
     paths: Iterable[str],
     *,

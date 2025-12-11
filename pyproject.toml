@@ -289,6 +289,12 @@ max-args = 7
 max-branches = 12
 max-returns = 6
 max-statements = 50
+max-positional-args = 5
+max-locals = 15        # Local variables per function (Pylint-only)
+max-bool-expr = 5      # Boolean expressions in one statement (Pylint-only)
+max-nested-blocks = 5
+max-public-methods = 20
+
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
@@ -371,6 +377,8 @@ enable = "all"
 # ==============================================================================
 
 disable = [
+    "locally-disabled",    # I0011/I0020/I0021 - allow documented inline disables without noise
+    "suppressed-message",  # I0020 - avoid noise when intentional suppressions are documented
     # === FORMATTING & STYLE - Delegated to Ruff ===
     "line-too-long",        # C0301 - Ruff handles via line-length = 120
     "bad-indentation",      # W0311 - Ruff formatter handles indentation
@@ -390,11 +398,14 @@ disable = [
     "consider-using-assignment-expr",  # R6103 - Walrus operator not always more readable
                                        # Developer should decide case-by-case
 
-    # === COMPLEXITY & SIZE - Delegated to Ruff where supported ===
-    "too-many-arguments",         # R0913 - Enforced by Ruff's pylint plugin (max-args)
-    "too-many-branches",          # R0912 - Enforced by Ruff's pylint plugin (max-branches)
-    "too-many-return-statements", # R0911 - Enforced by Ruff's pylint plugin (max-returns)
-    "too-many-statements",        # R0915 - Enforced by Ruff's pylint plugin (max-statements)
+    # === COMPLEXITY & SIZE - Delegated to Ruff's pylint plugin where supported ===
+    "too-many-arguments",             # R0913 - max-args
+    "too-many-branches",              # R0912 - max-branches
+    "too-many-return-statements",     # R0911 - max-returns
+    "too-many-locals",                # R0914 - max-locals
+    "too-many-statements",            # R0915 - max-statements
+    "too-many-positional-arguments",  # R0917 - max-positional-args
+    "too-many-nested-blocks",         # R1702 - max-nested-blocks
 
     # === RUFF OVERLAP - Ruff is more accurate ===
     "unused-import",  # W0611 - FALSE POSITIVES on cast() string type annotations
@@ -410,15 +421,13 @@ ignore-long-lines = "^\\s*(# )?<?https?://\\S+>?$"
 max-module-lines = 1000
 
 [tool.pylint.design]
-# ⭐ STRICT COMPLEXITY ENFORCEMENT - User requirement
+# ⭐ COMPLEXITY ENFORCEMENT
 # Rationale: Ruff enforces core per-function complexity; Pylint extends with
 # additional structural metrics not yet available in Ruff.
-max-locals = 15        # Local variables per function (Pylint-only)
-max-parents = 7        # Inheritance depth (Pylint-only)
-max-attributes = 8     # Instance attributes per class (Pylint-only)
-min-public-methods = 0 # Allow utility classes with 0-1 methods
-max-public-methods = 20
-max-bool-expr = 5      # Boolean expressions in one statement (Pylint-only)
+# TODO: tighen these additional complexity checks and refactor as required
+max-parents = 7            # Inheritance depth (Pylint-only)
+max-attributes = 8         # Instance attributes per class (Pylint-only)
+min-public-methods = 0     # Allow utility classes with 0-1 methods
 
 [tool.pylint.basic]
 # ⭐ NAMING CONVENTIONS - Enforced strictly
@@ -435,14 +444,14 @@ method-naming-style = "snake_case"
 module-naming-style = "snake_case"
 variable-naming-style = "snake_case"
 
-# ⭐ DOCUMENTATION REQUIREMENTS - User wants robust docstrings
+# ⭐ DOCUMENTATION REQUIREMENTS
 docstring-min-length = 10              # Min chars for docstring requirement
 no-docstring-rgx = "^_"                # Private functions don't need docstrings
 good-names = ["i", "j", "k", "ex", "db", "id", "pk", "_", "e"]
 
 # Strict docstring parameter/return documentation
 accept-no-param-doc = false   # ⭐ Require all params documented (W9015)
-accept-no-raise-doc = false  # Require exceptions documented
+accept-no-raise-doc = false   # Require exceptions documented
 accept-no-return-doc = false  # ⭐ Require returns documented (W9011)
 accept-no-yields-doc = false  # Require yields documented
 
@@ -460,7 +469,6 @@ logging-format-style = "old"  # ⭐ CRITICAL: Matches actual codebase usage (%s 
                               # Prevents E1205 false positives
 
 [tool.pylint.refactoring]
-max-nested-blocks = 5
 never-returning-functions = ["sys.exit", "argparse.parse_error"]
 
 [tool.pylint.similarities]

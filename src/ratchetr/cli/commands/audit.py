@@ -444,7 +444,8 @@ def _apply_dry_run_settings(args: argparse.Namespace, override: AuditConfig) -> 
 
 
 @dataclass(slots=True)
-class _AuditExecutionPlan:
+# ignore JUSTIFIED: intentional - execution plan aggregates CLI/config inputs
+class _AuditExecutionPlan:  # pylint: disable=too-many-instance-attributes
     config: Config
     project_root: Path
     full_paths: list[str]

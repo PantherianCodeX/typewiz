@@ -48,7 +48,8 @@ from .versioning import (
 if TYPE_CHECKING:
     from .typed import ManifestData
 
-STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(
+# ignore JUSTIFIED: shared Pydantic config constant must remain UPPER_SNAKE
+STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(  # pylint: disable=invalid-name
     extra="forbid",
     populate_by_name=True,
 )

@@ -256,7 +256,8 @@ def _category_status_map(categories: CategoryCountMap) -> CategoryStatusMap:
     return status_map
 
 
-def _append_option_buckets(
+# ignore JUSTIFIED: helper consumes parallel aggregates; bundling planned
+def _append_option_buckets(  # noqa: PLR0917, FIX002, TD003  # TODO@PantherianCodeX: Bundle counts/status into a dataclass to reduce positional args
     options: ReadinessOptionsMap,
     entry_path: str,
     category_status: CategoryStatusMap,

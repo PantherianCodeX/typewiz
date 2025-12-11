@@ -106,13 +106,20 @@ def _resolve_ratchet_paths(base_dir: Path, ratchet: RatchetConfig) -> None:
 def _discover_path_overrides(root: Path) -> list[PathOverride]:
     overrides: list[PathOverride] = []
     for filename in FOLDER_CONFIG_FILENAMES:
-        for config_path in sorted(root.rglob(filename)):
+        try:
+            candidates = sorted(root.rglob(filename))
+        except FileNotFoundError:
+            # ignore JUSTIFIED: intermediate folders may be removed by tools (e.g. hypothesis)
+            # during traversal; skip missing paths and continue scanning
+            continue
+        for config_path in candidates:
             if not config_path.is_file():
                 continue
             directory = config_path.parent.resolve()
             try:
                 raw = tomllib.loads(config_path.read_text(encoding="utf-8"))
-            # ignore JUSTIFIED: config files may be unreadable/malformed; convert to ConfigReadError
+            # ignore JUSTIFIED: config files may be unreadable or malformed
+            # convert parsing issues to ConfigReadError
             except Exception as exc:  # pragma: no cover - IO errors
                 raise ConfigReadError(config_path, exc) from exc
             try:

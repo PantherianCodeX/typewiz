@@ -67,10 +67,8 @@ def _make_diag_path(project_root: Path, file_path: str) -> Path:
         return path.resolve()
 
 
-# ignore JUSTIFIED: function runs pyright, parses JSON, and normalises diagnostics in
-# one cohesive unit; splitting further would obscure the control flow without reducing
-# complexity
-def run_pyright(  # noqa: PLR0914
+# ignore JUSTIFIED: wrapper orchestrates parsing and timing; refactor tracked separately
+def run_pyright(  # noqa: PLR0914, FIX002, TD003  # TODO@PantherianCodeX: Extract sub-steps to reduce locals flagged by PLR0914
     project_root: Path,
     *,
     mode: Mode,

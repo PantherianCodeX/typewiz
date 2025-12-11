@@ -96,7 +96,7 @@ def render_table_rows(rows: Sequence[Mapping[str, JSONValue]]) -> list[str]:
         rows: Rows of key/value mappings to display.
 
     Returns:
-        Lines representing a simple ASCII table or ``["<empty>"]`` when no rows exist.
+        Lines representing a simple ASCII table or `["<empty>"]` when no rows exist.
     """
     if not rows:
         return ["<empty>"]
@@ -194,10 +194,10 @@ def _normalise_format(fmt: Literal["json", "table"] | DataFormat) -> Literal["js
     """Normalize CLI format inputs to literal strings.
 
     Args:
-        fmt: Literal format string or ``DataFormat`` enum value supplied by callers.
+        fmt: Literal format string or `DataFormat` enum value supplied by callers.
 
     Returns:
-        The literal string ``"json"`` or ``"table"`` preserving type information.
+        The literal string `"json"` or `"table"` preserving type information.
     """
     match fmt:
         case "json" | DataFormat.JSON:
@@ -207,13 +207,13 @@ def _normalise_format(fmt: Literal["json", "table"] | DataFormat) -> Literal["js
 
 
 def _parse_run_identifier(raw: str) -> tuple[RunId, str, str]:
-    """Parse ``tool:mode`` identifiers into typed components.
+    """Parse `tool:mode` identifiers into typed components.
 
     Args:
-        raw: Run identifier in the manifest (``tool:mode``).
+        raw: Run identifier in the manifest (`tool:mode`).
 
     Returns:
-        Tuple of ``RunId``, tool name, and mode string.
+        Tuple of `RunId`, tool name, and mode string.
     """
     tool, sep, remainder = raw.partition(":")
     mode = remainder if sep else ""
@@ -237,14 +237,14 @@ def parse_summary_fields(
     *,
     valid_fields: set[SummaryField] | None = None,
 ) -> list[SummaryField]:
-    """Parse ``--summary-fields`` input, validating against allowable field names.
+    """Parse `--summary-fields` input, validating against allowable field names.
 
     Args:
-        raw: Comma-separated CLI input or ``None``.
+        raw: Comma-separated CLI input or `None`.
         valid_fields: Subset of allowable fields (defaults to all choices).
 
     Returns:
-        Ordered list of ``SummaryField`` values.
+        Ordered list of `SummaryField` values.
 
     Raises:
         SystemExit: If the input references an unknown field.
@@ -396,8 +396,8 @@ def collect_readiness_view(
     Args:
         summary: Manifest summary payload.
         level: Granularity for readiness reporting.
-        statuses: Optional subset of ``ReadinessStatus`` entries to include.
-        limit: Maximum number of entries to return (``0`` = unlimited).
+        statuses: Optional subset of `ReadinessStatus` entries to include.
+        limit: Maximum number of entries to return (`0` = unlimited).
         severities: Optional severity filters.
 
     Returns:
@@ -405,7 +405,7 @@ def collect_readiness_view(
 
     Raises:
         SystemExit: If readiness data cannot be validated (wraps
-            ``ReadinessValidationError``).
+            `ReadinessValidationError`).
     """
     try:
         return service_collect_readiness_view(
@@ -459,8 +459,8 @@ def render_data(data: object, fmt: Literal["json", "table"] | DataFormat) -> lis
 
     Args:
         data: Arbitrary data structure returned by query commands.
-        fmt: Desired format (``json`` or ``table``) possibly derived from
-            ``DataFormat`` enumerations.
+        fmt: Desired format (`json` or `table`) possibly derived from
+            `DataFormat` enumerations.
 
     Returns:
         List of lines representing the formatted payload.
@@ -490,7 +490,7 @@ def query_overview(
     include_categories: bool,
     include_runs: bool,
 ) -> OverviewQueryPayload:
-    """Build the payload for ``ratchetr query overview``.
+    """Build the payload for `ratchetr query overview`.
 
     Args:
         summary: Manifest summary payload.
@@ -537,12 +537,12 @@ def query_hotspots(
     kind: HotspotKind,
     limit: int,
 ) -> list[FileHotspotEntry] | list[FolderHotspotEntry]:
-    """Build the payload for ``ratchetr query hotspots``.
+    """Build the payload for `ratchetr query hotspots`.
 
     Args:
         summary: Manifest summary payload.
         kind: Whether to request file or folder hotspots.
-        limit: Maximum number of entries to return (``0`` = unlimited).
+        limit: Maximum number of entries to return (`0` = unlimited).
 
     Returns:
         Top hotspots in the requested shape.
@@ -605,7 +605,7 @@ def query_readiness(
     limit: int,
     severities: Sequence[SeverityLevel] | None = None,
 ) -> ReadinessQueryPayload:
-    """Build the payload for ``ratchetr query readiness``.
+    """Build the payload for `ratchetr query readiness`.
 
     Args:
         summary: Manifest summary payload.
@@ -615,7 +615,7 @@ def query_readiness(
         severities: Optional severity filters.
 
     Returns:
-        Readiness query payload derived from ``summary``.
+        Readiness query payload derived from `summary`.
     """
     return collect_readiness_view(
         summary,
@@ -633,13 +633,13 @@ def query_runs(
     modes: Sequence[str] | None,
     limit: int,
 ) -> list[RunSummaryEntry]:
-    """Build the payload for ``ratchetr query runs``.
+    """Build the payload for `ratchetr query runs`.
 
     Args:
         summary: Manifest summary payload.
         tools: Optional filter of tool names.
         modes: Optional filter of run modes.
-        limit: Maximum number of entries to return (``0`` = unlimited).
+        limit: Maximum number of entries to return (`0` = unlimited).
 
     Returns:
         Run summary entries filtered according to the provided options.
@@ -671,11 +671,11 @@ def query_runs(
 
 
 def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:
-    """Build the payload for ``ratchetr query engines``.
+    """Build the payload for `ratchetr query engines`.
 
     Args:
         summary: Manifest summary payload.
-        limit: Maximum number of entries to return (``0`` = unlimited).
+        limit: Maximum number of entries to return (`0` = unlimited).
 
     Returns:
         List of engine configuration summaries keyed by run identifier.
@@ -749,7 +749,7 @@ def query_rules(
     limit: int,
     include_paths: bool,
 ) -> list[RuleEntry]:
-    """Build the payload for ``ratchetr query rules``.
+    """Build the payload for `ratchetr query rules`.
 
     Args:
         summary: Manifest summary payload.

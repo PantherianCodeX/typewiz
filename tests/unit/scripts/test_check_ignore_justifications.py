@@ -17,8 +17,8 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from scripts.check_ignore_justifications import MAX_JUSTIFICATION_LINE_LENGTH
-from scripts.check_ignore_justifications import main as check_main
+from scripts.check_ignores import MAX_JUSTIFICATION_LINE_LENGTH
+from scripts.check_ignores import main as check_main
 from scripts.check_license_headers import HEADER_BLOCK
 
 if TYPE_CHECKING:

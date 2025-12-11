@@ -68,7 +68,8 @@ def test_run_pyright_parses_payload_and_warns_on_summary_mismatch(
         assert allowed == {"pyright"}
         return _CommandResult(stdout=json.dumps(payload))
 
-    def fake_warning(
+    # ignore JUSTIFIED: helper mirrors logging signature; long params keep coverage
+    def fake_warning(  # noqa: PLR0917, FIX002, TD003  # TODO@PantherianCodeX: Reduce positional parameters in fake warning helper
         _msg: str,
         parsed_errors: int,
         parsed_warnings: int,

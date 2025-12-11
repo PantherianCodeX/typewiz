@@ -107,7 +107,8 @@ def _default_relpath_list() -> list[RelPath]:
 
 
 @dataclass(slots=True)
-class RunResult:
+# ignore JUSTIFIED: Intentional: run result captures full execution metadata;
+class RunResult:  # pylint: disable=too-many-instance-attributes
     """Mutable dataclass representing the complete results of a type checking run.
 
     This class contains all information about a single execution of a type checker,

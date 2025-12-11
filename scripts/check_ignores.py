@@ -50,8 +50,8 @@ def _load_header_block() -> str:
     """Load the shared license header block from the sibling script module.
 
     This uses the file path directly so the checker can be executed either as
-    a module (`python -m scripts.check_ignore_justifications`) or as a
-    standalone script (`./scripts/check_ignore_justifications.py`) without
+    a module (`python -m scripts.check_ignoress`) or as a
+    standalone script (`./scripts/check_ignoress.py`) without
     relying on `sys.path` layout.
 
     Returns:
@@ -316,7 +316,7 @@ def _detect_ignore_kind(text: str) -> str:
 
 # ignore JUSTIFIED: central scan collects multiple validations; keeping it together
 # avoids repeated IO and maintains coherence
-def _check_file(path: Path) -> tuple[list[IgnoreViolation], int]:  # noqa: C901, PLR0914
+def _check_file(path: Path) -> tuple[list[IgnoreViolation], int]:  # noqa: C901, PLR0914, FIX002, TD003  # TODO@PantherianCodeX: Split into smaller helpers once performance benchmarks are in place
     """Return ignore-justification violations and ignore count for a file.
 
     Returns:

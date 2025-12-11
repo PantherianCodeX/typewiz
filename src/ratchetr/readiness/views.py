@@ -130,7 +130,8 @@ class FileReadinessPayload(FileReadinessPayloadBase, total=False):
 
 
 @dataclass(frozen=True, slots=True)
-class FileReadinessRecord:
+# ignore JUSTIFIED: intentional - readiness record carries full metrics snapshot
+class FileReadinessRecord:  # pylint: disable=too-many-instance-attributes
     """Record representing file-level readiness metrics.
 
     Attributes:

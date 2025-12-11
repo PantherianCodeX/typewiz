@@ -112,9 +112,8 @@ def _md_run_summary(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:
     return lines
 
 
-# ignore JUSTIFIED: function assembles rich markdown per engine in one readable block;
-# further splitting would fragment related presentation logic
-def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:  # noqa: PLR0914
+# ignore JUSTIFIED: renderer builds full table; splitting would duplicate traversal
+def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:  # noqa: PLR0914, FIX002, TD003  # TODO@PantherianCodeX: Break into sub-renderers per section to trim locals
     lines = ["", "### Engine details"]
     if not run_summary:
         lines.append("- No engine data available")
