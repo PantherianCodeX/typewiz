@@ -28,7 +28,11 @@ if TYPE_CHECKING:
 
 
 def register_engines_command(subparsers: SubparserCollection) -> None:
-    """Attach the ``ratchetr engines`` command to the CLI."""
+    """Attach the ``ratchetr engines`` command to the CLI.
+
+    Args:
+        subparsers: Top-level argparse subparser collection to register commands on.
+    """
     engines = subparsers.add_parser(
         "engines",
         help="Inspect discovered ratchetr engines",

@@ -35,7 +35,15 @@ def _as_relative_path(project_root: Path, path: Path) -> RelPath:
 
 
 def normalise_paths(project_root: Path, raw_paths: Sequence[str]) -> list[RelPath]:
-    """Return unique, POSIX-style paths relative to ``project_root``."""
+    """Return unique, POSIX-style paths relative to ``project_root``.
+
+    Args:
+        project_root: Root directory used to resolve relative paths.
+        raw_paths: Raw path strings provided by the user or configuration.
+
+    Returns:
+        Deduplicated list of relative paths in POSIX format.
+    """
     normalised: list[RelPath] = []
     seen: set[str] = set()
     root = project_root.resolve()
@@ -52,7 +60,14 @@ def normalise_paths(project_root: Path, raw_paths: Sequence[str]) -> list[RelPat
 
 
 def global_fingerprint_paths(project_root: Path) -> list[RelPath]:
-    """Return repository-level files that should influence fingerprinting."""
+    """Return repository-level files that should influence fingerprinting.
+
+    Args:
+        project_root: Repository root used to locate marker files.
+
+    Returns:
+        Relative paths to any root marker files that exist.
+    """
     extras: list[str] = []
     for filename in ROOT_MARKERS:
         candidate = project_root / filename

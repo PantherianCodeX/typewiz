@@ -130,6 +130,11 @@ def run_command(
 
 
 def python_executable() -> str:
+    """Return the current Python interpreter path.
+
+    Returns:
+        Absolute path to the running Python executable.
+    """
     return sys.executable
 
 

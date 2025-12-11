@@ -59,7 +59,14 @@ msvcrt_module = cast("_MsvcrtModule | None", _import_optional("msvcrt"))
 
 @contextmanager
 def file_lock(path: Path) -> Iterator[None]:
-    """Best-effort file lock usable across platforms."""
+    """Best-effort file lock usable across platforms.
+
+    Args:
+        path: Path to the lock file on disk.
+
+    Yields:
+        ``None`` once the lock has been acquired.
+    """
     path = path.resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     if fcntl_module:

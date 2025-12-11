@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Structured logging utilities shared across ratchetr components."""
+
 from __future__ import annotations
 
 import json
@@ -84,6 +86,14 @@ class JSONLogFormatter(logging.Formatter):
 
     @override
     def format(self, record: logging.LogRecord) -> str:
+        """Format a log record as a JSON string.
+
+        Args:
+            record: Log record to serialise.
+
+        Returns:
+            JSON-formatted string containing standard and structured fields.
+        """
         payload: dict[str, object] = {
             "timestamp": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
             "level": record.levelname.lower(),
@@ -191,6 +201,8 @@ class _StructuredLogBase(TypedDict):
 
 
 class StructuredLogExtra(_StructuredLogBase, total=False):
+    """Structured logging extras accepted by ratchetr log records."""
+
     tool: str
     mode: Mode
     duration_ms: float
@@ -267,7 +279,15 @@ def structured_extra(
     component: LogComponent,
     **kwargs: Unpack[_StructuredLogKwargs],
 ) -> StructuredLogExtra:
-    """Return a consistently typed ``logging.extra`` payload."""
+    """Return a consistently typed ``logging.extra`` payload.
+
+    Args:
+        component: Logical logging component for the record.
+        **kwargs: Optional structured fields (tool, mode, duration, counts, etc.).
+
+    Returns:
+        Mapping suitable for the ``extra`` parameter when emitting log records.
+    """
     extra: StructuredLogExtra = {"component": component}
     payload_kwargs = cast("dict[str, object]", kwargs)
     _maybe_assign(extra, key="tool", kwargs=payload_kwargs, transform=str)

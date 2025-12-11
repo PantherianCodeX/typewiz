@@ -97,10 +97,10 @@ class ReadinessEntry(TypedDict):
     information: int
     # ignore JUSTIFIED: TypedDict fields must use camelCase to align with the JSON
     # readiness payload
-    codeCounts: dict[str, int]  # noqa: TD002, FIX002, TD003  # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
+    codeCounts: dict[str, int]  # noqa: FIX002, TD003  # TODO@PantherianCodeX: Restrict N815 ignores to JSON boundary after implementing schema validation
     # ignore JUSTIFIED: TypedDict fields must use camelCase to align with the JSON
     # readiness payload
-    categoryCounts: dict[CategoryKey, int]  # noqa: TD002, FIX002, TD003  # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
+    categoryCounts: dict[CategoryKey, int]  # noqa: FIX002, TD003  # TODO@PantherianCodeX: Restrict N815 ignores to JSON boundary after implementing schema validation
     recommendations: list[str]
 
 
@@ -423,10 +423,10 @@ def compute_readiness(folder_entries: Sequence[ReadinessEntry]) -> ReadinessPayl
 
     Args:
         folder_entries: Folder payloads containing path, severity counts, and
-            optional metadata (``codeCounts``, ``recommendations``).
+            optional metadata (`codeCounts`, `recommendations`).
 
     Returns:
-        ``ReadinessPayload`` grouping folder status buckets and option payloads.
+        `ReadinessPayload` grouping folder status buckets and option payloads.
     """
     strict_buckets: StrictBuckets = {status: [] for status in ReadinessStatus}
     option_buckets: ReadinessOptionsMap = {}

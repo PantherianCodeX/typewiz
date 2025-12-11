@@ -39,7 +39,11 @@ def _raise_unknown_manifest_action(action: Never) -> NoReturn:
 
 
 def register_manifest_command(subparsers: SubparserCollection) -> None:
-    """Register the ``ratchetr manifest`` command."""
+    """Register the `ratchetr manifest` command.
+
+    Args:
+        subparsers: Top-level argparse subparser collection to register commands on.
+    """
     manifest_cmd = subparsers.add_parser(
         "manifest",
         help="Work with manifest files (validate)",
@@ -113,13 +117,13 @@ def _handle_schema(args: argparse.Namespace) -> int:
 
 
 def execute_manifest(args: argparse.Namespace) -> int:
-    """Execute the ``ratchetr manifest`` command.
+    """Execute the `ratchetr manifest` command.
 
     Args:
         args: Parsed CLI namespace describing the requested action.
 
     Returns:
-        ``0`` for success or ``2`` when validation fails.
+        `0` for success or `2` when validation fails.
 
     Raises:
         SystemExit: If the action is invalid.

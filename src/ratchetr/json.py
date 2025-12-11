@@ -65,24 +65,54 @@ def require_json(payload: str, fallback: str | None = None) -> JSONMapping:
 
 
 def as_mapping(value: object) -> JSONMapping:
-    """Return `value` as a JSON mapping if it is a dict, else an empty mapping."""
+    """Return ``value`` as a JSON mapping if it is a dict, else an empty mapping.
+
+    Args:
+        value: Arbitrary value to convert.
+
+    Returns:
+        A ``dict`` when ``value`` is already a mapping, otherwise an empty mapping.
+    """
     return cast("JSONMapping", value) if isinstance(value, dict) else {}
 
 
 def as_list(value: object) -> JSONList:
-    """Return `value` as a JSON list if it is a list, else an empty list."""
+    """Return ``value`` as a JSON list if it is a list, else an empty list.
+
+    Args:
+        value: Arbitrary value to convert.
+
+    Returns:
+        A ``list`` when ``value`` is already a list, otherwise an empty list.
+    """
     return cast("JSONList", value) if isinstance(value, list) else []
 
 
 def as_str(value: object, default: str = "") -> str:
-    """Return `value` as a string if already a string, else `default`."""
+    """Return ``value`` as a string if already a string, else ``default``.
+
+    Args:
+        value: Arbitrary value to convert.
+        default: Fallback string to return when ``value`` is not a string.
+
+    Returns:
+        The original string value or the ``default`` fallback.
+    """
     if isinstance(value, str):
         return value
     return default
 
 
 def as_int(value: object, default: int = 0) -> int:
-    """Return `value` as an int when possible, else `default`."""
+    """Return ``value`` as an int when possible, else ``default``.
+
+    Args:
+        value: Arbitrary value to convert.
+        default: Fallback integer to return when conversion is not possible.
+
+    Returns:
+        The integer representation of ``value`` or the ``default`` fallback.
+    """
     if isinstance(value, int):
         return value
     if isinstance(value, str):

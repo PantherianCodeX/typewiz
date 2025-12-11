@@ -27,13 +27,11 @@ from .helpers.formatting import (
 # ignore JUSTIFIED: CLI version import must tolerate partial installs; defensive import
 # avoids runtime failures when metadata is unavailable
 try:  # pragma: no cover - defensive import guard
-    from ratchetr import __version__ as _pkg_version
+    from ratchetr import __version__
 # ignore JUSTIFIED: safe fallback version keeps CLI usable if package metadata fails to
 # load
 except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
-    _pkg_version = "0.0.0"
-
-__version__ = _pkg_version
+    __version__ = "0.0.0"
 
 __all__ = [
     "SUMMARY_FIELD_CHOICES",

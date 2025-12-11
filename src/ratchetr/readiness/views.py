@@ -126,7 +126,7 @@ class FileReadinessPayload(FileReadinessPayloadBase, total=False):
     categories: dict[CategoryName, int]
     # ignore JUSTIFIED: readiness summary payload uses camelCase keys to align with
     # external JSON schema
-    categoryStatus: dict[CategoryName, ReadinessStatus]  # noqa: TD002, FIX002, TD003  # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
+    categoryStatus: dict[CategoryName, ReadinessStatus]  # noqa: FIX002, TD003  # TODO@PantherianCodeX: Restrict N815 ignores to JSON boundary after implementing schema validation
 
 
 @dataclass(frozen=True, slots=True)

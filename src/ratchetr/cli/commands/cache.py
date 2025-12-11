@@ -29,7 +29,11 @@ if TYPE_CHECKING:
 
 
 def register_cache_command(subparsers: SubparserCollection) -> None:
-    """Attach the ``ratchetr cache`` command to the CLI."""
+    """Attach the ``ratchetr cache`` command to the CLI.
+
+    Args:
+        subparsers: Top-level argparse subparser collection to register commands on.
+    """
     cache = subparsers.add_parser(
         "cache",
         help="Inspect or clear ratchetr caches",

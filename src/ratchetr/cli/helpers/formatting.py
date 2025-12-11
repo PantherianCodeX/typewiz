@@ -63,6 +63,14 @@ if TYPE_CHECKING:
 
 
 def stringify(value: object) -> str:
+    """Convert a JSON-like value to a human-readable string for CLI output.
+
+    Args:
+        value: Arbitrary value to stringify.
+
+    Returns:
+        String representation with special handling for mappings, sequences, and booleans.
+    """
     if value is None:
         return ""
     if isinstance(value, str | int | float):
@@ -82,6 +90,14 @@ def stringify(value: object) -> str:
 
 
 def render_table_rows(rows: Sequence[Mapping[str, JSONValue]]) -> list[str]:
+    """Render a sequence of mapping rows as aligned table lines.
+
+    Args:
+        rows: Rows of key/value mappings to display.
+
+    Returns:
+        Lines representing a simple ASCII table or ``["<empty>"]`` when no rows exist.
+    """
     if not rows:
         return ["<empty>"]
     headers = sorted({key for row in rows for key in row})
@@ -205,7 +221,14 @@ def _parse_run_identifier(raw: str) -> tuple[RunId, str, str]:
 
 
 def format_list(values: Sequence[str]) -> str:
-    """Return a comma-separated string for CLI presentation."""
+    """Return a comma-separated string for CLI presentation.
+
+    Args:
+        values: Sequence of string values to join.
+
+    Returns:
+        Comma-delimited string or an em dash when the sequence is empty.
+    """
     return ", ".join(values) if values else "—"
 
 
@@ -409,7 +432,16 @@ def print_readiness_summary(
     severities: Sequence[SeverityLevel] | None = None,
     detailed: bool = False,
 ) -> None:
-    """Print a readiness summary in the same shape as historic CLI output."""
+    """Print a readiness summary in the same shape as historic CLI output.
+
+    Args:
+        summary: Manifest summary payload.
+        level: Readiness view granularity (file or folder).
+        statuses: Optional readiness statuses to include.
+        limit: Maximum entries per status bucket.
+        severities: Optional severities to include when summarising.
+        detailed: Whether to include diagnostic counts in the output.
+    """
     lines = format_readiness_summary(
         summary,
         level=level,

@@ -35,7 +35,14 @@ if TYPE_CHECKING:
 
 
 def clone_profile(profile: EngineProfile) -> EngineProfile:
-    """Return a deep copy of an ``EngineProfile`` instance."""
+    """Return a deep copy of an ``EngineProfile`` instance.
+
+    Args:
+        profile: Source profile to copy.
+
+    Returns:
+        New ``EngineProfile`` with cloned collections.
+    """
     return EngineProfile(
         inherit=profile.inherit,
         plugin_args=list(profile.plugin_args),
@@ -48,7 +55,14 @@ def clone_profile(profile: EngineProfile) -> EngineProfile:
 def clone_engine_settings_map(
     settings: Mapping[EngineName, EngineSettings],
 ) -> dict[EngineName, EngineSettings]:
-    """Return a mutable copy of an engine-settings mapping."""
+    """Return a mutable copy of an engine-settings mapping.
+
+    Args:
+        settings: Original engine settings keyed by engine name.
+
+    Returns:
+        Deep-copied mapping suitable for mutation.
+    """
     cloned: dict[EngineName, EngineSettings] = {}
     for name, value in settings.items():
         cloned[name] = EngineSettings(

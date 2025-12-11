@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Stable error code registry used across ratchetr."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, NewType
@@ -66,7 +68,14 @@ _ERROR_CODES: dict[type[BaseException], ErrorCode] = {
 
 
 def error_code_for(exc: BaseException) -> ErrorCode:
-    """Return a stable error code for a structured ratchetr exception."""
+    """Return a stable error code for a structured ratchetr exception.
+
+    Args:
+        exc: Exception instance raised by ratchetr code paths.
+
+    Returns:
+        Error code mapped from the exception's class hierarchy.
+    """
     for cls in type(exc).__mro__:
         code = _ERROR_CODES.get(cls)
         if code:
@@ -79,6 +88,9 @@ def error_code_catalog() -> Mapping[str, ErrorCode]:
 
     Intended for diagnostics, tests, and documentation generation - avoids
     exposing the private mapping while keeping a single source of truth.
+
+    Returns:
+        Mapping of ``<module>.<ExceptionName>`` strings to error codes.
     """
     result: dict[str, ErrorCode] = {}
     for exc_type, code in _ERROR_CODES.items():

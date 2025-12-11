@@ -49,6 +49,9 @@ def get_override_components(
 def format_override_inline(entry: OverrideEntry) -> str:
     """Render an override entry as a compact inline description.
 
+    Args:
+        entry: Override entry to render.
+
     Returns:
         String representation summarising the override.
     """
@@ -69,6 +72,9 @@ def format_override_inline(entry: OverrideEntry) -> str:
 
 def format_overrides_block(entries: Sequence[OverrideEntry]) -> list[str]:
     """Render override entries as Markdown bullet lines.
+
+    Args:
+        entries: Sequence of overrides to include in the block.
 
     Returns:
         List of Markdown lines detailing each override.
@@ -95,7 +101,14 @@ def format_overrides_block(entries: Sequence[OverrideEntry]) -> list[str]:
 
 
 def override_detail_lines(entry: OverrideEntry) -> tuple[str, list[str]]:
-    """Return a ``(path, details)`` tuple for detailed override reporting."""
+    """Return a ``(path, details)`` tuple for detailed override reporting.
+
+    Args:
+        entry: Override entry to normalise.
+
+    Returns:
+        Tuple containing the override path and a list of detail strings.
+    """
     path, profile, plugin_args, include_paths, exclude_paths = get_override_components(entry)
     details: list[str] = []
     if profile:

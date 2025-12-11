@@ -59,7 +59,11 @@ if TYPE_CHECKING:
 
 
 def register_audit_command(subparsers: SubparserCollection) -> None:
-    """Register the ``ratchetr audit`` command and return the configured parser."""
+    """Register the ``ratchetr audit`` command and return the configured parser.
+
+    Args:
+        subparsers: Top-level argparse subparser collection to register commands on.
+    """
     audit = subparsers.add_parser(
         "audit",
         help="Run typing audits and produce manifests/dashboards",
@@ -283,6 +287,17 @@ def _resolve_full_paths(args: argparse.Namespace, config: Config, project_root: 
 
 
 def normalise_modes_tuple(modes: Sequence[str] | None) -> tuple[bool, bool, bool]:
+    """Normalise CLI mode selections into booleans for manifest handling.
+
+    Args:
+        modes: Optional sequence of raw mode strings from the CLI.
+
+    Returns:
+        Tuple of ``(run_any, run_current, run_full)`` flags indicating which audit modes to execute.
+
+    Raises:
+        SystemExit: If no modes are selected after normalisation.
+    """
     normalised = normalise_modes(modes)
     if not normalised:
         return (False, True, True)

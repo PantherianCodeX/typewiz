@@ -92,7 +92,11 @@ class RatchetContext:
 
     @property
     def generated_at(self) -> str:
-        """Return the generation timestamp for the manifest payload."""
+        """Return the generation timestamp for the manifest payload.
+
+        Returns:
+            ISO 8601 timestamp string representing when the manifest was generated.
+        """
         value = self.manifest_payload.get("generatedAt")
         if isinstance(value, str) and value:
             return value
@@ -118,7 +122,11 @@ def _raise_unknown_ratchet_action(action: Never) -> NoReturn:
 
 
 def register_ratchet_command(subparsers: SubparserCollection) -> None:
-    """Attach the ratchet command and subcommands to the CLI."""
+    """Attach the ratchet command and subcommands to the CLI.
+
+    Args:
+        subparsers: Top-level argparse subparser collection to register commands on.
+    """
     ratchet = subparsers.add_parser(
         "ratchet",
         help="Manage per-file ratchet budgets",
@@ -136,12 +144,14 @@ def register_ratchet_command(subparsers: SubparserCollection) -> None:
 def execute_ratchet(args: argparse.Namespace) -> int:
     """Execute the ratchet command based on parsed arguments.
 
+    Args:
+        args: Parsed CLI arguments for the ratchet command.
+
     Returns:
-        int: Process exit code for the ratchet command.
+        Process exit code for the ratchet command.
 
     Raises:
         SystemExit: If an unknown ratchet action is requested.
-
     """
     config = load_config(None)
     project_root = resolve_project_root(None)

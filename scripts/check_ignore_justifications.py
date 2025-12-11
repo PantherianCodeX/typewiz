@@ -125,6 +125,11 @@ class IgnoreViolation:
     sources: tuple[str, ...]
 
     def to_dict(self) -> dict[str, object]:
+        """Return a JSON-serialisable representation of the violation.
+
+        Returns:
+            Mapping with file path, location, code, message, and sources.
+        """
         return {
             "file": str(self.file),
             "line": self.line,
@@ -136,6 +141,9 @@ class IgnoreViolation:
 
     def format_cli(self, root: Path) -> str:
         """Format the violation in a standard linter style.
+
+        Args:
+            root: Repository root used to compute relative paths.
 
         Returns:
             A string of the form `path:line:column: CODE [sources] message`.
@@ -439,6 +447,9 @@ def _compute_anchor_line(text: str) -> int | None:
     The anchor is the module-level docstring line if present, otherwise the
     first line of executable code.
 
+    Args:
+        text: File contents to inspect.
+
     Returns:
         The 1-based line number to anchor file-level ignores above, or None if
         it cannot be determined (e.g., due to syntax errors).
@@ -447,7 +458,7 @@ def _compute_anchor_line(text: str) -> int | None:
         module: Any = ast.parse(text)
     # ignore JUSTIFIED: invalid syntax in a scanned file should not fail the checker
     # treat as having no anchor and let other tools report syntax errors
-    except Exception:  # pragma: no cover - invalid syntax is rare and treated as no anchor
+    except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
         return None
 
     if not getattr(module, "body", None):
@@ -555,7 +566,7 @@ def _validate_pragma_format(  # noqa: C901, PLR0912
     # Validate separation for additional pragmas in the same comment.
     # We examine the stripped comment (starting at the first '#').
     for idx, char in enumerate(stripped_comment):
-        if idx == 0 or char != "#":
+        if not idx or char != "#":
             continue
         # Additional pragmas must be introduced by '  #'.
         if stripped_comment[idx - 2 : idx] != "  ":
@@ -726,6 +737,9 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     """Entry point for the ignore-justification checker.
 
+    Args:
+        argv: Optional CLI arguments (used to filter scanned paths).
+
     Returns:
         0 when all ignores are properly justified, 1 when any violation is found.
     """
@@ -775,7 +789,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"Errors: {total_violations}{(', IO Errors: ' + str(io_errors)) if io_errors else ''}\n",
         )
 
-    return 0 if not all_violations and io_errors == 0 else 1
+    return 0 if not all_violations and not io_errors else 1
 
 
 # ignore JUSTIFIED: CLI entrypoint is exercised indirectly via unit tests

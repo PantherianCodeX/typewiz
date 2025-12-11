@@ -254,7 +254,7 @@ class EngineSignaturePayload(TypedDict):
     mode: Mode | None
     # ignore JUSTIFIED: engine configuration payload uses camelCase keys to align with
     # external JSON schema
-    engineOptions: dict[str, JSONValue]  # noqa: TD002, FIX002, TD003  # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
+    engineOptions: dict[str, JSONValue]  # noqa: FIX002, TD003  # TODO@PantherianCodeX: Restrict N815 ignores to JSON boundary after implementing schema validation
 
 
 class EngineSignaturePayloadWithHash(EngineSignaturePayload, total=False):

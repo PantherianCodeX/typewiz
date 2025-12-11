@@ -49,6 +49,11 @@ class _EngineOptionState:
     config_file: Path | None
 
     def copy(self) -> _EngineOptionState:
+        """Return a shallow copy of the option state.
+
+        Returns:
+            New ``_EngineOptionState`` instance with copied collections.
+        """
         return _EngineOptionState(
             plugin_args=list(self.plugin_args),
             include=list(self.include),

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Helper functions for deterministic collection operations."""
+
 from __future__ import annotations
 
 from collections.abc import Hashable, Iterable, Sequence

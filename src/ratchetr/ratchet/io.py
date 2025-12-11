@@ -33,7 +33,11 @@ if TYPE_CHECKING:
 
 
 def current_timestamp() -> str:
-    """Return an ISO timestamp in UTC."""
+    """Return an ISO timestamp in UTC.
+
+    Returns:
+        Timestamp string suitable for manifest metadata.
+    """
     return datetime.now(UTC).isoformat()
 
 

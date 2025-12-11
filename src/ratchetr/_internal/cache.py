@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Caching helpers for engine execution results and file fingerprints."""
+
 from __future__ import annotations
 
 import hashlib
@@ -79,6 +81,24 @@ def _default_dict_str_liststr() -> CategoryMapping:
 
 @dataclass(slots=True)
 class CacheEntry:
+    """Raw cache entry persisted to disk.
+
+    Attributes:
+        command: Executed command arguments.
+        exit_code: Process exit code.
+        duration_ms: Execution duration in milliseconds.
+        diagnostics: Engine diagnostic payloads.
+        file_hashes: Mapping of relative paths to file hash payloads.
+        profile: Optional profile name associated with the run.
+        config_file: Optional configuration file path.
+        plugin_args: Extra plugin arguments supplied to the engine.
+        include: Paths explicitly included in the run.
+        exclude: Paths explicitly excluded from the run.
+        overrides: Override entries applied for the run.
+        category_mapping: Mapping of diagnostic codes to categories.
+        tool_summary: Optional aggregate summary for the tool run.
+    """
+
     command: Command
     exit_code: int
     duration_ms: float
@@ -96,6 +116,11 @@ class CacheEntry:
 
 @dataclass(slots=True)
 class CachedRun:
+    """Materialised cache entry suitable for reuse during execution.
+
+    Attributes mirror ``CacheEntry`` but with richer types for consumers.
+    """
+
     command: Command
     exit_code: int
     duration_ms: float
@@ -282,6 +307,14 @@ class _Payload(TypedDict, total=False):
 
 
 def fingerprint_path(path: Path) -> FileHashPayload:
+    """Compute the fingerprint payload for a single path.
+
+    Args:
+        path: File path to hash.
+
+    Returns:
+        File hash payload containing hash algorithm and digest data.
+    """
     return _fingerprint(path)
 
 
@@ -353,6 +386,8 @@ def _parse_cache_entry(key_str: str, entry: _EntryJson) -> tuple[CacheKey, Cache
 
 
 class EngineCache:
+    """In-memory representation of the on-disk engine cache."""
+
     def __init__(self, project_root: Path) -> None:
         super().__init__()
         self.project_root = project_root
@@ -380,6 +415,7 @@ class EngineCache:
             self._entries[cache_key] = cache_entry
 
     def save(self) -> None:
+        """Persist cache changes to disk if modified."""
         if not self._dirty:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -412,6 +448,14 @@ class EngineCache:
         self._dirty = False
 
     def peek_file_hashes(self, key: CacheKey) -> dict[PathKey, FileHashPayload] | None:
+        """Return file-hash payloads for a cache entry without validation.
+
+        Args:
+            key: Cache key to look up.
+
+        Returns:
+            Mapping of relative paths to file hash payloads, or ``None`` if not cached.
+        """
         entry = self._entries.get(key)
         if not entry:
             return None
@@ -424,11 +468,31 @@ class EngineCache:
         paths: Sequence[RelPath],
         flags: Sequence[str],
     ) -> CacheKey:
+        """Construct a cache key from engine invocation components.
+
+        Args:
+            engine: Engine name.
+            mode: Execution mode (current or full).
+            paths: Paths included in the run.
+            flags: Flags passed to the engine invocation.
+
+        Returns:
+            Deterministic cache key representing the invocation.
+        """
         path_part = ",".join(sorted({str(item) for item in paths}))
         flag_part = ",".join(str(flag) for flag in flags)
         return CacheKey(f"{engine}:{mode}:{path_part}:{flag_part}")
 
     def get(self, key: CacheKey, file_hashes: dict[PathKey, FileHashPayload]) -> CachedRun | None:
+        """Return a cached run if the hash set matches the provided fingerprints.
+
+        Args:
+            key: Cache key representing the engine invocation.
+            file_hashes: Hash payloads for the current file set.
+
+        Returns:
+            ``CachedRun`` when a matching entry exists, otherwise ``None``.
+        """
         entry = self._entries.get(key)
         if not entry:
             return None
@@ -507,6 +571,24 @@ class EngineCache:
         category_mapping: Mapping[CategoryKey, Sequence[str]] | None,
         tool_summary: ToolSummary | None,
     ) -> None:
+        """Insert or update a cache entry for an engine run.
+
+        Args:
+            key: Cache key representing the invocation.
+            file_hashes: Fingerprints for files participating in the run.
+            command: Executed command arguments.
+            exit_code: Process exit code.
+            duration_ms: Execution duration in milliseconds.
+            diagnostics: Diagnostics emitted by the engine.
+            profile: Optional profile associated with the run.
+            config_file: Optional configuration file used for the run.
+            plugin_args: Additional plugin arguments passed to the engine.
+            include: Paths explicitly included in the run.
+            exclude: Paths excluded from the run.
+            overrides: Override entries applied for this invocation.
+            category_mapping: Mapping of diagnostic categories.
+            tool_summary: Optional tool-level summary.
+        """
         canonical_diags = sorted(
             diagnostics,
             key=lambda diag: (str(diag.path), diag.line, diag.column),
@@ -614,6 +696,21 @@ def collect_file_hashes(  # noqa: C901, PLR0912, PLR0914, PLR0915
     max_bytes: int | None = None,
     hash_workers: int | Literal["auto"] | None = None,
 ) -> tuple[dict[PathKey, FileHashPayload], bool]:
+    """Collect file hash payloads for a set of project paths.
+
+    Args:
+        project_root: Repository root used to resolve relative paths.
+        paths: Paths to hash (relative to ``project_root``).
+        respect_gitignore: Whether to filter files using ``git ls-files``.
+        max_files: Optional limit on the number of files to hash.
+        baseline: Optional baseline hashes to reuse when unchanged.
+        max_bytes: Optional byte budget for hashing; exceeding sets truncated flag.
+        hash_workers: Thread worker count or ``"auto"`` for CPU-based selection.
+
+    Returns:
+        Tuple of (hash mapping, truncated flag) where the flag is ``True`` when
+        limits prevented hashing all files.
+    """
     hashes: dict[PathKey, FileHashPayload] = {}
     seen: set[PathKey] = set()
     project_root = project_root.resolve()

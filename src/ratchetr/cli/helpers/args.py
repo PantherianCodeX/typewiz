@@ -73,7 +73,14 @@ def register_argument(
 
 
 def parse_comma_separated(raw: str | None) -> list[str]:
-    """Return a list of comma-separated values (ignoring empty entries)."""
+    """Return a list of comma-separated values (ignoring empty entries).
+
+    Args:
+        raw: Raw comma-separated string or ``None``.
+
+    Returns:
+        List of stripped entries, excluding blanks.
+    """
     if not raw:
         return []
     return [part.strip() for part in raw.split(",") if part.strip()]

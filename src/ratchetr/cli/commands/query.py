@@ -47,7 +47,11 @@ if TYPE_CHECKING:
 
 
 def register_query_command(subparsers: SubparserCollection) -> None:
-    """Register the ``ratchetr query`` command."""
+    """Register the `ratchetr query` command.
+
+    Args:
+        subparsers: Top-level argparse subparser collection to register commands on.
+    """
     query = subparsers.add_parser(
         "query",
         help="Inspect sections of a manifest summary without external tools",
@@ -261,13 +265,13 @@ def _render_payload(data: object, fmt: DataFormat) -> None:
 
 
 def execute_query(args: argparse.Namespace) -> int:
-    """Execute the ``ratchetr query`` command.
+    """Execute the `ratchetr query` command.
 
     Args:
         args: Parsed CLI namespace describing the desired section and filters.
 
     Returns:
-        ``0`` when the query runs successfully.
+        `0` when the query runs successfully.
 
     Raises:
         SystemExit: If the section selector is invalid.

@@ -13,7 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Check error-code registry consistency against documentation."""
+"""Check error-code registry consistency against documentation.
+
+This script must work whether the package is installed or not. It prepends the
+repo's `src/` directory to `sys.path` before importing internal modules.
+"""
 
 from __future__ import annotations
 
@@ -25,11 +29,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
-
-"""
-This script must work whether the package is installed or not. It prepends the
-repo's `src/` directory to `sys.path` before importing internal modules.
-"""
 
 
 def _emit(message: str, *, error: bool = False) -> None:
@@ -79,6 +78,9 @@ def _discover_duplicates(codes: Iterable[str]) -> set[str]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Validate that the error-code registry matches the public docs.
+
+    Args:
+        argv: Optional CLI arguments (ignored; present for parity with entrypoints).
 
     Returns:
         `0` if the registry and documentation list identical codes; `1` if

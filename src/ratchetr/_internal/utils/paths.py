@@ -52,6 +52,14 @@ def _contains_python(path: Path) -> bool:
 
 
 def default_full_paths(root: Path) -> list[str]:
+    """Return candidate folders containing Python sources beneath a root.
+
+    Args:
+        root: Project root to scan for standard package directories.
+
+    Returns:
+        List of relative folder names to include in full runs.
+    """
     candidates = ["ratchetr", "apps", "packages", "config", "infra", "tests"]
     paths: list[str] = []
     for item in candidates:
@@ -64,6 +72,17 @@ def default_full_paths(root: Path) -> list[str]:
 
 
 def resolve_project_root(start: Path | None = None) -> Path:
+    """Resolve the project root by walking parent directories for markers.
+
+    Args:
+        start: Optional starting path (defaults to current working directory).
+
+    Returns:
+        Path to the discovered project root.
+
+    Raises:
+        FileNotFoundError: If ``start`` is provided but does not exist.
+    """
     base = (start or Path.cwd()).resolve()
     if base.is_file():
         base = base.parent

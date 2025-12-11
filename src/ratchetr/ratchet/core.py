@@ -461,7 +461,17 @@ def apply_auto_update(
     runs: Sequence[str | RunId] | None = None,
     generated_at: str,
 ) -> RatchetModel:
-    """Return a new ratchet model with budgets reduced to current manifest counts."""
+    """Return a new ratchet model with budgets reduced to current manifest counts.
+
+    Args:
+        manifest: Manifest payload to compare against existing budgets.
+        ratchet: Current ratchet budget model.
+        runs: Optional subset of run identifiers to update.
+        generated_at: Timestamp string for the updated ratchet.
+
+    Returns:
+        Ratchet model with budgets updated to reflect manifest diagnostics.
+    """
     report = compare_manifest_to_ratchet(manifest=manifest, ratchet=ratchet, runs=runs)
     updated_runs: dict[RunId, RatchetRunBudgetModel] = {}
     run_lookup = _run_by_id(manifest)
@@ -499,7 +509,17 @@ def refresh_signatures(
     runs: Sequence[str | RunId] | None = None,
     generated_at: str,
 ) -> RatchetModel:
-    """Return a ratchet model with refreshed engine signature metadata."""
+    """Return a ratchet model with refreshed engine signature metadata.
+
+    Args:
+        manifest: Manifest payload providing updated signature data.
+        ratchet: Existing ratchet model to update.
+        runs: Optional subset of run identifiers whose signatures should refresh.
+        generated_at: Timestamp string for the refreshed ratchet.
+
+    Returns:
+        Ratchet model with signatures updated for selected runs.
+    """
     run_lookup = _run_by_id(manifest)
     selected_run_ids: set[RunId] = set(_normalise_run_id_values(runs)) if runs else set(ratchet.runs.keys())
     refreshed_runs: dict[RunId, RatchetRunBudgetModel] = {}

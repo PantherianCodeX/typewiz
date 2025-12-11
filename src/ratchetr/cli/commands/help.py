@@ -29,7 +29,11 @@ _TOPICS_ROOT = Path(__file__).resolve().parents[4] / "docs" / "cli" / "topics"
 
 
 def register_help_command(subparsers: SubparserCollection) -> None:
-    """Register ``ratchetr help`` with topic support."""
+    """Register ``ratchetr help`` with topic support.
+
+    Args:
+        subparsers: Top-level argparse subparser collection to register commands on.
+    """
     help_parser = subparsers.add_parser(
         "help",
         help="Show CLI topic documentation",
