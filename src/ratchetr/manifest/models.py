@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     from .typed import ManifestData
 
 # ignore JUSTIFIED: shared Pydantic config constant must remain UPPER_SNAKE
-STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(  # pylint: disable=invalid-name
+STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(  # pylint: disable=invalid-name,useless-suppression
     extra="forbid",
     populate_by_name=True,
 )

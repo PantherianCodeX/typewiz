@@ -56,7 +56,8 @@ if TYPE_CHECKING:
             ...  # pragma: no cover  # pylint: disable=unnecessary-ellipsis
 
 else:
-    _STR_ENUM = getattr(_enum, "StrEnum", None)
+    # ignore JUSTIFIED: keep private sentinel name to mirror stdlib lookup path
+    _STR_ENUM = getattr(_enum, "StrEnum", None)  # pylint: disable=invalid-name
 
     if _STR_ENUM is None:
 
@@ -70,7 +71,6 @@ else:
 
         StrEnum: type[_StrEnumBase] = _CompatStrEnum
     else:
-        # ignore JUSTIFIED: keep private sentinel name to mirror stdlib lookup path
-        StrEnum = cast("type[_StrEnumBase]", _STR_ENUM)  # pylint: disable=invalid-name
+        StrEnum = cast("type[_StrEnumBase]", _STR_ENUM)
 
 __all__ = ["StrEnum"]
