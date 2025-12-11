@@ -25,6 +25,9 @@ throughout ratchetr. It includes:
 - Utility functions for type coercion and validation
 """
 
+# ignore JUSTIFIED: StrEnum inheritance stack exceeds pylint threshold; review later
+# pylint: disable=too-many-ancestors, useless-suppression  # noqa: FIX002,TD003  # TODO@PantherianCodeX: Revisit StrEnum ancestry once enum layering is simplified
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final, TypeAlias, cast

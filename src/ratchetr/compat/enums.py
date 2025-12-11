@@ -70,6 +70,7 @@ else:
 
         StrEnum: type[_StrEnumBase] = _CompatStrEnum
     else:
-        StrEnum = cast("type[_StrEnumBase]", _STR_ENUM)
+        # ignore JUSTIFIED: keep private sentinel name to mirror stdlib lookup path
+        StrEnum = cast("type[_StrEnumBase]", _STR_ENUM)  # pylint: disable=invalid-name
 
 __all__ = ["StrEnum"]
