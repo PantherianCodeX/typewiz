@@ -121,15 +121,15 @@ class SeverityLevel(StrEnum):
         if isinstance(raw, SeverityLevel):
             return raw
         if isinstance(raw, str):
-            token = raw.strip().lower()
-            if token.endswith("s"):
-                singular = token[:-1]
+            input_str = raw.strip().lower()
+            if input_str.endswith("s"):
+                singular = input_str[:-1]
                 if singular in cls._value2member_map_:
-                    token = singular
-            if token == "info":  # noqa: S105 JUSTIFIED; not a password
-                token = "information"  # noqa: S105 JUSTIFIED; not a password
+                    input_str = singular
+            if input_str == "info":
+                input_str = "information"
             try:
-                return cls.from_str(token)
+                return cls.from_str(input_str)
             except ValueError:
                 return cls.INFORMATION
         return cls.INFORMATION

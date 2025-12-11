@@ -63,7 +63,9 @@ class _DispatchScenario:
     expects_args: bool
 
 
-def _make_context(  # noqa: PLR0913  # JUSTIFIED: helper mirrors RatchetContext fields for clarity in tests
+# ignore JUSTIFIED: helper mirrors RatchetContext fields for realistic test contexts
+# many parameters reflect the underlying dataclass shape
+def _make_context(  # noqa: PLR0913
     project_root: Path,
     *,
     manifest_payload: ManifestData | None = None,
@@ -467,7 +469,9 @@ def test_handle_rebaseline_reports_service_error(tmp_path: Path, monkeypatch: py
     assert exit_code == 1
 
 
-def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: C901  # JUSTIFIED: high-level wiring test exercises many stubbed collaborators in one integration-style flow
+# ignore JUSTIFIED: high-level wiring test exercises many stubbed collaborators in one
+# flow; splitting into smaller tests would reduce clarity of the CLI behaviour
+def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: C901
     # Lightweight stubs to avoid touching the filesystem or real configs.
     fake_config = Config()
 
@@ -573,7 +577,9 @@ def test_register_ratchet_command_builds_subcommands(tmp_path: Path) -> None:
         _DispatchScenario(RatchetAction.INFO.value, "handle_info", expects_args=False),
     ],
 )
-def test_execute_ratchet_dispatches_actions(  # noqa: C901  # JUSTIFIED: dispatch table wired once and exercised via parametrisation for multiple actions
+# ignore JUSTIFIED: dispatch table is exercised via parametrisation in one high-level
+# test; splitting would obscure the mapping between actions and handlers
+def test_execute_ratchet_dispatches_actions(  # noqa: C901
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     scenario: _DispatchScenario,

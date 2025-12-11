@@ -70,7 +70,9 @@ def parse_target_entries(entries: Sequence[str]) -> dict[str, int]:
     for key, raw_value in parse_key_value_entries(entries, argument="--target"):
         try:
             budget = max(0, int(raw_value))
-        except ValueError as exc:  # pragma: no cover - validated via CLI tests
+        # ignore JUSTIFIED: parsing is validated via CLI tests;
+        # runtime error path kept for safety
+        except ValueError as exc:  # pragma: no cover
             msg = f"Invalid target value '{raw_value}' for key '{key}'"
             raise SystemExit(msg) from exc
         mapping[key] = budget

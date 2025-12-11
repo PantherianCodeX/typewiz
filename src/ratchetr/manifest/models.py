@@ -26,9 +26,14 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, cast
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError
 from pydantic_core import PydanticCustomError
 
-from ratchetr.core.model_types import Mode, SeverityLevel  # noqa: TC001  # required at runtime by Pydantic
-from ratchetr.core.type_aliases import CategoryKey, Command, RelPath  # noqa: TC001  # required at runtime by Pydantic
-from ratchetr.json import JSONValue  # noqa: TC001  # used in runtime validation signatures
+# ignore JUSTIFIED: pydantic models depend on runtime access to core model types
+from ratchetr.core.model_types import Mode, SeverityLevel  # noqa: TC001
+
+# ignore JUSTIFIED: pydantic models depend on runtime access to shared type aliases
+from ratchetr.core.type_aliases import CategoryKey, Command, RelPath  # noqa: TC001
+
+# ignore JUSTIFIED: manifest validation needs JSONValue runtime alias
+from ratchetr.json import JSONValue  # noqa: TC001
 
 from .versioning import (
     CURRENT_MANIFEST_VERSION,
@@ -43,7 +48,10 @@ from .versioning import (
 if TYPE_CHECKING:
     from .typed import ManifestData
 
-STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(extra="forbid", populate_by_name=True)
+STRICT_MODEL_CONFIG: ConfigDict = ConfigDict(
+    extra="forbid",
+    populate_by_name=True,
+)
 
 
 def alias_field(
@@ -51,7 +59,9 @@ def alias_field(
     *,
     default: object = ...,
     default_factory: Callable[[], object] | None = None,
-) -> Any:  # noqa: ANN401 # JUSTIFIED: Must return Any to work with Pydantic field annotations
+    # ignore JUSTIFIED: helper preserves Pydantic Field flexibility; Any return mirrors
+    # FieldInfo typing expectations while satisfying Pydantic Field usage
+) -> Any:  # noqa: ANN401
     """Return a Field configured with matching validation and serialization aliases.
 
     Args:

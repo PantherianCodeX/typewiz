@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ignore JUSTIFIED: argument helpers mirror argparse signatures and allow passthrough
+# typing without constraining caller kwargs; Any/ellipsis document flexible CLI
+# signatures safely
+# ruff: noqa: ANN401  # pylint: disable=redundant-returns-doc,unnecessary-ellipsis
+
 """Argument parser helpers used across CLI commands."""
 
 from __future__ import annotations
@@ -33,17 +38,37 @@ class ArgumentRegistrar(Protocol):
     allowing them to be used interchangeably for adding arguments.
     """
 
-    def add_argument(self, *args: Any, **kwargs: Any) -> argparse.Action:  # noqa: ANN401  # JUSTIFIED: Protocol needs Any to match argparse's add_argument signature with contravariance
-        """Expose ``ArgumentParser.add_argument`` so helpers can operate generically."""
-        ...  # pragma: no cover - runtime behaviour delegated to argparse
+    def add_argument(
+        self,
+        *args: Any,
+        **kwargs: Any,
+    ) -> argparse.Action:
+        """Expose ``ArgumentParser.add_argument`` so helpers can operate generically.
+
+        Args:
+            *args: Positional argument configuration passed through to ``add_argument``.
+            **kwargs: Keyword options forwarded to ``add_argument``.
+
+        Returns:
+            argparse.Action: The action object created for the registered argument.
+        """
+        # ignore JUSTIFIED: protocol method intentionally left abstract to document
+        # interface shape
+        ...  # pragma: no cover
 
 
 def register_argument(
     registrar: ArgumentRegistrar,
-    *args: Any,  # noqa: ANN401  # JUSTIFIED: Forwarding to argparse.add_argument which has complex overloads
-    **kwargs: Any,  # noqa: ANN401  # JUSTIFIED: Forwarding to argparse.add_argument which has complex overloads
+    *args: Any,
+    **kwargs: Any,
 ) -> None:
-    """Register an argument on a parser/argument group, discarding the action handle."""
+    """Register an argument on a parser/argument group, discarding the action handle.
+
+    Args:
+        registrar: Parser or argument group on which to register the option.
+        *args: Positional flags and option strings forwarded to ``add_argument``.
+        **kwargs: Keyword options forwarded to ``add_argument``.
+    """
     consume(registrar.add_argument(*args, **kwargs))
 
 
@@ -207,7 +232,8 @@ def parse_hash_workers(value: str | None) -> int | Literal["auto"] | None:
     token = value.strip().lower()
     if not token:
         return None
-    if token == "auto":  # noqa: S105 JUSTIFIED; not a password
+    # ignore JUSTIFIED: token is a CLI mode selector, not a password or credential
+    if token == "auto":  # noqa: S105
         return "auto"
     try:
         workers = int(token)

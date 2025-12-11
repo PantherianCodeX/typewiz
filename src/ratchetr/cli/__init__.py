@@ -24,9 +24,13 @@ from .helpers.formatting import (
     query_readiness,
 )
 
+# ignore JUSTIFIED: CLI version import must tolerate partial installs; defensive import
+# avoids runtime failures when metadata is unavailable
 try:  # pragma: no cover - defensive import guard
     from ratchetr import __version__ as _pkg_version
-except Exception:  # pragma: no cover  # noqa: BLE001 JUSTIFIED: fallback for partial initialisation
+# ignore JUSTIFIED: safe fallback version keeps CLI usable if package metadata fails to
+# load
+except Exception:  # pragma: no cover  # pylint: disable=broad-exception-caught
     _pkg_version = "0.0.0"
 
 __version__ = _pkg_version

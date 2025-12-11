@@ -56,6 +56,8 @@ class DummyEngine:
     name = "dummy"
     DEFAULT_FINGERPRINT_TARGETS: tuple[str, ...] = ()
 
+    # ignore JUSTIFIED: dummy engine run method is never executed; registry tests only
+    # need a callable to satisfy the engine protocol
     def run(self, context: EngineContext, paths: list[RelPath]) -> None:  # pragma: no cover
         raise NotImplementedError
 

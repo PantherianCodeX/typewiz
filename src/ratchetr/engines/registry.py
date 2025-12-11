@@ -138,6 +138,7 @@ def entrypoint_engines() -> dict[EngineName, BaseEngine]:
     engines: dict[EngineName, BaseEngine] = {}
     try:
         eps = metadata.entry_points()
+    # ignore JUSTIFIED: entry point discovery failures are non-fatal; log and continue
     except (ImportError, AttributeError, TypeError) as exc:  # pragma: no cover - importlib.metadata errors
         # ImportError: module not found, AttributeError: missing metadata, TypeError: invalid data
         logger.debug(
@@ -150,6 +151,8 @@ def entrypoint_engines() -> dict[EngineName, BaseEngine]:
         try:
             loaded = entry_point.load()
             engine = _instantiate_engine(loaded, source=entry_point.name)
+        # ignore JUSTIFIED: plugin loading may fail for many reasons; log and skip bad
+        # entry points
         except (ImportError, AttributeError, TypeError, ValueError) as exc:  # pragma: no cover - plugin errors
             # ImportError: plugin module not found
             # AttributeError: missing required attributes

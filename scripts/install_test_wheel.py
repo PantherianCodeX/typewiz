@@ -20,7 +20,10 @@ import argparse
 import os
 import pathlib
 import shutil
-import subprocess  # noqa: S404  # JUSTIFIED: invokes trusted pip/python binaries inside freshly created venv
+
+# ignore JUSTIFIED: helper invokes pip/python only inside an isolated, temporary
+# virtualenv
+import subprocess  # noqa: S404
 import tempfile
 import venv
 
@@ -68,11 +71,15 @@ def main() -> int:
             pip_path = venv_dir / "bin" / "pip"
             python_path = venv_dir / "bin" / "python"
 
-        _ = subprocess.run(  # noqa: S603  # JUSTIFIED: executes pinned pip within controlled virtualenv
+        # ignore JUSTIFIED: pip is executed from the freshly created virtualenv with a
+        # fixed argument list
+        _ = subprocess.run(  # noqa: S603
             [str(pip_path), "install", str(wheel_path)],
             check=True,
         )
-        _ = subprocess.run(  # noqa: S603  # JUSTIFIED: validates installed package using dedicated interpreter
+        # ignore JUSTIFIED: python interpreter from the virtualenv is executed with a
+        # fixed validation command
+        _ = subprocess.run(  # noqa: S603
             [str(python_path), "-c", "import ratchetr"],
             check=True,
         )

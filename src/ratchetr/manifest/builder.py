@@ -171,6 +171,8 @@ class ManifestBuilder:
             versions = detect_tool_versions(tools)
             if versions:
                 self.data["toolVersions"] = versions
+        # ignore JUSTIFIED: tool version detection is best-effort; failures are logged
+        # and handled gracefully
         except (OSError, ValueError, RuntimeError) as exc:  # pragma: no cover - tool version detection errors
             # OSError: subprocess/filesystem errors
             # ValueError: invalid tool names or version parsing

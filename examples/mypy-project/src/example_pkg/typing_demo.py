@@ -12,37 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ignore JUSTIFIED: File contains purposely bad code for demonstation purposes
+# pragma: no cover  # type: ignore  # ruff: noqa: PGH003  # pylint: skip-file
+
 """Demonstration of typing issues that mypy can detect."""
 
 
-# Intentional: untyped function so mypy reports missing annotations; noqa keeps Ruff from blocking this demo
-def greet(name):  # Missing type annotations - mypy will flag this  # noqa: ANN001, ANN201, D103
+# ignore JUSTIFIED: demo leaves this function untyped so mypy can report missing
+# annotations while Ruff tolerates the pattern
+def greet(name):  # noqa: ANN001, ANN201
     return f"Hello, {name}!"
 
 
-# Intentional: incorrect return annotation so mypy reports a type mismatch; noqa keeps Ruff from blocking this demo
-def add_numbers(x: int, y: int) -> str:  # Return type mismatch  # noqa: D103, FURB118
+# ignore JUSTIFIED: demo uses the wrong return type to showcase mypy's
+# return-type mismatch diagnostics
+def add_numbers(x: int, y: int) -> str:  # noqa: FURB118
     return x + y  # Returns int, not str
 
 
-# Intentional: use of bare list so mypy reports missing generic type parameters; noqa keeps Ruff from blocking this demo
-def process_data(items: list) -> int:  # Unspecified generic type  # noqa: D103
+def process_data(items: list) -> int:
     return len(items)
 
 
-# Intentional: class with incomplete typing so mypy reports missing annotations; noqa keeps Ruff from blocking this demo
-class Calculator:  # noqa: D101
-    # Intentional: constructor parameter left untyped so mypy reports missing annotations; noqa keeps Ruff from blocking this demo  # noqa: E501
-    def __init__(self, initial_value):  # Missing type annotation  # noqa: ANN001, ANN204, D107
+# Intentional: class with incomplete typing so mypy reports missing
+# annotations; noqa keeps Ruff from blocking this demo
+class Calculator:
+    # ignore JUSTIFIED: constructor parameter stays untyped so mypy can report missing
+    # annotations
+    def __init__(self, initial_value):  # noqa: ANN001, ANN204
         self.value = initial_value
 
-    # Intentional: method missing an explicit return annotation so mypy reports it; noqa keeps Ruff from blocking this demo  # noqa: E501
-    def add(self, amount: int):  # Missing return type  # noqa: ANN201, D102
+    # ignore JUSTIFIED: method omits a return annotation so mypy can report incomplete
+    # method typing
+    def add(self, amount: int):  # noqa: ANN201
         self.value += amount
         return self.value
 
 
 if __name__ == "__main__":
-    # Intentional: runtime print examples so users can see outputs; T201 is suppressed so Ruff does not block this demo
+    # ignore JUSTIFIED: demo uses print statements to show runtime behaviour; T201 is
+    # suppressed only in this example module
     print(greet("World"))  # noqa: T201
+    # ignore JUSTIFIED: demo uses print statements to show runtime behaviour; T201 is
+    # suppressed only in this example module
     print(add_numbers(5, 3))  # noqa: T201

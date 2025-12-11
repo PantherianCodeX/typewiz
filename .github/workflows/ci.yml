@@ -61,7 +61,7 @@ jobs:
       - name: Typing (mypy + pyright + verifytypes)
         run: make all.type
 
-      - name: Internal checks (error codes + license headers)
+      - name: Internal checks (error codes + license headers + ignore justifications)
         run: make all.check
 
       - name: Security checks (ruff S, Bandit, Safety)

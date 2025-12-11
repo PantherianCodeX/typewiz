@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ignore JUSTIFIED: stub-only compatibility shim; pyright missing-module diagnostics
+# are expected for optional TOML backends
 # pyright: reportMissingModuleSource=false
+
 
 """Compatibility layer for TOML parsing across Python versions.
 

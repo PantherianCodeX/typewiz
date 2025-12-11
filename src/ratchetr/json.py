@@ -50,40 +50,39 @@ def require_json(payload: str, fallback: str | None = None) -> JSONMapping:
 
     Args:
         payload: Raw JSON string to parse.
-        fallback: Optional fallback string to use when ``payload`` is empty.
+        fallback: Optional fallback string to use when `payload` is empty.
 
     Returns:
         Parsed JSON object as a string-keyed mapping.
 
     Raises:
-        ValueError: If both ``payload`` and ``fallback`` are empty.
+        ValueError: If both `payload` and `fallback` are empty.
     """
-    data_str = payload.strip() or (fallback or "")
-    if not data_str:
+    if not (data_str := payload.strip() or fallback or ""):
         message = "Expected JSON output but received empty string"
         raise ValueError(message)
     return cast("JSONMapping", json.loads(data_str))
 
 
 def as_mapping(value: object) -> JSONMapping:
-    """Return ``value`` as a JSON mapping if it is a dict, else an empty mapping."""
+    """Return `value` as a JSON mapping if it is a dict, else an empty mapping."""
     return cast("JSONMapping", value) if isinstance(value, dict) else {}
 
 
 def as_list(value: object) -> JSONList:
-    """Return ``value`` as a JSON list if it is a list, else an empty list."""
+    """Return `value` as a JSON list if it is a list, else an empty list."""
     return cast("JSONList", value) if isinstance(value, list) else []
 
 
 def as_str(value: object, default: str = "") -> str:
-    """Return ``value`` as a string if already a string, else ``default``."""
+    """Return `value` as a string if already a string, else `default`."""
     if isinstance(value, str):
         return value
     return default
 
 
 def as_int(value: object, default: int = 0) -> int:
-    """Return ``value`` as an int when possible, else ``default``."""
+    """Return `value` as an int when possible, else `default`."""
     if isinstance(value, int):
         return value
     if isinstance(value, str):
@@ -98,12 +97,12 @@ def normalise_enums_for_json(value: object) -> JSONValue:
     """Recursively convert Enum keys/values to their string payloads for JSON serialisation.
 
     Args:
-        value: Arbitrary Python object hierarchy that may include ``Enum``
+        value: Arbitrary Python object hierarchy that may include `Enum`
             instances, mappings, or sequences.
 
     Returns:
-        A JSON-compatible structure (built from ``dict``/``list``/primitives)
-        with all enum keys and values replaced by their ``.value`` payloads.
+        A JSON-compatible structure (built from `dict`/`list`/primitives)
+        with all enum keys and values replaced by their `.value` payloads.
     """
 
     def _convert(obj: object) -> JSONValue:

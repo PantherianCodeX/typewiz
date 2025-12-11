@@ -276,45 +276,63 @@ def execute_query(args: argparse.Namespace) -> int:
     section_value = args.query_section
     try:
         section = section_value if isinstance(section_value, QuerySection) else QuerySection.from_str(section_value)
-    except ValueError as exc:  # pragma: no cover - argparse prevents invalid choices
+    # ignore JUSTIFIED: argparse restricts valid choices;
+    # fallback branch is unreachable in normal CLI flow
+    except ValueError as exc:  # pragma: no cover
         raise SystemExit(str(exc)) from exc
 
     format_choice = DataFormat.from_str(args.format)
 
-    payload: object
     match section:
         case QuerySection.OVERVIEW:
-            payload = query_overview(
-                summary,
-                include_categories=args.include_categories,
-                include_runs=args.include_runs,
+            _render_payload(
+                query_overview(
+                    summary,
+                    include_categories=args.include_categories,
+                    include_runs=args.include_runs,
+                ),
+                format_choice,
             )
         case QuerySection.HOTSPOTS:
             kind = HotspotKind.from_str(args.kind)
-            payload = query_hotspots(summary, kind=kind, limit=args.limit)
+            _render_payload(
+                query_hotspots(summary, kind=kind, limit=args.limit),
+                format_choice,
+            )
         case QuerySection.READINESS:
             level_choice = ReadinessLevel.from_str(args.level)
             statuses = [ReadinessStatus.from_str(status) for status in args.statuses] if args.statuses else None
             severities = [SeverityLevel.from_str(severity) for severity in args.severities] if args.severities else None
-            payload = query_readiness(
-                summary,
-                level=level_choice,
-                statuses=statuses,
-                limit=args.limit,
-                severities=severities,
+            _render_payload(
+                query_readiness(
+                    summary,
+                    level=level_choice,
+                    statuses=statuses,
+                    limit=args.limit,
+                    severities=severities,
+                ),
+                format_choice,
             )
         case QuerySection.RUNS:
-            payload = query_runs(summary, tools=args.tools, modes=args.modes, limit=args.limit)
+            _render_payload(
+                query_runs(summary, tools=args.tools, modes=args.modes, limit=args.limit),
+                format_choice,
+            )
         case QuerySection.ENGINES:
-            payload = query_engines(summary, limit=args.limit)
+            _render_payload(
+                query_engines(summary, limit=args.limit),
+                format_choice,
+            )
         case QuerySection.RULES:
-            payload = query_rules(
-                summary,
-                limit=args.limit,
-                include_paths=bool(getattr(args, "include_paths", False)),
+            _render_payload(
+                query_rules(
+                    summary,
+                    limit=args.limit,
+                    include_paths=bool(getattr(args, "include_paths", False)),
+                ),
+                format_choice,
             )
 
-    _render_payload(payload, format_choice)
     return 0
 
 

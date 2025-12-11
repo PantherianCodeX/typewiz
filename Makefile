@@ -34,7 +34,7 @@ VERIFYTYPES_PACKAGE  ?= ratchetr
   ratchetr ratchetr.audit ratchetr.dashboard ratchetr.dashboard.json ratchetr.readiness ratchetr.clean ratchetr.all \
   sec sec.lint sec.bandit sec.safety \
   package.build package.check package.install-test package.clean \
-  check check.license-headers check.error-codes \
+  check check.license-headers check.error-codes check.ignores check.ignores.report \
   clean clean.pycache clean.cache clean.caches clean.mypy clean.pyright clean.type clean.ruff clean.pylint clean.lint \
   clean.coverage clean.pytest clean.hypothesis clean.benchmarks clean.test \
   clean.bandit clean.safety clean.sec clean.package clean.ratchetr clean.full \
@@ -364,12 +364,24 @@ check.error-codes: ## Verify error code registry and documentation are in sync
 	$(UV) python scripts/check_error_codes.py
 	@printf "=+= Error code registry and documentation check completed =+=\n\n"
 
+check.ignores: ## Verify that ignores (noqa, pylint, type: ignore, pyright, coverage) are justified
+	@printf "=+= Checking ignore justifications... =+=\n"
+	$(UV) python -m scripts.check_ignore_justifications
+	@printf "=+= Ignore justification check completed =+=\n\n"
+
+check.ignores.report: ## Write ignore justification report to out/lint/ignore_justifications.json
+	@printf "=+= Generating ignore justification report... =+=\n"
+	@mkdir -p $(OUTPUT_DIR)/lint
+	$(UV) python -m scripts.check_ignore_justifications --json > $(OUTPUT_DIR)/lint/ignore_justifications.json
+	@printf "Ignore justification report: $(OUTPUT_DIR)/lint/ignore_justifications.json\n"
+	@printf "=+= Ignore justification report completed =+=\n\n"
+
 check.license-headers: ## Verify Apache 2.0 license headers in source files
 	@printf "=+= Checking Apache 2.0 license headers in source files... =+=\n"
 	$(UV) python scripts/check_license_headers.py
 	@printf "=+= License header check completed =+=\n\n"
 
-check: check.error-codes check.license-headers ## Run all internal checks
+check: check.error-codes check.license-headers check.ignores ## Run all internal checks
 	@printf "  =+= All internal checks completed =+=\n\n"
 
 # ----------------------------------------------------------------------

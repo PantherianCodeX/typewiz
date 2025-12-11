@@ -24,7 +24,9 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from pathlib import Path  # noqa: TC003  # used at runtime in Pydantic models and dataclasses
+
+# ignore JUSTIFIED: config models require runtime Path handling in Pydantic/dataclasses
+from pathlib import Path  # noqa: TC003
 from typing import ClassVar, Final, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
@@ -313,52 +315,6 @@ class AuditConfig:
 
 
 @dataclass(slots=True)
-class Config:
-    """Top-level configuration for ratchetr.
-
-    This is the root configuration object that contains all settings for both
-    audit and ratchet operations.
-
-    Attributes:
-        audit: Configuration settings for type checking audits.
-        ratchet: Configuration settings for ratcheting (progressive type coverage).
-    """
-
-    audit: AuditConfig = field(default_factory=AuditConfig)
-    ratchet: RatchetConfig = field(default_factory=lambda: RatchetConfig())  # noqa: PLW0108
-
-
-@dataclass(slots=True)
-class PathOverride:
-    """Directory-specific configuration overrides.
-
-    This class represents configuration settings that apply to a specific directory
-    and its subdirectories, allowing different type checking configurations for
-    different parts of a codebase.
-
-    Attributes:
-        path: The directory path this override applies to.
-        engine_settings: Engine-specific configuration settings for this directory.
-        active_profiles: Active profile for each engine in this directory.
-    """
-
-    path: Path
-    engine_settings: dict[EngineName, EngineSettings] = field(
-        default_factory=_default_dict_str_enginesettings,
-    )
-    active_profiles: dict[EngineName, ProfileName] = field(
-        default_factory=_default_dict_engine_profile,
-    )
-
-    def __post_init__(self) -> None:
-        """Normalize configuration data after initialization."""
-        self.engine_settings = {EngineName(name): value for name, value in self.engine_settings.items()}
-        self.active_profiles = {
-            EngineName(name): ProfileName(profile) for name, profile in self.active_profiles.items()
-        }
-
-
-@dataclass(slots=True)
 class RatchetConfig:
     """Configuration settings for ratcheting (progressive type coverage).
 
@@ -391,6 +347,52 @@ class RatchetConfig:
     def __post_init__(self) -> None:
         """Normalize run IDs after initialization."""
         self.runs = [RunId(str(value).strip()) for value in self.runs if str(value).strip()]
+
+
+@dataclass(slots=True)
+class Config:
+    """Top-level configuration for ratchetr.
+
+    This is the root configuration object that contains all settings for both
+    audit and ratchet operations.
+
+    Attributes:
+        audit: Configuration settings for type checking audits.
+        ratchet: Configuration settings for ratcheting (progressive type coverage).
+    """
+
+    audit: AuditConfig = field(default_factory=AuditConfig)
+    ratchet: RatchetConfig = field(default_factory=RatchetConfig)
+
+
+@dataclass(slots=True)
+class PathOverride:
+    """Directory-specific configuration overrides.
+
+    This class represents configuration settings that apply to a specific directory
+    and its subdirectories, allowing different type checking configurations for
+    different parts of a codebase.
+
+    Attributes:
+        path: The directory path this override applies to.
+        engine_settings: Engine-specific configuration settings for this directory.
+        active_profiles: Active profile for each engine in this directory.
+    """
+
+    path: Path
+    engine_settings: dict[EngineName, EngineSettings] = field(
+        default_factory=_default_dict_str_enginesettings,
+    )
+    active_profiles: dict[EngineName, ProfileName] = field(
+        default_factory=_default_dict_engine_profile,
+    )
+
+    def __post_init__(self) -> None:
+        """Normalize configuration data after initialization."""
+        self.engine_settings = {EngineName(name): value for name, value in self.engine_settings.items()}
+        self.active_profiles = {
+            EngineName(name): ProfileName(profile) for name, profile in self.active_profiles.items()
+        }
 
 
 def ensure_list(value: object | None) -> list[str] | None:

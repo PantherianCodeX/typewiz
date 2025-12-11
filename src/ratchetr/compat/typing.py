@@ -78,6 +78,8 @@ else:
             dataclass_transform,
         )
     except ImportError:  # py<3.11
+        # ignore JUSTIFIED: reassign typing_extensions backports to keep the typing API
+        # stable across versions
         from typing_extensions import (  # type: ignore[assignment]
             LiteralString,
             Never,

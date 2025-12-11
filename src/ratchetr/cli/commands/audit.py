@@ -306,7 +306,8 @@ def _update_override_with_profiles(
 ) -> None:
     flattened: list[str] = []
     for pair in entries:
-        if len(pair) != 2:  # noqa: PLR2004 JUSTIFIED: a pair is always 2
+        # ignore JUSTIFIED: pairs must always contain exactly runner and profile tokens
+        if len(pair) != 2:  # noqa: PLR2004
             msg = "--profile entries must specify both runner and profile"
             raise SystemExit(msg)
         runner, profile = pair

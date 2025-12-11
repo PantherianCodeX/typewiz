@@ -127,6 +127,7 @@ def execute_manifest(args: argparse.Namespace) -> int:
     action_value = args.action
     try:
         action = action_value if isinstance(action_value, ManifestAction) else ManifestAction.from_str(action_value)
+    # ignore JUSTIFIED: argparse enforces valid choices; this branch is defensive only
     except ValueError as exc:  # pragma: no cover - argparse prevents invalid choices
         raise SystemExit(str(exc)) from exc
     if action is ManifestAction.VALIDATE:

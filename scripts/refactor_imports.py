@@ -28,7 +28,10 @@ from __future__ import annotations
 import argparse
 import ast
 import shutil
-import subprocess  # noqa: S404  # JUSTIFIED: leverages git CLI for repo-aware discovery and rewriting with explicit executable path
+
+# ignore JUSTIFIED: helper script uses git CLI via subprocess with explicit executable
+# paths
+import subprocess  # noqa: S404
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -157,7 +160,9 @@ def _parse_ensure_import_entries(entries: Iterable[str], root: Path) -> list[Ens
     ensure_list: list[EnsureImport] = []
     for entry in entries:
         parts = entry.split(":")
-        if len(parts) != 3:  # noqa: PLR2004 JUSTIFIED: must be exactly 3 parts
+        # ignore JUSTIFIED: mapping specification is fixed as 'path:module:symbols'
+        # literal segment count avoids accidental acceptance of malformed specs
+        if len(parts) != 3:  # noqa: PLR2004
             msg = f"Invalid ensure-import '{entry}'. Expected path:module:symbols."
             raise argparse.ArgumentTypeError(msg)
         rel_path, module, symbols_str = parts
@@ -184,13 +189,15 @@ def _git_executable() -> str:
 def _git_repo_root(start: Path) -> Path | None:
     try:
         command = [_git_executable(), "rev-parse", "--show-toplevel"]
-        result = subprocess.run(  # noqa: S603  # JUSTIFIED: executes git with explicit path and no untrusted input
+        # ignore JUSTIFIED: git is executed with an explicit path and fixed arguments for
+        # repository discovery
+        result = subprocess.run(  # noqa: S603
             command,
             check=True,
             capture_output=True,
             text=True,
             cwd=start,
-        )  # JUSTIFIED: executes git with explicit path for repository discovery
+        )
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
     root = result.stdout.strip()
@@ -203,7 +210,9 @@ def _git_tracked_python_files(root: Path) -> list[Path]:
         return []
     try:
         command = [_git_executable(), "-C", str(repo_root), "ls-files", "*.py"]
-        result = subprocess.run(  # noqa: S603  # JUSTIFIED: enumerates tracked files using git with explicit path and constant arguments
+        # ignore JUSTIFIED: git is executed with an explicit path and fixed arguments to
+        # enumerate tracked Python files
+        result = subprocess.run(  # noqa: S603
             command,
             check=True,
             capture_output=True,

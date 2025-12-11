@@ -558,9 +558,11 @@ def _render_readiness_options_section(
         lines.extend((
             "    <section>",
             "      <h3>Per-option readiness</h3>",
-            "      <table><thead><tr><th>Option</th><th>Ready</th>"
-            "<th>Close</th><th>Blocked</th><th>Close threshold</th></tr>"
-            "</thead><tbody>",
+            (
+                "      <table><thead><tr><th>Option</th><th>Ready</th>"
+                "<th>Close</th><th>Blocked</th><th>Close threshold</th></tr>"
+                "</thead><tbody>"
+            ),
         ))
         label_lookup = cast("dict[str, str]", CATEGORY_LABELS)
         for category, payload in readiness_options.items():

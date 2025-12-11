@@ -137,15 +137,21 @@ class MinimalEngine(BaseEngine):
     name = "stub"
 
     @override
+    # ignore JUSTIFIED: abstract test stub never executes engine runs
+    # run behaviour is validated via concrete engine implementations
     def run(self, context: EngineContext, paths: Sequence[RelPath]) -> EngineResult:  # pragma: no cover
         raise NotImplementedError
 
     @override
-    def fingerprint_targets(  # noqa: PLR6301  # JUSTIFIED: Minimal test stub for protocol
+    # ignore JUSTIFIED: minimal test stub must satisfy the BaseEngine fingerprint_targets
+    # protocol; inputs are unused because tests only assert option resolution behaviour
+    def fingerprint_targets(  # noqa: PLR6301
         self,
-        context: EngineContext,  # noqa: ARG002  # JUSTIFIED: Minimal test stub for protocol
-        paths: Sequence[RelPath],  # noqa: ARG002  # JUSTIFIED: Minimal test stub for protocol
+        context: EngineContext,
+        paths: Sequence[RelPath],
     ) -> list[str]:
+        _ = context
+        _ = paths
         return []
 
     @staticmethod

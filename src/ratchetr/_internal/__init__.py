@@ -37,7 +37,9 @@ _EXPOSED_MODULES: Final[tuple[str, ...]] = (
     "logging_utils",
     "utils",
 )
-__all__ = list(_EXPOSED_MODULES)  # pyright: ignore[reportUnsupportedDunderAll]  # JUSTIFIED: dynamic re-export module; exports are fully enumerated and stable
+# ignore JUSTIFIED: dynamic re-export module; dunder-all is derived from a fixed
+# tuple of internal module names
+__all__ = list(_EXPOSED_MODULES)  # pyright: ignore[reportUnsupportedDunderAll]
 
 
 def __getattr__(name: str) -> ModuleType:

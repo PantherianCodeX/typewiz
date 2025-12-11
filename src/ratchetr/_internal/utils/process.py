@@ -17,7 +17,10 @@
 from __future__ import annotations
 
 import logging
-import subprocess  # noqa: S404  # JUSTIFIED: centralised wrapper for safe, allowlisted subprocess execution
+
+# ignore JUSTIFIED: centralised subprocess wrapper is the single, audited place where
+# `subprocess` is allowed
+import subprocess  # noqa: S404
 import sys
 import time
 from dataclasses import dataclass
@@ -55,23 +58,23 @@ def run_command(
     """Run a subprocess safely and return its captured output.
 
     Security guardrails:
-    - Requires an iterable of string arguments; never uses ``shell=True``.
-    - Optionally enforces an allowlist for the executable (first arg) via ``allowed``.
+    - Requires an iterable of string arguments; never uses `shell=True`.
+    - Optionally enforces an allowlist for the executable (first arg) via `allowed`.
 
     Args:
         args: Command line to execute. The first element is treated as the
             executable and must be a non-empty string.
         cwd: Optional working directory for the child process.
         allowed: Optional allowlist of valid executables. When provided, the
-            first element of ``args`` must match one of these entries.
+            first element of `args` must match one of these entries.
 
     Returns:
-        ``CommandOutput`` containing the executed argument vector along with the
+        `CommandOutput` containing the executed argument vector along with the
         captured stdout/stderr, exit code, and duration in milliseconds.
 
     Raises:
-        ValueError: If ``args`` is empty or the executable is not allowlisted.
-        TypeError: If any argument is falsy (for example ``""``).
+        ValueError: If `args` is empty or the executable is not allowlisted.
+        TypeError: If any argument is falsy (for example `""`).
     """
     argv: Command = list(args)
     if not argv:
@@ -92,7 +95,9 @@ def run_command(
         " ".join(argv),
         extra=_structured_extra(details=debug_details),
     )
-    completed = subprocess.run(  # noqa: S603 - command arguments provided by caller
+    # ignore JUSTIFIED: subprocess is invoked without shell and executable is optionally
+    # allowlisted by caller
+    completed = subprocess.run(  # noqa: S603
         argv,
         check=False,
         cwd=str(cwd) if cwd else None,
@@ -100,7 +105,7 @@ def run_command(
         text=True,
     )
     duration_ms = (time.perf_counter() - start) * 1000
-    if completed.returncode != 0:
+    if completed.returncode:
         warning_details: dict[str, object] = {}
         if cwd:
             warning_details["cwd"] = str(cwd)

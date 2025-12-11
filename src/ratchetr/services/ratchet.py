@@ -315,6 +315,8 @@ def check_ratchet(
     )
 
 
+# ignore JUSTIFIED: update operation needs explicit configuration parameters;
+# collapsing into a config object would obscure the public API
 def update_ratchet(  # noqa: PLR0913
     *,
     manifest: ManifestData,
@@ -441,6 +443,8 @@ def rebaseline_ratchet(
     return RatchetRebaselineResult(refreshed=refreshed, output_path=output_path)
 
 
+# ignore JUSTIFIED: API surface requires a wide parameter list
+# for explicit snapshot reporting
 def describe_ratchet(  # noqa: PLR0913
     *,
     manifest_path: Path,

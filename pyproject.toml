@@ -227,10 +227,19 @@ preview = true
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "COM812",  # Trailing comma conflicts with formatter - REQUIRED
-    "ISC001",  # Implicit string concatenation conflicts with formatter - REQUIRED
-    "UP040",   # TypeAlias syntax allowed for python 3.10 support - REQUIRED,
-    "UP047",   # TypeVar syntax allowed for python 3.10 support - REQUIRED,
+    # Formatter / upgrade overlaps
+    "COM812", "ISC001",  # Trailing comma + implicit string concat handled by Ruff formatter
+    "UP040", "UP047",    # TypeAlias / TypeVar syntax kept for Python 3.10 support
+
+    # Docstring presence (missing-*) is enforced by Pylint docparams; Ruff focuses on style.
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
+
+    # Naming conventions (functions/classes/variables/constants) are enforced by Pylint (C0103);
+    # Ruff naming is disabled except for N812 (import-alias style).
+    "N801", "N802", "N803", "N804", "N805", "N806", "N811", "N813", "N814", "N815", "N816", "N817",
+
+    # Broad exception checks are handled by Pylint W0718.
+    "BLE001",
 ]
 fixable = ["ALL"]
 unfixable = []
@@ -247,8 +256,6 @@ unfixable = []
     "SLF001",    # Testing internals requires private member access
     "PLC2701",   # Tests must import private modules to test them
     "PLR2004",   # Magic numbers are standard in test data/fixtures
-    "D103",      # Test function docstrings add no value
-    "D102",      # Test method docstrings add no value
     "INP001",    # Tests don't require __init__.py
 ]
 # Conftest files: Import after code for fixture registration
@@ -283,6 +290,9 @@ max-branches = 12
 max-returns = 6
 max-statements = 50
 
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
@@ -296,92 +306,145 @@ docstring-code-line-length = 88
 # -------------------------------------
 
 [tool.pylint.main]
+# Python version target - matches project minimum
 py-version = "3.10"
+
+# Recursively check all Python files in directories
 recursive = true
+
+# Ensure src/ is on path for imports
 init-hook = "import sys; from pathlib import Path; ROOT = Path.cwd(); sys.path[:0] = [str(ROOT / 'src')]"
+
+# Ignore build artifacts, caches, and test files
 ignore-patterns = [
-    "^\\..*",
-    "^__pycache__$",
-    "\\.pyc$",
-    ".*\\.egg-info$",
+    "^\\..*",          # Hidden files/dirs
+    "^__pycache__$",   # Python cache
+    "\\.pyc$",         # Compiled Python
+    ".*\\.egg-info$",  # Package metadata
     "^build$",
     "^dist$",
-    "^tests$",
+    "^tests$",         # Tests have separate rules
     "test_.*\\.py$",
     ".*_test\\.py$",
 ]
+
+# Extensions provide advanced checks not in core Pylint
 load-plugins = [
-    "pylint.extensions.check_elif",
-    "pylint.extensions.bad_builtin",
-    "pylint.extensions.docparams",
-    "pylint.extensions.for_any_all",
-    "pylint.extensions.set_membership",
-    "pylint.extensions.code_style",
-    "pylint.extensions.overlapping_exceptions",
-    "pylint.extensions.typing",
-    "pylint.extensions.redefined_variable_type",
-    "pylint.extensions.comparison_placement",
-    "pylint.extensions.mccabe",
-    "pylint.extensions.confusing_elif",
-    "pylint.extensions.consider_refactoring_into_while_condition",
+    "pylint.extensions.check_elif",         # Suggest elif over else+if
+    "pylint.extensions.bad_builtin",        # Flag discouraged builtins (map, filter)
+    "pylint.extensions.docparams",          # ⭐ CRITICAL: Validates Google-style docstrings (W9011, W9015)
+    "pylint.extensions.for_any_all",        # Suggest any()/all() over loops
+    "pylint.extensions.set_membership",     # Suggest sets for membership tests
+    "pylint.extensions.code_style",         # Suggest dataclasses, namedtuples
+    "pylint.extensions.overlapping_exceptions",  # Detect redundant exception handlers
+    "pylint.extensions.typing",             # Flag deprecated typing aliases
+    "pylint.extensions.redefined_variable_type",  # ⭐ CRITICAL: Catch type instability (R0204)
+    "pylint.extensions.comparison_placement",     # Suggest constant on left in comparisons
+    "pylint.extensions.confusing_elif",     # Detect confusing elif indentation (R5601)
+    "pylint.extensions.consider_refactoring_into_while_condition",  # Loop refactoring suggestions
 ]
+
+# Enable all checks by default, disable specific ones in messages_control
 enable = "all"
 
 [tool.pylint.messages_control]
+# ==============================================================================
+# TOOL DOMAIN SEPARATION: Ruff vs Pylint
+# ==============================================================================
+# STRATEGY: Ruff is primary linter (fast, modern, actively expanding)
+#           Pylint specializes in semantic analysis Ruff doesn't cover
+#
+# RUFF HANDLES (mature & superior):
+#   - Unused imports (F401) - more accurate than Pylint W0611
+#   - Security (S*) - comprehensive security rules
+#   - Import sorting (I) - isort-compatible
+#   - Style/formatting (E/W/Q) - formatter-aware
+#   - Modern Python (UP) - upgrade syntax
+#
+# PYLINT HANDLES (unique strengths):
+#   - Semantic refactoring (R1*/R2*/R3*) - logic improvements
+#   - Type redefinitions (R0204) - Ruff doesn't catch
+#   - Documentation enforcement (W9011/W9015) - via docparams extension
+#   - Structural complexity metrics (locals/parents/attributes/public methods/bool expr)
+#   - Code patterns (R1716, R5601, W1404) - Ruff doesn't have equivalents
+#   - Duplicate code (R0801) - currently disabled, optional
+# ==============================================================================
+
 disable = [
-    "line-too-long",
-    "bad-indentation",
-    "too-few-public-methods",
-    "no-self-argument",
-    "redefined-outer-name",
-    "duplicate-code",
-    "missing-module-docstring",
-    "missing-class-docstring",
-    "missing-function-docstring",
-]
-enable = [
-    "use-symbolic-message-instead",
-    "useless-suppression",
+    # === FORMATTING & STYLE - Delegated to Ruff ===
+    "line-too-long",        # C0301 - Ruff handles via line-length = 120
+    "bad-indentation",      # W0311 - Ruff formatter handles indentation
+
+    # === DESIGN CHOICES - Intentional deviations ===
+    "too-few-public-methods",  # R0903 - Valid for simple data classes, mixins
+    "no-self-argument",        # E0213 - Needed for test fixtures, property descriptors
+
+    # === TEST PATTERNS - Necessary for pytest ===
+    "redefined-outer-name",  # W0621 - Pytest fixtures intentionally shadow
+
+    # === CODE DUPLICATION - Disabled for now ===
+    "duplicate-code",  # R0801 - Too noisy for current codebase
+                       # TODO: Re-evaluate after major refactoring complete
+
+    # === STYLE PREFERENCES - Team decision ===
+    "consider-using-assignment-expr",  # R6103 - Walrus operator not always more readable
+                                       # Developer should decide case-by-case
+
+    # === COMPLEXITY & SIZE - Delegated to Ruff where supported ===
+    "too-many-arguments",         # R0913 - Enforced by Ruff's pylint plugin (max-args)
+    "too-many-branches",          # R0912 - Enforced by Ruff's pylint plugin (max-branches)
+    "too-many-return-statements", # R0911 - Enforced by Ruff's pylint plugin (max-returns)
+    "too-many-statements",        # R0915 - Enforced by Ruff's pylint plugin (max-statements)
+
+    # === RUFF OVERLAP - Ruff is more accurate ===
+    "unused-import",  # W0611 - FALSE POSITIVES on cast() string type annotations
+                      # Ruff F401 correctly understands imports used in:
+                      #   - cast(\"Type\", value)
+                      #   - cast(\"list[Type]\", value)
+                      # Pylint's static analysis doesn't parse string literals
 ]
 
 [tool.pylint.format]
-max-line-length = 120
 expected-line-ending-format = "LF"
 ignore-long-lines = "^\\s*(# )?<?https?://\\S+>?$"
 max-module-lines = 1000
 
 [tool.pylint.design]
-max-complexity = 10
-max-args = 7
-max-locals = 15
-max-returns = 6
-max-branches = 12
-max-statements = 50
-max-parents = 7
-max-attributes = 8
-min-public-methods = 0
+# ⭐ STRICT COMPLEXITY ENFORCEMENT - User requirement
+# Rationale: Ruff enforces core per-function complexity; Pylint extends with
+# additional structural metrics not yet available in Ruff.
+max-locals = 15        # Local variables per function (Pylint-only)
+max-parents = 7        # Inheritance depth (Pylint-only)
+max-attributes = 8     # Instance attributes per class (Pylint-only)
+min-public-methods = 0 # Allow utility classes with 0-1 methods
 max-public-methods = 20
-max-bool-expr = 5
+max-bool-expr = 5      # Boolean expressions in one statement (Pylint-only)
 
 [tool.pylint.basic]
+# ⭐ NAMING CONVENTIONS - Enforced strictly
+# Rationale: Ruff N* doesn't cover module-level private constants
 argument-naming-style = "snake_case"
 attr-naming-style = "snake_case"
-class-attribute-naming-style = "any"
+class-attribute-naming-style = "any"        # Allow both UPPER_CASE and snake_case
 class-const-naming-style = "UPPER_CASE"
 class-naming-style = "PascalCase"
-const-naming-style = "UPPER_CASE"
+const-naming-style = "UPPER_CASE"          # ⭐ Catches _pkg_version violations
 function-naming-style = "snake_case"
 inlinevar-naming-style = "any"
 method-naming-style = "snake_case"
 module-naming-style = "snake_case"
 variable-naming-style = "snake_case"
-docstring-min-length = 10
-no-docstring-rgx = "^_"
+
+# ⭐ DOCUMENTATION REQUIREMENTS - User wants robust docstrings
+docstring-min-length = 10              # Min chars for docstring requirement
+no-docstring-rgx = "^_"                # Private functions don't need docstrings
 good-names = ["i", "j", "k", "ex", "db", "id", "pk", "_", "e"]
-accept-no-param-doc = false
-accept-no-raise-doc = false
-accept-no-return-doc = false
-accept-no-yields-doc = false
+
+# Strict docstring parameter/return documentation
+accept-no-param-doc = false   # ⭐ Require all params documented (W9015)
+accept-no-raise-doc = false  # Require exceptions documented
+accept-no-return-doc = false  # ⭐ Require returns documented (W9011)
+accept-no-yields-doc = false  # Require yields documented
 
 [tool.pylint.imports]
 deprecated-modules = ["optparse", "tkinter.tix"]
@@ -393,7 +456,8 @@ overgeneral-exceptions = ["builtins.BaseException", "builtins.Exception"]
 
 [tool.pylint.logging]
 logging-modules = ["logging"]
-logging-format-style = "new"
+logging-format-style = "old"  # ⭐ CRITICAL: Matches actual codebase usage (%s not {})
+                              # Prevents E1205 false positives
 
 [tool.pylint.refactoring]
 max-nested-blocks = 5

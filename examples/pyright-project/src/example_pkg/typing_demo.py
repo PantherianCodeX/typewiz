@@ -12,41 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ignore JUSTIFIED: File contains purposely bad code for demonstation purposes
+# pragma: no cover  # type: ignore  # ruff: noqa: PGH003  # pylint: skip-file
+
 """Demonstration of typing issues that pyright can detect."""
 
 from typing import Optional
 
 
-# Intentional: potential None access so pyright reports missing guard; noqa keeps Ruff from blocking this demo
-def process_optional(value: Optional[str]) -> int:  # noqa: D103, UP045
-    # Pyright will flag potential None access
+# ignore JUSTIFIED: demo omits a None guard so pyright can report unsafe access while
+# Ruff tolerates this pattern
+def process_optional(value: Optional[str]) -> int:  # noqa: UP045
     return len(value)  # Should check if value is None first
 
 
-# Intentional: parameter left as implicit Any so pyright reports it; noqa keeps Ruff from blocking this demo
-def implicit_any(data):  # Parameter has implicit Any type  # noqa: ANN001, ANN201, D103
+# ignore JUSTIFIED: demo uses implicit Any so pyright can report missing parameter
+# types
+def implicit_any(data):  # noqa: ANN001, ANN201
     return data.get("key")  # Unknown attribute access
 
 
-# Intentional: union type without proper narrowing so pyright reports invalid attribute access; noqa keeps Ruff from blocking this demo  # noqa: E501
-def type_narrowing_demo(value: str | int) -> str:  # noqa: D103
-    # Pyright excels at type narrowing
+# ignore JUSTIFIED: demo omits type narrowing so pyright can report invalid attribute
+# access on a union
+def type_narrowing_demo(value: str | int) -> str:
     return value.upper()  # Error: 'int' has no attribute 'upper'
 
 
-# Intentional: class uses overly general typing so pyright reports configuration shape issues; noqa keeps Ruff from blocking this demo  # noqa: E501
-class DataProcessor:  # noqa: D101
-    # Intentional: config annotated as plain dict so pyright reports overly general type; noqa keeps Ruff from blocking this demo  # noqa: E501
-    def __init__(self, config: dict):  # dict is too general  # noqa: ANN204, D107
+class DataProcessor:
+    # ignore JUSTIFIED: demo uses an overly general dict type so pyright can report
+    # configuration shape issues
+    def __init__(self, config: dict):  # noqa: ANN204
         self.config = config
 
-    # Intentional: missing return annotation so pyright reports incomplete typing; noqa keeps Ruff from blocking this demo  # noqa: E501
-    def get_setting(self, key: str):  # Missing return type  # noqa: ANN201, D102
+    # ignore JUSTIFIED: demo omits a return annotation so pyright can report incomplete
+    # method typing
+    def get_setting(self, key: str):  # noqa: ANN201
         return self.config.get(key, "default")
 
 
-# Intentional: match statement omits the None case so pyright reports incomplete pattern coverage; noqa keeps Ruff from blocking this demo  # noqa: E501
-def incomplete_match(value: str | int | None) -> str:  # noqa: D103
+# Intentional: match statement omits the None case so pyright reports incomplete
+# pattern coverage
+def incomplete_match(value: str | int | None) -> str:
     match value:
         case str():
             return value
@@ -56,6 +62,9 @@ def incomplete_match(value: str | int | None) -> str:  # noqa: D103
 
 
 if __name__ == "__main__":
-    # Intentional: runtime print examples so users can see outputs; T201 is suppressed so Ruff does not block this demo
+    # ignore JUSTIFIED: demo uses print statements to show runtime behaviour; T201 is
+    # suppressed only in this example module
     print(process_optional("test"))  # noqa: T201
+    # ignore JUSTIFIED: demo uses print statements to show runtime behaviour; T201 is
+    # suppressed only in this example module
     print(implicit_any({"key": "value"}))  # noqa: T201

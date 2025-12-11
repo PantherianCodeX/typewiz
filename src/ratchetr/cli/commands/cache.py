@@ -60,7 +60,7 @@ def register_cache_command(subparsers: SubparserCollection) -> None:
 
 def _handle_clear(args: argparse.Namespace) -> int:
     project_root = resolve_project_root(getattr(args, "project_root", None))
-    target: Path = (args.path if args.path is not None else (project_root / ".ratchetr_cache")).resolve()
+    target: Path = (args.path if args.path is not None else project_root / ".ratchetr_cache").resolve()
     if not target.exists():
         echo(f"[ratchetr] cache directory not found at {target}; nothing to remove")
         return 0

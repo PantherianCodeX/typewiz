@@ -124,7 +124,9 @@ class FileReadinessPayload(FileReadinessPayloadBase, total=False):
     notes: list[str]
     recommendations: list[str]
     categories: dict[CategoryName, int]
-    categoryStatus: dict[CategoryName, ReadinessStatus]  # noqa: N815,TD002,FIX002,TD003 # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
+    # ignore JUSTIFIED: readiness summary payload uses camelCase keys to align with
+    # external JSON schema
+    categoryStatus: dict[CategoryName, ReadinessStatus]  # noqa: TD002, FIX002, TD003  # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,6 +245,8 @@ def _coerce_option_entries(value: object) -> list[ReadinessOptionEntry]:
     return entries
 
 
+# ignore JUSTIFIED: strict entry builder performs tightly coupled field coercions;
+# splitting further would obscure the data-mapping logic
 def _build_strict_entry(raw: Mapping[str, object]) -> ReadinessStrictEntry:  # noqa: C901
     """Build a ReadinessStrictEntry from raw data.
 
@@ -599,7 +603,9 @@ def _folder_payload_for_status(
     for option_entry in entries:
         try:
             records.append(_normalise_folder_entry(option_entry))
-        except ValueError as exc:  # noqa: PERF203 - JUSTIFIED: Preserves entry-level error context for debugging
+        # ignore JUSTIFIED: preserve original ValueError context when wrapping in
+        # ReadinessValidationError
+        except ValueError as exc:  # noqa: PERF203
             raise ReadinessValidationError(str(exc)) from exc
     records = [record for record in records if _folder_matches_severity(record, severities)]
     if limit > 0:
@@ -632,7 +638,9 @@ def _file_payload_for_status(
     for strict_entry in entries:
         try:
             records.append(_normalise_file_entry(strict_entry))
-        except ValueError as exc:  # noqa: PERF203 - JUSTIFIED: Preserves entry-level error context for debugging
+        # ignore JUSTIFIED: preserve original ValueError context when wrapping in
+        # ReadinessValidationError
+        except ValueError as exc:  # noqa: PERF203
             raise ReadinessValidationError(str(exc)) from exc
     records = [record for record in records if _file_matches_severity(record, severities)]
     if limit > 0:

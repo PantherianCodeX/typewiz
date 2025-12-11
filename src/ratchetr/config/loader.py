@@ -112,6 +112,7 @@ def _discover_path_overrides(root: Path) -> list[PathOverride]:
             directory = config_path.parent.resolve()
             try:
                 raw = tomllib.loads(config_path.read_text(encoding="utf-8"))
+            # ignore JUSTIFIED: config files may be unreadable/malformed; convert to ConfigReadError
             except Exception as exc:  # pragma: no cover - IO errors
                 raise ConfigReadError(config_path, exc) from exc
             try:
@@ -168,6 +169,7 @@ def load_config(explicit_path: Path | None = None) -> Config:
                 raw_map = cast("dict[str, object]", tool_section_any)
         try:
             cfg_model = ConfigModel.model_validate(raw_map)
+        # ignore JUSTIFIED: configuration files may be invalid; raise structured error
         except ValidationError as exc:  # pragma: no cover - configuration errors
             raise InvalidConfigFileError(candidate, exc) from exc
         audit = model_to_dataclass(cfg_model.audit)

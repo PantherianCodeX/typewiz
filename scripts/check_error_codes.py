@@ -126,5 +126,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
+# ignore JUSTIFIED: CLI entrypoint is trivial and only used when invoking the
+# script directly; logic is fully covered by unit tests
 if __name__ == "__main__":  # pragma: no cover - manual invocation
     raise SystemExit(main())

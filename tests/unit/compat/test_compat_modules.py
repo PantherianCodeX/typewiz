@@ -55,6 +55,8 @@ class _EnumModule(ModuleType):
 
     Enum: type[_enum.Enum] = _enum.Enum
 
+    # ignore JUSTIFIED: AttributeError trampoline exists solely to satisfy type checking;
+    # behaviour is exercised via the public compat helpers
     def __getattr__(self, name: str) -> object:  # pragma: no cover - typing only
         raise AttributeError(name)
 

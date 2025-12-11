@@ -17,7 +17,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from pathlib import Path  # noqa: TC003  # used at runtime by Pydantic
+
+# ignore JUSTIFIED: Pydantic uses Path at runtime for coercion
+from pathlib import Path  # noqa: TC003
 from typing import Any, ClassVar, Final, Literal, TypeAlias, cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -25,7 +27,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from ratchetr.compat import TypedDict
 from ratchetr.core.model_types import Mode, SeverityLevel
 from ratchetr.core.type_aliases import RunId
-from ratchetr.json import JSONValue  # noqa: TC001  # used in runtime model annotations
+
+# ignore JUSTIFIED: runtime model annotations include JSONValue
+from ratchetr.json import JSONValue  # noqa: TC001
 
 RatchetSchemaVersion: TypeAlias = Literal[1]
 
@@ -248,7 +252,9 @@ class EngineSignaturePayload(TypedDict):
 
     tool: str | None
     mode: Mode | None
-    engineOptions: dict[str, JSONValue]  # noqa: N815,TD002,FIX002,TD003 # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
+    # ignore JUSTIFIED: engine configuration payload uses camelCase keys to align with
+    # external JSON schema
+    engineOptions: dict[str, JSONValue]  # noqa: TD002, FIX002, TD003  # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
 
 
 class EngineSignaturePayloadWithHash(EngineSignaturePayload, total=False):

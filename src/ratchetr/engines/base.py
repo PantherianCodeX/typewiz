@@ -178,7 +178,13 @@ class BaseEngine(Protocol):
 
     name: str
 
-    def run(self, context: EngineContext, paths: Sequence[RelPath]) -> EngineResult:
+    # ignore JUSTIFIED: protocol method must document the EngineResult contract beyond
+    # the return annotation
+    def run(  # pylint: disable=redundant-returns-doc
+        self,
+        context: EngineContext,
+        paths: Sequence[RelPath],
+    ) -> EngineResult:
         """Execute the type checker engine on the specified paths.
 
         Args:
@@ -186,9 +192,12 @@ class BaseEngine(Protocol):
             paths: Sequence of relative paths to analyze.
 
         Returns:
-            EngineResult: Results including diagnostics, exit code, and timing.
+            EngineResult: Aggregated engine results containing diagnostics for all
+            analysed paths, the engine's exit code, and timing metadata.
         """
-        ...
+        # ignore JUSTIFIED: protocol stub uses ellipsis and is excluded from coverage;
+        # concrete engine implementations are tested instead
+        ...  # pragma: no cover  # pylint: disable=unnecessary-ellipsis
 
     @staticmethod
     def category_mapping() -> CategoryMapping:
@@ -199,8 +208,9 @@ class BaseEngine(Protocol):
         substrings used for readiness analysis.
 
         Returns:
-            CategoryMapping: Dictionary mapping category names to rule patterns.
-                Empty dict if no custom categorization is needed.
+            CategoryMapping: Mapping from category names to rule code patterns
+            used to group diagnostics for readiness analysis. Implementations
+            may return an empty mapping if no custom categorisation is needed.
         """
         return {}
 

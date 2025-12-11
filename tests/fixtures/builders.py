@@ -355,7 +355,10 @@ class TestDataBuilder:
         }
 
     @staticmethod
-    def _build_sample_tabs(  # noqa: PLR0913  # JUSTIFIED: test data builder requires explicit, keyword-only inputs for readability across many callers
+    # ignore JUSTIFIED: test data builder requires explicit keyword-only inputs for
+    # readability; many keyword parameters reflect the shape of the readiness dashboard
+    # payload
+    def _build_sample_tabs(  # noqa: PLR0913
         *,
         severity_totals: CountsBySeverity,
         category_totals: CountsByCategory,

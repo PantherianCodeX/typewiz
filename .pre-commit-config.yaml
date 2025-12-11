@@ -42,6 +42,11 @@ repos:
         entry: uv run python scripts/check_error_codes.py
         language: system
         pass_filenames: false
+      - id: check-ignore-justifications
+        name: Check ignore justifications for lint/typing/coverage
+        entry: make check.ignores
+        language: system
+        pass_filenames: false
       - id: lint-fix
         name: ruff check and format autofix
         entry: make fix

@@ -148,7 +148,11 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
+# ignore JUSTIFIED: TYPE_CHECKING guard prevents runtime execution; branch is only for
+# static typing support
 if TYPE_CHECKING:  # pragma: no cover
+    # ignore JUSTIFIED: imported collections.abc names are only needed for static typing
+    # and are not exercised at runtime
     from collections.abc import Iterable, Sequence
 
 Section = tuple[str, str]  # (slug, label)

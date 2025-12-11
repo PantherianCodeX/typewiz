@@ -80,6 +80,69 @@ make package.clean        # remove build/dist artifacts
 
 All CI jobs invoke these targets, so running them locally ensures parity.
 
+## Ignore conventions (Ruff, Pylint, typing, coverage)
+
+All suppressions are treated as exceptional and must be both:
+
+- Narrowly scoped (single line or single file), and
+- Explicitly justified in an adjacent comment.
+
+### Per-line ignores
+
+For any `noqa` / `pylint: disable` / `type: ignore` / `pyright: ignore[...]` used on a single line:
+
+- Place a justification immediately above the ignored line:
+
+  ```python
+  # ignore JUSTIFIED: short, specific reason
+  value = cast(SomeType, raw)  # type: ignore[assignment]
+  ```
+
+- The `ignore JUSTIFIED` line:
+  - Must not include codes, only the human-readable reason.
+  - Should be concise enough to stay well within the 120‑char line limit where possible.
+  - Line limits include indentation and is enforced by ruff.
+  - Can be single-line or multi-line reason.
+
+### Per-file ignores
+
+When an entire module is a deliberate special case (e.g., protocol stubs, argparse wrappers, demo examples):
+
+- Add a short, generalized justification comment followed by the suppressions near the top of the file.
+- Place block below the license with 1 blank line above and below the new block:
+
+  ```python
+  # Copyright 2025 CrownOps Engineering
+  ...
+
+  # ignore JUSTIFIED: this module mirrors argparse signatures and legitimately uses
+  # Any and ellipsis stubs
+  # ruff: noqa: ANN401  # pylint: disable=redundant-returns-doc,unnecessary-ellipsis
+
+  ...
+  ```
+
+- The justification must explain why the rule does not conceptually apply to this module.
+
+## What owns what
+
+- Ruff:
+  - Primary linter and formatter (including complexity, style, and most correctness checks).
+  - We use targeted `# noqa` only for true false positives or unavoidable external APIs.
+- Pylint:
+  - Semantic/documentation checks (docparams, missing docstrings, structural metrics) and selected refactor hints.
+- Typing (mypy/pyright):
+  - `# type: ignore[...]` and `# pyright: ignore[...]` are last resorts:
+    - Only for genuine false positives or unavoidable version-compat patterns.
+    - Always accompanied by an `# ignore JUSTIFIED: ...` line explaining why the type checker is being overridden.
+- Coverage:
+  - `# pragma: no cover` is allowed for protocol/TYPE_CHECKING stubs and defensive/logging‑only branches.
+  - When combined with other ignores (e.g., `unnecessary-ellipsis`), add a single `# ignore JUSTIFIED: ...` line above the stub explaining why it is excluded from coverage.
+
+- General:
+  - Use per-file `disable` for whole-module patterns (e.g., protocol stubs) where the rule(s) are not applicable to anything within the file.
+  - Use per-line `disable` for all other ignores (default)
+
 ## Release Process
 
 1. **Version Bump**: Update `version` in `pyproject.toml`

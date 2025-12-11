@@ -45,9 +45,11 @@ class _MsvcrtModule(Protocol):
 
 
 def _import_optional(name: str) -> object | None:
+    # ignore JUSTIFIED: platform-dependent optional imports
     try:  # pragma: no cover - platform dependent
         return importlib.import_module(name)
-    except ImportError:  # pragma: no cover - platform dependent
+    # ignore JUSTIFIED: platform-dependent optional imports
+    except ImportError:  # pragma: no cover
         return None
 
 

@@ -112,7 +112,9 @@ def _md_run_summary(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:
     return lines
 
 
-def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:  # noqa: PLR0914  # JUSTIFIED: function assembles rich markdown for each engine in a single, readable block
+# ignore JUSTIFIED: function assembles rich markdown per engine in one readable block;
+# further splitting would fragment related presentation logic
+def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:  # noqa: PLR0914
     lines = ["", "### Engine details"]
     if not run_summary:
         lines.append("- No engine data available")

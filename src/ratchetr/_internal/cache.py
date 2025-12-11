@@ -285,7 +285,9 @@ def fingerprint_path(path: Path) -> FileHashPayload:
     return _fingerprint(path)
 
 
-def _parse_cache_entry(key_str: str, entry: _EntryJson) -> tuple[CacheKey, CacheEntry] | None:  # noqa: PLR0914  # JUSTIFIED: cache entries mirror on-disk schema; a single helper keeps coercion logic coherent and testable
+# ignore JUSTIFIED: cache entries mirror on-disk JSON; a single helper keeps coercion
+# logic coherent and testable
+def _parse_cache_entry(key_str: str, entry: _EntryJson) -> tuple[CacheKey, CacheEntry] | None:  # noqa: PLR0914
     cache_key = CacheKey(key_str)
     diagnostics_any = entry.get("diagnostics", []) or []
     file_hashes_any = entry.get("file_hashes", {}) or {}
@@ -486,6 +488,7 @@ class EngineCache:
             tool_summary=(cast("ToolSummary", dict(entry.tool_summary)) if entry.tool_summary is not None else None),
         )
 
+    # ignore JUSTIFIED: update aggregates many cache fields in one write to keep consistency
     def update(  # noqa: PLR0913
         self,
         key: CacheKey,
@@ -584,7 +587,8 @@ def _git_list_files(repo_root: Path) -> set[str]:
             cwd=repo_root,
             allowed={git_cmd},
         )
-    except (TypeError, ValueError) as exc:  # pragma: no cover - defensive: validate argv and allowlist
+    # ignore JUSTIFIED: defensive handling for invalid argv/allowlist
+    except (TypeError, ValueError) as exc:  # pragma: no cover
         logger.debug(
             "git ls-files failed: %s",
             exc,
@@ -592,13 +596,15 @@ def _git_list_files(repo_root: Path) -> set[str]:
         )
         return set()
 
-    if result.exit_code != 0:
+    if result.exit_code:
         return set()
 
     return {line.strip() for line in result.stdout.splitlines() if line.strip()}
 
 
-def collect_file_hashes(  # noqa: C901, PLR0912, PLR0914, PLR0915  # JUSTIFIED: central hashing pipeline coordinates several limits and baselines; splitting further would harm coherence
+# ignore JUSTIFIED: central hashing pipeline coordinates limits, baselines, and
+# budgets; splitting would harm coherence
+def collect_file_hashes(  # noqa: C901, PLR0912, PLR0914, PLR0915
     project_root: Path,
     paths: Iterable[str],
     *,
@@ -632,6 +638,8 @@ def collect_file_hashes(  # noqa: C901, PLR0912, PLR0914, PLR0915  # JUSTIFIED: 
     stop = False
     worker_count = _effective_hash_workers(hash_workers)
 
+    # ignore JUSTIFIED: helper must coordinate conditions and early exits; further
+    # extraction would hurt readability
     def _maybe_add(file_path: Path) -> None:  # noqa: C901
         nonlocal truncated, bytes_seen, stop
         if stop:
@@ -685,7 +693,7 @@ def collect_file_hashes(  # noqa: C901, PLR0912, PLR0914, PLR0915  # JUSTIFIED: 
             for root, dirs, files in os.walk(absolute, followlinks=False):
                 dirs[:] = sorted(d for d in dirs if not (Path(root) / d).is_symlink())
                 for fname in sorted(files):
-                    if not (fname.endswith((".py", ".pyi"))):
+                    if not fname.endswith((".py", ".pyi")):
                         continue
                     _maybe_add(Path(root) / fname)
                     if stop:

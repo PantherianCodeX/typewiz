@@ -150,7 +150,9 @@ def execute_ratchet(args: argparse.Namespace) -> int:
     action_value = args.action
     try:
         action = action_value if isinstance(action_value, RatchetAction) else RatchetAction.from_str(action_value)
-    except ValueError as exc:  # pragma: no cover - argparse prevents invalid choices
+    # ignore JUSTIFIED: argparse restricts choices;
+    # branch guarded by argparse defaults to SystemExit
+    except ValueError as exc:  # pragma: no cover
         raise SystemExit(str(exc)) from exc
     explicit_manifest: Path | None = getattr(args, "manifest", None)
     explicit_ratchet: Path | None = getattr(args, "ratchet", None)

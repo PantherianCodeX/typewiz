@@ -256,7 +256,9 @@ def _build_cache_flags(
         cache_flags.append(f"config={cfg_path.as_posix()}")
         try:
             fingerprint = fingerprint_path(cfg_path)
-        except (OSError, ValueError) as exc:  # pragma: no cover - filesystem/hash errors
+        # ignore JUSTIFIED: fingerprinting may fail on missing/locked files; errors are
+        # logged and ignored
+        except (OSError, ValueError) as exc:  # pragma: no cover
             # OSError: file not found, permissions, etc.
             # ValueError: hash computation errors
             logger.debug(
@@ -296,6 +298,8 @@ def _fingerprint_targets_for_run(
     )
 
 
+# ignore JUSTIFIED: cache-preparation helper keeps parameters explicit; a config
+# object would obscure call sites
 def _prepare_cache_inputs(  # noqa: PLR0913
     *,
     engine: BaseEngine,
@@ -483,6 +487,8 @@ def resolve_engine_options(
     )
 
 
+# ignore JUSTIFIED: engine execution pipeline needs explicit context parameters;
+# splitting further would obscure control flow
 def execute_engine_mode(  # noqa: PLR0913
     *,
     engine: BaseEngine,
@@ -562,7 +568,9 @@ def execute_engine_mode(  # noqa: PLR0913
 
     try:
         result = engine.run(context, mode_paths)
-    except Exception as exc:
+    # ignore JUSTIFIED: engine plugins may raise arbitrary exceptions;
+    # wrapper must convert all failures into structured RunResult
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.exception(
             "Engine %s:%s failed",
             engine.name,

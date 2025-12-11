@@ -95,8 +95,12 @@ class ReadinessEntry(TypedDict):
     errors: int
     warnings: int
     information: int
-    codeCounts: dict[str, int]  # noqa: N815,TD002,FIX002,TD003 # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
-    categoryCounts: dict[CategoryKey, int]  # noqa: N815,TD002,FIX002,TD003 # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
+    # ignore JUSTIFIED: TypedDict fields must use camelCase to align with the JSON
+    # readiness payload
+    codeCounts: dict[str, int]  # noqa: TD002, FIX002, TD003  # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
+    # ignore JUSTIFIED: TypedDict fields must use camelCase to align with the JSON
+    # readiness payload
+    categoryCounts: dict[CategoryKey, int]  # noqa: TD002, FIX002, TD003  # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
     recommendations: list[str]
 
 
@@ -297,7 +301,7 @@ def _strict_status_details(
     Returns:
         tuple[ReadinessStatus, list[str]]: The overall status and any explanatory notes.
     """
-    if total_diagnostics == 0:
+    if not total_diagnostics:
         return ReadinessStatus.READY, []
     blocking_categories = [
         f"{category}"
@@ -383,7 +387,7 @@ def _status_for_category(category: CategoryKey, count: int) -> ReadinessStatus:
     Returns:
         ReadinessStatus: READY if count is 0, CLOSE if below threshold, BLOCKED otherwise.
     """
-    if count == 0:
+    if not count:
         return ReadinessStatus.READY
     close_threshold = CATEGORY_CLOSE_THRESHOLD.get(category, DEFAULT_CLOSE_THRESHOLD)
     return ReadinessStatus.CLOSE if count <= close_threshold else ReadinessStatus.BLOCKED

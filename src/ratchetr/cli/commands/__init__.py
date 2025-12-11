@@ -23,7 +23,9 @@ if TYPE_CHECKING:
     from types import ModuleType
 
 _EXPORTED_MODULES: Final[tuple[str, ...]] = ("audit", "cache", "engines", "help", "manifest", "query", "ratchet")
-__all__ = list(_EXPORTED_MODULES)  # pyright: ignore[reportUnsupportedDunderAll]  # JUSTIFIED: dynamic CLI submodule re-export; module names are statically enumerated
+# ignore JUSTIFIED: dynamic CLI submodule re-export; dunder-all is populated from a
+# fixed tuple of module names
+__all__ = list(_EXPORTED_MODULES)  # pyright: ignore[reportUnsupportedDunderAll]
 
 
 def __getattr__(name: str) -> ModuleType:

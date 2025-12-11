@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ignore JUSTIFIED: subparser protocol mirrors argparse internals; Any/ellipsis allow
+# keyword passthroughs without changing runtime behaviour
+# ruff: noqa: ANN401  # pylint: disable=redundant-returns-doc,unnecessary-ellipsis
+
+
 """Shared CLI type definitions."""
 
 from __future__ import annotations
@@ -35,7 +40,7 @@ class SubparserCollection(Protocol):
     def add_parser(
         self,
         name: str,
-        **kwargs: Any,  # noqa: ANN401  # JUSTIFIED: Protocol needs Any for kwargs to match argparse's _SubParsersAction signature with contravariance
+        **kwargs: Any,
     ) -> argparse.ArgumentParser:
         """Add a subparser to the collection.
 
@@ -44,6 +49,6 @@ class SubparserCollection(Protocol):
             **kwargs: Keyword arguments forwarded to ArgumentParser (help, formatter_class, etc.).
 
         Returns:
-            The created ArgumentParser for the subcommand.
+            argparse.ArgumentParser: The created parser instance for the subcommand.
         """
-        ...  # pragma: no cover - Protocol definition
+        ...

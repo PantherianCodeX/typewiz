@@ -150,16 +150,16 @@ class FolderSummary:
         unknown = self._unknown_count()
         optional = self._optional_count()
         recommendations: list[str] = []
-        if total == 0:
+        if not total:
             recommendations.append(RecommendationCode.STRICT_READY.value)
         else:
-            if unknown == 0:
+            if not unknown:
                 recommendations.append(
                     RecommendationCode.CANDIDATE_ENABLE_UNKNOWN_CHECKS.value,
                 )
             else:
                 recommendations.append(f"resolve {unknown} unknown-type issues")
-            if optional == 0:
+            if not optional:
                 recommendations.append(
                     RecommendationCode.CANDIDATE_ENABLE_OPTIONAL_CHECKS.value,
                 )
@@ -348,6 +348,8 @@ def _split_rel_path(rel_path: str) -> tuple[str, ...]:
     return parts
 
 
+# ignore JUSTIFIED: summary helper updates several global counters in one place;
+# extra wrapper objects would harm readability
 def _update_file_summary(  # noqa: PLR0913
     summary: FileSummary,
     *,

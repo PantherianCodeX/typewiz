@@ -392,7 +392,9 @@ def collect_readiness_view(
             limit=limit,
             severities=severities,
         )
-    except ReadinessValidationError as exc:  # pragma: no cover - exercised via CLI tests
+    # ignore JUSTIFIED: readiness validation path covered in CLI tests;
+    # conversion to SystemExit is user-facing
+    except ReadinessValidationError as exc:  # pragma: no cover
         code = error_code_for(exc)
         message = f"({code}) Invalid readiness data encountered: {exc}"
         raise SystemExit(message) from exc
@@ -558,7 +560,7 @@ def _build_folder_hotspot_entries(
         if recommendations_list:
             folder_record["recommendations"] = [str(item) for item in recommendations_list]
         folder_entries.append(folder_record)
-        if limit > 0 and len(folder_entries) >= limit:
+        if 0 < limit <= len(folder_entries):
             break
     return folder_entries[:limit] if limit > 0 else folder_entries
 
@@ -631,7 +633,7 @@ def query_runs(
                 command=" ".join(entry.get("command", [])),
             )
         )
-        if limit > 0 and len(records) >= limit:
+        if 0 < limit <= len(records):
             break
     return records
 
@@ -664,7 +666,7 @@ def query_engines(summary: SummaryData, *, limit: int) -> list[EngineEntry]:
                 overrides=_parse_override_entries(options.get("overrides", [])),
             )
         )
-        if limit > 0 and len(records) >= limit:
+        if 0 < limit <= len(records):
             break
     return records
 

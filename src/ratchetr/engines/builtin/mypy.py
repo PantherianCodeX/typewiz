@@ -169,7 +169,9 @@ class MypyEngine(BaseEngine):
     def fingerprint_targets(
         self,
         context: EngineContext,
-        paths: Sequence[RelPath],  # noqa: ARG002  # JUSTIFIED: Protocol requires paths parameter
+        # ignore JUSTIFIED: protocol requires a paths parameter for structural parity;
+        # this implementation derives targets from configuration instead
+        paths: Sequence[RelPath],  # noqa: ARG002
     ) -> Sequence[str]:
         """Specify mypy config files for cache invalidation.
 

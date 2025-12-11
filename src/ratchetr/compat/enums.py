@@ -51,12 +51,14 @@ if TYPE_CHECKING:
         @override
         def __str__(self) -> str:
             """Return the enum member's value, matching stdlib StrEnum."""
-            ...
+            # ignore JUSTIFIED: TYPE_CHECKING-only stub mirrors stdlib StrEnum; runtime
+            # logic lives in the else-branch
+            ...  # pragma: no cover  # pylint: disable=unnecessary-ellipsis
 
 else:
-    _StrEnum = getattr(_enum, "StrEnum", None)
+    _STR_ENUM = getattr(_enum, "StrEnum", None)
 
-    if _StrEnum is None:
+    if _STR_ENUM is None:
 
         class _CompatStrEnum(_StrEnumBase):
             """Backport of enum.StrEnum for Python 3.10."""
@@ -68,6 +70,6 @@ else:
 
         StrEnum: type[_StrEnumBase] = _CompatStrEnum
     else:
-        StrEnum = cast("type[_StrEnumBase]", _StrEnum)
+        StrEnum = cast("type[_StrEnumBase]", _STR_ENUM)
 
 __all__ = ["StrEnum"]
