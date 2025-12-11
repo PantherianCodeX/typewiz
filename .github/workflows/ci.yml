@@ -65,6 +65,8 @@ jobs:
         run: make all.check
 
       - name: Security checks (ruff S, Bandit, Safety)
+        env:
+          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
         run: make all.sec
 
   # ---------------------------------------------------------------
