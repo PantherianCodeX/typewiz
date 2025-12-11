@@ -41,7 +41,7 @@ class StubEngine:
     DEFAULT_FINGERPRINT_TARGETS: ClassVar[tuple[str, ...]] = ()
 
     def __init__(self, result: RunResult, expected_profile: str | None = None) -> None:
-        """Initialise the stub with a canned ``RunResult`` outcome."""
+        """Initialise the stub with a canned `RunResult`outcome."""
         super().__init__()
         self.name = "stub"
         self._result = result
@@ -89,7 +89,7 @@ class AuditStubEngine:
     DEFAULT_FINGERPRINT_TARGETS: ClassVar[tuple[str, ...]] = ()
 
     def __init__(self, result: RunResult) -> None:
-        """Prime the stub engine with a single ``RunResult`` payload."""
+        """Prime the stub engine with a single `RunResult`payload."""
         super().__init__()
         self.name = "stub"
         self._result = result

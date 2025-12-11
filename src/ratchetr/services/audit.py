@@ -44,7 +44,7 @@ def run_audit(
 
     Args:
         project_root: Repository root location.
-        config: Loaded ``Config`` object overriding file discovery.
+        config: Loaded `Config`object overriding file discovery.
         override: Additional overrides applied on top of ``config``.
         full_paths: Explicit include list overriding config values.
         persist_outputs: Whether to write manifest outputs.
@@ -52,7 +52,7 @@ def run_audit(
         write_manifest_to: Optional path override for manifest output.
 
     Returns:
-        ``AuditResult`` returned by the lower-level audit orchestrator.
+        `AuditResult`returned by the lower-level audit orchestrator.
     """
     return _run_audit(
         project_root=project_root,

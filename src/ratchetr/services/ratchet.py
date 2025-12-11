@@ -344,7 +344,7 @@ def update_ratchet(  # noqa: PLR0913
         RatchetUpdateResult with report, updated model, and write status.
 
     Raises:
-        RatchetPathRequiredError: If ``ratchet_path`` is ``None``.
+        RatchetPathRequiredError: If `ratchet_path`is ``None``.
     """
     if ratchet_path is None:
         raise RatchetPathRequiredError
@@ -418,7 +418,7 @@ def rebaseline_ratchet(
         RatchetRebaselineResult with the refreshed model and output path.
 
     Raises:
-        RatchetPathRequiredError: If ``ratchet_path`` is ``None``.
+        RatchetPathRequiredError: If `ratchet_path`is ``None``.
     """
     if ratchet_path is None:
         raise RatchetPathRequiredError

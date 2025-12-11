@@ -48,7 +48,7 @@ def load_ratchet(path: Path) -> RatchetModel:
         path: Location of the ratchet JSON file.
 
     Returns:
-        Validated ``RatchetModel`` instance.
+        Validated `RatchetModel`instance.
     """
     payload = json.loads(path.read_text(encoding="utf-8"))
     return RatchetModel.model_validate(payload)
@@ -69,7 +69,7 @@ def load_manifest(path: Path) -> ManifestData:
         path: Location of the manifest JSON file.
 
     Returns:
-        ``ManifestData`` mapping ready for downstream processing.
+        `ManifestData`mapping ready for downstream processing.
     """
     payload = json.loads(path.read_text(encoding="utf-8"))
     return load_manifest_data(payload)

@@ -49,14 +49,14 @@ def collect_readiness_view(
         summary: Manifest summary payload.
         level: Readiness granularity (files or folders).
         statuses: Optional subset of statuses to include.
-        limit: Max entries per status (``0`` = unlimited).
+        limit: Max entries per status (`0`= unlimited).
         severities: Optional severity filters.
 
     Returns:
         Readiness view result structured per ``ReadinessLevel``.
 
     Note:
-        Validation errors raised by ``_collect_readiness_view`` propagate to the
+        Validation errors raised by `_collect_readiness_view`propagate to the
         caller as ``ReadinessValidationError``.
     """
     return _collect_readiness_view(

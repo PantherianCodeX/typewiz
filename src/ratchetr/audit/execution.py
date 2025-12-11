@@ -52,7 +52,7 @@ class _EngineOptionState:
         """Return a shallow copy of the option state.
 
         Returns:
-            New ``_EngineOptionState`` instance with copied collections.
+            New `_EngineOptionState`instance with copied collections.
         """
         return _EngineOptionState(
             plugin_args=list(self.plugin_args),
@@ -423,7 +423,7 @@ def apply_engine_paths(
         exclude: Patterns that should be removed from the resulting path list.
 
     Returns:
-        A list of ``RelPath`` entries that respects ordering guarantees and
+        A list of `RelPath`entries that respects ordering guarantees and
         removes excluded paths when possible.
     """
     ordered: list[RelPath] = []
@@ -462,7 +462,7 @@ def resolve_engine_options(
             category mappings and profile selection.
 
     Returns:
-        ``EngineOptions`` ready to be passed into ``EngineContext`` when running
+        `EngineOptions`ready to be passed into `EngineContext`when running
         the engine.
     """
     engine_name = EngineName(engine.name)
@@ -509,7 +509,7 @@ def execute_engine_mode(  # noqa: PLR0913
 
     Args:
         engine: Engine under execution.
-        mode: ``Mode`` being evaluated (``current``/``full``).
+        mode: `Mode`being evaluated (``current``/``full``).
         context: Engine context produced by ``resolve_engine_options``.
         audit_config: Audit configuration for filtering paths and caching.
         cache: Persistent cache used to store previous run outputs.
@@ -519,7 +519,7 @@ def execute_engine_mode(  # noqa: PLR0913
         full_paths_normalised: Canonicalised set of include paths for caching.
 
     Returns:
-        A tuple containing the ``RunResult`` (either cached or freshly executed)
+        A tuple containing the `RunResult`(either cached or freshly executed)
         and a boolean indicating whether fingerprint inputs were truncated.
     """
     engine_options = context.engine_options

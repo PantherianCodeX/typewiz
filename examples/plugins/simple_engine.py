@@ -49,7 +49,7 @@ class SimpleEngine(BaseEngine):
                 this sample engine).
 
         Returns:
-            An ``EngineResult`` containing a single informational diagnostic that
+            An `EngineResult`containing a single informational diagnostic that
             proves the plugin integration pipeline is functioning.
         """
         tool_name = ToolName(self.name)

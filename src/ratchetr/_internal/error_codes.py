@@ -90,7 +90,7 @@ def error_code_catalog() -> Mapping[str, ErrorCode]:
     exposing the private mapping while keeping a single source of truth.
 
     Returns:
-        Mapping of ``<module>.<ExceptionName>`` strings to error codes.
+        Mapping of `<module>.<ExceptionName>`strings to error codes.
     """
     result: dict[str, ErrorCode] = {}
     for exc_type, code in _ERROR_CODES.items():

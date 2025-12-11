@@ -33,7 +33,7 @@ pytest.importorskip("pytest_benchmark")
 
 
 class BenchmarkRunner(Protocol):
-    """Protocol for pytest-benchmark's ``benchmark`` fixture."""
+    """Protocol for pytest-benchmark's `benchmark`fixture."""
 
     def __call__(self, func: Callable[[], object], /, *args: object, **kwargs: object) -> object:
         """Callable interface exposed by pytest-benchmark fixtures."""

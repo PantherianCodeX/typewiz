@@ -118,7 +118,7 @@ class CacheEntry:
 class CachedRun:
     """Materialised cache entry suitable for reuse during execution.
 
-    Attributes mirror ``CacheEntry`` but with richer types for consumers.
+    Attributes mirror `CacheEntry`but with richer types for consumers.
     """
 
     command: Command
@@ -454,7 +454,7 @@ class EngineCache:
             key: Cache key to look up.
 
         Returns:
-            Mapping of relative paths to file hash payloads, or ``None`` if not cached.
+            Mapping of relative paths to file hash payloads, or `None`if not cached.
         """
         entry = self._entries.get(key)
         if not entry:
@@ -491,7 +491,7 @@ class EngineCache:
             file_hashes: Hash payloads for the current file set.
 
         Returns:
-            ``CachedRun`` when a matching entry exists, otherwise ``None``.
+            `CachedRun`when a matching entry exists, otherwise ``None``.
         """
         entry = self._entries.get(key)
         if not entry:
@@ -705,10 +705,10 @@ def collect_file_hashes(  # noqa: C901, PLR0912, PLR0914, PLR0915
         max_files: Optional limit on the number of files to hash.
         baseline: Optional baseline hashes to reuse when unchanged.
         max_bytes: Optional byte budget for hashing; exceeding sets truncated flag.
-        hash_workers: Thread worker count or ``"auto"`` for CPU-based selection.
+        hash_workers: Thread worker count or `"auto"`for CPU-based selection.
 
     Returns:
-        Tuple of (hash mapping, truncated flag) where the flag is ``True`` when
+        Tuple of (hash mapping, truncated flag) where the flag is `True`when
         limits prevented hashing all files.
     """
     hashes: dict[PathKey, FileHashPayload] = {}

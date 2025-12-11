@@ -43,7 +43,7 @@ class ArgumentRegistrar(Protocol):
         *args: Any,
         **kwargs: Any,
     ) -> argparse.Action:
-        """Expose ``ArgumentParser.add_argument`` so helpers can operate generically.
+        """Expose `ArgumentParser.add_argument`so helpers can operate generically.
 
         Args:
             *args: Positional argument configuration passed through to ``add_argument``.
@@ -98,10 +98,10 @@ def parse_key_value_entries(
         argument: Flag name used for constructing helpful error messages.
 
     Returns:
-        A list of ``(key, value)`` tuples trimmed of whitespace.
+        A list of `(key, value)`tuples trimmed of whitespace.
 
     Raises:
-        SystemExit: If any token omits the ``=`` separator or contains empty
+        SystemExit: If any token omits the `=`separator or contains empty
             key/value content.
     """
     pairs: list[tuple[str, str]] = []
@@ -148,10 +148,10 @@ def parse_int_mapping(
 
 
 def collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
-    """Normalise ``--plugin-arg`` inputs into a mapping keyed by runner.
+    """Normalise `--plugin-arg`inputs into a mapping keyed by runner.
 
     Args:
-        entries: CLI chunks formatted as ``RUNNER=ARG`` (or ``RUNNER:ARG``).
+        entries: CLI chunks formatted as `RUNNER=ARG`(or ``RUNNER:ARG``).
 
     Returns:
         Dictionary where each runner maps to a list of arguments.
@@ -181,7 +181,7 @@ def collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
 
 
 def collect_profile_args(entries: Sequence[str]) -> dict[str, str]:
-    """Normalise ``--profile`` overrides provided on the command line.
+    """Normalise `--profile`overrides provided on the command line.
 
     Args:
         entries: CLI values provided to ``--profile``.
@@ -190,19 +190,19 @@ def collect_profile_args(entries: Sequence[str]) -> dict[str, str]:
         Mapping of runner names to profile identifiers.
 
     Note:
-        Invalid entries raise ``SystemExit`` inside ``parse_key_value_entries``.
+        Invalid entries raise `SystemExit`inside ``parse_key_value_entries``.
     """
     return dict(parse_key_value_entries(entries, argument="--profile"))
 
 
 def normalise_modes(values: Sequence[str] | None) -> list[Mode]:
-    """Validate ``--mode`` selectors and normalise to canonical ``Mode`` values.
+    """Validate `--mode`selectors and normalise to canonical `Mode`values.
 
     Args:
-        values: Raw ``--mode`` arguments, or ``None`` if not provided.
+        values: Raw `--mode`arguments, or `None`if not provided.
 
     Returns:
-        Ordered list of unique ``Mode`` entries.
+        Ordered list of unique `Mode`entries.
 
     Raises:
         SystemExit: If any value is not recognised as a valid mode.
@@ -228,7 +228,7 @@ def parse_hash_workers(value: str | None) -> int | Literal["auto"] | None:
         value: CLI value supplied to ``--hash-workers``.
 
     Returns:
-        ``None`` if no preference, ``"auto"`` for adaptive workers, or an
+        `None`if no preference, `"auto"`for adaptive workers, or an
         integer >= 0.
 
     Raises:

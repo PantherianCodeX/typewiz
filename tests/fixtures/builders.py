@@ -185,7 +185,7 @@ class TestDataBuilder:
         """Construct the run summary shared across tabs.
 
         Returns:
-            Mapping from ``RunId`` to synthetic ``SummaryRunEntry`` payloads
+            Mapping from `RunId`to synthetic `SummaryRunEntry`payloads
             used by dashboard and CLI workflow tests.
         """
         return {
@@ -226,7 +226,7 @@ class TestDataBuilder:
         """Generate readiness data used by dashboard and CLI tests.
 
         Returns:
-            ``ReadinessTab`` payload containing strict and per-option
+            `ReadinessTab`payload containing strict and per-option
             readiness data for a representative project.
         """
 
@@ -372,7 +372,7 @@ class TestDataBuilder:
         """Assemble SummaryTabs shared across CLI/dashboard tests.
 
         Returns:
-            Complete ``SummaryTabs`` mapping for use in CLI and dashboard
+            Complete `SummaryTabs`mapping for use in CLI and dashboard
             integration tests.
         """
         return {
@@ -504,7 +504,7 @@ class TestDataBuilder:
         """Build a RunResult tailored to CLI printing tests.
 
         Returns:
-            ``RunResult`` seeded with representative diagnostics and metadata.
+            `RunResult`seeded with representative diagnostics and metadata.
         """
         diagnostic = Diagnostic(
             tool=self.tool_name,
@@ -575,7 +575,7 @@ class TestDataBuilder:
             tool_name: Optional override for the tool identifier.
 
         Returns:
-            ``RunResult`` packed with synthetic diagnostics.
+            `RunResult`packed with synthetic diagnostics.
         """
         diagnostics: list[Diagnostic] = []
         target_tool = tool_name or self.tool_name
@@ -612,7 +612,7 @@ def build_sample_summary() -> SummaryData:
     """Convenience wrapper for the default sample summary.
 
     Returns:
-        Sample ``SummaryData`` used by CLI tests.
+        Sample `SummaryData`used by CLI tests.
     """
     return _DEFAULT_TEST_DATA_BUILDER.build_sample_summary()
 
@@ -785,7 +785,7 @@ def build_empty_summary() -> SummaryData:
     """Construct a blank SummaryData payload with the required structure.
 
     Returns:
-        ``SummaryData`` skeleton with empty tabs.
+        `SummaryData`skeleton with empty tabs.
     """
     run_summary: dict[RunId, SummaryRunEntry] = {}
     severity_totals: CountsBySeverity = {}

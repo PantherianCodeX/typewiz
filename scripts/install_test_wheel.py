@@ -42,7 +42,7 @@ def main() -> int:
     """Create a disposable venv and install a built wheel in it.
 
     Returns:
-        ``0`` after pip installs the provided (or latest) wheel and verifies the
+        `0`after pip installs the provided (or latest) wheel and verifies the
         package can be imported inside the temporary environment.
     """
     parser = argparse.ArgumentParser(

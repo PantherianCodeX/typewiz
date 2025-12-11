@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 
 
 def register_audit_command(subparsers: SubparserCollection) -> None:
-    """Register the ``ratchetr audit`` command and return the configured parser.
+    """Register the `ratchetr audit`command and return the configured parser.
 
     Args:
         subparsers: Top-level argparse subparser collection to register commands on.
@@ -293,7 +293,7 @@ def normalise_modes_tuple(modes: Sequence[str] | None) -> tuple[bool, bool, bool
         modes: Optional sequence of raw mode strings from the CLI.
 
     Returns:
-        Tuple of ``(run_any, run_current, run_full)`` flags indicating which audit modes to execute.
+        Tuple of `(run_any, run_current, run_full)`flags indicating which audit modes to execute.
 
     Raises:
         SystemExit: If no modes are selected after normalisation.
@@ -571,13 +571,13 @@ def _determine_exit_code(
 
 
 def execute_audit(args: argparse.Namespace) -> int:
-    """Execute the ``ratchetr audit`` command.
+    """Execute the `ratchetr audit`command.
 
     Args:
         args: Parsed CLI namespace produced by argparse.
 
     Returns:
-        Exit code honouring the configured ``--fail-on`` policy.
+        Exit code honouring the configured `--fail-on`policy.
     """
     plan = _prepare_execution_plan(args)
     result = _run_audit_plan(plan)

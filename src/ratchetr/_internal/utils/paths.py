@@ -81,7 +81,7 @@ def resolve_project_root(start: Path | None = None) -> Path:
         Path to the discovered project root.
 
     Raises:
-        FileNotFoundError: If ``start`` is provided but does not exist.
+        FileNotFoundError: If `start`is provided but does not exist.
     """
     base = (start or Path.cwd()).resolve()
     if base.is_file():

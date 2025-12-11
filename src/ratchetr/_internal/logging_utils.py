@@ -174,13 +174,13 @@ def configure_logging(
     """Configure ratchetr logging according to the requested format and level.
 
     Args:
-        log_format: Desired log output format. ``None`` falls back to the
-            ``RATCHETR_LOG_FORMAT`` environment variable or ``text``.
-        log_level: Preferred verbosity (string or numeric). ``None`` consults
-            ``RATCHETR_LOG_LEVEL`` or defaults to ``info``.
+        log_format: Desired log output format. `None`falls back to the
+            `RATCHETR_LOG_FORMAT`environment variable or ``text``.
+        log_level: Preferred verbosity (string or numeric). `None`consults
+            `RATCHETR_LOG_LEVEL`or defaults to ``info``.
 
     Returns:
-        A ``LogConfig`` describing the selected formatter and resolved numeric
+        A `LogConfig`describing the selected formatter and resolved numeric
         log level, which is also applied to the root and child loggers.
     """
     selected_format = _select_format(log_format)
@@ -279,14 +279,14 @@ def structured_extra(
     component: LogComponent,
     **kwargs: Unpack[_StructuredLogKwargs],
 ) -> StructuredLogExtra:
-    """Return a consistently typed ``logging.extra`` payload.
+    """Return a consistently typed `logging.extra`payload.
 
     Args:
         component: Logical logging component for the record.
         **kwargs: Optional structured fields (tool, mode, duration, counts, etc.).
 
     Returns:
-        Mapping suitable for the ``extra`` parameter when emitting log records.
+        Mapping suitable for the `extra`parameter when emitting log records.
     """
     extra: StructuredLogExtra = {"component": component}
     payload_kwargs = cast("dict[str, object]", kwargs)

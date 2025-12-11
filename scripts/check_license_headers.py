@@ -163,7 +163,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     Args:
         argv: Command-line arguments (excluding the program name). When
-            None, ``sys.argv[1:]`` is used.
+            None, `sys.argv[1:]`is used.
 
     Returns:
         Exit code suitable for use as a pre-commit hook. Zero indicates

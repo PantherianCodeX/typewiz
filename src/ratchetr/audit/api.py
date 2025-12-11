@@ -264,9 +264,9 @@ def run_audit(
     """Run configured engines, persist artefacts, and collate diagnostics.
 
     Args:
-        project_root: Directory that hosts ``typing_audit.json`` and engine
-            configuration. ``None`` defaults to ``Path.cwd()``.
-        config: Resolved ``ratchetr.config.Config`` object. ``None`` triggers a
+        project_root: Directory that hosts `typing_audit.json`and engine
+            configuration. `None`defaults to ``Path.cwd()``.
+        config: Resolved `ratchetr.config.Config`object. `None`triggers a
             fresh load from disk based on ``project_root``.
         override: In-memory overrides applied on top of the config file.
         full_paths: Explicit include list overriding ``config.full_paths``.
@@ -275,7 +275,7 @@ def run_audit(
         persist_outputs: Whether manifest/summary artefacts should be written.
 
     Returns:
-        ``AuditResult`` containing the final manifest, per-engine run metadata,
+        `AuditResult`containing the final manifest, per-engine run metadata,
         summary payloads, and aggregated severity counts.
     """
     _cfg, inputs = _prepare_audit_inputs(

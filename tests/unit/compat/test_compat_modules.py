@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Runtime tests for the ``ratchetr.compat`` helpers."""
+"""Runtime tests for the `ratchetr.compat`helpers."""
 
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ class Colour(StrEnum):
 
 
 def test_strenum_behaves_like_string_enum() -> None:
-    """StrEnum should behave as both ``str`` and ``Enum``."""
+    """StrEnum should behave as both `str`and ``Enum``."""
     assert issubclass(Colour, (str,))
     assert Colour.RED.value == "red"
     instance = Colour("blue")

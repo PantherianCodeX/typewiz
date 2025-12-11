@@ -30,7 +30,7 @@ __all__ = ["SubparserCollection"]
 
 
 class SubparserCollection(Protocol):
-    """Protocol describing the subset of ``argparse._SubParsersAction`` we rely on.
+    """Protocol describing the subset of `argparse._SubParsersAction`we rely on.
 
     This protocol defines the minimal interface required for subparser registration
     in CLI command modules. It matches the signature of argparse's internal

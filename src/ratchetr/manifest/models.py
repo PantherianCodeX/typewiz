@@ -15,7 +15,7 @@
 """Pydantic models mirroring the manifest typed structures.
 
 These models provide runtime validation and JSON Schema generation while staying
-compatible with the existing ``manifest.typed`` TypedDict definitions.
+compatible with the existing `manifest.typed`TypedDict definitions.
 """
 
 from __future__ import annotations

@@ -18,8 +18,8 @@
 Usage:
     python scripts/refactor_imports.py --map old.module=new.module [--root src]
 
-Multiple ``--map`` entries are allowed. By default the script runs in dry-run
-mode and prints the files that would change. Pass ``--apply`` to write the
+Multiple `--map`entries are allowed. By default the script runs in dry-run
+mode and prints the files that would change. Pass `--apply`to write the
 changes in-place.
 """
 
@@ -61,7 +61,7 @@ class EnsureImport:
     Attributes:
         path: Absolute path to the Python file that must contain the import.
         module: Dotted module path to import from.
-        symbols: Symbols from ``module`` that should be imported.
+        symbols: Symbols from `module`that should be imported.
     """
 
     path: Path
@@ -111,19 +111,19 @@ def _resolve_absolute_module(module: str, current_module: str | None) -> str | N
 
 
 def parse_map_entries(entries: Iterable[str]) -> list[ImportMap]:
-    """Parse ``old=new`` mapping specifiers into structured entries.
+    """Parse `old=new`mapping specifiers into structured entries.
 
     Args:
         entries: Iterable of CLI-style mapping arguments where each item is
             expected to be in the form ``old.module=new.module``.
 
     Returns:
-        Ordered list of ``ImportMap`` objects describing the requested
+        Ordered list of `ImportMap`objects describing the requested
         rewrites.
 
     Raises:
-        argparse.ArgumentTypeError: If any entry does not contain ``=`` or
-            omits either the ``old`` or ``new`` module value.
+        argparse.ArgumentTypeError: If any entry does not contain `=`or
+            omits either the `old`or `new`module value.
     """
     mapping: list[ImportMap] = []
     for entry in entries:
@@ -325,8 +325,8 @@ def rewrite_content(
         current_module: Optional module name used to resolve relative imports.
 
     Returns:
-        Tuple of ``(new_content, changed)`` where ``new_content`` is the
-        possibly rewritten source and ``changed`` indicates whether any import
+        Tuple of `(new_content, changed)`where `new_content`is the
+        possibly rewritten source and `changed`indicates whether any import
         lines were modified.
     """
     lines = content.splitlines()
@@ -646,10 +646,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     Args:
         argv: Optional argument vector used when the function is invoked from
-            tests; defaults to ``sys.argv[1:]`` when ``None``.
+            tests; defaults to `sys.argv[1:]`when ``None``.
 
     Returns:
-        ``0`` when all requested rewrites/dry-run inspections succeed, or ``1``
+        `0`when all requested rewrites/dry-run inspections succeed, or ``1``
         if parsing fails or mutated files cannot be processed.
     """
     parser = _build_parser()

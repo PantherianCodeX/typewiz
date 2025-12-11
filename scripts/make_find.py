@@ -39,26 +39,26 @@ Query semantics
 
 Queries are composed of tokens with two kinds of separators:
 
-* **Spaces** (and dots when wired via ``$(subst ., ,$*)`` in Make) act as
+* **Spaces** (and dots when wired via `$(subst ., ,$*)`in Make) act as
   OR separators.
 * A plus sign (``+``) inside a token acts as an AND separator.
 
 Examples:
 * ``make find.lint.cov``
-  Equivalent to ``make find."lint cov"`` → OR search on ``lint`` or ``cov``.
+  Equivalent to `make find."lint cov"`→ OR search on `lint`or ``cov``.
 
 * ``make find."python+3.11"``
-  AND search → both ``python`` and ``3.11`` must be present.
+  AND search → both `python`and `3.11`must be present.
 
 The parser splits query tokens into:
 
 * OR terms: tokens without ``+``.
-* AND terms: each side of a ``+`` inside a token.
+* AND terms: each side of a `+`inside a token.
 
 Full-text mode (find.*)
 -----------------------
 
-Full-text mode is intended for ``find.<query>`` targets wired from Make, for
+Full-text mode is intended for `find.<query>`targets wired from Make, for
 example:
 
     find.%:
@@ -79,7 +79,7 @@ A section is included in the output if either:
 Label-oriented mode (find.label.*)
 ----------------------------------
 
-Label-oriented mode is intended for ``find.label.<query>`` targets wired from
+Label-oriented mode is intended for `find.label.<query>`targets wired from
 Make, for example:
 
     find.label.%:
@@ -111,17 +111,17 @@ under their section headings.
 Examples:
 * ``make find.label.test``
   Matches any command whose heading+name contains ``test``. This will include:
-    - the entire ``Tests`` group (many names contain ``test``),
+    - the entire `Tests`group (many names contain ``test``),
     - specific commands like ``all.test``, ``package.install-test``,
       ``clean.test``, etc.
 
 * ``make find.label."test+clean"``
-  Matches only commands whose heading+name contains **both** ``test`` and
+  Matches only commands whose heading+name contains **both** `test`and
   ``clean``. For a Makefile like this repository, that includes commands
   such as:
     - ``test.clean.*``,
     - ``clean.test``,
-    - ``clean.pytest`` (via heading + name combination).
+    - `clean.pytest`(via heading + name combination).
 
 Display rules
 -------------
@@ -176,7 +176,7 @@ def _slugify_label(label: str, separator: str = ".") -> str:
     leading and trailing separators.
 
     Args:
-        label: Human-readable section label from a ``##@`` line.
+        label: Human-readable section label from a `##@`line.
         separator: Character used to join normalized tokens.
 
     Returns:
@@ -203,7 +203,7 @@ def decode_from_make(lines: Sequence[str], name: str, default: str | None = None
         default: Fallback value if the variable is not defined.
 
     Returns:
-        The decoded string value, or ``default`` if the variable is not
+        The decoded string value, or `default`if the variable is not
         defined and a default was provided.
 
     Raises:
@@ -227,18 +227,18 @@ def collect_sections(lines: Sequence[str]) -> tuple[list[Section], SectionMap]:
     """Collect help sections and their commands from a Makefile.
 
     A section is introduced by a line starting with ``"##@ "``. Any
-    subsequent targets with ``##`` comments are associated with the most
+    subsequent targets with `##`comments are associated with the most
     recent section.
 
     Args:
         lines: Makefile contents as an iterable of lines.
 
     Returns:
-        A pair ``(sections, commands)`` where:
+        A pair `(sections, commands)`where:
 
-        * ``sections`` is an ordered list of ``(slug, label)`` descriptors.
-        * ``commands`` maps each section slug to a list of
-          ``(name, description)`` command entries.
+        * `sections`is an ordered list of `(slug, label)`descriptors.
+        * `commands`maps each section slug to a list of
+          `(name, description)`command entries.
     """
     sections: list[Section] = []
     commands: SectionMap = {}
@@ -279,7 +279,7 @@ def _contains_all(text: str, terms: Sequence[str]) -> bool:
         terms: Lowercased search terms.
 
     Returns:
-        True if each term is present in ``text`` (case-insensitive),
+        True if each term is present in `text`(case-insensitive),
         otherwise False.
     """
     lower = text.lower()
@@ -294,7 +294,7 @@ def _any_term(text: str, terms: Sequence[str]) -> bool:
         terms: Lowercased OR-search terms.
 
     Returns:
-        True if at least one term is present in ``text`` (case-insensitive),
+        True if at least one term is present in `text`(case-insensitive),
         otherwise False.
     """
     lower = text.lower()
@@ -305,17 +305,17 @@ def _parse_terms(raw_terms: Sequence[str]) -> tuple[list[str], list[str]]:
     """Split raw query terms into OR and AND sets.
 
     OR terms:
-        Tokens without ``+`` (e.g. ``"lint"`` in ``"lint coverage"``).
+        Tokens without `+`(e.g. `"lint"`in ``"lint coverage"``).
 
     AND terms:
-        Tokens obtained by splitting on ``+`` (e.g. ``"python+3.11"`` becomes
+        Tokens obtained by splitting on `+`(e.g. `"python+3.11"`becomes
         ``["python", "3.11"]``).
 
     Args:
         raw_terms: Original search terms from the CLI.
 
     Returns:
-        A tuple ``(or_terms, and_terms)`` where each element is a list of
+        A tuple `(or_terms, and_terms)`where each element is a list of
         lowercased search strings.
     """
     or_terms: list[str] = []
@@ -343,7 +343,7 @@ def _labels_only_matches(
 ) -> dict[str, list[Command]]:
     """Search section headings plus command names (label-oriented mode).
 
-    This mode is used for ``find.label.*`` targets. Matching is performed
+    This mode is used for `find.label.*`targets. Matching is performed
     **per command** against the aggregate of:
 
     * section slug,
@@ -403,13 +403,13 @@ def _fulltext_matches(
 ) -> dict[str, list[Command]]:
     """Search across labels, slugs, command names, and descriptions.
 
-    This mode is used for ``find.*`` targets.
+    This mode is used for `find.*`targets.
 
     A section is included in the output if either:
 
-    * Its heading ``"<slug> <label>"`` satisfies the OR/AND semantics, in
+    * Its heading `"<slug> <label>"`satisfies the OR/AND semantics, in
       which case **all commands** in the section are returned, or
-    * One or more command texts ``"<name> <description>"`` satisfy the
+    * One or more command texts `"<name> <description>"`satisfy the
       OR/AND semantics, in which case only the matching commands are
       returned under that heading.
 
@@ -468,7 +468,7 @@ def _print_results(
         cmd_fmt: printf-style format string for commands.
 
     Returns:
-        ``0`` if any matches were printed, ``1`` if no matches were found.
+        `0`if any matches were printed, `1`if no matches were found.
     """
     if not matches:
         print("No matching sections or commands.")
@@ -501,7 +501,7 @@ def render_help(
         terms: Raw search terms from the CLI (already split on whitespace).
 
     Returns:
-        Exit code ``0`` on success, ``1`` if no matches are found.
+        Exit code `0`on success, `1`if no matches are found.
     """
     lines = makefile_path.read_text(encoding="utf-8").splitlines()
 
@@ -532,7 +532,7 @@ def main(argv: Iterable[str] | None = None) -> int:
             arguments are read from :data:`sys.argv`.
 
     Returns:
-        Shell exit code (``0`` on success, non-zero on error).
+        Shell exit code (`0`on success, non-zero on error).
 
     Raises:
         SystemExit: If the specified Makefile cannot be found.

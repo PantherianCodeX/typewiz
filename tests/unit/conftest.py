@@ -31,7 +31,7 @@ def test_data_builder() -> TestDataBuilder:
     """Provide a reusable test data builder for unit tests.
 
     Returns:
-        Shared ``TestDataBuilder`` instance.
+        Shared `TestDataBuilder`instance.
     """
     return TestDataBuilder()
 

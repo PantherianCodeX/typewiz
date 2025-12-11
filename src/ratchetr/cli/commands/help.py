@@ -29,7 +29,7 @@ _TOPICS_ROOT = Path(__file__).resolve().parents[4] / "docs" / "cli" / "topics"
 
 
 def register_help_command(subparsers: SubparserCollection) -> None:
-    """Register ``ratchetr help`` with topic support.
+    """Register `ratchetr help`with topic support.
 
     Args:
         subparsers: Top-level argparse subparser collection to register commands on.
@@ -80,13 +80,13 @@ def _render_topics_list(topics: dict[str, Path]) -> None:
 
 
 def execute_help(args: argparse.Namespace) -> int:
-    """Execute the ``ratchetr help`` command.
+    """Execute the `ratchetr help`command.
 
     Args:
         args: Parsed CLI namespace containing optional topic data.
 
     Returns:
-        ``0`` on success or ``2`` if the requested topic is unknown.
+        `0`on success or `2`if the requested topic is unknown.
     """
     root = args.topics_dir or _TOPICS_ROOT
     topics = _discover_topics(root)

@@ -101,7 +101,7 @@ def format_overrides_block(entries: Sequence[OverrideEntry]) -> list[str]:
 
 
 def override_detail_lines(entry: OverrideEntry) -> tuple[str, list[str]]:
-    """Return a ``(path, details)`` tuple for detailed override reporting.
+    """Return a `(path, details)`tuple for detailed override reporting.
 
     Args:
         entry: Override entry to normalise.

@@ -149,7 +149,7 @@ def relative_override_path(project_root: Path, override_path: Path) -> RelPath:
         override_path: Absolute path to the override file or directory.
 
     Returns:
-        The override path expressed as a ``RelPath`` relative to
+        The override path expressed as a `RelPath`relative to
         ``project_root``.
     """
     return _as_relative_path(project_root, override_path)

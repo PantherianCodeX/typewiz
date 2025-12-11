@@ -52,7 +52,7 @@ def merge_preserve(base: Iterable[T], addition: Sequence[T]) -> list[T]:
             not already appeared in ``base``.
 
     Returns:
-        A list starting with ``base`` followed by unseen elements from
+        A list starting with `base`followed by unseen elements from
         ``addition``.
     """
     result = list(base)

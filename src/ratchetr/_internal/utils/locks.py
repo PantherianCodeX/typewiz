@@ -65,7 +65,7 @@ def file_lock(path: Path) -> Iterator[None]:
         path: Path to the lock file on disk.
 
     Yields:
-        ``None`` once the lock has been acquired.
+        `None`once the lock has been acquired.
     """
     path = path.resolve()
     path.parent.mkdir(parents=True, exist_ok=True)

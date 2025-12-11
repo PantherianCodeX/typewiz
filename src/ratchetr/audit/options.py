@@ -35,13 +35,13 @@ if TYPE_CHECKING:
 
 
 def clone_profile(profile: EngineProfile) -> EngineProfile:
-    """Return a deep copy of an ``EngineProfile`` instance.
+    """Return a deep copy of an `EngineProfile`instance.
 
     Args:
         profile: Source profile to copy.
 
     Returns:
-        New ``EngineProfile`` with cloned collections.
+        New `EngineProfile`with cloned collections.
     """
     return EngineProfile(
         inherit=profile.inherit,
@@ -88,7 +88,7 @@ def merge_engine_settings_map(
             base mapping.
 
     Returns:
-        A mutable dictionary combining ``base`` and ``override`` while keeping
+        A mutable dictionary combining `base`and `override`while keeping
         nested structures deep-copied so callers can safely mutate the result.
     """
     result = clone_engine_settings_map(base)
@@ -149,13 +149,13 @@ def clone_path_overrides(overrides: Sequence[PathOverride]) -> list[PathOverride
 
 
 def clone_audit_config(source: AuditConfig) -> AuditConfig:
-    """Produce a deep copy of an ``AuditConfig`` instance.
+    """Produce a deep copy of an `AuditConfig`instance.
 
     Args:
         source: Configuration to duplicate.
 
     Returns:
-        A structurally independent ``AuditConfig`` with the same values as
+        A structurally independent `AuditConfig`with the same values as
         ``source``.
     """
     return AuditConfig(
@@ -178,7 +178,7 @@ def clone_audit_config(source: AuditConfig) -> AuditConfig:
 
 
 def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> AuditConfig:
-    """Merge ``override`` into ``base`` (if supplied) and return a fresh config.
+    """Merge `override`into `base`(if supplied) and return a fresh config.
 
     Args:
         base: The baseline configuration typically loaded from disk.
@@ -186,7 +186,7 @@ def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> Audi
             provided.
 
     Returns:
-        A new ``AuditConfig`` representing ``base`` updated with the supplied
+        A new `AuditConfig`representing `base`updated with the supplied
         overrides.
     """
     base_copy = clone_audit_config(base)
@@ -233,8 +233,8 @@ def prepare_category_mapping(value: object) -> Mapping[CategoryKey, Sequence[str
         value: Arbitrary JSON-like payload returned by an engine.
 
     Returns:
-        A mapping keyed by ``CategoryKey`` whose values are cleaned string
-        sequences, or ``None`` if the input cannot be interpreted.
+        A mapping keyed by `CategoryKey`whose values are cleaned string
+        sequences, or `None`if the input cannot be interpreted.
     """
     if value is None or not isinstance(value, Mapping):
         return None

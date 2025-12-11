@@ -55,7 +55,7 @@ def snapshot_text(snapshots_dir: Path) -> Callable[[str], str]:
         Callable that returns the snapshot contents for a given name.
 
     Note:
-        The returned loader raises ``SnapshotMissingError`` when files are missing.
+        The returned loader raises `SnapshotMissingError`when files are missing.
     """
 
     def loader(name: str) -> str:

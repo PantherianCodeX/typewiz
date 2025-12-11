@@ -48,7 +48,7 @@ def detect_tool_versions(tools: Sequence[str | ToolName]) -> dict[str, str]:
     """Return a mapping of tool -> version by invoking their version commands.
 
     Args:
-        tools: Tool identifiers (names or ``ToolName`` instances) to inspect.
+        tools: Tool identifiers (names or `ToolName`instances) to inspect.
 
     Returns:
         Mapping of tool names to detected version strings.

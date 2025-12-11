@@ -47,7 +47,7 @@ def sample_makefile_text() -> str:
     * Packaging
 
     The commands are chosen to exercise both OR and AND semantics,
-    especially around ``test`` / ``clean`` combinations.
+    especially around `test`/ `clean`combinations.
     """
     return (
         'HELP_GROUP_FORMAT := "\\nGROUP:%s\\n"\n'

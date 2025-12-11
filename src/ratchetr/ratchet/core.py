@@ -285,7 +285,7 @@ def build_ratchet_from_manifest(
         manifest_path: Optional filesystem path recorded in the model.
 
     Returns:
-        New ``RatchetModel`` capturing budgets per selected run.
+        New `RatchetModel`capturing budgets per selected run.
     """
     selected_runs = _select_run_ids(manifest, runs)
     run_lookup = _run_by_id(manifest)
@@ -437,7 +437,7 @@ def compare_manifest_to_ratchet(
         runs: Optional subset of runs to analyse.
 
     Returns:
-        ``RatchetReport`` describing per-run improvements and violations.
+        `RatchetReport`describing per-run improvements and violations.
     """
     run_lookup = _run_by_id(manifest)
     if runs is None:

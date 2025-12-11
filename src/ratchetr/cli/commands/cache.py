@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 
 def register_cache_command(subparsers: SubparserCollection) -> None:
-    """Attach the ``ratchetr cache`` command to the CLI.
+    """Attach the `ratchetr cache`command to the CLI.
 
     Args:
         subparsers: Top-level argparse subparser collection to register commands on.
@@ -80,7 +80,7 @@ def execute_cache(args: argparse.Namespace) -> int:
         args: Parsed CLI namespace.
 
     Returns:
-        ``0`` when the requested action completes successfully.
+        `0`when the requested action completes successfully.
 
     Raises:
         SystemExit: If the action name is unrecognised.

@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 
 def register_engines_command(subparsers: SubparserCollection) -> None:
-    """Attach the ``ratchetr engines`` command to the CLI.
+    """Attach the `ratchetr engines`command to the CLI.
 
     Args:
         subparsers: Top-level argparse subparser collection to register commands on.
@@ -78,7 +78,7 @@ def execute_engines(args: argparse.Namespace) -> int:
         args: Parsed CLI namespace.
 
     Returns:
-        ``0`` if the action completes successfully.
+        `0`if the action completes successfully.
 
     Raises:
         SystemExit: If the requested action is unknown.
