@@ -85,6 +85,125 @@ dashboard_html = "reports/dashboard.html"
     assert cfg.audit.runners == [RunnerName(PYRIGHT)]
 
 
+def test_load_config_from_pyproject_section(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pyproject_path = tmp_path / "pyproject.toml"
+    pyproject_path.write_text(
+        """
+[tool.ratchetr.audit]
+full_paths = ["apps"]
+runners = ["pyright"]
+dashboard_html = "reports/dashboard.html"
+
+[tool.ratchetr.paths]
+ratchetr_dir = ".custom-ratchetr"
+manifest_path = "manifests/custom.json"
+cache_dir = "build/.cache"
+log_dir = "build/logs"
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = load_config()
+
+    assert cfg.audit.full_paths == ["apps"]
+    assert cfg.audit.dashboard_html == (tmp_path / "reports" / "dashboard.html")
+    assert cfg.paths.ratchetr_dir == (tmp_path / ".custom-ratchetr")
+    assert cfg.paths.manifest_path == (tmp_path / "manifests" / "custom.json")
+    assert cfg.paths.cache_dir == (tmp_path / "build/.cache").resolve()
+    assert cfg.paths.log_dir == (tmp_path / "build/logs").resolve()
+
+
+def test_load_config_prefers_standalone_over_pyproject(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pyproject_path = tmp_path / "pyproject.toml"
+    pyproject_path.write_text(
+        """
+[tool.ratchetr.audit]
+full_paths = ["from-pyproject"]
+""",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "ratchetr.toml"
+    config_path.write_text(
+        """
+[audit]
+full_paths = ["from-standalone"]
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    cfg = load_config()
+
+    assert cfg.audit.full_paths == ["from-standalone"]
+    assert cfg.paths.ratchetr_dir is None
+
+
+def test_load_config_allows_tool_sections_in_standalone(tmp_path: Path) -> None:
+    config_path = tmp_path / "ratchetr.toml"
+    config_path.write_text(
+        """
+[audit]
+full_paths = ["from-standalone"]
+
+[tool.unrelated]
+value = "ignored"
+""",
+        encoding="utf-8",
+    )
+
+    cfg = load_config(config_path)
+
+    assert cfg.audit.full_paths == ["from-standalone"]
+    assert cfg.paths.ratchetr_dir is None
+
+
+def test_load_config_requires_ratchetr_section_in_pyproject_when_explicit(tmp_path: Path) -> None:
+    pyproject_path = tmp_path / "pyproject.toml"
+    pyproject_path.write_text(
+        """
+[project]
+name = "demo"
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(InvalidConfigFileError, match="does not define ratchetr configuration"):
+        load_config(pyproject_path)
+
+
+def test_load_config_rejects_non_table_ratchetr_section(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    pyproject_path = tmp_path / "pyproject.toml"
+    pyproject_path.write_text(
+        """
+[tool]
+ratchetr = "invalid"
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(InvalidConfigFileError, match="must be a TOML table"):
+        load_config()
+
+
+def test_load_config_rejects_non_table_ratchetr_section_in_standalone(tmp_path: Path) -> None:
+    config_path = tmp_path / "ratchetr.toml"
+    config_path.write_text(
+        """
+[audit]
+full_paths = []
+
+[tool]
+ratchetr = "invalid"
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(InvalidConfigFileError, match="must be a TOML table"):
+        load_config(config_path)
+
+
 def test_load_config_engine_profiles(tmp_path: Path) -> None:
     config_path = tmp_path / "ratchetr.toml"
     consume(
