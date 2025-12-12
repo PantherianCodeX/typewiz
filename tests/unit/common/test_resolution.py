@@ -160,6 +160,19 @@ def test_discover_manifest_handles_missing_cli_override(tmp_path: Path) -> None:
     assert not result.found
     assert isinstance(result.error, ManifestDiscoveryError)
     assert (repo_root / "missing.json").resolve() in result.diagnostics.attempted_paths
+    assert result.diagnostics.cli_manifest == (repo_root / "missing.json").resolve()
+
+
+def test_discover_manifest_records_cli_manifest_on_success(tmp_path: Path) -> None:
+    repo_root = tmp_path
+    manifest_path = repo_root / "manifest.json"
+    manifest_path.write_text("{}", encoding="utf-8")
+    resolved = _resolved_paths(repo_root)
+
+    result = discover_manifest(resolved, cli_manifest=Path("manifest.json"))
+
+    assert result.found
+    assert result.diagnostics.cli_manifest == manifest_path.resolve()
 
 
 def test_output_format_from_str_validates() -> None:
@@ -223,6 +236,39 @@ def test_resolve_paths_prefers_env_root_and_config_directory(tmp_path: Path) -> 
         cwd=tmp_path,
     )
     assert resolved_config.repo_root == tmp_path.resolve()
+
+
+def test_resolve_paths_config_override_relative_to_cwd(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    working_dir = repo_root / "pkg"
+    working_dir.mkdir()
+    cli_config = Path("../config.toml")
+    overrides = PathOverrides(repo_root=repo_root, config_path=cli_config)
+
+    resolved = resolve_paths(cli_overrides=overrides, cwd=working_dir)
+
+    assert resolved.config_path == (working_dir / cli_config).resolve()
+
+
+def test_resolve_paths_env_config_override_relative_to_cwd(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    working_dir = repo_root / "pkg"
+    working_dir.mkdir()
+    env_config = Path("../env-config.toml")
+    env_overrides = EnvOverrides(
+        config_path=env_config,
+        repo_root=repo_root,
+        tool_home=None,
+        manifest_path=None,
+        cache_dir=None,
+        log_dir=None,
+    )
+
+    resolved = resolve_paths(env_overrides=env_overrides, cwd=working_dir)
+
+    assert resolved.config_path == (working_dir / env_config).resolve()
 
 
 def test_discover_manifest_prefers_cli_manifest_when_present(tmp_path: Path) -> None:

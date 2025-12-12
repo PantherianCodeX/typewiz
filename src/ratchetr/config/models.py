@@ -32,6 +32,7 @@ from typing import ClassVar, Final, Literal, cast
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from ratchetr.collections import dedupe_preserve
+from ratchetr.config.constants import DEFAULT_CACHE_DIRNAME, DEFAULT_LOG_DIRNAME
 from ratchetr.config.validation import require_non_negative_int
 from ratchetr.core.model_types import FailOnPolicy, SeverityLevel, SignaturePolicy
 from ratchetr.core.type_aliases import EngineName, ProfileName, RunId, RunnerName
@@ -39,9 +40,6 @@ from ratchetr.exceptions import RatchetrValidationError
 
 CONFIG_VERSION: Final[int] = 0
 FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)
-DEFAULT_TOOL_HOME_DIRNAME: Final[str] = ".ratchetr"
-DEFAULT_CACHE_DIRNAME: Final[str] = ".cache"
-DEFAULT_LOG_DIRNAME: Final[str] = "logs"
 
 
 class ConfigValidationError(RatchetrValidationError):

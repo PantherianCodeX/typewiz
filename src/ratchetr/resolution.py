@@ -24,15 +24,16 @@ from typing import TYPE_CHECKING, Final
 from ratchetr._internal.utils.paths import resolve_project_root
 from ratchetr.compat import StrEnum
 from ratchetr.config import PathsConfig
+from ratchetr.config.constants import (
+    DEFAULT_CACHE_DIRNAME,
+    DEFAULT_DASHBOARD_FILENAME,
+    DEFAULT_LOG_DIRNAME,
+    DEFAULT_MANIFEST_FILENAME,
+    DEFAULT_TOOL_HOME_DIRNAME,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
-
-DEFAULT_TOOL_HOME_DIRNAME: Final[str] = ".ratchetr"
-DEFAULT_CACHE_DIRNAME: Final[str] = ".cache"
-DEFAULT_LOG_DIRNAME: Final[str] = "logs"
-DEFAULT_MANIFEST_FILENAME: Final[str] = "manifest.json"
-DEFAULT_DASHBOARD_FILENAME: Final[str] = "dashboard.html"
 
 CONFIG_ENV: Final[str] = "RATCHETR_CONFIG"
 ROOT_ENV: Final[str] = "RATCHETR_ROOT"
@@ -137,12 +138,15 @@ class ResolvedPaths:
 
 
 @dataclass(slots=True, frozen=True)
-class ManifestDiagnostics:
+# ignore JUSTIFIED: diagnostics dataclass must capture all report fields together;
+# splitting harms clarity
+class ManifestDiagnostics:  # pylint: disable=too-many-instance-attributes
     """Diagnostics collected during manifest discovery."""
 
     repo_root: Path
     tool_home: Path
     config_path: Path | None
+    cli_manifest: Path | None
     env_overrides: dict[str, Path]
     attempted_paths: tuple[Path, ...]
     matched_paths: tuple[Path, ...]
@@ -273,6 +277,8 @@ def resolve_paths(
     if manifest_path is None:
         manifest_path = tool_home / DEFAULT_MANIFEST_FILENAME
     dashboard_path = tool_home / DEFAULT_DASHBOARD_FILENAME
+    cli_config_path = _resolve_optional(working_dir, cli.config_path)
+    env_config_path = _resolve_optional(working_dir, env.config_path)
     return ResolvedPaths(
         repo_root=repo_root,
         tool_home=tool_home,
@@ -280,9 +286,7 @@ def resolve_paths(
         log_dir=log_dir,
         manifest_path=manifest_path,
         dashboard_path=dashboard_path,
-        config_path=_resolve_optional(repo_root, cli.config_path)
-        or _resolve_optional(repo_root, env.config_path)
-        or config_path,
+        config_path=cli_config_path or env_config_path or config_path,
     )
 
 
@@ -334,7 +338,7 @@ def discover_manifest(
     ambiguity = None
     if manifest_path is not None and len(matches) > 1:
         ambiguity = f"Multiple manifests found; using {manifest_path}"
-    diagnostics = _build_diagnostics(resolved, env, attempts, matches, ambiguity=ambiguity)
+    diagnostics = _build_diagnostics(resolved, env, attempts, matches, cli_manifest=None, ambiguity=ambiguity)
     if manifest_path is not None:
         return ManifestDiscoveryResult(manifest_path=manifest_path, diagnostics=diagnostics, error=None)
 
@@ -369,7 +373,7 @@ def _handle_cli_manifest(
         return None
 
     candidate = _record_candidate(_resolve_required(resolved.repo_root, cli_manifest), attempts, matches, seen)
-    diagnostics = _build_diagnostics(resolved, env, attempts, matches, ambiguity=None)
+    diagnostics = _build_diagnostics(resolved, env, attempts, matches, cli_manifest=candidate, ambiguity=None)
     if candidate.exists():
         return ManifestDiscoveryResult(manifest_path=candidate, diagnostics=diagnostics, error=None)
     return ManifestDiscoveryResult(
@@ -385,6 +389,7 @@ def _build_diagnostics(
     attempts: Sequence[Path],
     matches: Sequence[Path],
     *,
+    cli_manifest: Path | None,
     ambiguity: str | None,
 ) -> ManifestDiagnostics:
     glob_matches = _discover_globs(resolved)
@@ -392,6 +397,7 @@ def _build_diagnostics(
         repo_root=resolved.repo_root,
         tool_home=resolved.tool_home,
         config_path=resolved.config_path,
+        cli_manifest=cli_manifest,
         env_overrides=env.active_overrides,
         attempted_paths=tuple(attempts),
         matched_paths=tuple(matches),
