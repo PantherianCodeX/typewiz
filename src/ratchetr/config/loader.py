@@ -22,6 +22,7 @@ overrides (ratchetr.dir.toml, .ratchetrdir.toml).
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Literal, TypeAlias, cast
 
@@ -40,14 +41,30 @@ from .models import (
     InvalidConfigFileError,
     PathOverride,
     PathOverrideModel,
+    PathsConfig,
     RatchetConfig,
     model_to_dataclass,
     path_override_from_model,
+    paths_from_model,
     ratchet_from_model,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+
+@dataclass(slots=True, frozen=True)
+class LoadedConfig:
+    """Container for a loaded configuration and its source path.
+
+    Attributes:
+        config: Parsed configuration instance.
+        path: Filesystem path the configuration was loaded from, or None when
+            defaults are used.
+    """
+
+    config: Config
+    path: Path | None
 
 
 def resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:
@@ -135,10 +152,25 @@ def _discover_path_overrides(root: Path) -> list[PathOverride]:
 def load_config(explicit_path: Path | None = None) -> Config:
     """Load ratchetr configuration from a TOML file or use defaults.
 
+    Args:
+        explicit_path: Optional explicit path to a configuration file. If provided,
+            only this file will be checked. If None, standard locations are searched.
+
+    Returns:
+        A Config object containing audit and ratchet configuration with all paths
+        resolved to absolute paths.
+    """
+    return load_config_with_metadata(explicit_path).config
+
+
+def load_config_with_metadata(explicit_path: Path | None = None) -> LoadedConfig:
+    """Load ratchetr configuration with metadata about the source file.
+
     This function searches for and loads a ratchetr configuration file, resolves
     all relative paths, discovers directory-level path overrides, and returns a
-    fully configured Config object. If no configuration file is found, it returns
-    a default configuration with sensible defaults.
+    fully configured Config object alongside the path it was loaded from. If no
+    configuration file is found, it returns a default configuration with sensible
+    defaults and a ``None`` path.
 
     The function searches for configuration files in the following order:
     1. If explicit_path is provided, only that path is checked
@@ -152,8 +184,7 @@ def load_config(explicit_path: Path | None = None) -> Config:
             only this file will be checked. If None, standard locations are searched.
 
     Returns:
-        A Config object containing audit and ratchet configuration with all paths
-        resolved to absolute paths.
+        LoadedConfig: Parsed configuration and the path it originated from.
 
     Raises:
         InvalidConfigFileError: If the configuration file exists but contains invalid
@@ -182,10 +213,12 @@ def load_config(explicit_path: Path | None = None) -> Config:
         audit = model_to_dataclass(cfg_model.audit)
         ratchet = ratchet_from_model(cfg_model.ratchet)
         root = candidate.parent.resolve()
+        paths = paths_from_model(root, cfg_model.paths)
         audit.path_overrides = _discover_path_overrides(root)
         resolve_path_fields(root, audit)
         _resolve_ratchet_paths(root, ratchet)
-        return Config(audit=audit, ratchet=ratchet)
+        config = Config(audit=audit, ratchet=ratchet, paths=paths)
+        return LoadedConfig(config=config, path=candidate.resolve())
 
     root = Path.cwd().resolve()
     cfg = Config()
@@ -196,7 +229,8 @@ def load_config(explicit_path: Path | None = None) -> Config:
     cfg.audit.path_overrides = _discover_path_overrides(root)
     resolve_path_fields(root, cfg.audit)
     _resolve_ratchet_paths(root, cfg.ratchet)
-    return cfg
+    cfg.paths = PathsConfig()
+    return LoadedConfig(config=cfg, path=None)
 
 
 FolderConfigFilename: TypeAlias = Literal["ratchetr.dir.toml", ".ratchetrdir.toml"]
@@ -205,4 +239,4 @@ FOLDER_CONFIG_FILENAMES: Final[tuple[FolderConfigFilename, FolderConfigFilename]
     ".ratchetrdir.toml",
 )
 
-__all__ = ["load_config", "resolve_path_fields"]
+__all__ = ["LoadedConfig", "load_config", "load_config_with_metadata", "resolve_path_fields"]
