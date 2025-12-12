@@ -22,6 +22,7 @@ overrides (ratchetr.dir.toml, .ratchetrdir.toml).
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Literal, TypeAlias, cast
 
@@ -40,14 +41,30 @@ from .models import (
     InvalidConfigFileError,
     PathOverride,
     PathOverrideModel,
+    PathsConfig,
     RatchetConfig,
     model_to_dataclass,
     path_override_from_model,
+    paths_from_model,
     ratchet_from_model,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+
+@dataclass(slots=True, frozen=True)
+class LoadedConfig:
+    """Container for a loaded configuration and its source path.
+
+    Attributes:
+        config: Parsed configuration instance.
+        path: Filesystem path the configuration was loaded from, or None when
+            defaults are used.
+    """
+
+    config: Config
+    path: Path | None
 
 
 def resolve_path_fields(base_dir: Path, audit: AuditConfig) -> None:
@@ -135,18 +152,6 @@ def _discover_path_overrides(root: Path) -> list[PathOverride]:
 def load_config(explicit_path: Path | None = None) -> Config:
     """Load ratchetr configuration from a TOML file or use defaults.
 
-    This function searches for and loads a ratchetr configuration file, resolves
-    all relative paths, discovers directory-level path overrides, and returns a
-    fully configured Config object. If no configuration file is found, it returns
-    a default configuration with sensible defaults.
-
-    The function searches for configuration files in the following order:
-    1. If explicit_path is provided, only that path is checked
-    2. Otherwise, it checks for ratchetr.toml and .ratchetr.toml in the current directory
-
-    Configuration files can use either a direct format or be nested under [tool.ratchetr]
-    for compatibility with PEP 518 tools.
-
     Args:
         explicit_path: Optional explicit path to a configuration file. If provided,
             only this file will be checked. If None, standard locations are searched.
@@ -154,49 +159,140 @@ def load_config(explicit_path: Path | None = None) -> Config:
     Returns:
         A Config object containing audit and ratchet configuration with all paths
         resolved to absolute paths.
-
-    Raises:
-        InvalidConfigFileError: If the configuration file exists but contains invalid
-            configuration data that fails validation.
     """
-    search_order: list[Path] = []
-    if explicit_path:
-        search_order.append(explicit_path)
-    else:
-        search_order.extend((Path("ratchetr.toml"), Path(".ratchetr.toml")))
+    return load_config_with_metadata(explicit_path).config
+
+
+def load_config_with_metadata(explicit_path: Path | None = None) -> LoadedConfig:
+    """Load ratchetr configuration with metadata about the source file.
+
+    This function searches for and loads a ratchetr configuration file, resolves
+    all relative paths, discovers directory-level path overrides, and returns a
+    fully configured Config object alongside the path it was loaded from. If no
+    configuration file is found, it returns a default configuration with sensible
+    defaults and a ``None`` path.
+
+    The function searches for configuration files in the following order:
+    1. If explicit_path is provided, only that path is checked.
+    2. Otherwise, ratchetr.toml, .ratchetr.toml, and pyproject.toml are searched
+       in the current working directory, using the first file that contains
+       ratchetr configuration data.
+
+    Configuration files can use either a direct format (recommended for standalone
+    ``ratchetr.toml`` files) or be nested under ``[tool.ratchetr]`` for
+    compatibility with PEP 518 tools. When both a
+    standalone file and pyproject.toml contain ratchetr configuration, the
+    standalone file takes precedence because it is earlier in the search order.
+
+    Args:
+        explicit_path: Optional explicit path to a configuration file. If provided,
+            only this file will be checked. If None, standard locations are searched.
+
+    Returns:
+        LoadedConfig: Parsed configuration and the path it originated from.
+    """
+    search_order = _config_search_order(explicit_path)
 
     for candidate in search_order:
-        if not candidate.exists():
-            continue
-        raw_map: dict[str, object] = tomllib.loads(candidate.read_text(encoding="utf-8"))
-        tool_obj = raw_map.get("tool")
-        if isinstance(tool_obj, dict):
-            tool_section_any = cast("dict[str, object]", tool_obj).get("ratchetr")
-            if isinstance(tool_section_any, dict):
-                raw_map = cast("dict[str, object]", tool_section_any)
-        try:
-            cfg_model = ConfigModel.model_validate(raw_map)
-        # ignore JUSTIFIED: configuration files may be invalid; raise structured error
-        except ValidationError as exc:  # pragma: no cover - configuration errors
-            raise InvalidConfigFileError(candidate, exc) from exc
-        audit = model_to_dataclass(cfg_model.audit)
-        ratchet = ratchet_from_model(cfg_model.ratchet)
-        root = candidate.parent.resolve()
-        audit.path_overrides = _discover_path_overrides(root)
-        resolve_path_fields(root, audit)
-        _resolve_ratchet_paths(root, ratchet)
-        return Config(audit=audit, ratchet=ratchet)
+        candidate_config = _load_candidate_config(candidate, explicit=explicit_path is not None)
+        if candidate_config is not None:
+            return candidate_config
 
-    root = Path.cwd().resolve()
+    return _default_config(Path.cwd().resolve())
+
+
+def _default_config(base_dir: Path) -> LoadedConfig:
     cfg = Config()
     cfg.audit.runners = [
         RunnerName(EngineName("pyright")),
         RunnerName(EngineName("mypy")),
     ]
-    cfg.audit.path_overrides = _discover_path_overrides(root)
-    resolve_path_fields(root, cfg.audit)
-    _resolve_ratchet_paths(root, cfg.ratchet)
-    return cfg
+    cfg.audit.path_overrides = _discover_path_overrides(base_dir)
+    resolve_path_fields(base_dir, cfg.audit)
+    _resolve_ratchet_paths(base_dir, cfg.ratchet)
+    cfg.paths = PathsConfig()
+    return LoadedConfig(config=cfg, path=None)
+
+
+def _config_search_order(explicit_path: Path | None) -> list[Path]:
+    if explicit_path:
+        return [explicit_path]
+    return [Path("ratchetr.toml"), Path(".ratchetr.toml"), Path("pyproject.toml")]
+
+
+def _load_candidate_config(candidate: Path, *, explicit: bool) -> LoadedConfig | None:
+    if not candidate.exists():
+        return None
+    try:
+        raw_map: dict[str, object] = tomllib.loads(candidate.read_text(encoding="utf-8"))
+    # ignore JUSTIFIED: filesystem or parse errors depend on host configuration
+    except Exception as exc:  # pragma: no cover - IO errors
+        raise ConfigReadError(candidate, exc) from exc
+
+    payload = _extract_ratchetr_payload(candidate, raw_map)
+    if payload is None:
+        if explicit:
+            message = (
+                f"{candidate.name} does not define ratchetr configuration; "
+                "add standard tables (e.g. [audit]) or a [tool.ratchetr] section"
+            )
+            raise InvalidConfigFileError(candidate, ValueError(message))
+        return None
+
+    try:
+        cfg_model = ConfigModel.model_validate(payload)
+    # ignore JUSTIFIED: configuration files may be invalid; raise structured error
+    except ValidationError as exc:  # pragma: no cover - configuration errors
+        raise InvalidConfigFileError(candidate, exc) from exc
+
+    audit = model_to_dataclass(cfg_model.audit)
+    ratchet = ratchet_from_model(cfg_model.ratchet)
+    root = candidate.parent.resolve()
+    paths = paths_from_model(root, cfg_model.paths)
+    audit.path_overrides = _discover_path_overrides(root)
+    resolve_path_fields(root, audit)
+    _resolve_ratchet_paths(root, ratchet)
+    config = Config(audit=audit, ratchet=ratchet, paths=paths)
+    return LoadedConfig(config=config, path=candidate.resolve())
+
+
+def _extract_ratchetr_payload(candidate: Path, raw_map: dict[str, object]) -> dict[str, object] | None:
+    """Extract the ratchetr configuration payload from a TOML mapping.
+
+    Args:
+        candidate: Source configuration path.
+        raw_map: Data parsed from the TOML document.
+
+    Returns:
+        Mapping to validate or None when no ratchetr configuration is present (only for
+        pyproject.toml lookups).
+
+    Raises:
+        InvalidConfigFileError: If [tool.ratchetr] exists but is not a table.
+    """
+    tool_section_raw = raw_map.get("tool")
+    is_pyproject = candidate.name == "pyproject.toml"
+    if tool_section_raw is not None and not isinstance(tool_section_raw, dict):
+        if is_pyproject:
+            message = "[tool] in pyproject.toml must be a TOML table"
+            raise InvalidConfigFileError(candidate, ValueError(message))
+        # standalone configs ignore unrelated tool entries
+        tool_section_raw = None
+
+    ratchetr_section: object | None = None
+    tool_section: dict[str, object] | None = None
+    if isinstance(tool_section_raw, dict):
+        tool_section = cast("dict[str, object]", tool_section_raw)
+        ratchetr_section = tool_section.get("ratchetr")
+        if ratchetr_section is not None and not isinstance(ratchetr_section, dict):
+            message = "[tool.ratchetr] must be a TOML table"
+            raise InvalidConfigFileError(candidate, ValueError(message))
+        if isinstance(ratchetr_section, dict):
+            return cast("dict[str, object]", ratchetr_section)
+
+    if is_pyproject:
+        return None
+    return raw_map
 
 
 FolderConfigFilename: TypeAlias = Literal["ratchetr.dir.toml", ".ratchetrdir.toml"]
@@ -205,4 +301,4 @@ FOLDER_CONFIG_FILENAMES: Final[tuple[FolderConfigFilename, FolderConfigFilename]
     ".ratchetrdir.toml",
 )
 
-__all__ = ["load_config", "resolve_path_fields"]
+__all__ = ["LoadedConfig", "load_config", "load_config_with_metadata", "resolve_path_fields"]

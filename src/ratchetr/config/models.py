@@ -39,6 +39,9 @@ from ratchetr.exceptions import RatchetrValidationError
 
 CONFIG_VERSION: Final[int] = 0
 FAIL_ON_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(policy.value for policy in FailOnPolicy)
+DEFAULT_TOOL_HOME_DIRNAME: Final[str] = ".ratchetr"
+DEFAULT_CACHE_DIRNAME: Final[str] = ".cache"
+DEFAULT_LOG_DIRNAME: Final[str] = "logs"
 
 
 class ConfigValidationError(RatchetrValidationError):
@@ -249,6 +252,50 @@ def _default_ratchet_severity_levels() -> list[SeverityLevel]:
     return [SeverityLevel.ERROR, SeverityLevel.WARNING]
 
 
+def _resolve_optional_path(base_dir: Path, value: Path | None) -> Path | None:
+    if value is None:
+        return None
+    return value if value.is_absolute() else (base_dir / value).resolve()
+
+
+@dataclass(slots=True)
+class PathsConfig:
+    """Filesystem configuration for ratchetr internal artifacts.
+
+    Attributes:
+        ratchetr_dir: Optional path to the tool home directory (``.ratchetr``).
+        manifest_path: Optional path to the manifest file to read/write.
+        cache_dir: Optional cache directory path for ephemeral data.
+        log_dir: Optional directory to store log output.
+    """
+
+    ratchetr_dir: Path | None = None
+    manifest_path: Path | None = None
+    cache_dir: Path | None = None
+    log_dir: Path | None = None
+
+    def with_defaults(self) -> PathsConfig:
+        """Return a copy with cache and log directories derived when missing.
+
+        Derives ``cache_dir`` and ``log_dir`` from ``ratchetr_dir`` when those
+        fields are unset, leaving other fields unchanged.
+
+        Returns:
+            PathsConfig: A new configuration instance with derived defaults.
+        """
+        cache_dir = self.cache_dir
+        log_dir = self.log_dir
+        if self.ratchetr_dir is not None:
+            cache_dir = cache_dir or (self.ratchetr_dir / DEFAULT_CACHE_DIRNAME)
+            log_dir = log_dir or (self.ratchetr_dir / DEFAULT_LOG_DIRNAME)
+        return PathsConfig(
+            ratchetr_dir=self.ratchetr_dir,
+            manifest_path=self.manifest_path,
+            cache_dir=cache_dir,
+            log_dir=log_dir,
+        )
+
+
 @dataclass(slots=True)
 # ignore JUSTIFIED: Intentional - audit config aggregates many related options
 class AuditConfig:  # pylint: disable=too-many-instance-attributes
@@ -358,10 +405,12 @@ class Config:
     audit and ratchet operations.
 
     Attributes:
+        paths: Filesystem configuration for ratchetr artifacts.
         audit: Configuration settings for type checking audits.
         ratchet: Configuration settings for ratcheting (progressive type coverage).
     """
 
+    paths: PathsConfig = field(default_factory=PathsConfig)
     audit: AuditConfig = field(default_factory=AuditConfig)
     ratchet: RatchetConfig = field(default_factory=RatchetConfig)
 
@@ -557,6 +606,31 @@ class PathOverrideModel(BaseModel):
             if settings and profile:
                 # validation of profile presence happens when merged.
                 continue
+        return self
+
+
+class PathsConfigModel(BaseModel):
+    """Pydantic model describing filesystem locations for ratchetr artifacts.
+
+    Attributes:
+        ratchetr_dir: Optional tool home directory path.
+        manifest_path: Optional manifest path override.
+        cache_dir: Optional cache directory location.
+        log_dir: Optional log directory location.
+    """
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(populate_by_name=True)
+
+    ratchetr_dir: Path | None = None
+    manifest_path: Path | None = None
+    cache_dir: Path | None = None
+    log_dir: Path | None = None
+
+    @model_validator(mode="after")
+    def _derive_defaults(self) -> PathsConfigModel:
+        if self.ratchetr_dir is not None:
+            self.cache_dir = self.cache_dir or (self.ratchetr_dir / DEFAULT_CACHE_DIRNAME)
+            self.log_dir = self.log_dir or (self.ratchetr_dir / DEFAULT_LOG_DIRNAME)
         return self
 
 
@@ -766,11 +840,13 @@ class ConfigModel(BaseModel):
 
     Attributes:
         config_version: Schema version number for the configuration file.
+        paths: Filesystem configuration settings.
         audit: Audit configuration settings.
         ratchet: Ratchet configuration settings.
     """
 
     config_version: int = Field(default=CONFIG_VERSION)
+    paths: PathsConfigModel = Field(default_factory=PathsConfigModel)
     audit: AuditConfigModel = Field(default_factory=AuditConfigModel)
     ratchet: RatchetConfigModel = Field(default_factory=RatchetConfigModel)
 
@@ -816,6 +892,24 @@ def _engine_settings_from_model(model: EngineSettingsModel) -> EngineSettings:
         profile_map[ProfileName(name)] = _profile_from_model(profile_model)
     settings.profiles = profile_map
     return settings
+
+
+def paths_from_model(base_dir: Path, model: PathsConfigModel) -> PathsConfig:
+    """Convert a PathsConfigModel to a PathsConfig dataclass.
+
+    Args:
+        base_dir: Directory used to resolve relative paths.
+        model: Validated Pydantic model containing raw path values.
+
+    Returns:
+        PathsConfig: Dataclass with absolute paths and derived defaults.
+    """
+    return PathsConfig(
+        ratchetr_dir=_resolve_optional_path(base_dir, model.ratchetr_dir),
+        manifest_path=_resolve_optional_path(base_dir, model.manifest_path),
+        cache_dir=_resolve_optional_path(base_dir, model.cache_dir),
+        log_dir=_resolve_optional_path(base_dir, model.log_dir),
+    ).with_defaults()
 
 
 def path_override_from_model(path: Path, model: PathOverrideModel) -> PathOverride:
