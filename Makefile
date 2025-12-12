@@ -45,8 +45,8 @@ VERIFYTYPES_PACKAGE  ?= ratchetr
   clean.bandit clean.safety clean.sec clean.package clean.ratchetr clean.full \
   ci.check ci.package ci.all \
   pre-commit pre-commit.check pre-commit.update pre-commit.install \
-  find.% find.label.% find.help \
-  help help.%
+  find.% find.label.% %.find %.find.label find.help \
+  help help.% %.help
 
 
 # ----------------------------------------------------------------------
@@ -569,6 +569,9 @@ help:
 %.help:
 	@$(UV) python scripts/make_help.py "$*" "$(firstword $(MAKEFILE_LIST))"
 
+help.%:
+	@$(UV) python scripts/make_help.py "$*" "$(firstword $(MAKEFILE_LIST))"
+
 
 # ----------------------------------------------------------------------
 ##@ Find
@@ -583,11 +586,17 @@ FIND_SCRIPT := scripts/make_find.py
 find.%: ## Full-text search Makefile help (labels, names, descriptions)
 	$(UV) python $(FIND_SCRIPT) $(subst ., ,$*)
 
+%.find: ## Full-text search Makefile help (labels, names, descriptions)
+	$(UV) python $(FIND_SCRIPT) $(subst ., ,$*)
+
 # Label-oriented search (section headings + command names):
 #   make find.label.tests
 #   make find.label.lint.ruff      # same as: make find.label."lint ruff"
 #   make find.label."lint+ruff"
 find.label.%: ## Label-only search (section slugs, labels, and command names)
+	$(UV) python $(FIND_SCRIPT) --labels-only $(subst ., ,$*)
+
+%.find.label: ## Label-only search (section slugs, labels, and command names)
 	$(UV) python $(FIND_SCRIPT) --labels-only $(subst ., ,$*)
 
 find.help: ## Show usage examples for find.* search helpers
