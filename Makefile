@@ -31,8 +31,8 @@ VERIFYTYPES_PACKAGE  ?= ratchetr
 
 .PHONY: \
   all all.full all.test all.lint all.type all.format all.fix all.sec all.check all.ratchetr \
-  lint lint.ruff lint.ruff.fix lint.format lint.format.fix lint.markdown lint.pylint lint.pylint.report lint.fix \
-  fix fix.format fix.ruff \
+  lint lint.ruff lint.format lint.markdown lint.pylint lint.pylint.report \
+  lint.fix lint.fix.ruff lint.fix.format lint.fix.markdown \
   type type.mypy type.pyright type.verifytypes type.clean \
   test test.verbose test.failfast test.unit test.integration test.property test.performance test.e2e test.smoke test.fast test.cov test.cov.report test.bench test.bench.report \
   test.clean test.clean.pytest test.clean.coverage test.clean.hypothesis test.clean.benchmarks \
@@ -79,24 +79,14 @@ lint.ruff: ## Run ruff lint
 	$(UV) ruff check --preview
 	@printf "=+= Ruff lint completed =+=\n\n"
 
-lint.ruff.fix: ## Apply ruff formatter
-	@printf "=+= Applying ruff safe autofixes... =+=\n"
-	$(UV) ruff check --preview --fix
-	@printf "=+= Ruff safe autofixes applied =+=\n\n"
-
 lint.format: ## Check ruff formatting (no changes)
 	@printf "=+= Checking ruff formatting... =+=\n"
 	$(UV) ruff format --check
 	@printf "=+= Ruff formatting check completed =+=\n\n"
 
-lint.format.fix: ## Apply ruff formatter
-	@printf "=+= Applying ruff formatting... =+=\n"
-	$(UV) ruff format
-	@printf "=+= Ruff formatting applied =+=\n\n"
-
 lint.markdown: ## Run pymarkdownlnt on markdown files
 	@printf "=+= Running pymarkdownlnt on markdown files... =+=\n"
-	$(UV) pymarkdownlnt scan .
+	$(UV) pymarkdownlnt --strict-config scan -r -e "./.*/**/*.md" .
 	@printf "=+= pymarkdownlnt run completed =+=\n\n"
 
 lint.pylint: ## Run Pylint code quality checks
@@ -111,21 +101,22 @@ lint.pylint.report: ## Run Pylint and write JSON report
 	@printf "Pylint report: $(LINT_DIR)/pylint.json\n"
 	@printf "=+= Pylint JSON report completed =+=\n\n"
 
-lint.fix: lint.ruff.fix lint.format.fix ## Apply formatter and safe autofix lints
-	@printf "  =+= All fixes applied =+=\n\n"
-
-
-# ----------------------------------------------------------------------
-##@ Lint & Format Fixes
-# ----------------------------------------------------------------------
-
-fix.format: lint.format.fix ## Apply ruff formatting
-	@printf "=+= Ruff formatting applied =+=\n\n"
-
-fix.ruff: lint.ruff.fix ## Apply ruff safe autofixes
+lint.fix.ruff: ## Apply ruff formatter
+	@printf "=+= Applying ruff safe autofixes... =+=\n"
+	$(UV) ruff check --preview --fix
 	@printf "=+= Ruff safe autofixes applied =+=\n\n"
 
-fix: fix.format fix.ruff ## Apply all formatters and safe autofixes
+lint.fix.format: ## Apply ruff formatter
+	@printf "=+= Applying ruff formatting... =+=\n"
+	$(UV) ruff format
+	@printf "=+= Ruff formatting applied =+=\n\n"
+
+lint.fix.markdown: ## Run pymarkdownlnt on markdown files
+	@printf "=+= Applying markdown formatting... =+=\n"
+	$(UV) pymarkdownlnt --strict-config fix -r -e "./.*/**/*.md" .
+	@printf "=+= Markdown formatting applied =+=\n\n"
+
+lint.fix: lint.fix.ruff lint.fix.format lint.fix.markdown ## Apply formatter and safe autofix lints
 	@printf "  =+= All fixes applied =+=\n\n"
 
 

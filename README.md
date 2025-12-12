@@ -683,14 +683,10 @@ Use the Makefile to run common workflows with consistent settings:
 
 - Lint & format
   - `make lint` – Ruff lint + format check
-  - `make format` – Apply Ruff formatter
-  - `make fix` – Apply formatter and auto-fix lints
   - `make check.error-codes` – Verify error code registry matches documentation
 
 - Typing
   - `make type` – Run mypy + pyright
-  - `make typing.run` – Baseline (pyright + mypy) and strict pass
-  - `make typing.ci` – Generate ratchetr manifest and dashboards (JSON/MD/HTML)
   - `make verifytypes` – Run pyright `--verifytypes` for API contracts
 
 - Tests
@@ -700,7 +696,7 @@ Use the Makefile to run common workflows with consistent settings:
   - `make test.unit` / `make test.integration` / `make test.property` / `make test.performance`
   - `make test.cov` – Run tests with coverage (enforces ≥95%)
 - Benchmarks
-  - `make bench` – Run readiness/aggregate benchmarks (skips if `pytest-benchmark` is unavailable)
+  - `make test.bench` – Run readiness/aggregate benchmarks (skips if `pytest-benchmark` is unavailable)
 
 - Packaging
   - `make package.build` – Build sdist and wheel into `dist/`

@@ -547,8 +547,7 @@ filterwarnings = [
 
 [tool.pymarkdown]
 plugins.line-length.enabled = false
-plugins.no-duplicate-heading.siblings-only = true
-
+plugins.no-duplicate-heading.siblings_only = true
 
 # --- Pytest coverage configuration ---
 # -------------------------------------

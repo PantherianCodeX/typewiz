@@ -65,7 +65,7 @@
 ## Make Targets (preferred)
 
 - `make ci.check` — lint, type, tests (coverage gate). CI parity.
-- `make lint` / `make fix` — Ruff lint/format (check or autofix).
+- `make lint` / `make lint.fix` — Ruff lint/format (check or autofix).
 - `make type` — mypy + pyright strict. `make verifytypes` validates public typing.
 - `make test.cov` — tests with coverage ≥95%.
 - `make ratchetr.dashboard` — build typing dashboards. `make ratchetr.clean` clears cache.

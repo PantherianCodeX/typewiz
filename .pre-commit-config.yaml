@@ -49,7 +49,7 @@ repos:
         pass_filenames: false
       - id: lint-fix
         name: ruff check and format autofix
-        entry: make fix
+        entry: make lint.fix
         language: system
         pass_filenames: false
       - id: typing-verifytypes
