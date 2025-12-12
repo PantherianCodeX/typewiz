@@ -258,21 +258,40 @@ def resolve_paths(
     env_cache = env.cache_dir or (env.tool_home / DEFAULT_CACHE_DIRNAME if env.tool_home else None)
     env_log = env.log_dir or (env.tool_home / DEFAULT_LOG_DIRNAME if env.tool_home else None)
 
-    repo_root = _resolve_repo_root(cli.repo_root, env.repo_root, config_path, working_dir)
-    tool_home = _resolve_from(repo_root, cli.tool_home, env.tool_home, config.ratchetr_dir)
+    repo_root = _resolve_repo_root(cli.repo_root, env.repo_root, working_dir)
+    tool_home = _resolve_overrides(
+        cli_value=cli.tool_home,
+        env_value=env.tool_home,
+        config_value=config.ratchetr_dir,
+        working_dir=working_dir,
+        repo_root=repo_root,
+    )
     if tool_home is None:
         tool_home = repo_root / DEFAULT_TOOL_HOME_DIRNAME
-    cache_dir = _resolve_from(repo_root, cli.cache_dir, env_cache, config.cache_dir)
+    cache_dir = _resolve_overrides(
+        cli_value=cli.cache_dir,
+        env_value=env_cache,
+        config_value=config.cache_dir,
+        working_dir=working_dir,
+        repo_root=repo_root,
+    )
     if cache_dir is None:
         cache_dir = tool_home / DEFAULT_CACHE_DIRNAME
-    log_dir = _resolve_from(repo_root, cli.log_dir, env_log, config.log_dir)
+    log_dir = _resolve_overrides(
+        cli_value=cli.log_dir,
+        env_value=env_log,
+        config_value=config.log_dir,
+        working_dir=working_dir,
+        repo_root=repo_root,
+    )
     if log_dir is None:
         log_dir = tool_home / DEFAULT_LOG_DIRNAME
-    manifest_path = _resolve_from(
-        repo_root,
-        cli.manifest_path,
-        env.manifest_path,
-        config.manifest_path,
+    manifest_path = _resolve_overrides(
+        cli_value=cli.manifest_path,
+        env_value=env.manifest_path,
+        config_value=config.manifest_path,
+        working_dir=working_dir,
+        repo_root=repo_root,
     )
     if manifest_path is None:
         manifest_path = tool_home / DEFAULT_MANIFEST_FILENAME
@@ -327,25 +346,43 @@ def discover_manifest(
         return cli_result
 
     for option in (env.manifest_path, config_manifest, resolved.manifest_path):
-        if option is not None:
-            resolved_option = _resolve_required(resolved.repo_root, option)
-            _record_candidate(resolved_option, attempts, matches, seen)
+        if option is None:
+            continue
+        candidate = _record_candidate(_resolve_required(resolved.repo_root, option), attempts, matches, seen)
+        if candidate.exists():
+            diagnostics = _build_diagnostics(
+                resolved,
+                env,
+                attempts,
+                matches,
+                cli_manifest=None,
+                ambiguity=None,
+            )
+            return ManifestDiscoveryResult(manifest_path=candidate, diagnostics=diagnostics, error=None)
 
     for name in candidate_names:
         _record_candidate(resolved.repo_root / name, attempts, matches, seen)
 
-    manifest_path = matches[0] if matches else None
     ambiguity = None
-    if manifest_path is not None and len(matches) > 1:
-        ambiguity = f"Multiple manifests found; using {manifest_path}"
-    diagnostics = _build_diagnostics(resolved, env, attempts, matches, cli_manifest=None, ambiguity=ambiguity)
-    if manifest_path is not None:
-        return ManifestDiscoveryResult(manifest_path=manifest_path, diagnostics=diagnostics, error=None)
+    error: ManifestDiscoveryError | None = None
+    if len(matches) > 1:
+        ambiguity = "Multiple manifests discovered; provide --manifest to choose one"
+        error = ManifestDiscoveryError(message=ambiguity)
+    diagnostics = _build_diagnostics(
+        resolved,
+        env,
+        attempts,
+        matches,
+        cli_manifest=None,
+        ambiguity=ambiguity,
+    )
+    if matches and error is None:
+        return ManifestDiscoveryResult(manifest_path=matches[0], diagnostics=diagnostics, error=None)
 
     return ManifestDiscoveryResult(
         manifest_path=None,
         diagnostics=diagnostics,
-        error=ManifestDiscoveryError(message="No manifest discovered"),
+        error=error or ManifestDiscoveryError(message="No manifest discovered"),
     )
 
 
@@ -416,28 +453,29 @@ def _discover_globs(resolved: ResolvedPaths) -> tuple[Path, ...]:
 def _resolve_repo_root(
     cli_root: Path | None,
     env_root: Path | None,
-    config_path: Path | None,
     cwd: Path,
 ) -> Path:
     if cli_root is not None:
         return _resolve_required(cwd, cli_root)
     if env_root is not None:
         return _resolve_required(cwd, env_root)
-    if config_path is not None:
-        return config_path.parent.resolve()
     return resolve_project_root(cwd)
 
 
-def _resolve_from(
-    repo_root: Path,
+def _resolve_overrides(
+    *,
     cli_value: Path | None,
     env_value: Path | None,
     config_value: Path | None,
+    working_dir: Path,
+    repo_root: Path,
 ) -> Path | None:
-    for option in (cli_value, env_value, config_value):
-        if option is None:
-            continue
-        return _resolve_optional(repo_root, option)
+    if cli_value is not None:
+        return _resolve_optional(working_dir, cli_value)
+    if env_value is not None:
+        return _resolve_optional(working_dir, env_value)
+    if config_value is not None:
+        return _resolve_optional(repo_root, config_value)
     return None
 
 

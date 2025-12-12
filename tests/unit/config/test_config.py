@@ -139,6 +139,26 @@ full_paths = ["from-standalone"]
     assert cfg.paths.ratchetr_dir is None
 
 
+def test_load_config_discovers_repo_root_from_subdirectory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo_root = tmp_path / "project"
+    repo_root.mkdir()
+    config_path = repo_root / "ratchetr.toml"
+    config_path.write_text(
+        """
+[audit]
+full_paths = ["root-discovery"]
+""",
+        encoding="utf-8",
+    )
+    nested = repo_root / "apps" / "pkg"
+    nested.mkdir(parents=True)
+    monkeypatch.chdir(nested)
+
+    cfg = load_config()
+
+    assert cfg.audit.full_paths == ["root-discovery"]
+
+
 def test_load_config_allows_tool_sections_in_standalone(tmp_path: Path) -> None:
     config_path = tmp_path / "ratchetr.toml"
     config_path.write_text(

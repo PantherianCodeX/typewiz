@@ -30,6 +30,7 @@ from pydantic import ValidationError
 
 from ratchetr.compat import tomllib
 from ratchetr.core.type_aliases import EngineName, RunnerName
+from ratchetr.runtime import resolve_project_root
 
 from .models import (
     AuditConfig,
@@ -175,8 +176,8 @@ def load_config_with_metadata(explicit_path: Path | None = None) -> LoadedConfig
     The function searches for configuration files in the following order:
     1. If explicit_path is provided, only that path is checked.
     2. Otherwise, ratchetr.toml, .ratchetr.toml, and pyproject.toml are searched
-       in the current working directory, using the first file that contains
-       ratchetr configuration data.
+       within the detected project root (based on repository markers), using the
+       first file that contains ratchetr configuration data.
 
     Configuration files can use either a direct format (recommended for standalone
     ``ratchetr.toml`` files) or be nested under ``[tool.ratchetr]`` for
@@ -191,14 +192,15 @@ def load_config_with_metadata(explicit_path: Path | None = None) -> LoadedConfig
     Returns:
         LoadedConfig: Parsed configuration and the path it originated from.
     """
-    search_order = _config_search_order(explicit_path)
+    base_dir = _discover_config_root(explicit_path)
+    search_order = _config_search_order(base_dir, explicit_path)
 
     for candidate in search_order:
         candidate_config = _load_candidate_config(candidate, explicit=explicit_path is not None)
         if candidate_config is not None:
             return candidate_config
 
-    return _default_config(Path.cwd().resolve())
+    return _default_config(base_dir)
 
 
 def _default_config(base_dir: Path) -> LoadedConfig:
@@ -214,10 +216,24 @@ def _default_config(base_dir: Path) -> LoadedConfig:
     return LoadedConfig(config=cfg, path=None)
 
 
-def _config_search_order(explicit_path: Path | None) -> list[Path]:
+def _discover_config_root(explicit_path: Path | None) -> Path:
     if explicit_path:
-        return [explicit_path]
-    return [Path("ratchetr.toml"), Path(".ratchetr.toml"), Path("pyproject.toml")]
+        return _resolve_candidate_path(explicit_path).parent.resolve()
+    return resolve_project_root(Path.cwd())
+
+
+def _config_search_order(base_dir: Path, explicit_path: Path | None) -> list[Path]:
+    if explicit_path:
+        return [_resolve_candidate_path(explicit_path)]
+    return [
+        base_dir / "ratchetr.toml",
+        base_dir / ".ratchetr.toml",
+        base_dir / "pyproject.toml",
+    ]
+
+
+def _resolve_candidate_path(candidate: Path) -> Path:
+    return candidate if candidate.is_absolute() else (Path.cwd() / candidate).resolve()
 
 
 def _load_candidate_config(candidate: Path, *, explicit: bool) -> LoadedConfig | None:
