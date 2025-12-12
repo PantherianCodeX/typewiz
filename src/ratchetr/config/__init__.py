@@ -21,7 +21,7 @@ engine settings and directory-level overrides.
 
 from __future__ import annotations
 
-from .loader import load_config, resolve_path_fields
+from .loader import LoadedConfig, load_config, load_config_with_metadata, resolve_path_fields
 from .models import (
     AuditConfig,
     AuditConfigModel,
@@ -39,6 +39,8 @@ from .models import (
     InvalidConfigFileError,
     PathOverride,
     PathOverrideModel,
+    PathsConfig,
+    PathsConfigModel,
     RatchetConfig,
     RatchetConfigModel,
     UndefinedDefaultProfileError,
@@ -62,8 +64,11 @@ __all__ = [
     "EngineSettings",
     "EngineSettingsModel",
     "InvalidConfigFileError",
+    "LoadedConfig",
     "PathOverride",
     "PathOverrideModel",
+    "PathsConfig",
+    "PathsConfigModel",
     "RatchetConfig",
     "RatchetConfigModel",
     "UndefinedDefaultProfileError",
@@ -71,5 +76,6 @@ __all__ = [
     "UnsupportedConfigVersionError",
     "ensure_list",
     "load_config",
+    "load_config_with_metadata",
     "resolve_path_fields",
 ]
