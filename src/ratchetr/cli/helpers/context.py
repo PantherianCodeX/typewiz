@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ratchetr.cli.helpers.io import echo
@@ -31,8 +32,6 @@ from ratchetr.paths import (
 )
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from ratchetr.config import Config
 
 
@@ -61,14 +60,16 @@ def build_cli_context(
         CLIContext: Resolved configuration, paths, and environment overrides.
     """
     env_overrides = EnvOverrides.from_environ()
+    working_dir = (cwd or Path.cwd()).resolve()
+    search_root = _determine_config_search_root(overrides, env_overrides, working_dir)
     config_hint = overrides.config_path or env_overrides.config_path
-    loaded = load_config_with_metadata(config_hint)
+    loaded = load_config_with_metadata(config_hint, search_root=search_root, cwd=working_dir)
     resolved_paths = resolve_paths(
         cli_overrides=overrides,
         env_overrides=env_overrides,
         config_paths=loaded.config.paths,
         config_path=loaded.path,
-        cwd=cwd,
+        cwd=working_dir,
     )
     return CLIContext(
         config=loaded.config,
@@ -135,6 +136,23 @@ def emit_manifest_diagnostics(result: ManifestDiscoveryResult) -> None:
             echo(f"    - {path}")
     if diagnostics.ambiguity:
         echo(f"  ambiguity: {diagnostics.ambiguity}")
+
+
+def _determine_config_search_root(
+    cli_overrides: PathOverrides,
+    env_overrides: EnvOverrides,
+    working_dir: Path,
+) -> Path | None:
+    """Resolve the search root for configuration discovery.
+
+    Returns:
+        Optional absolute Path to use as the config search base.
+    """
+    for candidate in (cli_overrides.repo_root, env_overrides.repo_root):
+        if candidate is None:
+            continue
+        return candidate if candidate.is_absolute() else (working_dir / candidate).resolve()
+    return None
 
 
 __all__ = ["CLIContext", "build_cli_context", "discover_manifest_or_exit", "emit_manifest_diagnostics"]

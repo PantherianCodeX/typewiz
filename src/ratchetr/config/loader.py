@@ -150,21 +150,34 @@ def _discover_path_overrides(root: Path) -> list[PathOverride]:
     return overrides
 
 
-def load_config(explicit_path: Path | None = None) -> Config:
+def load_config(
+    explicit_path: Path | None = None,
+    *,
+    search_root: Path | None = None,
+    cwd: Path | None = None,
+) -> Config:
     """Load ratchetr configuration from a TOML file or use defaults.
 
     Args:
         explicit_path: Optional explicit path to a configuration file. If provided,
             only this file will be checked. If None, standard locations are searched.
+        search_root: Optional directory to anchor config discovery when explicit path
+            is not provided.
+        cwd: Working directory used for resolving relative config paths.
 
     Returns:
         A Config object containing audit and ratchet configuration with all paths
         resolved to absolute paths.
     """
-    return load_config_with_metadata(explicit_path).config
+    return load_config_with_metadata(explicit_path, search_root=search_root, cwd=cwd).config
 
 
-def load_config_with_metadata(explicit_path: Path | None = None) -> LoadedConfig:
+def load_config_with_metadata(
+    explicit_path: Path | None = None,
+    *,
+    search_root: Path | None = None,
+    cwd: Path | None = None,
+) -> LoadedConfig:
     """Load ratchetr configuration with metadata about the source file.
 
     This function searches for and loads a ratchetr configuration file, resolves
@@ -188,12 +201,17 @@ def load_config_with_metadata(explicit_path: Path | None = None) -> LoadedConfig
     Args:
         explicit_path: Optional explicit path to a configuration file. If provided,
             only this file will be checked. If None, standard locations are searched.
+        search_root: Optional directory to anchor discovery when explicit_path is
+            not provided.
+        cwd: Working directory used for resolving relative paths and defaulting the
+            search root.
 
     Returns:
         LoadedConfig: Parsed configuration and the path it originated from.
     """
-    base_dir = _discover_config_root(explicit_path)
-    search_order = _config_search_order(base_dir, explicit_path)
+    working_dir = (cwd or Path.cwd()).resolve()
+    base_dir = _discover_config_root(explicit_path, search_root=search_root, working_dir=working_dir)
+    search_order = _config_search_order(base_dir, explicit_path, working_dir)
 
     for candidate in search_order:
         candidate_config = _load_candidate_config(candidate, explicit=explicit_path is not None)
@@ -216,15 +234,22 @@ def _default_config(base_dir: Path) -> LoadedConfig:
     return LoadedConfig(config=cfg, path=None)
 
 
-def _discover_config_root(explicit_path: Path | None) -> Path:
+def _discover_config_root(
+    explicit_path: Path | None,
+    *,
+    search_root: Path | None,
+    working_dir: Path,
+) -> Path:
     if explicit_path:
-        return _resolve_candidate_path(explicit_path).parent.resolve()
-    return resolve_project_root(Path.cwd())
+        return _resolve_candidate_path(explicit_path, working_dir=working_dir).parent.resolve()
+    if search_root is not None:
+        return search_root.resolve()
+    return resolve_project_root(working_dir)
 
 
-def _config_search_order(base_dir: Path, explicit_path: Path | None) -> list[Path]:
+def _config_search_order(base_dir: Path, explicit_path: Path | None, working_dir: Path) -> list[Path]:
     if explicit_path:
-        return [_resolve_candidate_path(explicit_path)]
+        return [_resolve_candidate_path(explicit_path, working_dir=working_dir)]
     return [
         base_dir / "ratchetr.toml",
         base_dir / ".ratchetr.toml",
@@ -232,8 +257,8 @@ def _config_search_order(base_dir: Path, explicit_path: Path | None) -> list[Pat
     ]
 
 
-def _resolve_candidate_path(candidate: Path) -> Path:
-    return candidate if candidate.is_absolute() else (Path.cwd() / candidate).resolve()
+def _resolve_candidate_path(candidate: Path, *, working_dir: Path) -> Path:
+    return candidate if candidate.is_absolute() else (working_dir / candidate).resolve()
 
 
 def _load_candidate_config(candidate: Path, *, explicit: bool) -> LoadedConfig | None:

@@ -218,6 +218,7 @@ target-version = "py310"
 exclude = [
     ".git",
     ".venv",
+    ".pre-commit-cache",
     "__pycache__",
     "build",
     "dist",

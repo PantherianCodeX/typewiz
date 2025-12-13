@@ -269,3 +269,26 @@ def test_build_cli_context_uses_overrides(monkeypatch: pytest.MonkeyPatch, tmp_p
     assert ctx.config is cfg
     assert ctx.config_path == loaded.path
     assert ctx.resolved_paths is resolved_paths
+
+
+def test_build_cli_context_honours_root_override_for_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    config_path = repo_root / "ratchetr.toml"
+    config_path.write_text(
+        """
+[audit]
+runners = ["pyright"]
+""",
+        encoding="utf-8",
+    )
+    cwd = tmp_path / "runner"
+    cwd.mkdir()
+    overrides = PathOverrides(repo_root=repo_root)
+    monkeypatch.delenv("RATCHETR_ROOT", raising=False)
+    monkeypatch.delenv("RATCHETR_CONFIG", raising=False)
+
+    context = build_cli_context(overrides, cwd=cwd)
+
+    assert context.config_path == config_path
+    assert context.resolved_paths.repo_root == repo_root

@@ -99,6 +99,21 @@ BASE_IGNORE_MARKERS: tuple[str, ...] = (
     "nosec",
 )
 
+# Directories skipped during repository-wide scans to avoid third-party caches.
+SKIPPED_DIRECTORIES: frozenset[str] = frozenset(
+    {
+        ".venv",
+        ".git",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytest_cache",
+        ".pyrightcache",
+        ".pre-commit-cache",
+        "build",
+        "dist",
+    },
+)
+
 JUSTIFICATION_PREFIX = "# ignore JUSTIFIED:"
 
 # Rule codes for ignore justification policy violations.
@@ -218,12 +233,9 @@ def _iter_python_files(root: Path, paths: Sequence[Path] | None) -> Iterable[Pat
             continue
         if not _is_python_file(path):
             continue
-        # Skip common virtualenv / cache / build directories
+        # Skip common virtualenv / cache / build directories (including pre-commit cache)
         parts = path.parts
-        if any(
-            part in {".venv", ".git", ".mypy_cache", ".ruff_cache", ".pytest_cache", ".pyrightcache", "build", "dist"}
-            for part in parts
-        ):
+        if any(part in SKIPPED_DIRECTORIES for part in parts):
             continue
         yield path
 
