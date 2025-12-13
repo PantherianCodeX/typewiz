@@ -32,7 +32,7 @@ from ratchetr.engines import EngineContext, resolve_engines
 from ratchetr.json import normalise_enums_for_json
 from ratchetr.logging import structured_extra
 from ratchetr.manifest.builder import ManifestBuilder
-from ratchetr.runtime import consume, default_full_paths, detect_tool_versions, resolve_project_root
+from ratchetr.runtime import consume, default_full_paths, detect_tool_versions
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -82,14 +82,14 @@ def _determine_full_paths(
 
 def _prepare_audit_inputs(
     *,
-    project_root: Path | None,
+    project_root: Path,
     config: Config | None,
     override: AuditConfig | None,
     full_paths: Sequence[str] | None,
 ) -> tuple[Config, _AuditInputs]:
     cfg = config or load_config(None)
     audit_config = merge_audit_configs(cfg.audit, override)
-    root = resolve_project_root(project_root)
+    root = project_root
     full_paths_normalised = _determine_full_paths(root, audit_config, full_paths)
     engines = resolve_engines(audit_config.runners)
     tool_versions = detect_tool_versions([engine.name for engine in engines])
@@ -109,7 +109,10 @@ def _prepare_audit_inputs(
         [str(path) for path in full_paths_normalised],
         [engine.name for engine in engines],
         tool_versions,
-        extra=structured_extra(component=LogComponent.CLI, details={"runners": len(engines)}),
+        extra=structured_extra(
+            component=LogComponent.CLI,
+            details={"runners": len(engines), "root_source": "cli_context"},
+        ),
     )
     return cfg, inputs
 
@@ -253,7 +256,7 @@ def _compute_run_totals(runs: list[RunResult]) -> tuple[int, int]:
 
 def run_audit(
     *,
-    project_root: Path | None = None,
+    project_root: Path,
     config: Config | None = None,
     override: AuditConfig | None = None,
     full_paths: Sequence[str] | None = None,
@@ -264,8 +267,8 @@ def run_audit(
     """Run configured engines, persist artefacts, and collate diagnostics.
 
     Args:
-        project_root: Directory that hosts `typing_audit.json`and engine
-            configuration. `None`defaults to ``Path.cwd()``.
+        project_root: Repository root directory. Must be provided; root discovery
+            happens at the CLI layer via resolve_paths().
         config: Resolved `ratchetr.config.Config`object. `None`triggers a
             fresh load from disk based on ``project_root``.
         override: In-memory overrides applied on top of the config file.

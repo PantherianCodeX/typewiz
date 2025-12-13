@@ -32,7 +32,7 @@ __all__ = ["AuditResult", "run_audit"]
 
 def run_audit(
     *,
-    project_root: Path | None = None,
+    project_root: Path,
     config: Config | None = None,
     override: AuditConfig | None = None,
     full_paths: Sequence[str] | None = None,
@@ -43,7 +43,8 @@ def run_audit(
     """Run the configured audit and return structured results.
 
     Args:
-        project_root: Repository root location.
+        project_root: Repository root location. Must be provided; root discovery
+            happens at the CLI layer via resolve_paths().
         config: Loaded `Config`object overriding file discovery.
         override: Additional overrides applied on top of ``config``.
         full_paths: Explicit include list overriding config values.

@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,6 +35,8 @@ from ratchetr.config.constants import (
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+
+logger: logging.Logger = logging.getLogger("ratchetr.paths")
 
 CONFIG_ENV: Final[str] = "RATCHETR_CONFIG"
 ROOT_ENV: Final[str] = "RATCHETR_ROOT"
@@ -456,10 +459,16 @@ def _resolve_repo_root(
     cwd: Path,
 ) -> Path:
     if cli_root is not None:
-        return _resolve_required(cwd, cli_root)
+        resolved = _resolve_required(cwd, cli_root)
+        logger.debug("Using root from CLI override: %s", resolved)
+        return resolved
     if env_root is not None:
-        return _resolve_required(cwd, env_root)
-    return resolve_project_root(cwd)
+        resolved = _resolve_required(cwd, env_root)
+        logger.debug("Using root from environment variable: %s", resolved)
+        return resolved
+    discovered = resolve_project_root(cwd)
+    logger.debug("Using root from discovery: %s", discovered)
+    return discovered
 
 
 def _resolve_overrides(
