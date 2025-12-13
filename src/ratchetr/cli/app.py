@@ -33,18 +33,33 @@ from ratchetr.cli.commands import manifest as manifest_command
 from ratchetr.cli.commands import query as query_command
 from ratchetr.cli.commands import ratchet as ratchet_command
 from ratchetr.cli.helpers import SUMMARY_FIELD_CHOICES as _SUMMARY_FIELD_CHOICES
+from ratchetr.cli.helpers import (
+    CLIContext,
+    build_cli_context,
+    build_path_overrides,
+    discover_manifest_or_exit,
+    finalise_targets,
+    parse_readiness_tokens,
+    parse_save_flag,
+    query_readiness,
+    register_output_options,
+    register_path_overrides,
+    register_readiness_flag,
+    register_save_flag,
+    render_data,
+)
 from ratchetr.cli.helpers import echo as _echo
 from ratchetr.cli.helpers import print_readiness_summary as _helpers_print_readiness_summary
 from ratchetr.cli.helpers import register_argument as _register_argument
+from ratchetr.cli.helpers.options import StdoutFormat
 from ratchetr.core.model_types import (
     DashboardFormat,
     DashboardView,
+    DataFormat,
     LogFormat,
-    ReadinessLevel,
-    ReadinessStatus,
-    SeverityLevel,
 )
 from ratchetr.logging import LOG_FORMATS, LOG_LEVELS, configure_logging
+from ratchetr.paths import OutputFormat, OutputTarget
 from ratchetr.runtime import consume
 from ratchetr.services.dashboard import (
     load_summary_from_manifest,
@@ -141,7 +156,7 @@ def write_config_template(path: pathlib.Path, *, force: bool) -> int:
     return 0
 
 
-CommandHandler = Callable[[argparse.Namespace], int]
+CommandHandler = Callable[[argparse.Namespace, CLIContext], int]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -167,7 +182,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     handler = _command_handlers().get(args.command)
     if handler is None:
         parser.error(f"Unknown command {args.command}")
-    return handler(args)
+    overrides = build_path_overrides(args)
+    context = build_cli_context(overrides)
+    return handler(args, context)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -179,24 +196,28 @@ def _build_parser() -> argparse.ArgumentParser:
     Returns:
         argparse.ArgumentParser: Fully configured argument parser ready to parse CLI arguments.
     """
-    parser = argparse.ArgumentParser(
-        prog="ratchetr",
-        description="Collect typing diagnostics and readiness insights for Python projects.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+    common = argparse.ArgumentParser(add_help=False)
+    register_output_options(common)
+    register_path_overrides(common)
     _register_argument(
-        parser,
+        common,
         "--log-format",
         choices=LOG_FORMATS,
         default="text",
         help="Select logging output format (human-readable text or structured JSON).",
     )
     _register_argument(
-        parser,
+        common,
         "--log-level",
         choices=LOG_LEVELS,
         default="info",
         help="Set verbosity of logged events.",
+    )
+    parser = argparse.ArgumentParser(
+        prog="ratchetr",
+        parents=[common],
+        description="Collect typing diagnostics and readiness insights for Python projects. `rtr` is an alias.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     _register_argument(
         parser,
@@ -206,21 +227,26 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command")
 
-    audit_command.register_audit_command(subparsers)
-    manifest_command.register_manifest_command(subparsers)
-    query_command.register_query_command(subparsers)
-    ratchet_command.register_ratchet_command(subparsers)
-    help_command.register_help_command(subparsers)
-    cache_command.register_cache_command(subparsers)
-    engines_command.register_engines_command(subparsers)
+    parents = [common]
+    audit_command.register_audit_command(subparsers, parents=parents)
+    manifest_command.register_manifest_command(subparsers, parents=parents)
+    query_command.register_query_command(subparsers, parents=parents)
+    ratchet_command.register_ratchet_command(subparsers, parents=parents)
+    help_command.register_help_command(subparsers, parents=parents)
+    cache_command.register_cache_command(subparsers, parents=parents)
+    engines_command.register_engines_command(subparsers, parents=parents)
 
-    _register_dashboard_command(subparsers)
-    _register_init_command(subparsers)
-    _register_readiness_command(subparsers)
+    _register_dashboard_command(subparsers, parents=parents)
+    _register_init_command(subparsers, parents=parents)
+    _register_readiness_command(subparsers, parents=parents)
     return parser
 
 
-def _register_dashboard_command(subparsers: SubparserCollection) -> None:
+def _register_dashboard_command(
+    subparsers: SubparserCollection,
+    *,
+    parents: Sequence[argparse.ArgumentParser] | None,
+) -> None:
     """Register the 'dashboard' subcommand with the argument parser.
 
     Configures the dashboard command with arguments for manifest path, output format,
@@ -228,33 +254,15 @@ def _register_dashboard_command(subparsers: SubparserCollection) -> None:
 
     Args:
         subparsers: Subparser registry where the dashboard command will be added.
+        parents: Shared parent parsers carrying global flags.
     """
     dashboard = subparsers.add_parser(
         "dashboard",
         help="Render a summary from an existing manifest",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=parents or [],
     )
-    _register_argument(
-        dashboard,
-        "--manifest",
-        type=pathlib.Path,
-        required=True,
-        help="Path to a typing audit manifest.",
-    )
-    _register_argument(
-        dashboard,
-        "--format",
-        choices=[fmt.value for fmt in DashboardFormat],
-        default=DashboardFormat.JSON.value,
-        help="Output format.",
-    )
-    _register_argument(
-        dashboard,
-        "--output",
-        type=pathlib.Path,
-        default=None,
-        help="Optional output file.",
-    )
+    register_save_flag(dashboard, flag="--save-as", dest="save_as")
     _register_argument(
         dashboard,
         "--view",
@@ -264,7 +272,11 @@ def _register_dashboard_command(subparsers: SubparserCollection) -> None:
     )
 
 
-def _register_init_command(subparsers: SubparserCollection) -> None:
+def _register_init_command(
+    subparsers: SubparserCollection,
+    *,
+    parents: Sequence[argparse.ArgumentParser] | None,
+) -> None:
     """Register the 'init' subcommand with the argument parser.
 
     Configures the init command with arguments for output path and force overwrite option.
@@ -272,11 +284,13 @@ def _register_init_command(subparsers: SubparserCollection) -> None:
 
     Args:
         subparsers: Subparser registry where the init command will be added.
+        parents: Shared parent parsers carrying global flags.
     """
     init = subparsers.add_parser(
         "init",
         help="Generate a starter configuration file",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=parents or [],
     )
     _register_argument(
         init,
@@ -294,7 +308,11 @@ def _register_init_command(subparsers: SubparserCollection) -> None:
     )
 
 
-def _register_readiness_command(subparsers: SubparserCollection) -> None:
+def _register_readiness_command(
+    subparsers: SubparserCollection,
+    *,
+    parents: Sequence[argparse.ArgumentParser] | None,
+) -> None:
     """Register the 'readiness' subcommand with the argument parser.
 
     Configures the readiness command with arguments for manifest path, readiness level,
@@ -303,50 +321,15 @@ def _register_readiness_command(subparsers: SubparserCollection) -> None:
 
     Args:
         subparsers: Subparser registry where the readiness command will be added.
+        parents: Shared parent parsers carrying global flags.
     """
     readiness = subparsers.add_parser(
         "readiness",
         help="Show top-N candidates for strict typing",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=parents or [],
     )
-    _register_argument(
-        readiness,
-        "--manifest",
-        type=pathlib.Path,
-        required=True,
-        help="Path to a typing audit manifest.",
-    )
-    _register_argument(
-        readiness,
-        "--level",
-        choices=[level.value for level in ReadinessLevel],
-        default=ReadinessLevel.FOLDER.value,
-    )
-    _register_argument(
-        readiness,
-        "--status",
-        dest="statuses",
-        action="append",
-        choices=[status.value for status in ReadinessStatus],
-        default=None,
-        help="Status buckets to render (repeatable).",
-    )
-    _register_argument(readiness, "--limit", type=int, default=10)
-    _register_argument(
-        readiness,
-        "--severity",
-        dest="severities",
-        action="append",
-        choices=[severity.value for severity in SeverityLevel],
-        default=None,
-        help="Filter entries to specific severities (repeatable).",
-    )
-    _register_argument(
-        readiness,
-        "--details",
-        action="store_true",
-        help="Include severity breakdown when printing readiness summaries.",
-    )
+    register_readiness_flag(readiness, default_enabled=True)
 
 
 def _initialize_logging(log_format: str, log_level: str) -> None:
@@ -384,7 +367,7 @@ def _command_handlers() -> dict[str, CommandHandler]:
     }
 
 
-def _execute_init(args: argparse.Namespace) -> int:
+def _execute_init(args: argparse.Namespace, _: CLIContext) -> int:
     """Execute the 'init' command to generate a configuration file.
 
     Args:
@@ -396,7 +379,7 @@ def _execute_init(args: argparse.Namespace) -> int:
     return write_config_template(args.output, force=args.force)
 
 
-def _execute_dashboard(args: argparse.Namespace) -> int:
+def _execute_dashboard(args: argparse.Namespace, context: CLIContext) -> int:
     """Execute the 'dashboard' command to render a summary from a manifest.
 
     Loads summary data from the specified manifest file and renders it in the requested
@@ -405,53 +388,102 @@ def _execute_dashboard(args: argparse.Namespace) -> int:
     Args:
         args: Parsed command-line arguments containing manifest path, format, output path,
             and view options.
+        context: Shared CLI context containing resolved paths.
 
     Returns:
         int: Exit code (always 0 for success).
     """
-    summary = load_summary_from_manifest(args.manifest)
-    dashboard_format = DashboardFormat.from_str(args.format)
+    manifest_path = discover_manifest_or_exit(context, cli_manifest=getattr(args, "manifest", None))
+    summary = load_summary_from_manifest(manifest_path)
     view_choice = DashboardView.from_str(args.view)
-    rendered = render_dashboard_summary(
+    save_flag = parse_save_flag(
+        getattr(args, "save_as", None),
+        allowed_formats={OutputFormat.JSON, OutputFormat.MARKDOWN, OutputFormat.HTML},
+    )
+    default_target = OutputTarget(OutputFormat.HTML, path=context.resolved_paths.dashboard_path)
+    targets = finalise_targets(save_flag, default_targets=(default_target,))
+    stdout_format = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    stdout_dashboard_format = DashboardFormat.JSON if stdout_format is StdoutFormat.JSON else DashboardFormat.MARKDOWN
+    rendered_stdout = render_dashboard_summary(
         summary,
-        output_format=dashboard_format,
+        output_format=stdout_dashboard_format,
         default_view=view_choice,
     )
-    if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        consume(args.output.write_text(rendered, encoding="utf-8"))
-    elif dashboard_format is DashboardFormat.JSON:
-        _echo(rendered, newline=False)
+    if stdout_dashboard_format is DashboardFormat.JSON:
+        _echo(rendered_stdout, newline=False)
     else:
-        _echo(rendered)
+        _echo(rendered_stdout)
+    for target in targets:
+        target_format = _dashboard_format_for_output(target.format)
+        output_path = _resolve_dashboard_target_path(target, context)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        rendered = render_dashboard_summary(
+            summary,
+            output_format=target_format,
+            default_view=view_choice,
+        )
+        consume(output_path.write_text(rendered, encoding="utf-8"))
     return 0
 
 
-def _execute_readiness(args: argparse.Namespace) -> int:
+def _dashboard_format_for_output(output_format: OutputFormat) -> DashboardFormat:
+    mapping = {
+        OutputFormat.JSON: DashboardFormat.JSON,
+        OutputFormat.MARKDOWN: DashboardFormat.MARKDOWN,
+        OutputFormat.HTML: DashboardFormat.HTML,
+    }
+    try:
+        return mapping[output_format]
+    except KeyError as exc:
+        message = f"Unsupported dashboard output format '{output_format.value}'"
+        raise SystemExit(message) from exc
+
+
+def _resolve_dashboard_target_path(target: OutputTarget, context: CLIContext) -> pathlib.Path:
+    if target.path is not None:
+        return target.path
+    tool_home = context.resolved_paths.tool_home
+    if target.format is OutputFormat.JSON:
+        return tool_home / "dashboard.json"
+    if target.format is OutputFormat.MARKDOWN:
+        return tool_home / "dashboard.md"
+    return context.resolved_paths.dashboard_path
+
+
+def _execute_readiness(args: argparse.Namespace, context: CLIContext) -> int:
     """Execute the 'readiness' command to show typing readiness candidates.
 
-    Loads summary data from the manifest and displays the top-N candidates for strict
-    typing based on readiness level, status filters, severity filters, and display options.
-
     Args:
-        args: Parsed command-line arguments containing manifest path, level, statuses,
-            limit, severities, and detail flags.
+        args: Parsed command-line arguments containing readiness tokens and output format.
+        context: Shared CLI context providing manifest discovery and paths.
 
     Returns:
         int: Exit code (always 0 for success).
     """
-    summary_map: SummaryData = load_summary_from_manifest(args.manifest)
-    level_choice = ReadinessLevel.from_str(args.level)
-    statuses = [ReadinessStatus.from_str(status) for status in args.statuses] if args.statuses else None
-    severities = (
-        [SeverityLevel.from_str(value) for value in args.severities] if getattr(args, "severities", None) else None
-    )
+    manifest_path = discover_manifest_or_exit(context, cli_manifest=getattr(args, "manifest", None))
+    summary_map: SummaryData = load_summary_from_manifest(manifest_path)
+    readiness_tokens = getattr(args, "readiness", None)
+    readiness = parse_readiness_tokens(readiness_tokens, flag_present=True)
+    stdout_format = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    statuses = list(readiness.statuses) if readiness.statuses else None
+    severities = list(readiness.severities) if readiness.severities else None
+    if stdout_format is StdoutFormat.JSON:
+        payload = query_readiness(
+            summary_map,
+            level=readiness.level,
+            statuses=statuses,
+            limit=readiness.limit,
+            severities=severities,
+        )
+        for line in render_data(payload, DataFormat.JSON):
+            _echo(line)
+        return 0
     _helpers_print_readiness_summary(
         summary_map,
-        level=level_choice,
+        level=readiness.level,
         statuses=statuses,
-        limit=args.limit,
+        limit=readiness.limit,
         severities=severities,
-        detailed=bool(getattr(args, "details", False)),
+        detailed=readiness.include_details,
     )
     return 0

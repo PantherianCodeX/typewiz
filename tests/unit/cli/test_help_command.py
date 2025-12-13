@@ -26,6 +26,8 @@ from ratchetr.cli.commands.help import execute_help
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from ratchetr.cli.helpers import CLIContext
+
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
 
 
@@ -36,6 +38,7 @@ def _write_topic(topics_dir: Path, name: str, content: str) -> None:
 
 def test_execute_help_lists_topics(
     tmp_path: Path,
+    cli_context: CLIContext,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     # Arrange
@@ -46,7 +49,7 @@ def test_execute_help_lists_topics(
     args = Namespace(topic=None, topics_dir=topics_dir)
 
     # Act
-    exit_code = execute_help(args)
+    exit_code = execute_help(args, cli_context)
 
     # Assert
     assert exit_code == 0
@@ -59,6 +62,7 @@ def test_execute_help_lists_topics(
 
 def test_execute_help_unknown_topic_lists_choices(
     tmp_path: Path,
+    cli_context: CLIContext,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     # Arrange
@@ -68,7 +72,7 @@ def test_execute_help_unknown_topic_lists_choices(
     args = Namespace(topic="missing", topics_dir=topics_dir)
 
     # Act
-    exit_code = execute_help(args)
+    exit_code = execute_help(args, cli_context)
 
     # Assert
     assert exit_code == 2
@@ -79,6 +83,7 @@ def test_execute_help_unknown_topic_lists_choices(
 
 def test_execute_help_renders_topic_content(
     tmp_path: Path,
+    cli_context: CLIContext,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     # Arrange
@@ -89,7 +94,7 @@ def test_execute_help_renders_topic_content(
     args = Namespace(topic="ratchet", topics_dir=topics_dir)
 
     # Act
-    exit_code = execute_help(args)
+    exit_code = execute_help(args, cli_context)
 
     # Assert
     assert exit_code == 0

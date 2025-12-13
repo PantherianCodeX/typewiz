@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import argparse
-import tempfile
 from argparse import Namespace
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,7 +33,8 @@ from ratchetr.cli.commands.ratchet import (
     handle_rebaseline,
     handle_update,
 )
-from ratchetr.config import Config, RatchetConfig
+from ratchetr.cli.helpers import CLIContext, StdoutFormat
+from ratchetr.config import RatchetConfig
 from ratchetr.core.model_types import RatchetAction, SeverityLevel, SignaturePolicy
 from ratchetr.core.type_aliases import RunId
 from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
@@ -49,8 +49,6 @@ from ratchetr.services.ratchet import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from ratchetr.manifest.typed import ManifestData
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli, pytest.mark.ratchet]
@@ -327,7 +325,7 @@ def test_handle_check_outputs_json_and_warns(
         )
 
     monkeypatch.setattr(ratchet_cmd, "check_ratchet", fake_check_ratchet)
-    args = Namespace(format="json")
+    args = Namespace(out=StdoutFormat.JSON.value)
 
     exit_code = handle_check(context, args)
     assert exit_code == 1
@@ -344,7 +342,7 @@ def test_handle_check_returns_error_when_service_fails(tmp_path: Path, monkeypat
         raise RatchetServiceError(msg)
 
     monkeypatch.setattr(ratchet_cmd, "check_ratchet", boom)
-    args = Namespace(format="json")
+    args = Namespace(out=StdoutFormat.JSON.value)
     exit_code = handle_check(context, args)
     assert exit_code == 1
 
@@ -386,7 +384,7 @@ def test_handle_check_outputs_table_lines(
         )
 
     monkeypatch.setattr(ratchet_cmd, "check_ratchet", fake_check)
-    args = Namespace(format="table")
+    args = Namespace(out=StdoutFormat.TEXT.value)
 
     exit_code = handle_check(context, args)
     assert exit_code == 0
@@ -469,96 +467,25 @@ def test_handle_rebaseline_reports_service_error(tmp_path: Path, monkeypatch: py
     assert exit_code == 1
 
 
-# ignore JUSTIFIED: high-level wiring test exercises many stubbed collaborators in one
-# flow; splitting into smaller tests would reduce clarity of the CLI behaviour
-def test_execute_ratchet_unknown_action_raises(monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: C901
-    # Lightweight stubs to avoid touching the filesystem or real configs.
-    fake_config = Config()
-
-    def fake_load_config(_: object) -> Config:
-        return fake_config
-
-    tmp_root = Path(tempfile.gettempdir()) / "ratchetr-cli"
-
-    def fake_project_root(_: object) -> Path:
-        return tmp_root / "project"
-
-    def fake_discover_manifest(
-        _project_root: Path,
-        *,
-        explicit: Path | None,
-        configured: Path | None,
-    ) -> Path:
-        assert explicit is None
-        assert configured is None
-        return tmp_root / "manifest.json"
-
-    def fake_discover_ratchet(
-        _project_root: Path,
-        *,
-        explicit: Path | None,
-        configured: Path | None,
-        require_exists: bool,
-    ) -> Path:
-        assert explicit is None
-        assert configured is None
-        assert require_exists is False
-        return tmp_root / "ratchet.json"
-
-    def fake_load_manifest(_path: Path) -> ManifestData:
-        return cast(
-            "ManifestData",
-            {"generatedAt": "2024-01-01", "schemaVersion": CURRENT_MANIFEST_VERSION, "runs": []},
-        )
-
-    def fake_resolve_runs(cli: Sequence[str | RunId] | None, config_runs: Sequence[str | RunId]) -> list[RunId] | None:
-        values = cli or config_runs
-        if not values:
-            return None
-        return [RunId(str(value)) for value in values]
-
-    def passthrough_policy(arg: SignaturePolicy | str | None, default: SignaturePolicy) -> SignaturePolicy:
-        if arg is None:
-            return default
-        return arg if isinstance(arg, SignaturePolicy) else SignaturePolicy.from_str(str(arg))
-
-    def passthrough_limit(arg: int | None, default: int | None) -> int | None:
-        return arg if arg is not None else default
-
-    def passthrough_summary_only(*, cli_summary: bool, config_summary: bool) -> bool:
-        return cli_summary or config_summary
-
-    def fake_echo(*_args: object, **_kwargs: object) -> None:
-        return None
-
-    monkeypatch.setattr(ratchet_cmd, "load_config", fake_load_config)
-    monkeypatch.setattr(ratchet_cmd, "resolve_project_root", fake_project_root)
-    monkeypatch.setattr(ratchet_cmd, "discover_manifest_path", fake_discover_manifest)
-    monkeypatch.setattr(ratchet_cmd, "discover_ratchet_path", fake_discover_ratchet)
-    monkeypatch.setattr(ratchet_cmd, "load_ratchet_manifest", fake_load_manifest)
-    monkeypatch.setattr(ratchet_cmd, "resolve_runs", fake_resolve_runs)
-    monkeypatch.setattr(ratchet_cmd, "resolve_signature_policy", passthrough_policy)
-    monkeypatch.setattr(ratchet_cmd, "resolve_limit", passthrough_limit)
-    monkeypatch.setattr(ratchet_cmd, "resolve_summary_only", passthrough_summary_only)
-    monkeypatch.setattr(ratchet_cmd, "echo", fake_echo)
-
-    args = Namespace(action="invalid", manifest=None, ratchet=None)
+def test_execute_ratchet_unknown_action_raises(cli_context: CLIContext) -> None:
+    manifest_path = cli_context.resolved_paths.manifest_path
+    manifest_path.write_text(
+        f'{{"schemaVersion": "{CURRENT_MANIFEST_VERSION}", "runs": []}}',
+        encoding="utf-8",
+    )
+    args = Namespace(action="invalid", ratchet=None, out=StdoutFormat.TEXT.value, summary_only=False)
 
     with pytest.raises(SystemExit, match=r".*"):
-        _ = ratchet_cmd.execute_ratchet(args)
+        _ = ratchet_cmd.execute_ratchet(args, cli_context)
 
 
-def test_register_ratchet_command_builds_subcommands(tmp_path: Path) -> None:
+def test_register_ratchet_command_builds_subcommands() -> None:
     parser = argparse.ArgumentParser()
     subcommands = parser.add_subparsers(dest="command", required=True)
     ratchet_cmd.register_ratchet_command(subcommands)
-    manifest_path = tmp_path / "typing_audit.json"
-    _ = manifest_path.write_text("{}", encoding="utf-8")
     args = parser.parse_args([
         "ratchet",
         "init",
-        "--manifest",
-        str(manifest_path),
     ])
     assert args.action == "init"
 
@@ -577,75 +504,31 @@ def test_register_ratchet_command_builds_subcommands(tmp_path: Path) -> None:
         _DispatchScenario(RatchetAction.INFO.value, "handle_info", expects_args=False),
     ],
 )
-# ignore JUSTIFIED: dispatch table is exercised via parametrisation in one high-level
-# test; splitting would obscure the mapping between actions and handlers
-def test_execute_ratchet_dispatches_actions(  # noqa: C901
-    tmp_path: Path,
+def test_execute_ratchet_dispatches_actions(
     monkeypatch: pytest.MonkeyPatch,
+    cli_context: CLIContext,
     scenario: _DispatchScenario,
 ) -> None:
-    fake_config = Config()
+    manifest_path = cli_context.resolved_paths.manifest_path
+    manifest_path.write_text("{}", encoding="utf-8")
+    ratchet_path = cli_context.resolved_paths.tool_home / "ratchet.json"
+    ratchet_path.write_text("{}", encoding="utf-8")
 
-    def fake_load_config(_: object) -> Config:
-        return fake_config
-
-    manifest_path = tmp_path / "typing_audit.json"
-    _ = manifest_path.write_text("{}", encoding="utf-8")
-
-    def fake_project_root(_: object) -> Path:
-        return tmp_path
-
-    def fake_discover_manifest(project_root: Path, *, explicit: Path | None, configured: Path | None) -> Path:
-        assert isinstance(project_root, Path)
-        assert explicit is None or isinstance(explicit, Path)
-        assert configured is None or isinstance(configured, Path)
-        return manifest_path
-
-    def fake_discover_ratchet(
-        project_root: Path,
-        *,
-        explicit: Path | None,
-        configured: Path | None,
-        require_exists: bool,
-    ) -> Path:
-        assert isinstance(project_root, Path)
-        assert explicit is None or isinstance(explicit, Path)
-        assert configured is None or isinstance(configured, Path)
-        assert isinstance(require_exists, bool)
-        return tmp_path / "ratchet.json"
-
-    def fake_load_manifest(_: Path) -> ManifestData:
-        return cast("ManifestData", {"generatedAt": "2024-01-01", "schemaVersion": CURRENT_MANIFEST_VERSION})
-
-    def passthrough_runs(
-        cli: Sequence[str | RunId] | None, config: Sequence[str | RunId]
-    ) -> Sequence[str | RunId] | None:
-        return cli or config
-
-    def passthrough_signature_policy(value: str | None, default: SignaturePolicy) -> SignaturePolicy:
-        assert value is None or isinstance(value, str)
-        return default
-
-    def passthrough_limit(value: int | None, default: int | None) -> int | None:
-        assert value is None or isinstance(value, int)
-        return default
-
-    def passthrough_summary_only(*, cli_summary: bool, config_summary: bool) -> bool:
-        return bool(cli_summary) or config_summary
-
-    def noop_echo(*_args: object, **_kwargs: object) -> None:
-        return None
-
-    monkeypatch.setattr(ratchet_cmd, "load_config", fake_load_config)
-    monkeypatch.setattr(ratchet_cmd, "resolve_project_root", fake_project_root)
-    monkeypatch.setattr(ratchet_cmd, "discover_manifest_path", fake_discover_manifest)
-    monkeypatch.setattr(ratchet_cmd, "discover_ratchet_path", fake_discover_ratchet)
-    monkeypatch.setattr(ratchet_cmd, "load_ratchet_manifest", fake_load_manifest)
-    monkeypatch.setattr(ratchet_cmd, "resolve_runs", passthrough_runs)
-    monkeypatch.setattr(ratchet_cmd, "resolve_signature_policy", passthrough_signature_policy)
-    monkeypatch.setattr(ratchet_cmd, "resolve_limit", passthrough_limit)
-    monkeypatch.setattr(ratchet_cmd, "resolve_summary_only", passthrough_summary_only)
-    monkeypatch.setattr(ratchet_cmd, "echo", noop_echo)
+    monkeypatch.setattr(
+        ratchet_cmd,
+        "discover_manifest_or_exit",
+        lambda *_args, **_kwargs: manifest_path,
+    )
+    monkeypatch.setattr(
+        ratchet_cmd,
+        "discover_ratchet_path",
+        lambda *_args, **_kwargs: ratchet_path,
+    )
+    monkeypatch.setattr(
+        ratchet_cmd,
+        "load_ratchet_manifest",
+        lambda _path: cast("ManifestData", {"schemaVersion": CURRENT_MANIFEST_VERSION, "runs": []}),
+    )
 
     called: dict[str, object] = {}
 
@@ -662,8 +545,8 @@ def test_execute_ratchet_dispatches_actions(  # noqa: C901
     else:
         monkeypatch.setattr(ratchet_cmd, scenario.handler_name, fake_handler_no_args)
 
-    args = Namespace(action=scenario.action, manifest=None, ratchet=None, summary_only=False)
-    exit_code = ratchet_cmd.execute_ratchet(args)
+    args = Namespace(action=scenario.action, ratchet=ratchet_path, out=StdoutFormat.TEXT.value, summary_only=False)
+    exit_code = ratchet_cmd.execute_ratchet(args, cli_context)
     assert exit_code == 7
     assert isinstance(called["context"], RatchetContext)
     if scenario.expects_args:

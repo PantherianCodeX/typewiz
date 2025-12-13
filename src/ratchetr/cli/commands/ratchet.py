@@ -24,7 +24,8 @@ from typing import TYPE_CHECKING, NoReturn
 
 from ratchetr.cli.helpers import (
     DEFAULT_RATCHET_FILENAME,
-    discover_manifest_path,
+    StdoutFormat,
+    discover_manifest_or_exit,
     discover_ratchet_path,
     echo,
     parse_target_entries,
@@ -36,10 +37,8 @@ from ratchetr.cli.helpers import (
     resolve_signature_policy,
     resolve_summary_only,
 )
-from ratchetr.config import RatchetConfig, load_config
 from ratchetr.core.model_types import DataFormat, RatchetAction, SignaturePolicy
 from ratchetr.json import normalise_enums_for_json
-from ratchetr.runtime import resolve_project_root
 from ratchetr.services.ratchet import (
     RatchetFileExistsError,
     RatchetPathRequiredError,
@@ -58,8 +57,10 @@ from ratchetr.services.ratchet import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from ratchetr.cli.helpers import CLIContext
     from ratchetr.cli.types import SubparserCollection
     from ratchetr.compat import Never
+    from ratchetr.config import RatchetConfig
     from ratchetr.core.type_aliases import RunId
     from ratchetr.manifest.typed import ManifestData
 
@@ -122,16 +123,22 @@ def _raise_unknown_ratchet_action(action: Never) -> NoReturn:
     raise SystemExit(msg)
 
 
-def register_ratchet_command(subparsers: SubparserCollection) -> None:
+def register_ratchet_command(
+    subparsers: SubparserCollection,
+    *,
+    parents: Sequence[argparse.ArgumentParser] | None = None,
+) -> None:
     """Attach the ratchet command and subcommands to the CLI.
 
     Args:
         subparsers: Top-level argparse subparser collection to register commands on.
+        parents: Shared parent parsers carrying global options.
     """
     ratchet = subparsers.add_parser(
         "ratchet",
         help="Manage per-file ratchet budgets",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=parents or [],
     )
     ratchet_sub = ratchet.add_subparsers(dest="action", required=True)
 
@@ -142,11 +149,12 @@ def register_ratchet_command(subparsers: SubparserCollection) -> None:
     _register_info_parser(ratchet_sub)
 
 
-def execute_ratchet(args: argparse.Namespace) -> int:
+def execute_ratchet(args: argparse.Namespace, cli_context: CLIContext) -> int:
     """Execute the ratchet command based on parsed arguments.
 
     Args:
         args: Parsed CLI arguments for the ratchet command.
+        cli_context: Shared CLI context with resolved paths and configuration.
 
     Returns:
         Process exit code for the ratchet command.
@@ -154,10 +162,6 @@ def execute_ratchet(args: argparse.Namespace) -> int:
     Raises:
         SystemExit: If an unknown ratchet action is requested.
     """
-    config = load_config(None)
-    project_root = resolve_project_root(None)
-    ratchet_cfg = config.ratchet
-
     action_value = args.action
     try:
         action = action_value if isinstance(action_value, RatchetAction) else RatchetAction.from_str(action_value)
@@ -165,14 +169,14 @@ def execute_ratchet(args: argparse.Namespace) -> int:
     # branch guarded by argparse defaults to SystemExit
     except ValueError as exc:  # pragma: no cover
         raise SystemExit(str(exc)) from exc
+    config = cli_context.config
+    project_root = cli_context.resolved_paths.repo_root
+    ratchet_cfg = config.ratchet
+
     explicit_manifest: Path | None = getattr(args, "manifest", None)
     explicit_ratchet: Path | None = getattr(args, "ratchet", None)
 
-    manifest_path = discover_manifest_path(
-        project_root,
-        explicit=explicit_manifest,
-        configured=ratchet_cfg.manifest_path,
-    )
+    manifest_path = discover_manifest_or_exit(cli_context, cli_manifest=explicit_manifest)
     ratchet_path = discover_ratchet_path(
         project_root,
         explicit=explicit_ratchet,
@@ -240,13 +244,6 @@ def _register_init_parser(subparsers: SubparserCollection) -> None:
     init_output = ratchet_init.add_argument_group("Output")
 
     register_argument(
-        init_inputs,
-        "--manifest",
-        type=Path,
-        default=None,
-        help="Manifest to use as the baseline.",
-    )
-    register_argument(
         init_output,
         "--output",
         type=Path,
@@ -299,15 +296,7 @@ def _register_check_parser(subparsers: SubparserCollection) -> None:
     )
     check_inputs = ratchet_check.add_argument_group("Inputs & Discovery")
     check_display = ratchet_check.add_argument_group("Display")
-    check_policy = ratchet_check.add_argument_group("Policy")
 
-    register_argument(
-        check_inputs,
-        "--manifest",
-        type=Path,
-        default=None,
-        help="Manifest produced by the latest audit.",
-    )
     register_argument(
         check_inputs,
         "--ratchet",
@@ -325,13 +314,6 @@ def _register_check_parser(subparsers: SubparserCollection) -> None:
     )
     register_argument(
         check_display,
-        "--format",
-        choices=[fmt.value for fmt in DataFormat],
-        default=DataFormat.TABLE.value,
-        help="Output format.",
-    )
-    register_argument(
-        check_policy,
         "--signature-policy",
         choices=[policy.value for policy in SignaturePolicy],
         default=None,
@@ -372,13 +354,6 @@ def _register_update_parser(subparsers: SubparserCollection) -> None:
     update_output = ratchet_update.add_argument_group("Output")
     update_display = ratchet_update.add_argument_group("Display")
 
-    register_argument(
-        update_inputs,
-        "--manifest",
-        type=Path,
-        default=None,
-        help="Manifest produced by the latest audit.",
-    )
     register_argument(
         update_inputs,
         "--ratchet",
@@ -455,13 +430,6 @@ def _register_rebaseline_parser(subparsers: SubparserCollection) -> None:
 
     register_argument(
         rebase_inputs,
-        "--manifest",
-        type=Path,
-        default=None,
-        help="Manifest reflecting the desired engine configuration.",
-    )
-    register_argument(
-        rebase_inputs,
         "--ratchet",
         type=Path,
         default=None,
@@ -506,13 +474,6 @@ def _register_info_parser(subparsers: SubparserCollection) -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     info_inputs = ratchet_info.add_argument_group("Inputs & Discovery")
-    register_argument(
-        info_inputs,
-        "--manifest",
-        type=Path,
-        default=None,
-        help="Manifest path to use when resolving defaults.",
-    )
     register_argument(
         info_inputs,
         "--ratchet",
@@ -598,7 +559,8 @@ def handle_check(context: RatchetContext, args: argparse.Namespace) -> int:
     except RatchetServiceError as exc:
         return _handle_service_error(exc)
 
-    output_format = DataFormat.from_str(getattr(args, "format", DataFormat.TABLE.value))
+    stdout_format = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    output_format = DataFormat.JSON if stdout_format is StdoutFormat.JSON else DataFormat.TABLE
 
     if output_format is DataFormat.JSON:
         echo(json.dumps(normalise_enums_for_json(result.report.to_payload()), indent=2))

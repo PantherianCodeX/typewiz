@@ -21,7 +21,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from ratchetr._internal.paths import PathOverrides
 from ratchetr.cli.commands import manifest as manifest_cmd
+from ratchetr.cli.helpers import CLIContext, build_cli_context
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -29,13 +31,23 @@ if TYPE_CHECKING:
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
 
 
-def test_handle_schema_writes_requested_path(tmp_path: Path) -> None:
+@pytest.fixture
+def cli_context() -> CLIContext:
+    """Provide a basic CLI context rooted at the current working directory.
+
+    Returns:
+        CLIContext: Context resolved from defaults for tests.
+    """
+    return build_cli_context(PathOverrides())
+
+
+def test_handle_schema_writes_requested_path(tmp_path: Path, cli_context: CLIContext) -> None:
     # Arrange
     output = tmp_path / "schema.json"
     args = Namespace(indent=2, output=output, action="schema")
 
     # Act
-    exit_code = manifest_cmd.execute_manifest(args)
+    exit_code = manifest_cmd.execute_manifest(args, cli_context)
 
     # Assert
     assert exit_code == 0

@@ -17,11 +17,13 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ratchetr.cli.helpers import (
+    StdoutFormat,
+    discover_manifest_or_exit,
     echo,
+    parse_readiness_tokens,
     query_engines,
     query_hotspots,
     query_overview,
@@ -29,48 +31,49 @@ from ratchetr.cli.helpers import (
     query_rules,
     query_runs,
     register_argument,
+    register_readiness_flag,
     render_data,
 )
 from ratchetr.core.model_types import (
     DataFormat,
     HotspotKind,
     QuerySection,
-    ReadinessLevel,
-    ReadinessStatus,
-    SeverityLevel,
 )
 from ratchetr.services.dashboard import load_summary_from_manifest
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ratchetr.cli.helpers import CLIContext
     from ratchetr.cli.types import SubparserCollection
-    from ratchetr.core.summary_types import SummaryData
 
 
-def register_query_command(subparsers: SubparserCollection) -> None:
+def register_query_command(
+    subparsers: SubparserCollection,
+    *,
+    parents: Sequence[argparse.ArgumentParser] | None = None,
+) -> None:
     """Register the `ratchetr query` command.
 
     Args:
         subparsers: Top-level argparse subparser collection to register commands on.
+        parents: Shared parent parsers carrying global options.
     """
     query = subparsers.add_parser(
         "query",
         help="Inspect sections of a manifest summary without external tools",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=parents or [],
     )
     query_sub = query.add_subparsers(dest="query_section", required=True)
+
+    section_parents = list(parents or [])
 
     query_overview_parser = query_sub.add_parser(
         QuerySection.OVERVIEW.value,
         help="Show severity totals, with optional category and run breakdowns",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    _register_common_manifest_argument(query_overview_parser)
-    register_argument(
-        query_overview_parser,
-        "--format",
-        choices=[fmt.value for fmt in DataFormat],
-        default=DataFormat.JSON.value,
-        help="Output format",
+        parents=section_parents,
     )
     register_argument(
         query_overview_parser,
@@ -89,8 +92,8 @@ def register_query_command(subparsers: SubparserCollection) -> None:
         QuerySection.HOTSPOTS.value,
         help="List top offending files or folders",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=section_parents,
     )
-    _register_common_manifest_argument(query_hotspots_parser)
     register_argument(
         query_hotspots_parser,
         "--kind",
@@ -105,66 +108,21 @@ def register_query_command(subparsers: SubparserCollection) -> None:
         default=10,
         help="Maximum entries to return",
     )
-    register_argument(
-        query_hotspots_parser,
-        "--format",
-        choices=[fmt.value for fmt in DataFormat],
-        default=DataFormat.JSON.value,
-        help="Output format",
-    )
 
     query_readiness_parser = query_sub.add_parser(
         QuerySection.READINESS.value,
         help="Show readiness candidates for strict typing",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=section_parents,
     )
-    _register_common_manifest_argument(query_readiness_parser)
-    register_argument(
-        query_readiness_parser,
-        "--level",
-        choices=[level.value for level in ReadinessLevel],
-        default=ReadinessLevel.FOLDER.value,
-        help="Granularity for readiness data",
-    )
-    register_argument(
-        query_readiness_parser,
-        "--status",
-        dest="statuses",
-        action="append",
-        choices=[status.value for status in ReadinessStatus],
-        default=None,
-        help="Status buckets to include (repeatable)",
-    )
-    register_argument(
-        query_readiness_parser,
-        "--limit",
-        type=int,
-        default=10,
-        help="Maximum entries per status bucket",
-    )
-    register_argument(
-        query_readiness_parser,
-        "--severity",
-        dest="severities",
-        action="append",
-        choices=[severity.value for severity in SeverityLevel],
-        default=None,
-        help="Filter to severities (repeatable: error, warning, information)",
-    )
-    register_argument(
-        query_readiness_parser,
-        "--format",
-        choices=[fmt.value for fmt in DataFormat],
-        default=DataFormat.JSON.value,
-        help="Output format",
-    )
+    register_readiness_flag(query_readiness_parser, default_enabled=True)
 
     query_runs_parser = query_sub.add_parser(
         QuerySection.RUNS.value,
         help="Inspect individual typing runs",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=section_parents,
     )
-    _register_common_manifest_argument(query_runs_parser)
     register_argument(
         query_runs_parser,
         "--tool",
@@ -188,20 +146,13 @@ def register_query_command(subparsers: SubparserCollection) -> None:
         default=10,
         help="Maximum runs to return",
     )
-    register_argument(
-        query_runs_parser,
-        "--format",
-        choices=[fmt.value for fmt in DataFormat],
-        default=DataFormat.JSON.value,
-        help="Output format",
-    )
 
     query_engines_parser = query_sub.add_parser(
         QuerySection.ENGINES.value,
         help="Display engine configuration used for runs",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=section_parents,
     )
-    _register_common_manifest_argument(query_engines_parser)
     register_argument(
         query_engines_parser,
         "--limit",
@@ -209,20 +160,13 @@ def register_query_command(subparsers: SubparserCollection) -> None:
         default=10,
         help="Maximum rows to return",
     )
-    register_argument(
-        query_engines_parser,
-        "--format",
-        choices=[fmt.value for fmt in DataFormat],
-        default=DataFormat.JSON.value,
-        help="Output format",
-    )
 
     query_rules_parser = query_sub.add_parser(
         QuerySection.RULES.value,
         help="Show the most common rule diagnostics",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=section_parents,
     )
-    _register_common_manifest_argument(query_rules_parser)
     register_argument(
         query_rules_parser,
         "--limit",
@@ -232,31 +176,10 @@ def register_query_command(subparsers: SubparserCollection) -> None:
     )
     register_argument(
         query_rules_parser,
-        "--format",
-        choices=[fmt.value for fmt in DataFormat],
-        default=DataFormat.JSON.value,
-        help="Output format",
-    )
-    register_argument(
-        query_rules_parser,
         "--include-paths",
         action="store_true",
         help="Include top file paths per rule",
     )
-
-
-def _register_common_manifest_argument(parser: argparse.ArgumentParser) -> None:
-    register_argument(
-        parser,
-        "--manifest",
-        type=Path,
-        required=True,
-        help="Path to a typing audit manifest.",
-    )
-
-
-def _load_summary(manifest_path: Path) -> SummaryData:
-    return load_summary_from_manifest(manifest_path)
 
 
 def _render_payload(data: object, fmt: DataFormat) -> None:
@@ -264,11 +187,12 @@ def _render_payload(data: object, fmt: DataFormat) -> None:
         echo(line)
 
 
-def execute_query(args: argparse.Namespace) -> int:
+def execute_query(args: argparse.Namespace, context: CLIContext) -> int:
     """Execute the `ratchetr query` command.
 
     Args:
         args: Parsed CLI namespace describing the desired section and filters.
+        context: Shared CLI context providing manifest resolution.
 
     Returns:
         `0` when the query runs successfully.
@@ -276,7 +200,10 @@ def execute_query(args: argparse.Namespace) -> int:
     Raises:
         SystemExit: If the section selector is invalid.
     """
-    summary = _load_summary(args.manifest)
+    manifest_path = discover_manifest_or_exit(context, cli_manifest=getattr(args, "manifest", None))
+    summary = load_summary_from_manifest(manifest_path)
+    stdout_format = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    data_format = DataFormat.JSON if stdout_format is StdoutFormat.JSON else DataFormat.TABLE
     section_value = args.query_section
     try:
         section = section_value if isinstance(section_value, QuerySection) else QuerySection.from_str(section_value)
@@ -284,8 +211,6 @@ def execute_query(args: argparse.Namespace) -> int:
     # fallback branch is unreachable in normal CLI flow
     except ValueError as exc:  # pragma: no cover
         raise SystemExit(str(exc)) from exc
-
-    format_choice = DataFormat.from_str(args.format)
 
     match section:
         case QuerySection.OVERVIEW:
@@ -295,37 +220,36 @@ def execute_query(args: argparse.Namespace) -> int:
                     include_categories=args.include_categories,
                     include_runs=args.include_runs,
                 ),
-                format_choice,
+                data_format,
             )
         case QuerySection.HOTSPOTS:
             kind = HotspotKind.from_str(args.kind)
             _render_payload(
                 query_hotspots(summary, kind=kind, limit=args.limit),
-                format_choice,
+                data_format,
             )
         case QuerySection.READINESS:
-            level_choice = ReadinessLevel.from_str(args.level)
-            statuses = [ReadinessStatus.from_str(status) for status in args.statuses] if args.statuses else None
-            severities = [SeverityLevel.from_str(severity) for severity in args.severities] if args.severities else None
+            readiness_tokens = getattr(args, "readiness", None)
+            readiness = parse_readiness_tokens(readiness_tokens, flag_present=readiness_tokens is not None)
             _render_payload(
                 query_readiness(
                     summary,
-                    level=level_choice,
-                    statuses=statuses,
-                    limit=args.limit,
-                    severities=severities,
+                    level=readiness.level,
+                    statuses=list(readiness.statuses) if readiness.statuses else None,
+                    limit=readiness.limit,
+                    severities=list(readiness.severities) if readiness.severities else None,
                 ),
-                format_choice,
+                data_format,
             )
         case QuerySection.RUNS:
             _render_payload(
                 query_runs(summary, tools=args.tools, modes=args.modes, limit=args.limit),
-                format_choice,
+                data_format,
             )
         case QuerySection.ENGINES:
             _render_payload(
                 query_engines(summary, limit=args.limit),
-                format_choice,
+                data_format,
             )
         case QuerySection.RULES:
             _render_payload(
@@ -334,7 +258,7 @@ def execute_query(args: argparse.Namespace) -> int:
                     limit=args.limit,
                     include_paths=bool(getattr(args, "include_paths", False)),
                 ),
-                format_choice,
+                data_format,
             )
 
     return 0

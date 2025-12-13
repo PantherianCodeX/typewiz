@@ -29,12 +29,13 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/CrownOps/ratchetr"
-Documentation = "https://github.com/CrownOps/ratchetr"
-"Issue Tracker" = "https://github.com/CrownOps/ratchetr/issues"
+Homepage = "https://github.com/ratchetr/ratchetr"
+Documentation = "https://github.com/ratchetr/ratchetr"
+"Issue Tracker" = "https://github.com/ratchetr/ratchetr/issues"
 
 [project.scripts]
 ratchetr = "ratchetr.cli:main"
+rtr = "ratchetr.cli:main"
 
 [project.optional-dependencies]
 engines = [

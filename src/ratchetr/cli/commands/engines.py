@@ -19,44 +19,49 @@ from __future__ import annotations
 import argparse
 from typing import TYPE_CHECKING
 
-from ratchetr.cli.helpers import echo, register_argument, render_data
+from ratchetr.cli.helpers import echo, render_data
+from ratchetr.cli.helpers.options import StdoutFormat
 from ratchetr.core.model_types import DataFormat
 from ratchetr.engines.registry import describe_engines
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ratchetr.cli.helpers import CLIContext
     from ratchetr.cli.types import SubparserCollection
 
 
-def register_engines_command(subparsers: SubparserCollection) -> None:
+def register_engines_command(
+    subparsers: SubparserCollection,
+    *,
+    parents: Sequence[argparse.ArgumentParser] | None = None,
+) -> None:
     """Attach the `ratchetr engines`command to the CLI.
 
     Args:
         subparsers: Top-level argparse subparser collection to register commands on.
+        parents: Shared parent parsers carrying global options.
     """
     engines = subparsers.add_parser(
         "engines",
         help="Inspect discovered ratchetr engines",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=parents or [],
     )
     engines_sub = engines.add_subparsers(dest="engines_action", required=True)
 
-    list_cmd = engines_sub.add_parser(
+    engines_sub.add_parser(
         "list",
         help="List registered engines",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    register_argument(
-        list_cmd,
-        "--format",
-        choices=[fmt.value for fmt in DataFormat],
-        default=DataFormat.TABLE.value,
-        help="Output format for the engine listing.",
+        parents=parents or [],
     )
 
 
 def _handle_list(args: argparse.Namespace) -> int:
     descriptors = describe_engines()
-    fmt = DataFormat.from_str(getattr(args, "format", DataFormat.TABLE.value))
+    stdout_format = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    fmt = DataFormat.JSON if stdout_format is StdoutFormat.JSON else DataFormat.TABLE
     payload = [
         {
             "name": str(descriptor.name),
@@ -71,7 +76,7 @@ def _handle_list(args: argparse.Namespace) -> int:
     return 0
 
 
-def execute_engines(args: argparse.Namespace) -> int:
+def execute_engines(args: argparse.Namespace, _: CLIContext) -> int:
     """Execute the engines subcommand.
 
     Args:

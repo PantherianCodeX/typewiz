@@ -44,7 +44,7 @@ def test_render_dashboard_summary_formats(sample_summary: SummaryData) -> None:
         output_format=DashboardFormat.MARKDOWN,
         default_view=DashboardView.OVERVIEW,
     )
-    assert "####" in markdown_output
+    assert "### `pyright:current`" in markdown_output
     html_output = dashboard_service.render_dashboard_summary(
         sample_summary,
         output_format=DashboardFormat.HTML,

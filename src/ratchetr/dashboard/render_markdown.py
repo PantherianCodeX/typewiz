@@ -96,7 +96,7 @@ def _md_overview(severity: Mapping[SeverityLevel, int]) -> list[str]:
 def _md_run_summary(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:
     lines = [
         "",
-        "### Run summary",
+        "## Run summary",
         "",
         "| Run | Errors | Warnings | Information | Command |",
         "| --- | ---: | ---: | ---: | --- |",
@@ -114,7 +114,7 @@ def _md_run_summary(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:
 
 # ignore JUSTIFIED: renderer builds full table; splitting would duplicate traversal
 def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str]:  # noqa: PLR0914, FIX002, TD003  # TODO@PantherianCodeX: Break into sub-renderers per section to trim locals
-    lines = ["", "### Engine details"]
+    lines = ["", "## Engine details"]
     if not run_summary:
         lines.append("- No engine data available")
         return lines
@@ -135,7 +135,7 @@ def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str
         lines.extend(
             [
                 "",
-                f"#### `{key}`",
+                f"### `{key}`",
                 "",
                 f"- Profile: {profile}",
                 f"- Config file: {config_file}",
@@ -178,13 +178,12 @@ def _md_engine_details(run_summary: Mapping[RunId, SummaryRunEntry]) -> list[str
 
 
 def _md_hotspots(hotspots: Mapping[str, object], summary: SummaryData) -> list[str]:
-    lines: list[str] = ["", "### Hotspots"]
+    lines: list[str] = ["", "## Hotspots", ""]
     top_rules = cast("Mapping[str, int]", hotspots.get("topRules", summary.get("topRules", {})))
     if top_rules:
         lines.extend(
             [
-                "",
-                "#### Diagnostic rules",
+                "### Diagnostic rules",
                 "",
                 "| Rule | Count |",
                 "| --- | ---: |",
@@ -196,7 +195,7 @@ def _md_hotspots(hotspots: Mapping[str, object], summary: SummaryData) -> list[s
 
     rule_files = cast("Mapping[str, Sequence[Mapping[str, object]]]", hotspots.get("ruleFiles", {}))
     if rule_files:
-        lines.extend(["", "#### Rule hotspots by file", ""])
+        lines.extend(["", "### Rule hotspots by file", ""])
         for rule, rule_entries in rule_files.items():
             formatted = ", ".join(
                 f"`{entry.get('path', '<unknown>')}` ({entry.get('count', 0)})" for entry in rule_entries[:5]
@@ -208,7 +207,7 @@ def _md_hotspots(hotspots: Mapping[str, object], summary: SummaryData) -> list[s
     lines.extend(
         [
             "",
-            "#### Folder hotspots",
+            "### Folder hotspots",
             "",
             "| Folder | Errors | Warnings | Information | Runs |",
             "| --- | ---: | ---: | ---: | ---: |",
@@ -228,7 +227,7 @@ def _md_hotspots(hotspots: Mapping[str, object], summary: SummaryData) -> list[s
     top_files = hotspots.get("topFiles", [])
     lines.extend([
         "",
-        "#### File hotspots",
+        "### File hotspots",
         "",
         "| File | Errors | Warnings |",
         "| --- | ---: | ---: |",
@@ -246,11 +245,11 @@ def _md_run_logs(
     runs_tab: Mapping[str, object],
     run_summary: Mapping[RunId, SummaryRunEntry],
 ) -> list[str]:
-    lines = ["", "### Run logs"]
+    lines = ["", "## Run logs"]
     rd_obj = runs_tab.get("runSummary")
     run_details = cast("Mapping[RunId, SummaryRunEntry]", rd_obj) if isinstance(rd_obj, Mapping) else run_summary
     if not run_details:
-        lines.append("- No runs recorded")
+        lines.extend(["", "- No runs recorded"])
         return lines
     for key, data in run_details.items():
         dm = coerce_mapping(cast("Mapping[object, object]", data))
@@ -258,7 +257,7 @@ def _md_run_logs(
         lines.extend(
             [
                 "",
-                f"#### `{key}`",
+                f"### `{key}`",
                 "",
                 f"- Errors: {coerce_int(dm.get('errors'))}",
                 f"- Warnings: {coerce_int(dm.get('warnings'))}",
@@ -271,7 +270,7 @@ def _md_run_logs(
 
 
 def _md_readiness(tabs: Mapping[str, object]) -> list[str]:
-    lines = ["", "### Readiness snapshot", ""]
+    lines = ["", "## Readiness snapshot", ""]
     raw = tabs.get(TAB_KEY_READINESS)
     rs: ReadinessTab = cast("ReadinessTab", raw) if isinstance(raw, Mapping) else _empty_readiness_tab()
     strict_section_raw = cast("dict[ReadinessStatus, list[dict[str, object]]]", rs.get("strict", {}))
@@ -286,7 +285,7 @@ def _md_readiness(tabs: Mapping[str, object]) -> list[str]:
 
     readiness_options_raw = cast("dict[str, ReadinessOptionsPayload]", rs.get("options", {}))
     if readiness_options_raw:
-        lines.extend(["", "#### Per-option readiness", ""])
+        lines.extend(["", "### Per-option readiness", ""])
         label_lookup = cast("dict[str, str]", CATEGORY_LABELS)
         for category, buckets_obj in readiness_options_raw.items():
             label_key: str = str(category)

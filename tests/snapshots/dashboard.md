@@ -9,16 +9,16 @@
 - Warnings: 1
 - Information: 0
 
-### Run summary
+## Run summary
 
 | Run | Errors | Warnings | Information | Command |
 | --- | ---: | ---: | ---: | --- |
 | `pyright:current` | 0 | 0 | 0 | `pyright --outputjson` |
 | `mypy:full` | 1 | 1 | 0 | `python -m mypy` |
 
-### Engine details
+## Engine details
 
-#### `pyright:current`
+### `pyright:current`
 
 - Profile: baseline
 - Config file: pyrightconfig.json
@@ -28,7 +28,7 @@
 - Folder overrides:
   - `apps/platform` (plugin args: `--warnings`)
 
-#### `mypy:full`
+### `mypy:full`
 
 - Profile: strict
 - Config file: mypy.ini
@@ -38,37 +38,37 @@
 - Folder overrides:
   - `packages/legacy` (exclude: `packages/legacy`)
 
-### Hotspots
+## Hotspots
 
-#### Diagnostic rules
+### Diagnostic rules
 
 | Rule | Count |
 | --- | ---: |
 | `reportUnknownMemberType` | 1 |
 | `reportGeneralTypeIssues` | 1 |
 
-#### Rule hotspots by file
+### Rule hotspots by file
 
 - `reportGeneralTypeIssues`: `packages/core/agents.py` (1)
 - `reportUnknownMemberType`: `packages/core/agents.py` (1)
 
-#### Folder hotspots
+### Folder hotspots
 
 | Folder | Errors | Warnings | Information | Runs |
 | --- | ---: | ---: | ---: | ---: |
 | `apps/platform/operations` | 0 | 0 | 0 | 1 |
 | `packages/agents` | 1 | 1 | 0 | 1 |
 
-#### File hotspots
+### File hotspots
 
 | File | Errors | Warnings |
 | --- | ---: | ---: |
 | `apps/platform/operations/admin.py` | 0 | 0 |
 | `packages/core/agents.py` | 1 | 1 |
 
-### Run logs
+## Run logs
 
-#### `pyright:current`
+### `pyright:current`
 
 - Errors: 0
 - Warnings: 0
@@ -76,7 +76,7 @@
 - Total diagnostics: 0
 - Severity breakdown: {}
 
-#### `mypy:full`
+### `mypy:full`
 
 - Errors: 1
 - Warnings: 1
@@ -84,13 +84,13 @@
 - Total diagnostics: 2
 - Severity breakdown: {}
 
-### Readiness snapshot
+## Readiness snapshot
 
 - Ready for strict typing: `apps/platform/operations`
 - Close to strict typing: `packages/agents`
 - Blocked folders: —
 
-#### Per-option readiness
+### Per-option readiness
 
 - **Unknown type checks** (≤2 to be close):
   - Ready: `apps/platform/operations`

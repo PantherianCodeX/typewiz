@@ -27,6 +27,7 @@ import pytest
 from ratchetr._internal.utils import consume
 from ratchetr.api import AuditResult
 from ratchetr.cli.app import main
+from ratchetr.cli.helpers import CLIContext
 from ratchetr.config import Config
 from ratchetr.core.model_types import (
     DashboardFormat,
@@ -38,6 +39,7 @@ from ratchetr.core.model_types import (
 from ratchetr.core.type_aliases import EngineName, RelPath, RunnerName, ToolName
 from ratchetr.core.types import Diagnostic, RunResult
 from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
+from ratchetr.paths import EnvOverrides, ResolvedPaths
 from tests.fixtures.builders import build_cli_manifest, build_empty_summary
 from tests.fixtures.stubs import StubEngine
 
@@ -157,22 +159,35 @@ def _arrange_cli_audit_full_outputs(
         warning_count=0,
     )
 
-    def _load_config(_: Path | None = None) -> Config:
-        return cfg
-
-    def _resolve_root(_: Path | None = None) -> Path:
-        return tmp_path
-
     def _default_paths(_: Path) -> list[str]:
         return ["pkg"]
 
     def _run_audit_stub(**_: object) -> AuditResult:
         return audit_result
 
-    monkeypatch.setattr("ratchetr.cli.commands.audit.load_config", _load_config)
-    monkeypatch.setattr("ratchetr.cli.commands.audit.resolve_project_root", _resolve_root)
     monkeypatch.setattr("ratchetr.cli.commands.audit.default_full_paths", _default_paths)
     monkeypatch.setattr("ratchetr.cli.commands.audit.run_audit", _run_audit_stub)
+    tool_home = tmp_path / ".ratchetr"
+    resolved_paths = ResolvedPaths(
+        repo_root=tmp_path,
+        tool_home=tool_home,
+        cache_dir=tool_home / ".cache",
+        log_dir=tool_home / "logs",
+        manifest_path=tool_home / "manifest.json",
+        dashboard_path=tool_home / "dashboard.html",
+        config_path=None,
+    )
+    for path in (resolved_paths.tool_home, resolved_paths.cache_dir, resolved_paths.log_dir):
+        path.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(
+        "ratchetr.cli.app.build_cli_context",
+        lambda *_args, **_kwargs: CLIContext(
+            config=cfg,
+            config_path=None,
+            resolved_paths=resolved_paths,
+            env_overrides=EnvOverrides.from_environ(),
+        ),
+    )
 
     def _fake_build_summary(data: object) -> SummaryData:
         if isinstance(data, dict):
@@ -225,18 +240,17 @@ def _act_cli_audit_full_outputs(
             "--runner",
             "pyright",
             "pkg",
+            "--save-as",
             "--summary",
             "full",
             "--fail-on",
             "any",
             "--compare-to",
             str(context.compare_path),
-            "--dashboard-json",
-            str(context.dashboard_json),
-            "--dashboard-markdown",
-            str(context.dashboard_md),
-            "--dashboard-html",
-            str(context.dashboard_html),
+            "--dashboard",
+            f"json:{context.dashboard_json}",
+            f"markdown:{context.dashboard_md}",
+            f"html:{context.dashboard_html}",
             "--dashboard-view",
             "engines",
         ],
@@ -264,13 +278,13 @@ def test_cli_audit(
             "audit",
             "--runner",
             "stub",
-            "--project-root",
+            "--root",
             str(tmp_path),
             "pkg",
-            "--manifest",
-            str(manifest_path),
-            "--dashboard-markdown",
-            str(dashboard_path),
+            "--save-as",
+            f"json:{manifest_path}",
+            "--dashboard",
+            f"markdown:{dashboard_path}",
             "--fail-on",
             "warnings",
             "--profile",
@@ -318,7 +332,7 @@ def test_cli_dashboard_output(tmp_path: Path) -> None:
             "dashboard",
             "--manifest",
             str(manifest_path),
-            "--format",
+            "--out",
             "json",
         ],
     )
@@ -335,15 +349,15 @@ def test_cli_version_flag(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Captur
 
 def test_cli_engines_list(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     monkeypatch.setenv("RATCHETR_LICENSE_KEY", "test")
-    exit_code = _run_cli_command(["engines", "list", "--format", "json"])
+    exit_code = _run_cli_command(["engines", "list", "--out", "json"])
     assert exit_code == 0
     data = json.loads(capsys.readouterr().out)
     assert any(entry["name"] == "pyright" for entry in data)
 
 
 def test_cli_cache_clear(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    cache_dir = tmp_path / ".ratchetr_cache"
-    cache_dir.mkdir()
+    cache_dir = tmp_path / ".ratchetr" / ".cache"
+    cache_dir.mkdir(parents=True)
     consume((cache_dir / "cache.json").write_text("{}", encoding="utf-8"))
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("RATCHETR_LICENSE_KEY", "test")
@@ -370,20 +384,17 @@ def test_cli_audit_readiness_summary(
             "audit",
             "--runner",
             "stub",
-            "--project-root",
+            "--root",
             str(tmp_path),
             "pkg",
-            "--manifest",
-            str(manifest_path),
+            "--save-as",
+            f"json:{manifest_path}",
             "--fail-on",
             "never",
             "--readiness",
-            "--readiness-status",
-            "blocked",
-            "--readiness-status",
-            "ready",
-            "--readiness-limit",
-            "2",
+            "status=blocked",
+            "status=ready",
+            "limit=2",
         ],
     )
 
@@ -398,14 +409,11 @@ def test_cli_audit_readiness_summary(
             "readiness",
             "--manifest",
             str(manifest_path),
-            "--level",
-            "file",
-            "--status",
-            "blocked",
-            "--status",
-            "ready",
-            "--limit",
-            "1",
+            "--readiness",
+            "level=file",
+            "status=blocked",
+            "status=ready",
+            "limit=1",
         ],
     )
     assert exit_code_readiness == 0
@@ -423,13 +431,11 @@ def test_cli_readiness_details_and_severity(
             "readiness",
             "--manifest",
             str(manifest_path),
-            "--level",
-            "file",
-            "--status",
-            "blocked",
-            "--severity",
-            "warning",
-            "--details",
+            "--readiness",
+            "level=file",
+            "status=blocked",
+            "severity=warning",
+            "details",
         ],
     )
     assert exit_code == 0
@@ -490,10 +496,10 @@ exclude = ["unused"]
             "--runner",
             "stub",
             "src",
-            "--manifest",
-            str(manifest_path),
-            "--dashboard-markdown",
-            str(dashboard_path),
+            "--save-as",
+            f"json:{manifest_path}",
+            "--dashboard",
+            f"markdown:{dashboard_path}",
             "--profile",
             "stub",
             "strict",
@@ -539,11 +545,11 @@ def test_cli_audit_dry_run(
             "audit",
             "--runner",
             "stub",
-            "--project-root",
+            "--root",
             str(tmp_path),
             "pkg",
-            "--manifest",
-            str(manifest_path),
+            "--save-as",
+            f"json:{manifest_path}",
             "--dry-run",
         ],
     )
@@ -612,7 +618,7 @@ def test_cli_audit_hash_workers_override(
             "audit",
             "--runner",
             "stub",
-            "--project-root",
+            "--root",
             str(tmp_path),
             "pkg",
             "--hash-workers",
@@ -640,7 +646,7 @@ def test_cli_mode_only_full(
             "audit",
             "--runner",
             "stub",
-            "--project-root",
+            "--root",
             str(tmp_path),
             "--mode",
             "full",
@@ -672,7 +678,7 @@ def test_cli_plugin_arg_validation(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
                     "audit",
                     "--runner",
                     "stub",
-                    "--project-root",
+                    "--root",
                     str(tmp_path),
                     "--plugin-arg",
                     "stub",
@@ -718,15 +724,9 @@ def test_cli_audit_without_markers(
 
 
 def test_cli_audit_requires_paths(monkeypatch: pytest.MonkeyPatch) -> None:
-    cfg = Config()
-
-    def _load_config(_: Path | None = None) -> Config:
-        return cfg
-
     def _default_paths(_: Path) -> list[str]:
         return []
 
-    monkeypatch.setattr("ratchetr.cli.commands.audit.load_config", _load_config)
     monkeypatch.setattr("ratchetr.cli.commands.audit.default_full_paths", _default_paths)
 
     with pytest.raises(SystemExit, match=r".*"):
@@ -779,7 +779,7 @@ def test_cli_dashboard_outputs(
         renderer,
     )
 
-    exit_code_json = _run_cli_command(["dashboard", "--manifest", str(manifest_path)])
+    exit_code_json = _run_cli_command(["dashboard", "--manifest", str(manifest_path), "--out", "json"])
     assert exit_code_json == 0
     out_json = capsys.readouterr().out
     assert json.loads(out_json) == summary
@@ -790,10 +790,8 @@ def test_cli_dashboard_outputs(
             "dashboard",
             "--manifest",
             str(manifest_path),
-            "--format",
-            "markdown",
-            "--output",
-            str(md_path),
+            "--save-as",
+            f"markdown:{md_path}",
         ],
     )
     assert exit_code_md == 0
@@ -805,10 +803,8 @@ def test_cli_dashboard_outputs(
             "dashboard",
             "--manifest",
             str(manifest_path),
-            "--format",
-            "html",
-            "--output",
-            str(html_path),
+            "--save-as",
+            f"html:{html_path}",
             "--view",
             "engines",
         ],
@@ -897,8 +893,6 @@ def test_cli_query_overview_table(tmp_path: Path, capsys: pytest.CaptureFixture[
             "--manifest",
             str(manifest_path),
             "--include-runs",
-            "--format",
-            "table",
         ],
     )
     assert exit_code == 0
@@ -919,6 +913,8 @@ def test_cli_query_hotspots_json(tmp_path: Path, capsys: pytest.CaptureFixture[s
             "folders",
             "--limit",
             "1",
+            "--out",
+            "json",
         ],
     )
     assert exit_code == 0
@@ -935,8 +931,6 @@ def test_cli_query_hotspots_json(tmp_path: Path, capsys: pytest.CaptureFixture[s
             "files",
             "--limit",
             "2",
-            "--format",
-            "table",
         ],
     )
     assert exit_code_files == 0
@@ -952,12 +946,9 @@ def test_cli_query_readiness_file_table(tmp_path: Path, capsys: pytest.CaptureFi
             "readiness",
             "--manifest",
             str(manifest_path),
-            "--level",
-            "file",
-            "--status",
-            "blocked",
-            "--format",
-            "table",
+            "--readiness",
+            "level=file",
+            "status=blocked",
         ],
     )
     assert exit_code == 0
@@ -977,6 +968,8 @@ def test_cli_query_readiness_folder_json(
             "readiness",
             "--manifest",
             str(manifest_path),
+            "--out",
+            "json",
         ],
     )
     assert exit_code == 0
@@ -997,7 +990,7 @@ def test_cli_query_runs_filters(tmp_path: Path, capsys: pytest.CaptureFixture[st
             "pyright",
             "--mode",
             "current",
-            "--format",
+            "--out",
             "json",
         ],
     )
@@ -1017,8 +1010,6 @@ def test_cli_query_runs_empty(tmp_path: Path, capsys: pytest.CaptureFixture[str]
             str(manifest_path),
             "--tool",
             "nonexistent",
-            "--format",
-            "table",
         ],
     )
     assert exit_code == 0
@@ -1034,8 +1025,6 @@ def test_cli_query_engines_table(tmp_path: Path, capsys: pytest.CaptureFixture[s
             "engines",
             "--manifest",
             str(manifest_path),
-            "--format",
-            "table",
         ],
     )
     assert exit_code == 0
@@ -1055,7 +1044,7 @@ def test_cli_query_rules_limit(tmp_path: Path, capsys: pytest.CaptureFixture[str
             "--limit",
             "1",
             "--include-paths",
-            "--format",
+            "--out",
             "json",
         ],
     )

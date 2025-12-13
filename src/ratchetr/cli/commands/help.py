@@ -23,21 +23,30 @@ from typing import TYPE_CHECKING
 from ratchetr.cli.helpers import echo, register_argument
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ratchetr.cli.helpers import CLIContext
     from ratchetr.cli.types import SubparserCollection
 
 _TOPICS_ROOT = Path(__file__).resolve().parents[4] / "docs" / "cli" / "topics"
 
 
-def register_help_command(subparsers: SubparserCollection) -> None:
+def register_help_command(
+    subparsers: SubparserCollection,
+    *,
+    parents: Sequence[argparse.ArgumentParser] | None = None,
+) -> None:
     """Register `ratchetr help`with topic support.
 
     Args:
         subparsers: Top-level argparse subparser collection to register commands on.
+        parents: Shared parent parsers carrying global options.
     """
     help_parser = subparsers.add_parser(
         "help",
         help="Show CLI topic documentation",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=parents or [],
     )
     register_argument(
         help_parser,
@@ -79,7 +88,7 @@ def _render_topics_list(topics: dict[str, Path]) -> None:
     echo("Use `ratchetr help <topic>` to view a topic.")
 
 
-def execute_help(args: argparse.Namespace) -> int:
+def execute_help(args: argparse.Namespace, _: CLIContext) -> int:
     """Execute the `ratchetr help`command.
 
     Args:

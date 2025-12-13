@@ -18,53 +18,45 @@ from __future__ import annotations
 
 import argparse
 import shutil
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ratchetr.cli.helpers import echo, register_argument
-from ratchetr.runtime import resolve_project_root
+from ratchetr.cli.helpers import echo
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ratchetr.cli.helpers import CLIContext
     from ratchetr.cli.types import SubparserCollection
 
 
-def register_cache_command(subparsers: SubparserCollection) -> None:
+def register_cache_command(
+    subparsers: SubparserCollection,
+    *,
+    parents: Sequence[argparse.ArgumentParser] | None = None,
+) -> None:
     """Attach the `ratchetr cache`command to the CLI.
 
     Args:
         subparsers: Top-level argparse subparser collection to register commands on.
+        parents: Shared parent parsers carrying global options.
     """
     cache = subparsers.add_parser(
         "cache",
         help="Inspect or clear ratchetr caches",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=parents or [],
     )
     cache_sub = cache.add_subparsers(dest="cache_action", required=True)
 
-    clear = cache_sub.add_parser(
+    cache_sub.add_parser(
         "clear",
         help="Remove the on-disk cache directory",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    register_argument(
-        clear,
-        "--project-root",
-        type=Path,
-        default=None,
-        help="Override project root discovery (default: auto-detected).",
-    )
-    register_argument(
-        clear,
-        "--path",
-        type=Path,
-        default=None,
-        help="Explicit cache directory (default: <project>/.ratchetr_cache).",
-    )
 
 
-def _handle_clear(args: argparse.Namespace) -> int:
-    project_root = resolve_project_root(getattr(args, "project_root", None))
-    target: Path = (args.path if args.path is not None else project_root / ".ratchetr_cache").resolve()
+def _handle_clear(context: CLIContext) -> int:
+    target = context.resolved_paths.cache_dir
     if not target.exists():
         echo(f"[ratchetr] cache directory not found at {target}; nothing to remove")
         return 0
@@ -73,11 +65,12 @@ def _handle_clear(args: argparse.Namespace) -> int:
     return 0
 
 
-def execute_cache(args: argparse.Namespace) -> int:
+def execute_cache(args: argparse.Namespace, context: CLIContext) -> int:
     """Execute the cache subcommand.
 
     Args:
         args: Parsed CLI namespace.
+        context: Shared CLI context providing resolved cache directory.
 
     Returns:
         `0`when the requested action completes successfully.
@@ -87,7 +80,7 @@ def execute_cache(args: argparse.Namespace) -> int:
     """
     action_value = getattr(args, "cache_action", None)
     if action_value == "clear":
-        return _handle_clear(args)
+        return _handle_clear(context)
     msg = f"Unknown cache action '{action_value}'"
     raise SystemExit(msg)
 

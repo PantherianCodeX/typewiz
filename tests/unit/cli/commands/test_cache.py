@@ -24,48 +24,40 @@ import pytest
 from ratchetr.cli.commands import cache as cache_cmd
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from ratchetr.cli.helpers import CLIContext
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
 
 
-def test_handle_clear_removes_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_handle_clear_removes_directory(cli_context: CLIContext) -> None:
     # Arrange
-    target = tmp_path / ".ratchetr_cache"
-    target.mkdir()
-
-    def fake_resolve_root(value: Path | None) -> Path:
-        assert value is None
-        return tmp_path
-
-    monkeypatch.setattr(cache_cmd, "resolve_project_root", fake_resolve_root)
-    args = Namespace(cache_action="clear", path=target, project_root=None)
+    target = cli_context.resolved_paths.cache_dir
+    target.mkdir(parents=True, exist_ok=True)
+    args = Namespace(cache_action="clear")
 
     # Act
-    exit_code = cache_cmd.execute_cache(args)
+    exit_code = cache_cmd.execute_cache(args, cli_context)
 
     # Assert
     assert exit_code == 0
     assert not target.exists()
 
 
-def test_handle_clear_handles_missing_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_handle_clear_handles_missing_directory(cli_context: CLIContext) -> None:
     # Arrange
-    args = Namespace(cache_action="clear", path=tmp_path / "missing", project_root=None)
-
-    def fake_root(_: object) -> Path:
-        return tmp_path
-
-    monkeypatch.setattr(cache_cmd, "resolve_project_root", fake_root)
+    target = cli_context.resolved_paths.cache_dir
+    if target.exists():
+        target.rmdir()
+    args = Namespace(cache_action="clear")
 
     # Act
-    exit_code = cache_cmd.execute_cache(args)
+    exit_code = cache_cmd.execute_cache(args, cli_context)
 
     # Assert
     assert exit_code == 0
 
 
-def test_execute_cache_unknown_action() -> None:
+def test_execute_cache_unknown_action(cli_context: CLIContext) -> None:
     # Act / Assert
     with pytest.raises(SystemExit, match=r".*"):
-        _ = cache_cmd.execute_cache(Namespace(cache_action="invalid"))
+        _ = cache_cmd.execute_cache(Namespace(cache_action="invalid"), cli_context)

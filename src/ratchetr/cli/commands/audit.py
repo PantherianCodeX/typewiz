@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -24,51 +25,66 @@ from typing import TYPE_CHECKING
 from ratchetr.api import build_summary
 from ratchetr.cli.helpers import (
     SUMMARY_FIELD_CHOICES,
+    ReadinessOptions,
+    SaveFlag,
+    StdoutFormat,
     collect_plugin_args,
     collect_profile_args,
+    finalise_targets,
     normalise_modes,
     parse_hash_workers,
+    parse_readiness_tokens,
+    parse_save_flag,
     parse_summary_fields,
     print_readiness_summary,
     print_summary,
     register_argument,
+    register_readiness_flag,
+    register_save_flag,
 )
 from ratchetr.cli.helpers.io import echo as _echo
-from ratchetr.config import AuditConfig, Config, load_config
+from ratchetr.config import AuditConfig, Config
 from ratchetr.core.model_types import (
     DashboardView,
     FailOnPolicy,
     Mode,
-    ReadinessLevel,
-    ReadinessStatus,
     SeverityLevel,
     SummaryField,
     SummaryStyle,
 )
 from ratchetr.core.type_aliases import EngineName, ProfileName
-from ratchetr.runtime import default_full_paths, resolve_project_root
+from ratchetr.json import normalise_enums_for_json
+from ratchetr.paths import OutputFormat, OutputTarget
+from ratchetr.runtime import default_full_paths
 from ratchetr.services.audit import AuditResult, run_audit
 from ratchetr.services.dashboard import emit_dashboard_outputs, load_summary_from_manifest
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from ratchetr.cli.helpers import CLIContext
     from ratchetr.cli.types import SubparserCollection
     from ratchetr.core.summary_types import SummaryData
     from ratchetr.core.types import RunResult
 
 
-def register_audit_command(subparsers: SubparserCollection) -> None:
+def register_audit_command(
+    subparsers: SubparserCollection,
+    *,
+    parents: Sequence[argparse.ArgumentParser] | None = None,
+) -> None:
     """Register the `ratchetr audit`command and return the configured parser.
 
     Args:
         subparsers: Top-level argparse subparser collection to register commands on.
+        parents: Shared parent parsers carrying global options.
     """
     audit = subparsers.add_parser(
         "audit",
         help="Run typing audits and produce manifests/dashboards",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description=("Collect diagnostics from configured engines and optionally write manifests or dashboards."),
+        parents=parents or [],
     )
 
     register_argument(
@@ -77,28 +93,6 @@ def register_audit_command(subparsers: SubparserCollection) -> None:
         nargs="*",
         metavar="PATH",
         help="Directories to include in full runs (default: auto-detected python packages).",
-    )
-    register_argument(
-        audit,
-        "-C",
-        "--config",
-        type=Path,
-        default=None,
-        help="Explicit ratchetr.toml path (default: search in cwd).",
-    )
-    register_argument(
-        audit,
-        "--project-root",
-        type=Path,
-        default=None,
-        help="Override the project root (default: auto-detected).",
-    )
-    register_argument(
-        audit,
-        "--manifest",
-        type=Path,
-        default=None,
-        help="Write manifest JSON to this path.",
     )
     register_argument(
         audit,
@@ -194,27 +188,8 @@ def register_audit_command(subparsers: SubparserCollection) -> None:
         default=None,
         help=("Non-zero exit when diagnostics reach this severity (aliases: none=never, any=any finding)."),
     )
-    register_argument(
-        audit,
-        "--dashboard-json",
-        type=Path,
-        default=None,
-        help="Optional dashboard JSON output path.",
-    )
-    register_argument(
-        audit,
-        "--dashboard-markdown",
-        type=Path,
-        default=None,
-        help="Optional dashboard Markdown output path.",
-    )
-    register_argument(
-        audit,
-        "--dashboard-html",
-        type=Path,
-        default=None,
-        help="Optional dashboard HTML output path.",
-    )
+    register_save_flag(audit, flag="--save-as", dest="save_as")
+    register_save_flag(audit, flag="--dashboard", dest="dashboard")
     register_argument(
         audit,
         "--compare-to",
@@ -235,50 +210,7 @@ def register_audit_command(subparsers: SubparserCollection) -> None:
         default=DashboardView.OVERVIEW.value,
         help="Default tab when writing the HTML dashboard.",
     )
-    register_argument(
-        audit,
-        "--readiness",
-        action="store_true",
-        help="After audit completes, print a readiness summary.",
-    )
-    register_argument(
-        audit,
-        "--readiness-level",
-        choices=[level.value for level in ReadinessLevel],
-        default=ReadinessLevel.FOLDER.value,
-        help="Granularity for readiness summaries when --readiness is enabled.",
-    )
-    register_argument(
-        audit,
-        "--readiness-status",
-        dest="readiness_status",
-        action="append",
-        choices=[status.value for status in ReadinessStatus],
-        default=None,
-        help="Status buckets to display for readiness summaries (repeatable).",
-    )
-    register_argument(
-        audit,
-        "--readiness-limit",
-        type=int,
-        default=10,
-        help="Maximum entries per status when printing readiness summaries.",
-    )
-    register_argument(
-        audit,
-        "--readiness-severity",
-        dest="readiness_severity",
-        action="append",
-        choices=[severity.value for severity in SeverityLevel],
-        default=None,
-        help="Filter readiness summaries to severities (repeatable).",
-    )
-    register_argument(
-        audit,
-        "--readiness-details",
-        action="store_true",
-        help="Include error/warning counts when printing readiness summaries.",
-    )
+    register_readiness_flag(audit, default_enabled=False)
 
 
 def _resolve_full_paths(args: argparse.Namespace, config: Config, project_root: Path) -> list[str]:
@@ -347,21 +279,16 @@ def _resolve_summary_fields(args: argparse.Namespace) -> tuple[list[SummaryField
     )
 
 
-def _maybe_print_readiness(args: argparse.Namespace, summary: SummaryData) -> None:
-    if not args.readiness:
+def _maybe_print_readiness(readiness: ReadinessOptions, summary: SummaryData) -> None:
+    if not readiness.enabled:
         return
-    level_choice = ReadinessLevel.from_str(args.readiness_level)
-    statuses = [ReadinessStatus.from_str(status) for status in args.readiness_status] if args.readiness_status else None
-    severities = (
-        [SeverityLevel.from_str(value) for value in args.readiness_severity] if args.readiness_severity else None
-    )
     print_readiness_summary(
         summary,
-        level=level_choice,
-        statuses=statuses,
-        limit=args.readiness_limit,
-        severities=severities,
-        detailed=bool(getattr(args, "readiness_details", False)),
+        level=readiness.level,
+        statuses=list(readiness.statuses) if readiness.statuses else None,
+        limit=readiness.limit,
+        severities=list(readiness.severities) if readiness.severities else None,
+        detailed=readiness.include_details,
     )
 
 
@@ -388,13 +315,13 @@ def _build_delta_line(
         return ""
 
 
-def _emit_dashboard_outputs(args: argparse.Namespace, summary: SummaryData) -> None:
-    view_choice = DashboardView.from_str(args.dashboard_view)
+def _emit_dashboard_outputs(override: AuditConfig, dashboard_view: DashboardView, summary: SummaryData) -> None:
+    view_choice = dashboard_view
     emit_dashboard_outputs(
         summary,
-        json_path=args.dashboard_json,
-        markdown_path=args.dashboard_markdown,
-        html_path=args.dashboard_html,
+        json_path=override.dashboard_json,
+        markdown_path=override.dashboard_markdown,
+        html_path=override.dashboard_html,
         default_view=view_choice,
     )
 
@@ -406,9 +333,11 @@ def _build_cli_override(
     run_current: bool,
     run_full: bool,
     cli_fail_on: FailOnPolicy | None,
+    manifest_target: Path | None,
+    dashboard_targets: tuple[OutputTarget, ...],
 ) -> AuditConfig:
     override = AuditConfig(
-        manifest_path=args.manifest,
+        manifest_path=manifest_target,
         full_paths=[path for path in args.paths if path] or None,
         max_depth=args.max_depth,
         max_files=args.max_files,
@@ -417,12 +346,16 @@ def _build_cli_override(
         skip_full=(not run_full) if modes_specified else None,
         fail_on=cli_fail_on,
         hash_workers=parse_hash_workers(args.hash_workers),
-        dashboard_json=args.dashboard_json,
-        dashboard_markdown=args.dashboard_markdown,
-        dashboard_html=args.dashboard_html,
         respect_gitignore=args.respect_gitignore,
         runners=args.runners,
     )
+    for target in dashboard_targets:
+        if target.format is OutputFormat.JSON:
+            override.dashboard_json = target.path
+        elif target.format is OutputFormat.MARKDOWN:
+            override.dashboard_markdown = target.path
+        elif target.format is OutputFormat.HTML:
+            override.dashboard_html = target.path
     if args.plugin_arg:
         _update_override_with_plugin_args(override, args.plugin_arg)
     if args.profiles:
@@ -430,7 +363,12 @@ def _build_cli_override(
     return override
 
 
-def _apply_dry_run_settings(args: argparse.Namespace, override: AuditConfig) -> bool:
+def _apply_dry_run_settings(
+    args: argparse.Namespace,
+    override: AuditConfig,
+    manifest_target: Path | None,
+    dashboard_targets: tuple[OutputTarget, ...],
+) -> bool:
     dry_run = bool(args.dry_run)
     if not dry_run:
         return False
@@ -438,9 +376,65 @@ def _apply_dry_run_settings(args: argparse.Namespace, override: AuditConfig) -> 
     override.dashboard_json = None
     override.dashboard_markdown = None
     override.dashboard_html = None
-    if args.manifest or args.dashboard_json or args.dashboard_markdown or args.dashboard_html:
+    if manifest_target or dashboard_targets:
         _echo("[ratchetr] --dry-run enabled; manifest and dashboard outputs are suppressed")
     return True
+
+
+def _resolve_manifest_target(save_flag: SaveFlag, context: CLIContext) -> Path | None:
+    if save_flag.provided:
+        targets = list(
+            finalise_targets(
+                save_flag,
+                default_targets=(OutputTarget(OutputFormat.JSON, context.resolved_paths.manifest_path),),
+            )
+        )
+        if not targets:
+            msg = "audit requires at least one manifest target when --save-as is provided."
+            raise SystemExit(msg)
+        if len(targets) > 1:
+            msg = "audit supports a single manifest target; specify one path."
+            raise SystemExit(msg)
+        target = targets[0]
+        return target.path or context.resolved_paths.manifest_path
+    if context.config.audit.manifest_path is not None:
+        return context.config.audit.manifest_path
+    return None
+
+
+def _resolve_dashboard_targets(save_flag: SaveFlag, context: CLIContext) -> tuple[OutputTarget, ...]:
+    if save_flag.provided:
+        targets = finalise_targets(
+            save_flag,
+            default_targets=(OutputTarget(OutputFormat.HTML, context.resolved_paths.dashboard_path),),
+        )
+    else:
+        cfg = context.config.audit
+        targets = tuple(
+            target
+            for target in (
+                OutputTarget(OutputFormat.JSON, cfg.dashboard_json) if cfg.dashboard_json else None,
+                OutputTarget(OutputFormat.MARKDOWN, cfg.dashboard_markdown) if cfg.dashboard_markdown else None,
+                OutputTarget(OutputFormat.HTML, cfg.dashboard_html) if cfg.dashboard_html else None,
+            )
+            if target is not None
+        )
+    resolved: list[OutputTarget] = []
+    for target in targets:
+        path = target.path or _default_dashboard_path(target.format, context)
+        resolved.append(OutputTarget(target.format, path))
+    return tuple(resolved)
+
+
+def _default_dashboard_path(output_format: OutputFormat, context: CLIContext) -> Path:
+    if output_format is OutputFormat.JSON:
+        return context.resolved_paths.tool_home / "dashboard.json"
+    if output_format is OutputFormat.MARKDOWN:
+        return context.resolved_paths.tool_home / "dashboard.md"
+    if output_format is OutputFormat.HTML:
+        return context.resolved_paths.dashboard_path
+    msg = f"Unsupported dashboard format '{output_format.value}'"
+    raise SystemExit(msg)
 
 
 @dataclass(slots=True)
@@ -455,11 +449,22 @@ class _AuditExecutionPlan:  # pylint: disable=too-many-instance-attributes
     summary_style: SummaryStyle
     dry_run: bool
     manifest_target: Path | None
+    stdout_format: StdoutFormat
+    readiness: ReadinessOptions
+    dashboard_view: DashboardView
 
 
-def _prepare_execution_plan(args: argparse.Namespace) -> _AuditExecutionPlan:
-    config = load_config(args.config)
-    project_root = resolve_project_root(args.project_root)
+def _prepare_execution_plan(
+    args: argparse.Namespace,
+    *,
+    context: CLIContext,
+    manifest_target: Path | None,
+    dashboard_targets: tuple[OutputTarget, ...],
+    stdout_format: StdoutFormat,
+    readiness: ReadinessOptions,
+) -> _AuditExecutionPlan:
+    config = context.config
+    project_root = context.resolved_paths.repo_root
     selected_full_paths = _resolve_full_paths(args, config, project_root)
     if not selected_full_paths:
         msg = "No paths found for full runs. Provide paths or configure 'full_paths'."
@@ -473,11 +478,13 @@ def _prepare_execution_plan(args: argparse.Namespace) -> _AuditExecutionPlan:
         run_current=run_current,
         run_full=run_full,
         cli_fail_on=cli_fail_on,
+        manifest_target=manifest_target,
+        dashboard_targets=dashboard_targets,
     )
 
-    dry_run = _apply_dry_run_settings(args, override)
+    dry_run = _apply_dry_run_settings(args, override, manifest_target, dashboard_targets)
     summary_fields, summary_style = _resolve_summary_fields(args)
-    manifest_target = None if dry_run else (args.manifest or None)
+    effective_manifest = None if dry_run else manifest_target
 
     return _AuditExecutionPlan(
         config=config,
@@ -488,7 +495,10 @@ def _prepare_execution_plan(args: argparse.Namespace) -> _AuditExecutionPlan:
         summary_fields=summary_fields,
         summary_style=summary_style,
         dry_run=dry_run,
-        manifest_target=manifest_target,
+        manifest_target=effective_manifest,
+        stdout_format=stdout_format,
+        readiness=readiness,
+        dashboard_view=DashboardView.from_str(args.dashboard_view),
     )
 
 
@@ -510,15 +520,19 @@ def _summarize_audit_run(
     plan: _AuditExecutionPlan,
     result: AuditResult,
 ) -> tuple[SummaryData, int]:
-    print_summary(result.runs, plan.summary_fields, plan.summary_style)
     audit_summary: SummaryData = result.summary or build_summary(result.manifest)
-    _maybe_print_readiness(args, audit_summary)
-
     fail_on_policy = _resolve_fail_on_policy(plan.cli_fail_on, plan.config.audit.fail_on)
     error_count, warning_count, info_count = _accumulate_run_totals(result.runs)
-    delta_segment = _build_delta_line(args, error_count, warning_count, info_count)
     exit_code = _determine_exit_code(fail_on_policy, error_count, warning_count, info_count)
 
+    if plan.stdout_format is StdoutFormat.JSON:
+        _echo(json.dumps(normalise_enums_for_json(audit_summary), indent=2))
+        return audit_summary, exit_code
+
+    print_summary(result.runs, plan.summary_fields, plan.summary_style)
+    _maybe_print_readiness(plan.readiness, audit_summary)
+
+    delta_segment = _build_delta_line(args, error_count, warning_count, info_count)
     _echo(
         "[ratchetr] totals:"
         f" errors={error_count}"
@@ -529,14 +543,13 @@ def _summarize_audit_run(
 
 
 def _persist_audit_outputs(
-    args: argparse.Namespace,
     *,
     plan: _AuditExecutionPlan,
     audit_summary: SummaryData,
 ) -> None:
     if plan.dry_run:
         return
-    _emit_dashboard_outputs(args, audit_summary)
+    _emit_dashboard_outputs(plan.override, plan.dashboard_view, audit_summary)
 
 
 def _resolve_fail_on_policy(
@@ -571,19 +584,38 @@ def _determine_exit_code(
     return 0
 
 
-def execute_audit(args: argparse.Namespace) -> int:
+def execute_audit(args: argparse.Namespace, context: CLIContext) -> int:
     """Execute the `ratchetr audit`command.
 
     Args:
         args: Parsed CLI namespace produced by argparse.
+        context: Shared CLI context containing configuration and resolved paths.
 
     Returns:
         Exit code honouring the configured `--fail-on`policy.
     """
-    plan = _prepare_execution_plan(args)
+    stdout_format = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    readiness_tokens = getattr(args, "readiness", None)
+    readiness = parse_readiness_tokens(readiness_tokens, flag_present=readiness_tokens is not None)
+    manifest_flag = parse_save_flag(getattr(args, "save_as", None), allowed_formats={OutputFormat.JSON})
+    dashboard_flag = parse_save_flag(
+        getattr(args, "dashboard", None),
+        allowed_formats={OutputFormat.JSON, OutputFormat.MARKDOWN, OutputFormat.HTML},
+    )
+    manifest_target = _resolve_manifest_target(manifest_flag, context)
+    dashboard_targets = _resolve_dashboard_targets(dashboard_flag, context)
+
+    plan = _prepare_execution_plan(
+        args,
+        context=context,
+        manifest_target=manifest_target,
+        dashboard_targets=dashboard_targets,
+        stdout_format=stdout_format,
+        readiness=readiness,
+    )
     result = _run_audit_plan(plan)
     audit_summary, exit_code = _summarize_audit_run(args, plan=plan, result=result)
-    _persist_audit_outputs(args, plan=plan, audit_summary=audit_summary)
+    _persist_audit_outputs(plan=plan, audit_summary=audit_summary)
     return exit_code
 
 

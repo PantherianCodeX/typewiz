@@ -21,7 +21,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 
-from ratchetr.cli.helpers import echo, register_argument
+from ratchetr.cli.helpers import discover_manifest_or_exit, echo, register_argument
 from ratchetr.core.model_types import ManifestAction
 from ratchetr.services.manifest import (
     manifest_json_schema,
@@ -29,6 +29,9 @@ from ratchetr.services.manifest import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ratchetr.cli.helpers import CLIContext
     from ratchetr.cli.types import SubparserCollection
     from ratchetr.compat import Never
 
@@ -38,16 +41,22 @@ def _raise_unknown_manifest_action(action: Never) -> NoReturn:
     raise SystemExit(msg)
 
 
-def register_manifest_command(subparsers: SubparserCollection) -> None:
+def register_manifest_command(
+    subparsers: SubparserCollection,
+    *,
+    parents: Sequence[argparse.ArgumentParser] | None = None,
+) -> None:
     """Register the `ratchetr manifest` command.
 
     Args:
         subparsers: Top-level argparse subparser collection to register commands on.
+        parents: Shared parent parsers carrying global options.
     """
     manifest_cmd = subparsers.add_parser(
         "manifest",
         help="Work with manifest files (validate)",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=parents or [],
     )
     manifest_sub = manifest_cmd.add_subparsers(dest="action", required=True)
 
@@ -59,8 +68,10 @@ def register_manifest_command(subparsers: SubparserCollection) -> None:
     register_argument(
         manifest_validate,
         "path",
+        nargs="?",
         type=Path,
-        help="Path to manifest file to validate",
+        default=None,
+        help="Path to manifest file to validate (default: discovered manifest)",
     )
     register_argument(
         manifest_validate,
@@ -91,8 +102,9 @@ def register_manifest_command(subparsers: SubparserCollection) -> None:
     )
 
 
-def _handle_validate(args: argparse.Namespace) -> int:
-    result = validate_manifest_file(args.path, schema_path=args.schema)
+def _handle_validate(args: argparse.Namespace, context: CLIContext) -> int:
+    manifest_path = args.path or discover_manifest_or_exit(context, cli_manifest=getattr(args, "manifest", None))
+    result = validate_manifest_file(manifest_path, schema_path=args.schema)
     for err in result.payload_errors:
         echo(f"[ratchetr] ({err.code}) validation error at {err.location}: {err.message}")
     for message in result.schema_errors:
@@ -116,11 +128,12 @@ def _handle_schema(args: argparse.Namespace) -> int:
     return 0
 
 
-def execute_manifest(args: argparse.Namespace) -> int:
+def execute_manifest(args: argparse.Namespace, context: CLIContext) -> int:
     """Execute the `ratchetr manifest` command.
 
     Args:
         args: Parsed CLI namespace describing the requested action.
+        context: Shared CLI context containing resolved manifest paths.
 
     Returns:
         `0` for success or `2` when validation fails.
@@ -135,7 +148,7 @@ def execute_manifest(args: argparse.Namespace) -> int:
     except ValueError as exc:  # pragma: no cover - argparse prevents invalid choices
         raise SystemExit(str(exc)) from exc
     if action is ManifestAction.VALIDATE:
-        return _handle_validate(args)
+        return _handle_validate(args, context)
     if action is ManifestAction.SCHEMA:
         return _handle_schema(args)
     _raise_unknown_manifest_action(action)
