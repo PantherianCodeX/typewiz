@@ -147,17 +147,32 @@ def register_output_options(parser: ArgumentRegistrar) -> None:
     )
 
 
-def register_save_flag(parser: ArgumentRegistrar, *, flag: str, dest: str) -> None:
-    """Register a save-style flag accepting optional multi-arguments."""
+def register_save_flag(
+    parser: ArgumentRegistrar,
+    *,
+    flag: str,
+    dest: str,
+    short_flag: str | None = None,
+) -> None:
+    """Register a save-style flag accepting repeatable single-value arguments.
+
+    Args:
+        parser: Argument registrar to attach arguments to.
+        flag: Long flag name (e.g., "--save-as").
+        dest: Destination variable name in parsed namespace.
+        short_flag: Optional short alias (e.g., "-s").
+    """
+    flags = [flag]
+    if short_flag:
+        flags.insert(0, short_flag)
     register_argument(
         parser,
-        flag,
+        *flags,
         dest=dest,
         action="append",
-        nargs="*",
         metavar="FORMAT[:PATH]",
         default=None,
-        help="Save output in one or more formats; omit args to use defaults.",
+        help="Save output in one or more formats (repeatable, each takes exactly one FORMAT[:PATH] value).",
     )
 
 
@@ -197,14 +212,14 @@ def build_path_overrides(args: argparse.Namespace) -> PathOverrides:
 
 
 def parse_save_flag(
-    raw_values: Sequence[Sequence[str]] | None,
+    raw_values: Sequence[str] | None,
     *,
     allowed_formats: Collection[OutputFormat] | None = None,
 ) -> SaveFlag:
     """Parse save-style flag tokens into output targets.
 
     Args:
-        raw_values: Raw argparse values (list of lists) for a save-style flag.
+        raw_values: Raw argparse values (list of single strings) for a save-style flag.
         allowed_formats: Optional whitelist of allowed formats.
 
     Returns:
@@ -212,11 +227,10 @@ def parse_save_flag(
     """
     if raw_values is None:
         return SaveFlag(provided=False, targets=())
-    flattened = [entry for group in raw_values for entry in group]
-    if not flattened:
+    if not raw_values:
         return SaveFlag(provided=True, targets=())
     targets: list[OutputTarget] = []
-    for raw_value in flattened:
+    for raw_value in raw_values:
         parsed = _parse_output_token(raw_value, allowed_formats=allowed_formats)
         targets.append(parsed)
     return SaveFlag(provided=True, targets=tuple(targets))

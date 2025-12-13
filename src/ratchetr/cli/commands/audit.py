@@ -92,7 +92,9 @@ def register_audit_command(
         "paths",
         nargs="*",
         metavar="PATH",
-        help="Directories to include in full runs (default: auto-detected python packages).",
+        help=(
+            "Directories to include in audit scope (default: auto-detected python packages). Specify at end of command."
+        ),
     )
     register_argument(
         audit,
@@ -188,8 +190,18 @@ def register_audit_command(
         default=None,
         help=("Non-zero exit when diagnostics reach this severity (aliases: none=never, any=any finding)."),
     )
-    register_save_flag(audit, flag="--save-as", dest="save_as")
-    register_save_flag(audit, flag="--dashboard", dest="dashboard")
+    register_save_flag(audit, flag="--save-as", dest="save_as", short_flag="-s")
+    register_save_flag(audit, flag="--dashboard", dest="dashboard", short_flag="-d")
+    register_argument(
+        audit,
+        "-e",
+        "--exclude",
+        dest="exclude",
+        action="append",
+        metavar="PATTERN",
+        default=None,
+        help="Exclude paths matching glob pattern (repeatable).",
+    )
     register_argument(
         audit,
         "--compare-to",

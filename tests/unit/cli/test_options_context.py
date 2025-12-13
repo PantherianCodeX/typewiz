@@ -67,7 +67,7 @@ def _make_context(base: Path) -> CLIContext:
 
 
 def test_parse_save_flag_applies_defaults(tmp_path: Path) -> None:
-    save_flag = parse_save_flag([["json:out.json", "html"]])
+    save_flag = parse_save_flag(["json:out.json", "html"])
     defaults = (OutputTarget(OutputFormat.MARKDOWN, tmp_path / "default.md"),)
 
     targets = finalise_targets(save_flag, defaults)
@@ -80,7 +80,7 @@ def test_parse_save_flag_applies_defaults(tmp_path: Path) -> None:
 
 
 def test_parse_save_flag_uses_defaults_when_no_args(tmp_path: Path) -> None:
-    save_flag = parse_save_flag([[]])
+    save_flag = parse_save_flag([])
     default_target = OutputTarget(OutputFormat.JSON, tmp_path / "manifest.json")
 
     targets = finalise_targets(save_flag, (default_target,))
@@ -90,22 +90,22 @@ def test_parse_save_flag_uses_defaults_when_no_args(tmp_path: Path) -> None:
 
 def test_parse_save_flag_rejects_unknown_format() -> None:
     with pytest.raises(SystemExit, match="Unknown output format"):
-        _ = parse_save_flag([["unknown"]])
+        _ = parse_save_flag(["unknown"])
 
 
 def test_parse_save_flag_rejects_disallowed_format() -> None:
     with pytest.raises(SystemExit, match="Unsupported format"):
-        _ = parse_save_flag([["markdown"]], allowed_formats={OutputFormat.JSON})
+        _ = parse_save_flag(["markdown"], allowed_formats={OutputFormat.JSON})
 
 
 def test_parse_save_flag_rejects_empty_path_component() -> None:
     with pytest.raises(SystemExit, match="Output path cannot be empty"):
-        _ = parse_save_flag([["json:"]])
+        _ = parse_save_flag(["json:"])
 
 
 def test_parse_save_flag_rejects_empty_token() -> None:
     with pytest.raises(SystemExit, match="Output format cannot be empty"):
-        _ = parse_save_flag([["  "]])
+        _ = parse_save_flag(["  "])
 
 
 def test_stdout_format_from_str_rejects_unknown() -> None:

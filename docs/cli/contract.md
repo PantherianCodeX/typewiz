@@ -52,7 +52,7 @@ rtr audit --root ./packages/core
 
 **Flag**: `--save-as FORMAT[:PATH]`
 
-**Planned alias**: `-s` (PR C)
+**Alias**: `-s`
 
 **Usage**:
 
@@ -98,7 +98,7 @@ rtr audit --save-as json:/tmp/project-audit.json
 
 **Flag**: `--dashboard FORMAT[:PATH]`
 
-**Planned alias**: `-d` (PR C)
+**Alias**: `-d`
 
 **Usage**:
 
@@ -169,7 +169,7 @@ This scans `src/` and `tests/` directories.
 
 ### Exclude Scope
 
-**Planned**: `--exclude PATTERN` or `-e PATTERN` (PR C)
+**Flag**: `--exclude PATTERN` or `-e PATTERN`
 
 Subtractive scope using glob patterns:
 
@@ -220,7 +220,6 @@ rtr audit tests
 ### Global Precedence
 
 All settings follow this hierarchy:
-
 **CLI flags > Environment variables > Config file > Defaults**
 
 ### Specific Precedence Chains
@@ -404,8 +403,20 @@ rtr audit
 ### Multi-Format Outputs
 
 ```bash
-# Note: -s and -d aliases are planned for PR C
-# Current syntax (PR A/B):
+# With short aliases and --exclude flag
+rtr audit -s json -s markdown \
+          -d json -d html:site/ \
+          src tests -e tests/fixtures
+
+# Scans: src/, tests/ (excluding tests/fixtures/)
+# Manifest outputs:
+#   - .ratchetr/manifest.json
+#   - .ratchetr/manifest.md
+# Dashboard outputs:
+#   - .ratchetr/dashboard.json
+#   - site/dashboard.html
+
+# Long form also supported
 rtr audit --save-as json --save-as markdown \
           --dashboard json --dashboard html:site/index.html \
           src tests
@@ -417,17 +428,6 @@ rtr audit --save-as json --save-as markdown \
 # Dashboard outputs:
 #   - .ratchetr/dashboard.json
 #   - site/index.html
-```
-
-### Future Syntax (PR C+)
-
-```bash
-# With short aliases and --exclude flag
-rtr audit -s json -s markdown \
-          -d json -d html:site/ \
-          src tests -e tests/fixtures
-
-# Same scoping, with exclusion of tests/fixtures/
 ```
 
 ### Root Override

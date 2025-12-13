@@ -262,7 +262,7 @@ def _register_dashboard_command(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=parents or [],
     )
-    register_save_flag(dashboard, flag="--save-as", dest="save_as")
+    register_save_flag(dashboard, flag="--save-as", dest="save_as", short_flag="-s")
     _register_argument(
         dashboard,
         "--view",
