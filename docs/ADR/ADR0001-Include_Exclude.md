@@ -76,6 +76,8 @@ Patterns are **never** matched against absolute paths.
 
 **List replacement rule (simplicity-first):** For each of `includes` and `excludes`, the highest-precedence source that provides a value **replaces** lower-precedence values for that list.
 
+**Explicit empty lists:** An explicitly provided empty list (e.g., `[]`) **counts as provided** and therefore replaces lower-precedence values for that list.
+
 **Rationale:** Replacement avoids surprising “hidden” patterns inherited from lower layers and keeps the mental model simple when troubleshooting.
 
 ---
@@ -189,9 +191,12 @@ Matching is **case-sensitive** at the contract level.
 
 ### 3.6 Warnings for unmatched “non-existent” patterns
 
-Ratchetr will emit a **warning** (and record it in the manifest) when a user-supplied include or exclude pattern matches **no discovered candidates** in the run.
+Ratchetr emits an informational warning (and records it in the manifest) when a **user-supplied** include or exclude pattern matches **no discovered candidates** for the run.
 
-This is informational and non-fatal.
+* “User-supplied” means: patterns sourced from **CLI, environment, or config**.
+* Defaults do not participate in unmatched-pattern warning evaluation.
+
+These warnings are non-fatal.
 
 **Rationale:** Users requested visibility into patterns that have no effect (commonly due to typos, moved paths, or incorrect anchoring), while still allowing patterns intended for generated files or future changes.
 
@@ -254,13 +259,17 @@ Ratchetr standardizes engine input modes (plugins choose the best supported opti
 
 ### 3.10 Determinism and ordering
 
-Ratchetr will provide **stable ordering** for:
+Ratchetr provides stable ordering for:
 
 * discovered candidate file lists (canonical `rel_posix` ordering)
-* emitted diagnostics ordering (file, line/col, rule/code, message, etc.)
-* dashboards and manifest sections ordering
+* scoped eligible file lists
+* diagnostics emitted in manifest and dashboards
+* manifest and dashboard section ordering
+* warnings recorded in the manifest
 
-Byte-identical output is not required; timestamps may be present.
+Warnings are recorded in **emission order**. Emission must be deterministic given stable discovery traversal and stable scope evaluation.
+
+Byte-identical artifacts are not required; timestamps may be present.
 
 **Rationale:** Stable ordering is sufficient for review, CI, and reproducibility without imposing restrictions that complicate normal operation.
 

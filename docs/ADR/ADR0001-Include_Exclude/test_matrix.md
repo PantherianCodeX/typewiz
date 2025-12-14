@@ -456,6 +456,19 @@ Each case asserts:
   * path_input present
   * path_resolved best-effort
 
+**D-OOR-002:**
+
+* root: `<tmp>/repo`
+* input: `../secrets.txt` (relative out-of-root)
+* expected candidates: `[]`
+* expected warning:
+
+  * code: `PATH_OUTSIDE_ROOT`
+  * action: `skipped`
+  * root present
+  * path_input present
+  * path_resolved best-effort
+
 ### 3.2 Symlink leaf skipped + warning
 
 **D-SYM-001:**
@@ -558,7 +571,9 @@ These tests validate that patterns matching zero discovered candidates produce w
 * discovered candidates: [`src/a.py`]
 * includes: [`/src/**`]
 * excludes: [`build/`]
-* expected warnings: none for these patterns
+* expected eligible: [`src/a.py`]
+* expected warnings:
+  * `PATTERN_UNMATCHED` for `build/` only
 
 ---
 
@@ -601,8 +616,10 @@ If manifest is composed of sections (e.g., engines, results, warnings), assert a
 
 **R-MAN-001:**
 
-* warnings emitted in mixed order
-* expected manifest warnings order is stable per your chosen policy
+* given deterministic inputs and traversal, warnings are emitted in a known order:
+  1. discovery-time warnings (out-of-root, symlink) in the order encountered, then
+  2. unmatched-pattern warnings in deterministic pattern order
+* expected manifest warnings order: **exactly the emission order**
 
 ---
 
@@ -625,6 +642,22 @@ If manifest is composed of sections (e.g., engines, results, warnings), assert a
 * env excludes: not provided
 * cli excludes: [`generated/`]
 * expected effective excludes: [`generated/`] (cli replaces)
+
+**P-REP-003:**
+
+* defaults includes: [`/src/**`]
+* config includes: [`/tests/**`]
+* env includes: `[]` (explicit empty list)
+* cli includes: not provided
+* expected effective includes: `[]` (env replaces)
+
+**P-REP-004:**
+
+* defaults excludes: [`build/`]
+* config excludes: [`dist/`]
+* env excludes: not provided
+* cli excludes: `[]` (explicit empty list)
+* expected effective excludes: `[]` (cli replaces)
 
 ### 6.2 Env JSON parsing validation
 

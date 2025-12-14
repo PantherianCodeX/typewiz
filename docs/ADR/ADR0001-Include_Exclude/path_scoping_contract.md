@@ -33,9 +33,11 @@ Patterns MAY be supplied via:
 
 Precedence is: **CLI > Env > Config > Defaults**.
 
-### 2.3 Replacement semantics
+## 2.3 Replacement semantics
 
 For each list independently (`includes` and `excludes`), the highest-precedence source that provides a value **replaces** lower-precedence values for that list.
+
+An explicitly provided empty list (e.g., `[]`) **counts as provided** and replaces lower-precedence values for that list.
 
 ---
 
@@ -221,7 +223,10 @@ The final state determines whether the candidate is in scope.
 
 ## 13) Warnings for unmatched patterns
 
-Ratchetr MUST emit a warning and record it in the manifest when a user-supplied include or exclude pattern matches **no candidates** for the run (after discovery).
+Ratchetr MUST emit a warning and record it in the manifest when a **user-supplied** include or exclude pattern matches **no candidates** for the run (after discovery).
+
+* “User-supplied” means: patterns sourced from **CLI, environment variables, or configuration file**.
+* Defaults do not participate in unmatched-pattern warning evaluation.
 
 This warning is non-fatal.
 
@@ -273,6 +278,9 @@ Ratchetr MUST provide stable ordering for:
 * scoped eligible file lists
 * diagnostics emitted in manifest and dashboards
 * manifest and dashboard section ordering
+* warnings recorded in the manifest
+
+Warnings MUST be recorded in **emission order**.
 
 Byte-identical artifacts are not required.
 

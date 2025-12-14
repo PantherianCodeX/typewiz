@@ -95,6 +95,8 @@ The outline assumes your package root is `ratchetr/` (adapt under `src/ratchetr/
 * Define structured warning events
 * Provide a sink for collection and manifest serialization
 
+Warnings are persisted to the manifest in **emission order**. Implementations must ensure emission is deterministic by relying on stable traversal order (discovery) and stable evaluation order (scope evaluation and unmatched-pattern checks).
+
 **Public API:**
 
 * `class WarningCode(Enum)`:
@@ -177,6 +179,11 @@ The outline assumes your package root is `ratchetr/` (adapt under `src/ratchetr/
 * Apply replacement-precedence resolution at the “effective patterns” boundary (or keep this in config; see 2.6)
 * Track which patterns matched at least one candidate for unmatched-pattern warnings
 
+Unmatched-pattern warnings (`PATTERN_UNMATCHED`) MUST be evaluated and emitted only for patterns sourced from **CLI/env/config** (not defaults). Emission order should follow:
+
+1. discovery-time warnings (as encountered), then
+2. scope-time unmatched-pattern warnings (in deterministic pattern order).
+
 **Public API:**
 
 * `class ScopeConfigError(ValueError)`
@@ -233,6 +240,8 @@ The outline assumes your package root is `ratchetr/` (adapt under `src/ratchetr/
 
 * Resolve effective includes/excludes using replacement precedence
 * Parse env vars as JSON list only
+
+Replacement semantics MUST treat an explicitly provided empty list (`[]`) as “provided,” replacing lower-precedence values for that list.
 
 **Public API:**
 
