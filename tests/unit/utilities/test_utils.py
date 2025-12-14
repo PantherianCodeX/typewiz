@@ -26,7 +26,7 @@ import pytest
 from ratchetr._internal.utils import (
     CommandOutput,
     consume,
-    default_full_paths,
+    default_default_paths,
     detect_tool_versions,
     file_lock,
     resolve_project_root,
@@ -73,17 +73,17 @@ def test_resolve_project_root_raises_for_missing_path(tmp_path: Path) -> None:
         _ = resolve_project_root(missing)
 
 
-def test_default_full_paths_detects_python_directories(tmp_path: Path) -> None:
+def test_default_default_paths_detects_python_directories(tmp_path: Path) -> None:
     tests_dir = tmp_path / "tests" / "nested"
     tests_dir.mkdir(parents=True)
     consume((tests_dir / "sample.py").write_text("print('ok')\n", encoding="utf-8"))
 
-    paths = default_full_paths(tmp_path)
+    paths = default_default_paths(tmp_path)
     assert "tests" in paths
 
 
-def test_default_full_paths_falls_back_to_current_directory(tmp_path: Path) -> None:
-    assert default_full_paths(tmp_path) == ["."]
+def test_default_default_paths_falls_back_to_current_directory(tmp_path: Path) -> None:
+    assert default_default_paths(tmp_path) == ["."]
 
 
 def test_resolve_project_root_handles_file_inputs(tmp_path: Path) -> None:

@@ -41,9 +41,9 @@ def get_override_components(
     path = entry.get("path", "—") or "—"
     profile = entry.get("profile")
     plugin_args = dedupe_preserve(entry.get("pluginArgs", []))
-    include_paths = dedupe_preserve(entry.get("include", []))
+    default_paths = dedupe_preserve(entry.get("include", []))
     exclude_paths = dedupe_preserve(entry.get("exclude", []))
-    return path, profile, plugin_args, include_paths, exclude_paths
+    return path, profile, plugin_args, default_paths, exclude_paths
 
 
 def format_override_inline(entry: OverrideEntry) -> str:
@@ -55,14 +55,14 @@ def format_override_inline(entry: OverrideEntry) -> str:
     Returns:
         String representation summarising the override.
     """
-    path, profile, plugin_args, include_paths, exclude_paths = get_override_components(entry)
+    path, profile, plugin_args, default_paths, exclude_paths = get_override_components(entry)
     details: list[str] = []
     if profile:
         details.append(f"profile={profile}")
     if plugin_args:
         details.append("args=" + "/".join(plugin_args))
-    if include_paths:
-        details.append("include=" + "/".join(include_paths))
+    if default_paths:
+        details.append("include=" + "/".join(default_paths))
     if exclude_paths:
         details.append("exclude=" + "/".join(exclude_paths))
     if details:
@@ -81,15 +81,15 @@ def format_overrides_block(entries: Sequence[OverrideEntry]) -> list[str]:
     """
     lines: list[str] = []
     for entry in entries:
-        path, profile, plugin_args, include_paths, exclude_paths = get_override_components(entry)
+        path, profile, plugin_args, default_paths, exclude_paths = get_override_components(entry)
         details: list[str] = []
         if profile:
             details.append(f"profile={profile}")
         if plugin_args:
             formatted_args = ", ".join(f"`{arg}`" for arg in plugin_args)
             details.append(f"plugin args: {formatted_args}")
-        if include_paths:
-            formatted_inc = ", ".join(f"`{item}`" for item in include_paths)
+        if default_paths:
+            formatted_inc = ", ".join(f"`{item}`" for item in default_paths)
             details.append(f"include: {formatted_inc}")
         if exclude_paths:
             formatted_exc = ", ".join(f"`{item}`" for item in exclude_paths)
@@ -109,14 +109,14 @@ def override_detail_lines(entry: OverrideEntry) -> tuple[str, list[str]]:
     Returns:
         Tuple containing the override path and a list of detail strings.
     """
-    path, profile, plugin_args, include_paths, exclude_paths = get_override_components(entry)
+    path, profile, plugin_args, default_paths, exclude_paths = get_override_components(entry)
     details: list[str] = []
     if profile:
         details.append(f"profile={profile}")
     if plugin_args:
         details.append("plugin args=" + ", ".join(plugin_args))
-    if include_paths:
-        details.append("include=" + ", ".join(include_paths))
+    if default_paths:
+        details.append("include=" + ", ".join(default_paths))
     if exclude_paths:
         details.append("exclude=" + ", ".join(exclude_paths))
     if not details:

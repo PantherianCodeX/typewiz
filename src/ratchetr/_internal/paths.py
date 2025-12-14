@@ -77,7 +77,7 @@ class EnvOverrides:
     manifest_path: Path | None
     cache_dir: Path | None
     log_dir: Path | None
-    full_paths: list[str] | None
+    default_paths: list[str] | None
 
     @classmethod
     def from_environ(cls, environ: Mapping[str, str] | None = None) -> EnvOverrides:
@@ -104,7 +104,7 @@ class EnvOverrides:
             manifest_path=_path_from_env(env, MANIFEST_ENV),
             cache_dir=cache_dir,
             log_dir=log_dir,
-            full_paths=_list_from_env(env, FULL_PATHS_ENV),
+            default_paths=_list_from_env(env, FULL_PATHS_ENV),
         )
 
     @property

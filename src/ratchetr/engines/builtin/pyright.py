@@ -21,16 +21,18 @@ configuration file detection, and JSON output parsing for pyright.
 
 from __future__ import annotations
 
+import importlib.util
 from typing import TYPE_CHECKING
 
 from ratchetr.compat import override
-from ratchetr.core.model_types import CategoryMapping, Mode
 from ratchetr.engines.base import BaseEngine, EngineContext, EngineResult
 from ratchetr.engines.execution import run_pyright
+from ratchetr.runtime import python_executable
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from ratchetr.core.model_types import CategoryMapping
     from ratchetr.core.type_aliases import Command, RelPath
 
 
@@ -61,42 +63,47 @@ class PyrightEngine(BaseEngine):
         return list(context.engine_options.plugin_args)
 
     def _build_command(self, context: EngineContext, paths: Sequence[RelPath]) -> Command:
-        """Build the pyright command-line invocation.
+        """Build the pyright command-line invocation (mode-agnostic).
 
-        Constructs the complete command to run pyright with JSON output,
-        including configuration file selection, mode-specific behavior, and
-        target paths. In CURRENT mode, analyzes the full project using the
-        config file or project root. In DELTA mode, analyzes only the
-        specified paths.
+        Constructs the complete command to run pyright with JSON output using
+        module invocation (`python -m pyright`) with fallback to direct command.
+        Mode-agnostic: accepts resolved paths and doesn't branch on context.mode.
 
         Args:
-            context: Execution context with mode, config, and project info.
+            context: Execution context with config and project info.
             paths: Sequence of relative paths to analyze.
 
         Returns:
             Command: Complete command-line as a list of strings.
         """
         args = self._args(context)
-        default_config = context.project_root / "pyrightconfig.json"
         config_path = context.engine_options.config_file
-        command: Command = ["pyright", "--outputjson"]
-        if context.mode is Mode.CURRENT:
-            if config_path:
-                command.extend(["--project", str(config_path)])
-            elif default_config.exists():
-                command.extend(["--project", str(default_config)])
-            else:
-                command.append(str(context.project_root))
-            command.extend(args)
-            return command
+        default_config = context.project_root / "pyrightconfig.json"
 
+        # Prefer module invocation when pyright is importable in this interpreter.
+        # Fall back to the `pyright` executable when the module is not available.
+        if importlib.util.find_spec("pyright") is not None:
+            command: Command = [python_executable(), "-m", "pyright", "--outputjson"]
+        # ignore JUSTIFIED: simple fallback to pyright supplied by environment
+        # path; testing this line would require a locally installed pyright engine.
+        else:  # pragme: no cover
+            command = ["pyright", "--outputjson"]
+
+        # Config selection (mode-agnostic)
         if config_path:
             command.extend(["--project", str(config_path)])
+        elif default_config.exists():
+            command.extend(["--project", str(default_config)])
+
+        # Add engine-specific args
         command.extend(args)
+
+        # Add paths or default to project root
         if paths:
             command.extend(str(path) for path in paths)
         else:
             command.append(str(context.project_root))
+
         return command
 
     @override

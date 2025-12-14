@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-__all__ = ["RatchetrError", "RatchetrTypeError", "RatchetrValidationError"]
+__all__ = ["ConfigError", "RatchetrError", "RatchetrTypeError", "RatchetrValidationError"]
 
 
 class RatchetrError(Exception):
@@ -29,3 +29,13 @@ class RatchetrValidationError(RatchetrError, ValueError):
 
 class RatchetrTypeError(RatchetrError, TypeError):
     """Raised when input data has an unexpected type."""
+
+
+class ConfigError(RatchetrError):
+    """Raised when configuration is invalid or leads to unexecutable state.
+
+    Used for:
+    - Explicit empty scope configurations
+    - Invalid engine configuration that prevents execution
+    - Configuration conflicts that cannot be resolved
+    """

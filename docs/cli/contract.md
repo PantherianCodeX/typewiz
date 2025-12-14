@@ -173,7 +173,7 @@ Scope determination follows this precedence:
 
 1. **CLI positional args**: Override all other scope settings
 2. **Environment variable**: `RATCHETR_INCLUDES`
-3. **Config `include_paths`/`exclude_paths`**: From `ratchetr.toml` `[audit]` or `pyproject.toml` `[tool.ratchetr.audit]`
+3. **Config `default_paths`/`exclude_paths`**: From `ratchetr.toml` `[audit]` or `pyproject.toml` `[tool.ratchetr.audit]`
 4. **NO Auto-detection**: Defaults to `["."]` (scan everything from root).
 
 ### Example
@@ -438,7 +438,7 @@ rtr audit --root /different/path
 ### Scope Precedence
 
 ```bash
-# With config specifying full_paths = ["src", "lib"]
+# With config specifying default_paths = ["src", "lib"]
 
 # Use config scope
 rtr audit

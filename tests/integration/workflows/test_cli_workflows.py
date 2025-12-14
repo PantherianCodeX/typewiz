@@ -112,8 +112,8 @@ def _arrange_cli_audit_target_outputs(
 ) -> AuditTargetOutputsContext:
     cfg = Config()
     cfg.audit.runners = [PYRIGHT_RUNNER]
-    # Set target full_paths in config to avoid defaulting to ["."]
-    cfg.audit.full_paths = ["pkg"]
+    # Set target default_paths in config to avoid defaulting to ["."]
+    cfg.audit.default_paths = ["pkg"]
 
     summary = build_empty_summary()
     summary["tabs"]["overview"]["severityTotals"] = {
@@ -462,7 +462,7 @@ def test_cli_summary_extras(
         config_path.write_text(
             """
 [audit]
-full_paths = ["src"]
+default_paths = ["src"]
 
 [audit.engines.stub]
 include = ["extras"]

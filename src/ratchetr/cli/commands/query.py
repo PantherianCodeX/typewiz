@@ -256,7 +256,7 @@ def execute_query(args: argparse.Namespace, context: CLIContext) -> int:
                 query_rules(
                     summary,
                     limit=args.limit,
-                    include_paths=bool(getattr(args, "include_paths", False)),
+                    default_paths=bool(getattr(args, "include_paths", False)),
                 ),
                 data_format,
             )

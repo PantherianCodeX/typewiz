@@ -60,35 +60,35 @@ class AuditResult:
 class _AuditInputs:
     root: Path
     audit_config: AuditConfig
-    full_paths_normalised: list[RelPath]
+    default_paths_normalised: list[RelPath]
     engines: list[BaseEngine]
     tool_versions: dict[str, str]
     cache: EngineCache
 
 
-def _determine_full_paths(
+def _determine_default_paths(
     root: Path,
     audit_config: AuditConfig,
-    full_paths: Sequence[str] | None,
+    default_paths: Sequence[str] | None,
 ) -> list[RelPath]:
-    """Determine full paths for audit with contract-defined fallback.
+    """Determine default paths for audit with contract-defined fallback.
 
     Precedence:
-    1. Explicit full_paths argument (highest priority)
-    2. Config audit.full_paths
+    1. Explicit default_paths argument (highest priority)
+    2. Config audit.default_paths
     3. Default: ["."] (scan everything from root, per contract)
 
     Args:
         root: Project root directory.
         audit_config: Audit configuration.
-        full_paths: Explicit paths override.
+        default_paths: Explicit paths override.
 
     Returns:
         Normalized relative paths to audit.
     """
     # Contract-defined default: scan everything from root
-    raw_full_paths = list(full_paths) if full_paths else (audit_config.full_paths or ["."])
-    return normalise_paths(root, raw_full_paths)
+    raw_default_paths = list(default_paths) if default_paths else (audit_config.default_paths or ["."])
+    return normalise_paths(root, raw_default_paths)
 
 
 def _prepare_audit_inputs(
@@ -96,28 +96,28 @@ def _prepare_audit_inputs(
     project_root: Path,
     config: Config | None,
     override: AuditConfig | None,
-    full_paths: Sequence[str] | None,
+    default_paths: Sequence[str] | None,
 ) -> tuple[Config, _AuditInputs]:
     cfg = config or load_config(None)
     audit_config = merge_audit_configs(cfg.audit, override)
     root = project_root
-    full_paths_normalised = _determine_full_paths(root, audit_config, full_paths)
+    default_paths_normalised = _determine_default_paths(root, audit_config, default_paths)
     engines = resolve_engines(audit_config.runners)
     tool_versions = detect_tool_versions([engine.name for engine in engines])
     cache = EngineCache(root)
     inputs = _AuditInputs(
         root=root,
         audit_config=audit_config,
-        full_paths_normalised=full_paths_normalised,
+        default_paths_normalised=default_paths_normalised,
         engines=engines,
         tool_versions=tool_versions,
         cache=cache,
     )
 
     logger.debug(
-        "Audit inputs resolved root=%s full_paths=%s runners=%s tool_versions=%s",
+        "Audit inputs resolved root=%s default_paths=%s runners=%s tool_versions=%s",
         root,
-        [str(path) for path in full_paths_normalised],
+        [str(path) for path in default_paths_normalised],
         [engine.name for engine in engines],
         tool_versions,
         extra=structured_extra(
@@ -158,7 +158,7 @@ def _run_engines(inputs: _AuditInputs) -> tuple[list[RunResult], bool]:
                 cache=inputs.cache,
                 tool_versions=inputs.tool_versions,
                 root=inputs.root,
-                full_paths_normalised=inputs.full_paths_normalised,
+                default_paths_normalised=inputs.default_paths_normalised,
             )
             runs.append(run_result)
             if truncated:
@@ -220,7 +220,7 @@ def run_audit(
     project_root: Path,
     config: Config | None = None,
     override: AuditConfig | None = None,
-    full_paths: Sequence[str] | None = None,
+    default_paths: Sequence[str] | None = None,
     build_summary_output: bool = False,
 ) -> AuditResult:
     """Run configured engines and collate diagnostics.
@@ -234,7 +234,7 @@ def run_audit(
         config: Resolved `ratchetr.config.Config` object. `None` triggers a
             fresh load from disk based on ``project_root``.
         override: In-memory overrides applied on top of the config file.
-        full_paths: Explicit include list overriding ``config.full_paths``.
+        default_paths: Explicit include list overriding ``config.default_paths``.
         build_summary_output: Whether to produce dashboard payloads.
 
     Returns:
@@ -245,7 +245,7 @@ def run_audit(
         project_root=project_root,
         config=config,
         override=override,
-        full_paths=full_paths,
+        default_paths=default_paths,
     )
     runs, fingerprint_truncated_any = _run_engines(inputs)
     manifest, summary = _build_manifest_and_summary(

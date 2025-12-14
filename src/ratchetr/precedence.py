@@ -12,25 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Structured utility helpers used across ratchetr internals."""
+"""Public precedence utilities re-exported from the internal package."""
 
 from __future__ import annotations
 
-from .common import consume
-from .locks import file_lock
-from .paths import ROOT_MARKERS, RootMarker, default_default_paths, resolve_project_root
-from .process import CommandOutput, python_executable, run_command
-from .versions import detect_tool_versions
+from ratchetr._internal.precedence import resolve_with_precedence
 
-__all__ = [
-    "ROOT_MARKERS",
-    "CommandOutput",
-    "RootMarker",
-    "consume",
-    "default_default_paths",
-    "detect_tool_versions",
-    "file_lock",
-    "python_executable",
-    "resolve_project_root",
-    "run_command",
-]
+__all__ = ["resolve_with_precedence"]

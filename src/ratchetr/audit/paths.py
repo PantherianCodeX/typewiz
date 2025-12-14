@@ -59,6 +59,24 @@ def normalise_paths(project_root: Path, raw_paths: Sequence[str]) -> list[RelPat
     return normalised
 
 
+def canonicalize_scope(project_root: Path, raw_paths: Sequence[str]) -> list[RelPath]:
+    """Return canonicalized scope: deduplicated, normalized, and sorted.
+
+    This function produces a deterministic scope representation suitable for
+    equivalence comparisons in EnginePlan. Order-invariant equality requires
+    consistent sorting.
+
+    Args:
+        project_root: Root directory used to resolve relative paths.
+        raw_paths: Raw path strings provided by the user or configuration.
+
+    Returns:
+        Sorted, deduplicated list of relative paths in POSIX format.
+    """
+    normalized = normalise_paths(project_root, raw_paths)
+    return sorted(normalized)
+
+
 def global_fingerprint_paths(project_root: Path) -> list[RelPath]:
     """Return repository-level files that should influence fingerprinting.
 

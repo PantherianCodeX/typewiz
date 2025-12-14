@@ -3,9 +3,9 @@
 config_version = 0
 
 [audit]
-# full_paths controls the directories scanned during target audits. When omitted,
+# default_paths controls the directories scanned during target audits. When omitted,
 # ratchetr auto-detects common Python folders (src/, packages/, tests/, etc.).
-# full_paths = ["src", "tests"]
+# default_paths = ["src", "tests"]
 
 # Engines that run by default. ratchetr ships with pyright and mypy built-in.
 runners = ["pyright", "mypy"]

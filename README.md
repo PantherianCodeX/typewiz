@@ -68,7 +68,7 @@ standards, and release process.
 ## Usage
 
 Generate a manifest and dashboards (ratchetr auto-detects common Python folders
-when `full_paths` is not configured):
+when `default_paths` is not configured):
 
 ```bash
 ratchetr audit --max-depth 3 src tests --manifest typing_audit.json
@@ -367,7 +367,7 @@ config_version = 0
 
 [audit]
 # Let ratchetr auto-detect python packages by default. Uncomment to override.
-# full_paths = ["src", "tests"]
+# default_paths = ["src", "tests"]
 runners = ["pyright", "mypy"]
 fail_on = "errors"
 ```
@@ -544,7 +544,7 @@ print(result.summary)  # dict with top folders/files and rule counts
 
 # Advanced: override behavior
 override = AuditConfig(
-    full_paths=["apps", "packages"],
+    default_paths=["apps", "packages"],
     skip_current=False,
     skip_target=False,
     max_depth=3,
@@ -578,7 +578,7 @@ from ratchetr.api import (
     validate_manifest_file,
 )
 
-audit = AuditConfig(full_paths=["src"])
+audit = AuditConfig(default_paths=["src"])
 result = run_audit(project_root=Path.cwd(), override=audit, build_summary_output=True)
 
 # Render a markdown summary (build one if the audit skipped it)

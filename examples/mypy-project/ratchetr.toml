@@ -1,7 +1,7 @@
 config_version = 0
 
 [audit]
-full_paths = ["src"]
+default_paths = ["src"]
 runners = ["mypy"]
 fail_on = "errors"
 

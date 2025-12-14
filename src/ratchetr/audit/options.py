@@ -160,7 +160,7 @@ def clone_audit_config(source: AuditConfig) -> AuditConfig:
     """
     return AuditConfig(
         manifest_path=source.manifest_path,
-        full_paths=list(source.full_paths) if source.full_paths is not None else None,
+        default_paths=list(source.default_paths) if source.default_paths is not None else None,
         max_depth=source.max_depth,
         skip_current=source.skip_current,
         skip_target=source.skip_target,
@@ -195,7 +195,7 @@ def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> Audi
 
     merged = AuditConfig(
         manifest_path=override.manifest_path or base_copy.manifest_path,
-        full_paths=override.full_paths or base_copy.full_paths,
+        default_paths=override.default_paths or base_copy.default_paths,
         max_depth=override.max_depth or base_copy.max_depth,
         skip_current=(override.skip_current if override.skip_current is not None else base_copy.skip_current),
         skip_target=override.skip_target if override.skip_target is not None else base_copy.skip_target,

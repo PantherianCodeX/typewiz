@@ -16,6 +16,6 @@
 
 from __future__ import annotations
 
-from ratchetr._internal.exceptions import RatchetrError, RatchetrTypeError, RatchetrValidationError
+from ratchetr._internal.exceptions import ConfigError, RatchetrError, RatchetrTypeError, RatchetrValidationError
 
-__all__ = ["RatchetrError", "RatchetrTypeError", "RatchetrValidationError"]
+__all__ = ["ConfigError", "RatchetrError", "RatchetrTypeError", "RatchetrValidationError"]

@@ -35,7 +35,7 @@ def test_load_config_discovers_repo_root_from_subdirectory(tmp_path: Path, monke
     config_path.write_text(
         """
 [audit]
-full_paths = ["root-discovery"]
+default_paths = ["root-discovery"]
 """,
         encoding="utf-8",
     )
@@ -45,4 +45,4 @@ full_paths = ["root-discovery"]
 
     cfg = load_config()
 
-    assert cfg.audit.full_paths == ["root-discovery"]
+    assert cfg.audit.default_paths == ["root-discovery"]

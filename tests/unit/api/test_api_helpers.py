@@ -202,7 +202,7 @@ def test_resolve_engine_options_with_overrides(tmp_path: Path) -> None:
         engine_settings={EngineName("stub"): engine_config},
         path_overrides=[override],
         active_profiles={EngineName("stub"): lenient_profile},
-        full_paths=["src"],
+        default_paths=["src"],
     )
 
     engine_options = resolve_engine_options(tmp_path, audit_config, MinimalEngine())

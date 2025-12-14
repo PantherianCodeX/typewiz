@@ -21,15 +21,18 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
 from ratchetr.audit.options import normalise_category_mapping, prepare_category_mapping
+from ratchetr.audit.paths import canonicalize_scope, normalise_override_entries, normalise_paths, relative_override_path
 from ratchetr.audit.paths import fingerprint_targets as build_fingerprint_targets
-from ratchetr.audit.paths import normalise_override_entries, normalise_paths, relative_override_path
 from ratchetr.cache import CachedRun, EngineCache, collect_file_hashes, fingerprint_path
 from ratchetr.collections import merge_preserve
 from ratchetr.core.model_types import FileHashPayload, LogComponent, Mode, OverrideEntry
 from ratchetr.core.type_aliases import CacheKey, EngineName, PathKey, ProfileName, RelPath, ToolName
 from ratchetr.core.types import RunResult
 from ratchetr.engines import EngineContext, EngineOptions
+from ratchetr.engines.base import EnginePlan
+from ratchetr.exceptions import ConfigError
 from ratchetr.logging import StructuredLogExtra, structured_extra
+from ratchetr.precedence import resolve_with_precedence
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -236,14 +239,175 @@ def _apply_path_override(
     )
 
 
+def _path_matches(candidate: RelPath, pattern: RelPath) -> bool:
+    if not pattern:
+        return False
+    candidate_norm = str(candidate).rstrip("/")
+    pattern_norm = str(pattern).rstrip("/")
+    if not pattern_norm:
+        return False
+    return candidate_norm == pattern_norm or candidate_norm.startswith(f"{pattern_norm}/")
+
+
+def apply_engine_paths(
+    default_paths: Sequence[RelPath],
+    include: Sequence[RelPath],
+    exclude: Sequence[RelPath],
+) -> list[RelPath]:
+    """Merge include/exclude directives with default paths for a run.
+
+    Args:
+        default_paths: Baseline paths supplied by the audit configuration or
+            engine options.
+        include: Additional include entries to append (deduplicated) ahead of
+            exclusion filtering.
+        exclude: Patterns that should be removed from the resulting path list.
+
+    Returns:
+        A list of `RelPath`entries that respects ordering guarantees and
+        removes excluded paths when possible.
+    """
+    ordered: list[RelPath] = []
+    seen: set[str] = set()
+
+    def _add(path: RelPath) -> None:
+        path_str = str(path)
+        if path_str and path_str not in seen:
+            seen.add(path_str)
+            ordered.append(path)
+
+    for path in default_paths:
+        _add(path)
+    for path in include:
+        _add(path)
+
+    if not exclude:
+        return ordered
+
+    filtered = [path for path in ordered if not any(_path_matches(path, pattern) for pattern in exclude)]
+    return filtered or ordered
+
+
+# ignore JUSTIFIED: TODO: Remove ignore once this function is in use
+def _resolve_scope_for_mode(  # pyright: ignore reportUnusedFunction
+    *,
+    mode: Mode,
+    project_root: Path,
+    cli_paths: Sequence[str] | None,
+    env_paths: Sequence[str] | None,
+    config_paths: Sequence[str] | None,
+    engine_include: Sequence[RelPath],
+    engine_exclude: Sequence[RelPath],
+) -> list[RelPath]:
+    """Resolve scope using contract-defined precedence chain.
+
+    Precedence: CLI > env > config > default ["."]
+    Mode difference: CURRENT participates in CLI positional args, TARGET does not.
+
+    Args:
+        mode: Execution mode (CURRENT or TARGET).
+        project_root: Project root for path resolution.
+        cli_paths: CLI positional arguments (e.g., `rtr audit src/ tests/`).
+        env_paths: Environment variable paths (RATCHETR_DEFAULT_PATHS).
+        config_paths: Config file paths (audit.default_paths).
+        engine_include: Per-engine include filters.
+        engine_exclude: Per-engine exclude filters.
+
+    Returns:
+        Canonicalized, sorted scope paths after applying engine filters.
+
+    Raises:
+        ConfigError: If scope resolves to explicit empty list.
+    """
+    # Step 1: Resolve base scope using precedence chain
+    # Mode.CURRENT participates in CLI positional args, Mode.TARGET does not
+    if mode is Mode.CURRENT:
+        raw_scope = resolve_with_precedence(
+            cli_value=list(cli_paths) if cli_paths else None,
+            env_value=list(env_paths) if env_paths else None,
+            config_value=list(config_paths) if config_paths else None,
+            default=["."],
+        )
+    else:  # Mode.TARGET
+        raw_scope = resolve_with_precedence(
+            cli_value=None,  # TARGET does not participate in CLI positional args
+            env_value=list(env_paths) if env_paths else None,
+            config_value=list(config_paths) if config_paths else None,
+            default=["."],
+        )
+
+    # Step 2: Check for explicit empty scope (configuration error)
+    if not raw_scope or all(not str(path).strip() for path in raw_scope):
+        msg = f"Explicit empty scope for {mode.value} mode"
+        raise ConfigError(msg)
+
+    # Step 3: Canonicalize (normalize, deduplicate, sort)
+    canonicalized = canonicalize_scope(project_root, raw_scope)
+
+    # Step 4: Apply per-engine include/exclude filters
+    filtered = apply_engine_paths(canonicalized, engine_include, engine_exclude)
+
+    # Step 5: Re-sort after filtering to maintain canonicalization
+    return sorted(filtered)
+
+
+def build_engine_plan(
+    *,
+    engine_name: ToolName,
+    mode: Mode,
+    project_root: Path,
+    resolved_scope: Sequence[RelPath],
+    engine_options: EngineOptions,
+) -> EnginePlan:
+    """Construct EnginePlan from resolved options and scope.
+
+    Args:
+        engine_name: Name of the engine.
+        mode: Execution mode (CURRENT or TARGET).
+        project_root: Project root directory.
+        resolved_scope: Already-resolved and canonicalized scope paths.
+        engine_options: Engine-specific configuration options.
+
+    Returns:
+        Frozen EnginePlan with all execution parameters.
+    """
+    return EnginePlan(
+        engine_name=engine_name,
+        mode=mode,
+        resolved_scope=tuple(sorted(resolved_scope)),
+        plugin_args=tuple(engine_options.plugin_args),
+        profile=engine_options.profile,
+        config_file=engine_options.config_file,
+        include=tuple(sorted(engine_options.include)),
+        exclude=tuple(sorted(engine_options.exclude)),
+        overrides=tuple(engine_options.overrides),
+        category_mapping=engine_options.category_mapping,
+        root=project_root,
+    )
+
+
 def _paths_for_mode(
     mode: Mode,
     engine_options: EngineOptions,
-    full_paths_normalised: Sequence[RelPath],
+    default_paths_normalised: Sequence[RelPath],
 ) -> list[RelPath]:
+    """Legacy adapter for _resolve_scope_for_mode.
+
+    This function maintains backward compatibility during the transition to
+    per-engine planning. It applies engine include/exclude filters to the
+    already-normalized paths.
+
+    Args:
+        mode: Execution mode (CURRENT or TARGET).
+        engine_options: Engine configuration with include/exclude filters.
+        default_paths_normalised: Already-normalized paths.
+
+    Returns:
+        Filtered paths based on mode.
+    """
     if mode is Mode.TARGET:
         return apply_engine_paths(
-            full_paths_normalised,
+            default_paths_normalised,
             engine_options.include,
             engine_options.exclude,
         )
@@ -293,14 +457,14 @@ def _fingerprint_targets_for_run(
     context: EngineContext,
     root: Path,
     mode_paths: Sequence[RelPath],
-    full_paths_normalised: Sequence[RelPath],
+    default_paths_normalised: Sequence[RelPath],
 ) -> list[RelPath]:
     fingerprint_result = list(engine.fingerprint_targets(context, list(mode_paths)))
     engine_fingerprints = normalise_paths(root, fingerprint_result)
     return build_fingerprint_targets(
         root,
         list(mode_paths),
-        full_paths_normalised,
+        default_paths_normalised,
         extra=engine_fingerprints,
     )
 
@@ -317,7 +481,7 @@ def _prepare_cache_inputs(  # noqa: PLR0913
     context: EngineContext,
     audit_config: AuditConfig,
     root: Path,
-    full_paths_normalised: Sequence[RelPath],
+    default_paths_normalised: Sequence[RelPath],
     mode_paths: Sequence[RelPath],
 ) -> tuple[CacheKey, dict[PathKey, FileHashPayload], bool]:
     cache_flags = _build_cache_flags(engine.name, engine_options, tool_versions)
@@ -328,7 +492,7 @@ def _prepare_cache_inputs(  # noqa: PLR0913
         context=context,
         root=root,
         mode_paths=mode_paths,
-        full_paths_normalised=full_paths_normalised,
+        default_paths_normalised=default_paths_normalised,
     )
     file_hashes, truncated = collect_file_hashes(
         root,
@@ -400,55 +564,6 @@ def _build_run_result(
 logger: logging.Logger = logging.getLogger("ratchetr.audit.execution")
 
 
-def _path_matches(candidate: RelPath, pattern: RelPath) -> bool:
-    if not pattern:
-        return False
-    candidate_norm = str(candidate).rstrip("/")
-    pattern_norm = str(pattern).rstrip("/")
-    if not pattern_norm:
-        return False
-    return candidate_norm == pattern_norm or candidate_norm.startswith(f"{pattern_norm}/")
-
-
-def apply_engine_paths(
-    default_paths: Sequence[RelPath],
-    include: Sequence[RelPath],
-    exclude: Sequence[RelPath],
-) -> list[RelPath]:
-    """Merge include/exclude directives with default paths for a run.
-
-    Args:
-        default_paths: Baseline paths supplied by the audit configuration or
-            engine options.
-        include: Additional include entries to append (deduplicated) ahead of
-            exclusion filtering.
-        exclude: Patterns that should be removed from the resulting path list.
-
-    Returns:
-        A list of `RelPath`entries that respects ordering guarantees and
-        removes excluded paths when possible.
-    """
-    ordered: list[RelPath] = []
-    seen: set[str] = set()
-
-    def _add(path: RelPath) -> None:
-        path_str = str(path)
-        if path_str and path_str not in seen:
-            seen.add(path_str)
-            ordered.append(path)
-
-    for path in default_paths:
-        _add(path)
-    for path in include:
-        _add(path)
-
-    if not exclude:
-        return ordered
-
-    filtered = [path for path in ordered if not any(_path_matches(path, pattern) for pattern in exclude)]
-    return filtered or ordered
-
-
 def resolve_engine_options(
     project_root: Path,
     audit_config: AuditConfig,
@@ -505,7 +620,7 @@ def execute_engine_mode(  # noqa: PLR0913
     cache: EngineCache,
     tool_versions: Mapping[str, str],
     root: Path,
-    full_paths_normalised: Sequence[RelPath],
+    default_paths_normalised: Sequence[RelPath],
 ) -> tuple[RunResult, bool]:
     """Execute or fetch a cached engine run and return the result.
 
@@ -518,14 +633,14 @@ def execute_engine_mode(  # noqa: PLR0913
         tool_versions: Mapping of executable identifiers to version strings for
             cache invalidation.
         root: Project root directory.
-        full_paths_normalised: Canonicalised set of include paths for caching.
+        default_paths_normalised: Canonicalised set of include paths for caching.
 
     Returns:
         A tuple containing the `RunResult`(either cached or freshly executed)
         and a boolean indicating whether fingerprint inputs were truncated.
     """
     engine_options = context.engine_options
-    mode_paths = _paths_for_mode(mode, engine_options, full_paths_normalised)
+    mode_paths = _paths_for_mode(mode, engine_options, default_paths_normalised)
     cache_key, file_hashes, truncated = _prepare_cache_inputs(
         engine=engine,
         mode=mode,
@@ -535,7 +650,7 @@ def execute_engine_mode(  # noqa: PLR0913
         context=context,
         audit_config=audit_config,
         root=root,
-        full_paths_normalised=full_paths_normalised,
+        default_paths_normalised=default_paths_normalised,
         mode_paths=mode_paths,
     )
 

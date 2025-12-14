@@ -24,7 +24,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ratchetr.compat import override
-from ratchetr.core.model_types import CategoryMapping, Mode
 from ratchetr.engines.base import BaseEngine, EngineContext, EngineResult
 from ratchetr.engines.execution import run_mypy
 from ratchetr.runtime import python_executable
@@ -33,6 +32,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from ratchetr.core.model_types import CategoryMapping
     from ratchetr.core.type_aliases import Command, RelPath
 
 
@@ -80,37 +80,42 @@ class MypyEngine(BaseEngine):
         return candidate if candidate.exists() else None
 
     def _build_command(self, context: EngineContext, paths: Sequence[RelPath]) -> Command:
-        """Build the mypy command-line invocation.
+        """Build the mypy command-line invocation (mode-agnostic).
 
-        Constructs the complete command to run mypy, including the Python
-        executable, configuration file, mode-specific flags, and target paths.
-        In CURRENT mode, analyzes with current CLI settings. In TARGET mode, all
-        configured paths are analyzed.
+        Constructs the complete command to run mypy using module invocation
+        (`python -m mypy`). Mode-agnostic: accepts resolved paths and doesn't
+        branch on context.mode.
 
         Args:
-            context: Execution context with mode, config, and project info.
-            paths: Sequence of relative paths to analyze (used in DELTA mode).
+            context: Execution context with config and project info.
+            paths: Sequence of relative paths to analyze.
 
         Returns:
             Command: Complete command-line as a list of strings.
         """
         args = self._args(context)
-        base = [python_executable(), "-m", "mypy"]
+        command: Command = [python_executable(), "-m", "mypy"]
+
+        # Config selection (mode-agnostic)
         config_file = self._config_file(context)
         if config_file:
-            base.extend(["--config-file", str(config_file)])
-        if context.mode is Mode.CURRENT:
-            command: Command = [*base, "--no-pretty", *args]
-        else:
-            command = [
-                *base,
-                "--hide-error-context",
-                "--no-error-summary",
-                "--show-error-codes",
-                "--no-pretty",
-                *args,
-                *(str(path) for path in paths),
-            ]
+            command.extend(["--config-file", str(config_file)])
+
+        # Standard mypy flags for structured output
+        command.extend([
+            "--hide-error-context",
+            "--no-error-summary",
+            "--show-error-codes",
+            "--no-pretty",
+        ])
+
+        # Add engine-specific args
+        command.extend(args)
+
+        # Add paths
+        if paths:
+            command.extend(str(path) for path in paths)
+
         return command
 
     @override

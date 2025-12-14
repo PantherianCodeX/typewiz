@@ -126,8 +126,8 @@ def test_query_runs_and_engines_payloads(cli_summary: SummaryData) -> None:
     assert engines[0]["plugin_args"] == ["--strict"]
 
 
-def test_query_rules_include_paths(cli_summary: SummaryData) -> None:
-    entries = query_rules(cli_summary, limit=1, include_paths=True)
+def test_query_rules_default_paths(cli_summary: SummaryData) -> None:
+    entries = query_rules(cli_summary, limit=1, default_paths=True)
     paths = entries[0].get("paths")
     assert paths is not None
     assert paths[0]["path"] == "src/app.py"

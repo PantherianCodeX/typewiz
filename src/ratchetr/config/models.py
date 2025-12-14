@@ -305,7 +305,7 @@ class AuditConfig:  # pylint: disable=too-many-instance-attributes
 
     Attributes:
         manifest_path: Optional path to save the audit manifest file.
-        full_paths: List of specific file paths to audit. If provided, only these
+        default_paths: List of specific file paths to audit. If provided, only these
             files are checked.
         max_depth: Maximum directory depth for recursive file discovery.
         max_files: Maximum number of files to include in the audit.
@@ -327,7 +327,7 @@ class AuditConfig:  # pylint: disable=too-many-instance-attributes
     """
 
     manifest_path: Path | None = None
-    full_paths: list[str] | None = None
+    default_paths: list[str] | None = None
     max_depth: int | None = None
     max_files: int | None = None
     max_bytes: int | None = None
@@ -640,7 +640,7 @@ class AuditConfigModel(BaseModel):
 
     Attributes:
         manifest_path: Optional path to save the audit manifest file.
-        full_paths: List of specific file paths to audit.
+        default_paths: List of specific file paths to audit.
         max_depth: Maximum directory depth for recursive file discovery.
         max_files: Maximum number of files to include in the audit.
         max_bytes: Maximum total size in bytes of files to include in the audit.
@@ -659,7 +659,7 @@ class AuditConfigModel(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(populate_by_name=True)
     manifest_path: Path | None = None
-    full_paths: list[str] | None = None
+    default_paths: list[str] | None = None
     max_depth: int | None = None
     max_files: int | None = None
     max_bytes: int | None = None
@@ -675,7 +675,7 @@ class AuditConfigModel(BaseModel):
     engine_settings: dict[str, EngineSettingsModel] = Field(default_factory=dict, alias="engines")
     active_profiles: dict[str, str] = Field(default_factory=dict)
 
-    @field_validator("full_paths", "runners", mode="before")
+    @field_validator("default_paths", "runners", mode="before")
     @classmethod
     def _coerce_list(cls, value: object) -> list[str] | None:
         return ensure_list(value)
