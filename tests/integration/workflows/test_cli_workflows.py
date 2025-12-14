@@ -1048,7 +1048,7 @@ def test_cli_query_rules_limit(tmp_path: Path, capsys: pytest.CaptureFixture[str
             str(manifest_path),
             "--limit",
             "1",
-            "--includes",
+            "--include",
             "--save-as",
             "json",
         ],

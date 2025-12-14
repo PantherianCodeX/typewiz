@@ -45,9 +45,9 @@ An explicitly provided empty list (e.g., `[]`) **counts as provided** and replac
 
 ### 3.1 Encoding
 
-* `RATCHETR_INCLUDES` and `RATCHETR_EXCLUDES` MUST be JSON lists of strings.
+* `RATCHETR_INCLUDE` and `RATCHETR_EXCLUDE` MUST be JSON lists of strings.
 
-  * Example: `RATCHETR_EXCLUDES='["build/","dist/","**/*.min.js"]'`
+  * Example: `RATCHETR_EXCLUDE='["build/","dist/","**/*.min.js"]'`
 
 Delimiter-based encodings (comma/colon/semicolon/whitespace splitting) MUST NOT be supported.
 

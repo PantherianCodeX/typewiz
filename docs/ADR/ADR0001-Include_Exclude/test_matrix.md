@@ -663,17 +663,17 @@ If manifest is composed of sections (e.g., engines, results, warnings), assert a
 
 **P-ENV-001:**
 
-* env: `RATCHETR_EXCLUDES='["build/","dist/"]'`
+* env: `RATCHETR_EXCLUDE='["build/","dist/"]'`
 * expected: parsed list of strings
 
 **P-ENV-002:**
 
-* env: `RATCHETR_EXCLUDES='{"build/": true}'`
+* env: `RATCHETR_EXCLUDE='{"build/": true}'`
 * expected: configuration error (not a JSON list)
 
 **P-ENV-003:**
 
-* env: `RATCHETR_EXCLUDES='["build/", 123]'`
+* env: `RATCHETR_EXCLUDE='["build/", 123]'`
 * expected: configuration error (non-string element)
 
 ---

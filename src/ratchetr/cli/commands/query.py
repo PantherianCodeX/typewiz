@@ -187,7 +187,7 @@ def register_query_command(
     )
     register_argument(
         query_rules_parser,
-        "--includes",
+        "--include",
         action="store_true",
         help="Include top file paths per rule",
     )
@@ -199,7 +199,6 @@ def _attach_query_output_flag(parser: argparse.ArgumentParser) -> None:
         flag="--save-as",
         dest="output",
         short_flag="-s",
-        aliases=("--output",),
     )
 
 
@@ -251,7 +250,7 @@ def _resolve_query_payload(
             return query_rules(
                 summary,
                 limit=args.limit,
-                include_paths=bool(getattr(args, "includes", False)),
+                include_paths=bool(getattr(args, "include", False)),
             )
 
 

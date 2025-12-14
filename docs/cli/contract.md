@@ -172,7 +172,7 @@ This scans `src/` and `tests/` directories.
 Scope determination follows this precedence:
 
 1. **CLI positional args**: Override all other scope settings
-2. **Environment variable**: `RATCHETR_INCLUDES`
+2. **Environment variable**: `RATCHETR_INCLUDE`
 3. **Config `include_paths`/`exclude_paths`**: From `ratchetr.toml` `[audit]` or `pyproject.toml` `[tool.ratchetr.audit]`
 4. **NO Auto-detection**: Defaults to `["."]` (scan everything from root).
 
@@ -249,7 +249,7 @@ All path-related environment variables:
 - `RATCHETR_MANIFEST` - Manifest file path override
 - `RATCHETR_CACHE_DIR` - Cache directory override
 - `RATCHETR_LOG_DIR` - Log directory override
-- `RATCHETR_INCLUDES` - JSON string array: List of files/folders to scan
+- `RATCHETR_INCLUDE` - JSON string array: List of files/folders to scan
 
 ### Example
 

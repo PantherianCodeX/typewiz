@@ -68,7 +68,6 @@ def register_engines_command(
         flag="--save-as",
         dest="output",
         short_flag="-s",
-        aliases=("--output",),
     )
 
 

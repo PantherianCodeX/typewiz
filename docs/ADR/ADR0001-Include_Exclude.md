@@ -84,9 +84,9 @@ Patterns are **never** matched against absolute paths.
 
 ### 3.3 Environment variable encoding
 
-* `RATCHETR_INCLUDES` and `RATCHETR_EXCLUDES` are **JSON lists of strings** (only).
+* `RATCHETR_INCLUDE` and `RATCHETR_EXCLUDE` are **JSON lists of strings** (only).
 
-  * Example: `RATCHETR_EXCLUDES='["build/","dist/","**/*.min.js"]'`
+  * Example: `RATCHETR_EXCLUDE='["build/","dist/","**/*.min.js"]'`
 
 No delimiter-based encoding (comma/colon/semicolon) is supported in v1.
 
