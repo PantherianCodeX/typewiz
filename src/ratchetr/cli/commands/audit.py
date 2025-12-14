@@ -218,7 +218,7 @@ def register_audit_command(
     register_readiness_flag(audit, default_enabled=False)
 
 
-def _resolve_default_paths(
+def _resolve_include_paths(
     args: argparse.Namespace,
     config: Config,
     env_overrides: EnvOverrides,
@@ -227,8 +227,8 @@ def _resolve_default_paths(
 
     Precedence (highest to lowest):
     1. CLI positional arguments
-    2. Environment variable (RATCHETR_FULL_PATHS)
-    3. Config file (audit.default_paths)
+    2. Environment variable (RATCHETR_INCLUDE_PATHS)
+    3. Config file (audit.include_paths)
     4. Default: ["."] (scan everything from root)
 
     Args:
@@ -245,12 +245,12 @@ def _resolve_default_paths(
         return cli_paths
 
     # 2. Environment variable override
-    if env_overrides.default_paths:
-        return env_overrides.default_paths
+    if env_overrides.include_paths:
+        return env_overrides.include_paths
 
     # 3. Config file setting
-    if config.audit.default_paths:
-        return config.audit.default_paths
+    if config.audit.include_paths:
+        return config.audit.include_paths
 
     # 4. Default: scan everything from root (contract requirement)
     return ["."]
@@ -391,7 +391,7 @@ def _build_cli_override(
 ) -> AuditConfig:
     override = AuditConfig(
         manifest_path=manifest_target,
-        default_paths=[path for path in args.paths if path] or None,
+        include_paths=[path for path in args.paths if path] or None,
         max_depth=args.max_depth,
         max_files=args.max_files,
         max_bytes=args.max_fingerprint_bytes,
@@ -495,7 +495,7 @@ def _default_dashboard_path(output_format: OutputFormat, context: CLIContext) ->
 class _AuditExecutionPlan:  # pylint: disable=too-many-instance-attributes
     config: Config
     project_root: Path
-    default_paths: list[str]
+    include_paths: list[str]
     override: AuditConfig
     cli_fail_on: FailOnPolicy | None
     summary_fields: Sequence[SummaryField]
@@ -518,9 +518,9 @@ def _prepare_execution_plan(
 ) -> _AuditExecutionPlan:
     config = context.config
     project_root = context.resolved_paths.repo_root
-    selected_default_paths = _resolve_default_paths(args, config, context.env_overrides)
-    if not selected_default_paths:
-        msg = "No paths found for target runs. Provide paths or configure 'default_paths'."
+    selected_include_paths = _resolve_include_paths(args, config, context.env_overrides)
+    if not selected_include_paths:
+        msg = "No paths found for target runs. Provide paths or configure 'include_paths'."
         raise SystemExit(msg)
 
     modes_specified, run_current, run_target = normalise_modes_tuple(args.modes)
@@ -542,7 +542,7 @@ def _prepare_execution_plan(
     return _AuditExecutionPlan(
         config=config,
         project_root=project_root,
-        default_paths=selected_default_paths,
+        include_paths=selected_include_paths,
         override=override,
         cli_fail_on=cli_fail_on,
         summary_fields=summary_fields,
@@ -560,7 +560,7 @@ def _run_audit_plan(plan: _AuditExecutionPlan) -> AuditResult:
         project_root=plan.project_root,
         config=plan.config,
         override=plan.override,
-        default_paths=plan.default_paths,
+        include_paths=plan.include_paths,
         build_summary_output=True,
     )
 

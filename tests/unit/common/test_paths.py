@@ -56,25 +56,25 @@ def test_env_overrides_from_environ_derives_cache_and_active_overrides(tmp_path:
     }
 
 
-def test_env_overrides_parses_default_paths_comma_separated() -> None:
-    environ = {"RATCHETR_FULL_PATHS": "src,tests,lib"}
+def test_env_overrides_parses_include_paths_comma_separated() -> None:
+    environ = {"RATCHETR_INCLUDE_PATHS": "src,tests,lib"}
     overrides = EnvOverrides.from_environ(environ)
-    assert overrides.default_paths == ["src", "tests", "lib"]
+    assert overrides.include_paths == ["src", "tests", "lib"]
 
 
-def test_env_overrides_parses_default_paths_colon_separated() -> None:
-    environ = {"RATCHETR_FULL_PATHS": "src:tests:lib"}
+def test_env_overrides_parses_include_paths_colon_separated() -> None:
+    environ = {"RATCHETR_INCLUDE_PATHS": "src:tests:lib"}
     overrides = EnvOverrides.from_environ(environ)
-    assert overrides.default_paths == ["src", "tests", "lib"]
+    assert overrides.include_paths == ["src", "tests", "lib"]
 
 
-def test_env_overrides_handles_empty_default_paths() -> None:
-    environ = {"RATCHETR_FULL_PATHS": ""}
+def test_env_overrides_handles_empty_include_paths() -> None:
+    environ = {"RATCHETR_INCLUDE_PATHS": ""}
     overrides = EnvOverrides.from_environ(environ)
-    assert overrides.default_paths is None
+    assert overrides.include_paths is None
 
 
-def test_env_overrides_handles_missing_default_paths() -> None:
+def test_env_overrides_handles_missing_include_paths() -> None:
     environ = {}
     overrides = EnvOverrides.from_environ(environ)
-    assert overrides.default_paths is None
+    assert overrides.include_paths is None

@@ -233,9 +233,9 @@ def _normalise_override_entry(raw: Mapping[str, object]) -> OverrideEntry:
     plugin_args = coerce_str_list(raw.get("pluginArgs", []))
     if plugin_args:
         entry["pluginArgs"] = plugin_args
-    default_paths = [RelPath(str(path)) for path in coerce_str_list(raw.get("include", [])) if str(path).strip()]
-    if default_paths:
-        entry["include"] = default_paths
+    include_paths = [RelPath(str(path)) for path in coerce_str_list(raw.get("include", [])) if str(path).strip()]
+    if include_paths:
+        entry["include"] = include_paths
     exclude_paths = [RelPath(str(path)) for path in coerce_str_list(raw.get("exclude", [])) if str(path).strip()]
     if exclude_paths:
         entry["exclude"] = exclude_paths

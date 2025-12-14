@@ -55,7 +55,7 @@ def test_discover_manifest_prefers_env_manifest_without_ambiguity(tmp_path: Path
         manifest_path=env_manifest,
         cache_dir=None,
         log_dir=None,
-        default_paths=None,
+        include_paths=None,
     )
 
     result = discover_manifest(

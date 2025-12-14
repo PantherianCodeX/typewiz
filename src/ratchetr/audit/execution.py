@@ -251,14 +251,14 @@ def _path_matches(candidate: RelPath, pattern: RelPath) -> bool:
 
 
 def apply_engine_paths(
-    default_paths: Sequence[RelPath],
+    include_paths: Sequence[RelPath],
     include: Sequence[RelPath],
     exclude: Sequence[RelPath],
 ) -> list[RelPath]:
     """Merge include/exclude directives with default paths for a run.
 
     Args:
-        default_paths: Baseline paths supplied by the audit configuration or
+        include_paths: Baseline paths supplied by the audit configuration or
             engine options.
         include: Additional include entries to append (deduplicated) ahead of
             exclusion filtering.
@@ -277,7 +277,7 @@ def apply_engine_paths(
             seen.add(path_str)
             ordered.append(path)
 
-    for path in default_paths:
+    for path in include_paths:
         _add(path)
     for path in include:
         _add(path)
@@ -308,8 +308,8 @@ def resolve_scope_for_mode(
         mode: Execution mode (CURRENT or TARGET).
         project_root: Project root for path resolution.
         cli_paths: CLI positional arguments (e.g., `rtr audit src/ tests/`).
-        env_paths: Environment variable paths (RATCHETR_DEFAULT_PATHS).
-        config_paths: Config file paths (audit.default_paths).
+        env_paths: Environment variable paths (RATCHETR_INCLUDE_PATHS).
+        config_paths: Config file paths (audit.include_paths).
         engine_include: Per-engine include filters.
         engine_exclude: Per-engine exclude filters.
 
@@ -389,7 +389,7 @@ def build_engine_plan(
 def _paths_for_mode(
     mode: Mode,
     engine_options: EngineOptions,
-    default_paths_normalised: Sequence[RelPath],
+    include_paths_normalised: Sequence[RelPath],
 ) -> list[RelPath]:
     """Legacy adapter for _resolve_scope_for_mode.
 
@@ -400,14 +400,14 @@ def _paths_for_mode(
     Args:
         mode: Execution mode (CURRENT or TARGET).
         engine_options: Engine configuration with include/exclude filters.
-        default_paths_normalised: Already-normalized paths.
+        include_paths_normalised: Already-normalized paths.
 
     Returns:
         Filtered paths based on mode.
     """
     if mode is Mode.TARGET:
         return apply_engine_paths(
-            default_paths_normalised,
+            include_paths_normalised,
             engine_options.include,
             engine_options.exclude,
         )
@@ -457,14 +457,14 @@ def _fingerprint_targets_for_run(
     context: EngineContext,
     root: Path,
     mode_paths: Sequence[RelPath],
-    default_paths_normalised: Sequence[RelPath],
+    include_paths_normalised: Sequence[RelPath],
 ) -> list[RelPath]:
     fingerprint_result = list(engine.fingerprint_targets(context, list(mode_paths)))
     engine_fingerprints = normalise_paths(root, fingerprint_result)
     return build_fingerprint_targets(
         root,
         list(mode_paths),
-        default_paths_normalised,
+        include_paths_normalised,
         extra=engine_fingerprints,
     )
 
@@ -481,7 +481,7 @@ def _prepare_cache_inputs(  # noqa: PLR0913
     context: EngineContext,
     audit_config: AuditConfig,
     root: Path,
-    default_paths_normalised: Sequence[RelPath],
+    include_paths_normalised: Sequence[RelPath],
     mode_paths: Sequence[RelPath],
 ) -> tuple[CacheKey, dict[PathKey, FileHashPayload], bool]:
     cache_flags = _build_cache_flags(engine.name, engine_options, tool_versions)
@@ -492,7 +492,7 @@ def _prepare_cache_inputs(  # noqa: PLR0913
         context=context,
         root=root,
         mode_paths=mode_paths,
-        default_paths_normalised=default_paths_normalised,
+        include_paths_normalised=include_paths_normalised,
     )
     file_hashes, truncated = collect_file_hashes(
         root,
@@ -620,7 +620,7 @@ def execute_engine_mode(  # noqa: PLR0913
     cache: EngineCache,
     tool_versions: Mapping[str, str],
     root: Path,
-    default_paths_normalised: Sequence[RelPath],
+    include_paths_normalised: Sequence[RelPath],
 ) -> tuple[RunResult, bool]:
     """Execute or fetch a cached engine run and return the result.
 
@@ -633,14 +633,14 @@ def execute_engine_mode(  # noqa: PLR0913
         tool_versions: Mapping of executable identifiers to version strings for
             cache invalidation.
         root: Project root directory.
-        default_paths_normalised: Canonicalised set of include paths for caching.
+        include_paths_normalised: Canonicalised set of include paths for caching.
 
     Returns:
         A tuple containing the `RunResult`(either cached or freshly executed)
         and a boolean indicating whether fingerprint inputs were truncated.
     """
     engine_options = context.engine_options
-    mode_paths = _paths_for_mode(mode, engine_options, default_paths_normalised)
+    mode_paths = _paths_for_mode(mode, engine_options, include_paths_normalised)
     cache_key, file_hashes, truncated = _prepare_cache_inputs(
         engine=engine,
         mode=mode,
@@ -650,7 +650,7 @@ def execute_engine_mode(  # noqa: PLR0913
         context=context,
         audit_config=audit_config,
         root=root,
-        default_paths_normalised=default_paths_normalised,
+        include_paths_normalised=include_paths_normalised,
         mode_paths=mode_paths,
     )
 

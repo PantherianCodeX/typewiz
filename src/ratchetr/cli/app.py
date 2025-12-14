@@ -88,7 +88,7 @@ CONFIG_TEMPLATE: Final[str] = dedent(
 
     [audit]
     # Uncomment and adjust to pin the directories scanned during target audits.
-    # default_paths = ["src", "tests"]
+    # include_paths = ["src", "tests"]
 
     # Engines that run by default (pyright and mypy ship with ratchetr).
     runners = ["pyright", "mypy"]

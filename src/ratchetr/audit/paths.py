@@ -97,7 +97,7 @@ def global_fingerprint_paths(project_root: Path) -> list[RelPath]:
 def fingerprint_targets(
     project_root: Path,
     mode_paths: Sequence[str],
-    default_paths: Sequence[str],
+    include_paths: Sequence[str],
     extra: Sequence[str] | None = None,
 ) -> list[RelPath]:
     """Combine audit paths with fingerprint metadata inputs.
@@ -106,14 +106,14 @@ def fingerprint_targets(
         project_root: Repository root used to derive relative paths for
             fingerprint hashing.
         mode_paths: Paths requested for the current run mode.
-        default_paths: Baseline paths from the audit configuration.
+        include_paths: Baseline paths from the audit configuration.
         extra: Optional additional fingerprint entries (e.g. config fragments).
 
     Returns:
         Ordered, deduplicated relative paths whose contents influence cache
         fingerprints.
     """
-    candidates = list(mode_paths) if mode_paths else list(default_paths)
+    candidates = list(mode_paths) if mode_paths else list(include_paths)
     candidates.extend(global_fingerprint_paths(project_root))
     if extra:
         candidates.extend(extra)

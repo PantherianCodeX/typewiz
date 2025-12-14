@@ -25,7 +25,7 @@ from ratchetr.logging import structured_extra
 
 logger: logging.Logger = logging.getLogger("ratchetr.internal.paths")
 
-__all__ = ["ROOT_MARKERS", "RootMarker", "default_default_paths", "resolve_project_root"]
+__all__ = ["ROOT_MARKERS", "RootMarker", "resolve_project_root"]
 
 RootMarker: TypeAlias = Literal["ratchetr.toml", ".ratchetr.toml", "pyproject.toml"]
 
@@ -49,26 +49,6 @@ def _contains_python(path: Path) -> bool:
         if child.is_dir() and _contains_python(child):
             return True
     return False
-
-
-def default_default_paths(root: Path) -> list[str]:
-    """Return candidate folders containing Python sources beneath a root.
-
-    Args:
-        root: Project root to scan for standard package directories.
-
-    Returns:
-        List of relative folder names to include in engine runs.
-    """
-    candidates = ["ratchetr", "apps", "packages", "config", "infra", "tests"]
-    paths: list[str] = []
-    for item in candidates:
-        full = root / item
-        if _contains_python(full):
-            paths.append(item)
-    if not paths:
-        paths.append(".")
-    return paths
 
 
 def resolve_project_root(start: Path | None = None) -> Path:

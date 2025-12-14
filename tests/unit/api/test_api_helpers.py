@@ -97,7 +97,7 @@ def test_fingerprint_targets_dedupe(tmp_path: Path) -> None:
     targets = fingerprint_targets(
         tmp_path,
         mode_paths=["src"],
-        default_paths=["pkg"],
+        include_paths=["pkg"],
         extra=["src"],
     )
     assert targets[0] == "src"
@@ -202,7 +202,7 @@ def test_resolve_engine_options_with_overrides(tmp_path: Path) -> None:
         engine_settings={EngineName("stub"): engine_config},
         path_overrides=[override],
         active_profiles={EngineName("stub"): lenient_profile},
-        default_paths=["src"],
+        include_paths=["src"],
     )
 
     engine_options = resolve_engine_options(tmp_path, audit_config, MinimalEngine())

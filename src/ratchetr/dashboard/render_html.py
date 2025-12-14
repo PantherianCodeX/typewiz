@@ -320,7 +320,7 @@ def _render_engines_tab(context: _DashboardContext) -> list[str]:
             profile = options.get("profile")
             config_file = options.get("configFile")
             plugin_args = _coerce_str_list(options.get("pluginArgs"))
-            default_paths = _coerce_str_list(options.get("include"))
+            include_paths = _coerce_str_list(options.get("include"))
             exclude_paths = _coerce_str_list(options.get("exclude"))
             overrides = _coerce_override_list(options.get("overrides"))
             lines.extend((
@@ -334,7 +334,7 @@ def _render_engines_tab(context: _DashboardContext) -> list[str]:
                 lines.append(f"        <li>Config file: <code>{h(str(config_file))}</code></li>")
             if plugin_args:
                 lines.append(f"        <li>Plugin args: {_format_code_list(plugin_args, h)}</li>")
-            include_html = _format_code_list(default_paths, h) if default_paths else "—"
+            include_html = _format_code_list(include_paths, h) if include_paths else "—"
             lines.append("        <li>Include paths: " + include_html + "</li>")
             exclude_html = _format_code_list(exclude_paths, h) if exclude_paths else "—"
             lines.extend(("        <li>Exclude paths: " + exclude_html + "</li>", "        <li>Folder overrides:<ul>"))
@@ -358,12 +358,12 @@ def _format_code_list(values: list[str], escape_fn: Callable[[object], str]) -> 
 
 
 def _format_override_html(entry: OverrideEntry, escape_fn: Callable[[object], str]) -> str:
-    path, profile, plugin_args, default_paths, exclude_paths = get_override_components(entry)
+    path, profile, plugin_args, include_paths, exclude_paths = get_override_components(entry)
     details: list[str] = []
     if plugin_args:
         details.append(f"plugin args={_format_code_list(plugin_args, escape_fn)}")
-    if default_paths:
-        details.append(f"include={_format_code_list([str(p) for p in default_paths], escape_fn)}")
+    if include_paths:
+        details.append(f"include={_format_code_list([str(p) for p in include_paths], escape_fn)}")
     if exclude_paths:
         details.append(f"exclude={_format_code_list([str(p) for p in exclude_paths], escape_fn)}")
     if not details and profile:

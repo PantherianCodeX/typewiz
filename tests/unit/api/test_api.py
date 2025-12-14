@@ -90,7 +90,7 @@ def test_run_audit_programmatic(
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
     override = AuditConfig(
-        default_paths=["src"],
+        include_paths=["src"],
         dashboard_json=tmp_path / "summary.json",
         runners=[STUB_RUNNER],
     )
@@ -98,7 +98,7 @@ def test_run_audit_programmatic(
     result = run_audit(
         project_root=tmp_path,
         override=override,
-        default_paths=["src"],
+        include_paths=["src"],
         build_summary_output=True,
     )
 
@@ -165,7 +165,7 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     settings = EngineSettings(plugin_args=["--engine"], profiles={STRICT_PROFILE: profile})
     config = Config(
         audit=AuditConfig(
-            default_paths=["src"],
+            include_paths=["src"],
             plugin_args={STUB: ["--base"]},
             engine_settings={STUB: settings},
             active_profiles={STUB: STRICT_PROFILE},
@@ -216,7 +216,7 @@ def test_run_audit_respects_folder_overrides(
 config_version = 0
 
 [audit]
-default_paths = ["packages"]
+include_paths = ["packages"]
 runners = ["stub"]
 """,
             encoding="utf-8",
@@ -304,7 +304,7 @@ def test_run_audit_cache_preserves_tool_summary(
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     consume((tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8"))
 
-    override = AuditConfig(default_paths=["pkg"], runners=[STUB_RUNNER])
+    override = AuditConfig(include_paths=["pkg"], runners=[STUB_RUNNER])
 
     first = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
     assert sum(1 for inv in engine.invocations if inv.mode is Mode.TARGET) == 1

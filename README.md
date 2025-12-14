@@ -68,7 +68,7 @@ standards, and release process.
 ## Usage
 
 Generate a manifest and dashboards (ratchetr auto-detects common Python folders
-when `default_paths` is not configured):
+when `include_paths` is not configured):
 
 ```bash
 ratchetr audit --max-depth 3 src tests --manifest typing_audit.json
@@ -367,7 +367,7 @@ config_version = 0
 
 [audit]
 # Let ratchetr auto-detect python packages by default. Uncomment to override.
-# default_paths = ["src", "tests"]
+# include_paths = ["src", "tests"]
 runners = ["pyright", "mypy"]
 fail_on = "errors"
 ```
@@ -544,7 +544,7 @@ print(result.summary)  # dict with top folders/files and rule counts
 
 # Advanced: override behavior
 override = AuditConfig(
-    default_paths=["apps", "packages"],
+    include_paths=["apps", "packages"],
     skip_current=False,
     skip_target=False,
     max_depth=3,
@@ -578,7 +578,7 @@ from ratchetr.api import (
     validate_manifest_file,
 )
 
-audit = AuditConfig(default_paths=["src"])
+audit = AuditConfig(include_paths=["src"])
 result = run_audit(project_root=Path.cwd(), override=audit, build_summary_output=True)
 
 # Render a markdown summary (build one if the audit skipped it)
@@ -618,7 +618,7 @@ See [ROADMAP.md](ROADMAP.md) for the full development roadmap.
 
 ### Manifest validation and schema
 
-ratchetr includes a Pydantic-backed manifest validator and a CLI to emit the JSON Schema:
+ratchetr includes a Pydantic-backed manifest validator (to be replaced with internal validation to remove all dependencies - see ROADMAP.md) and a CLI to emit the JSON Schema:
 
 - Validate an existing manifest file:
 

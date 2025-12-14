@@ -44,7 +44,7 @@ TOOL_HOME_ENV: Final[str] = "RATCHETR_DIR"
 MANIFEST_ENV: Final[str] = "RATCHETR_MANIFEST"
 CACHE_ENV: Final[str] = "RATCHETR_CACHE_DIR"
 LOG_ENV: Final[str] = "RATCHETR_LOG_DIR"
-FULL_PATHS_ENV: Final[str] = "RATCHETR_FULL_PATHS"
+FULL_PATHS_ENV: Final[str] = "RATCHETR_INCLUDE_PATHS"
 
 MANIFEST_CANDIDATE_NAMES: Final[tuple[str, ...]] = (
     DEFAULT_MANIFEST_FILENAME,
@@ -77,7 +77,7 @@ class EnvOverrides:
     manifest_path: Path | None
     cache_dir: Path | None
     log_dir: Path | None
-    default_paths: list[str] | None
+    include_paths: list[str] | None
 
     @classmethod
     def from_environ(cls, environ: Mapping[str, str] | None = None) -> EnvOverrides:
@@ -104,7 +104,7 @@ class EnvOverrides:
             manifest_path=_path_from_env(env, MANIFEST_ENV),
             cache_dir=cache_dir,
             log_dir=log_dir,
-            default_paths=_list_from_env(env, FULL_PATHS_ENV),
+            include_paths=_list_from_env(env, FULL_PATHS_ENV),
         )
 
     @property

@@ -96,7 +96,7 @@ def test_manifest_validates_against_schema(monkeypatch: pytest.MonkeyPatch, tmp_
     consume((tmp_path / "src" / "mod.py").write_text("x=1\n", encoding="utf-8"))
     manifest_path = tmp_path / "manifest.json"
 
-    override = AuditConfig(default_paths=["src"], runners=[STUB_RUNNER])
+    override = AuditConfig(include_paths=["src"], runners=[STUB_RUNNER])
     result = run_audit(project_root=tmp_path, override=override)
 
     emit_manifest_output(result.manifest, manifest_path=manifest_path)

@@ -47,13 +47,13 @@ class Mode(StrEnum):
 
     CURRENT: Scope precedence includes CLI positional args:
         1. CLI positional arguments (e.g., `rtr audit src/ tests/`)
-        2. Environment variable (RATCHETR_FULL_PATHS)
-        3. Config file (audit.default_paths)
+        2. Environment variable (RATCHETR_INCLUDE_PATHS)
+        3. Config file (audit.include_paths)
         4. Default: ["."]
 
     TARGET: Scope precedence excludes CLI positional args:
-        1. Environment variable (RATCHETR_FULL_PATHS)
-        2. Config file (audit.default_paths)
+        1. Environment variable (RATCHETR_INCLUDE_PATHS)
+        2. Config file (audit.include_paths)
         3. Default: ["."]
 
     When CURRENT and TARGET produce equivalent EnginePlans for an engine,
