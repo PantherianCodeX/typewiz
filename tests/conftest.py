@@ -46,3 +46,4 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "cli: CLI-related tests")
     config.addinivalue_line("markers", "engine: Engine-related tests")
     config.addinivalue_line("markers", "ratchet: Ratchet feature tests")
+    config.addinivalue_line("markers", "audit: Audit feature tests")

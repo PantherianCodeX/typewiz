@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
@@ -25,7 +26,7 @@ from ratchetr.audit.paths import canonicalize_scope, normalise_override_entries,
 from ratchetr.audit.paths import fingerprint_targets as build_fingerprint_targets
 from ratchetr.cache import CachedRun, EngineCache, collect_file_hashes, fingerprint_path
 from ratchetr.collections import merge_preserve
-from ratchetr.core.model_types import FileHashPayload, LogComponent, Mode, OverrideEntry
+from ratchetr.core.model_types import EngineErrorKind, FileHashPayload, LogComponent, Mode, OverrideEntry
 from ratchetr.core.type_aliases import CacheKey, EngineName, PathKey, ProfileName, RelPath, ToolName
 from ratchetr.core.types import RunResult
 from ratchetr.engines import EngineContext, EngineOptions
@@ -690,18 +691,52 @@ def execute_engine_mode(  # noqa: PLR0913
 
     try:
         result = engine.run(context, mode_paths)
-    # ignore JUSTIFIED: engine plugins may raise arbitrary exceptions;
-    # wrapper must convert all failures into structured RunResult
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except FileNotFoundError as exc:
+        # Engine tool not found in PATH
         logger.exception(
-            "Engine %s:%s failed",
+            "Engine %s:%s tool not found",
             engine.name,
             mode,
-            extra=structured_extra(
-                component=LogComponent.ENGINE,
-                tool=engine.name,
-                mode=mode,
-            ),
+            extra=structured_extra(component=LogComponent.ENGINE, tool=engine.name, mode=mode),
+        )
+        run_result = RunResult(
+            tool=ToolName(engine.name),
+            mode=mode,
+            command=[engine.name, mode],
+            exit_code=127,
+            duration_ms=0.0,
+            diagnostics=[],
+            cached=False,
+            profile=engine_options.profile,
+            config_file=engine_options.config_file,
+            plugin_args=list(engine_options.plugin_args),
+            include=list(engine_options.include),
+            exclude=list(engine_options.exclude),
+            overrides=[cast("OverrideEntry", dict(item)) for item in engine_options.overrides],
+            category_mapping={k: list(v) for k, v in engine_options.category_mapping.items()},
+            tool_summary=None,
+            scanned_paths=list(mode_paths),
+            engine_error={
+                "kind": EngineErrorKind.ENGINE_TOOL_NOT_FOUND.value,
+                "message": str(exc),
+                "exitCode": 127,
+            },
+        )
+        return run_result, truncated
+    # ignore JUSTIFIED: Overlapping exception allows for more targetted
+    # error details when available.
+    except (json.JSONDecodeError, ValueError) as exc:  # pylint: disable=overlapping-except
+        # JSON parse error or empty output
+        kind = (
+            EngineErrorKind.ENGINE_NO_PARSEABLE_OUTPUT
+            if "empty" in str(exc).lower() or not str(exc).strip()
+            else EngineErrorKind.ENGINE_OUTPUT_PARSE_FAILED
+        )
+        logger.exception(
+            "Engine %s:%s output parse failed",
+            engine.name,
+            mode,
+            extra=structured_extra(component=LogComponent.ENGINE, tool=engine.name, mode=mode),
         )
         run_result = RunResult(
             tool=ToolName(engine.name),
@@ -720,7 +755,45 @@ def execute_engine_mode(  # noqa: PLR0913
             category_mapping={k: list(v) for k, v in engine_options.category_mapping.items()},
             tool_summary=None,
             scanned_paths=list(mode_paths),
-            engine_error={"message": str(exc), "exitCode": 1},
+            engine_error={
+                "kind": kind.value,
+                "message": str(exc),
+                "exitCode": 1,
+            },
+        )
+        return run_result, truncated
+    # ignore JUSTIFIED: engine plugins may raise arbitrary exceptions;
+    # wrapper must convert all failures into structured RunResult
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        # Generic engine crash
+        logger.exception(
+            "Engine %s:%s crashed",
+            engine.name,
+            mode,
+            extra=structured_extra(component=LogComponent.ENGINE, tool=engine.name, mode=mode),
+        )
+        run_result = RunResult(
+            tool=ToolName(engine.name),
+            mode=mode,
+            command=[engine.name, mode],
+            exit_code=1,
+            duration_ms=0.0,
+            diagnostics=[],
+            cached=False,
+            profile=engine_options.profile,
+            config_file=engine_options.config_file,
+            plugin_args=list(engine_options.plugin_args),
+            include=list(engine_options.include),
+            exclude=list(engine_options.exclude),
+            overrides=[cast("OverrideEntry", dict(item)) for item in engine_options.overrides],
+            category_mapping={k: list(v) for k, v in engine_options.category_mapping.items()},
+            tool_summary=None,
+            scanned_paths=list(mode_paths),
+            engine_error={
+                "kind": EngineErrorKind.ENGINE_CRASHED.value,
+                "message": str(exc),
+                "exitCode": 1,
+            },
         )
         return run_result, truncated
 

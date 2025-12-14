@@ -61,6 +61,7 @@ class _AuditInputs:
     root: Path
     audit_config: AuditConfig
     default_paths_normalised: list[RelPath]
+    cli_paths: list[str] | None
     engines: list[BaseEngine]
     tool_versions: dict[str, str]
     cache: EngineCache
@@ -109,6 +110,7 @@ def _prepare_audit_inputs(
         root=root,
         audit_config=audit_config,
         default_paths_normalised=default_paths_normalised,
+        cli_paths=None,  # CLI threading deferred to orchestration refactor
         engines=engines,
         tool_versions=tool_versions,
         cache=cache,
