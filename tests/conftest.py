@@ -32,7 +32,11 @@ pytest_plugins = ("tests.fixtures.snapshots",)
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    """Configure pytest with the custom markers used by the test suite."""
+    """Configure pytest with the custom markers used by the test suite.
+
+    Args:
+        config: Pytest configuration object.
+    """
     config.addinivalue_line("markers", "unit: Unit tests (fast, isolated)")
     config.addinivalue_line(
         "markers",

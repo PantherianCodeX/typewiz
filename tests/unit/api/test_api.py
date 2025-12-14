@@ -175,13 +175,13 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
 
     result = run_audit(project_root=tmp_path, config=config, build_summary_output=False)
 
-    assert len(engine.invocations) == 2
-    modes = {invocation.mode for invocation in engine.invocations}
-    assert modes == {Mode.CURRENT, Mode.TARGET}
-    target_invocation = next(inv for inv in engine.invocations if inv.mode is Mode.TARGET)
-    assert target_invocation.plugin_args == ["--base", "--engine", "--strict"]
-    assert sorted(target_invocation.paths) == ["extra", "src"]
-    assert target_invocation.profile == STRICT_PROFILE
+    # Per-engine deduplication: plans are equivalent (cli_paths=None), so only TARGET runs
+    assert len(engine.invocations) == 1
+    invocation = engine.invocations[0]
+    assert invocation.mode is Mode.TARGET  # TARGET is canonical
+    assert invocation.plugin_args == ["--base", "--engine", "--strict"]
+    assert sorted(invocation.paths) == ["extra", "src"]
+    assert invocation.profile == STRICT_PROFILE
 
     assert {run.profile for run in result.runs} == {STRICT_PROFILE}
     assert all(run.plugin_args == ["--base", "--engine", "--strict"] for run in result.runs)

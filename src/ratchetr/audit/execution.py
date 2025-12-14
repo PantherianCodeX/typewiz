@@ -289,8 +289,7 @@ def apply_engine_paths(
     return filtered or ordered
 
 
-# ignore JUSTIFIED: TODO: Remove ignore once this function is in use
-def _resolve_scope_for_mode(  # pyright: ignore reportUnusedFunction
+def resolve_scope_for_mode(
     *,
     mode: Mode,
     project_root: Path,

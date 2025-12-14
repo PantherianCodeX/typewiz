@@ -20,14 +20,21 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ratchetr.audit.execution import execute_engine_mode, resolve_engine_options
+from ratchetr.audit.execution import (
+    build_engine_plan,
+    execute_engine_mode,
+    resolve_engine_options,
+    resolve_scope_for_mode,
+)
 from ratchetr.audit.options import merge_audit_configs
 from ratchetr.audit.paths import normalise_paths
 from ratchetr.cache import EngineCache
 from ratchetr.config import AuditConfig, Config, load_config
 from ratchetr.core.model_types import LogComponent, Mode, SeverityLevel
+from ratchetr.core.types import RunResult
 from ratchetr.dashboard import build_summary
 from ratchetr.engines import EngineContext, resolve_engines
+from ratchetr.exceptions import ConfigError
 from ratchetr.logging import structured_extra
 from ratchetr.manifest.builder import ManifestBuilder
 from ratchetr.runtime import detect_tool_versions
@@ -38,8 +45,7 @@ if TYPE_CHECKING:
 
     from ratchetr.core.summary_types import SummaryData
     from ratchetr.core.type_aliases import RelPath
-    from ratchetr.core.types import RunResult
-    from ratchetr.engines.base import BaseEngine
+    from ratchetr.engines.base import BaseEngine, EnginePlan
     from ratchetr.manifest.typed import ManifestData
 
 logger: logging.Logger = logging.getLogger("ratchetr.audit")
@@ -139,13 +145,126 @@ def _iterate_modes(audit_config: AuditConfig) -> list[Mode]:
     return modes
 
 
-def _run_engines(inputs: _AuditInputs) -> tuple[list[RunResult], bool]:
+# ignore JUSTIFIED: Per-engine deduplication requires branching logic that cannot be
+# meaningfully extracted without obscuring the critical equivalence-checking flow.
+# try-except in loop is unavoidable for per-mode scope resolution error handling.
+def _run_engines(inputs: _AuditInputs) -> tuple[list[RunResult], bool]:  # noqa: PLR0912, C901
+    """Execute engines with per-engine deduplication.
+
+    Per-engine deduplication logic (ADR-0002):
+    - Build EnginePlan for CURRENT and TARGET modes per engine
+    - If plans are equivalent → run TARGET only (canonical)
+    - Otherwise → run both CURRENT and TARGET
+
+    Args:
+        inputs: Audit inputs with config, paths, and engines.
+
+    Returns:
+        Tuple of (run_results, fingerprint_truncated_any).
+    """
     runs: list[RunResult] = []
     truncated_any = False
     modes = _iterate_modes(inputs.audit_config)
+
+    # Early return if no modes selected
+    if not modes:
+        inputs.cache.save()
+        return runs, truncated_any
+
+    # Determine if we should attempt deduplication
+    should_deduplicate = Mode.CURRENT in modes and Mode.TARGET in modes
+
     for engine in inputs.engines:
         engine_options = resolve_engine_options(inputs.root, inputs.audit_config, engine)
-        for mode in modes:
+
+        if should_deduplicate:
+            # Build plans for both modes to check equivalence
+            plans: dict[Mode, EnginePlan | None] = {}
+
+            for mode in (Mode.CURRENT, Mode.TARGET):
+                try:
+                    # Resolve scope for this mode
+                    scope = resolve_scope_for_mode(
+                        mode=mode,
+                        project_root=inputs.root,
+                        cli_paths=inputs.cli_paths,
+                        env_paths=None,  # Environment override support deferred
+                        config_paths=inputs.audit_config.default_paths,
+                        engine_include=engine_options.include,
+                        engine_exclude=engine_options.exclude,
+                    )
+                    plans[mode] = build_engine_plan(
+                        # ignore JUSTIFIED: BaseEngine.name is str at runtime but
+                        # build_engine_plan expects ToolName type narrowing unnecessary
+                        engine_name=engine.name,  # type: ignore[arg-type]
+                        mode=mode,
+                        project_root=inputs.root,
+                        resolved_scope=scope,
+                        engine_options=engine_options,
+                    )
+                # ignore JUSTIFIED: Per-mode error handling requires try-except in loop;
+                # cannot be refactored without losing mode-specific error context
+                except ConfigError as exc:  # noqa: PERF203
+                    # Empty scope → configuration error (engine deselected)
+                    logger.warning(
+                        "Engine %s deselected for %s: %s",
+                        engine.name,
+                        mode,
+                        exc,
+                        extra=structured_extra(component=LogComponent.ENGINE, tool=engine.name, mode=mode),
+                    )
+                    plans[mode] = None
+                    # Create config error result
+                    run_result = RunResult(
+                        # ignore JUSTIFIED: BaseEngine.name is str at runtime but RunResult.tool
+                        # expects ToolName; type narrowing at this error path adds no value
+                        tool=engine.name,  # type: ignore[arg-type]
+                        mode=mode,
+                        command=[],
+                        exit_code=0,
+                        duration_ms=0.0,
+                        diagnostics=[],
+                        cached=False,
+                        engine_error={
+                            "kind": "engine-config-error",
+                            "message": str(exc),
+                            "exitCode": 0,
+                        },
+                    )
+                    runs.append(run_result)
+
+            # Determine which modes to run based on plan equivalence
+            modes_to_run: list[Mode] = []
+            plan_current = plans.get(Mode.CURRENT)
+            plan_target = plans.get(Mode.TARGET)
+
+            if plan_current and plan_target:
+                if plan_current.is_equivalent_to(plan_target):
+                    # Plans equivalent → run TARGET only (canonical)
+                    modes_to_run = [Mode.TARGET]
+                    logger.info(
+                        "Engine %s: plans equivalent, running TARGET only",
+                        engine.name,
+                        extra=structured_extra(component=LogComponent.ENGINE, tool=engine.name),
+                    )
+                else:
+                    # Plans differ → run both
+                    modes_to_run = [Mode.CURRENT, Mode.TARGET]
+                    logger.debug(
+                        "Engine %s: plans differ, running both modes",
+                        engine.name,
+                        extra=structured_extra(component=LogComponent.ENGINE, tool=engine.name),
+                    )
+            else:
+                # One or both plans failed → run whichever succeeded
+                modes_to_run = [m for m in (Mode.CURRENT, Mode.TARGET) if plans.get(m)]
+
+        else:
+            # No deduplication: run requested modes
+            modes_to_run = modes
+
+        # Execute selected modes
+        for mode in modes_to_run:
             context = EngineContext(
                 project_root=inputs.root,
                 audit_config=inputs.audit_config,
@@ -165,6 +284,7 @@ def _run_engines(inputs: _AuditInputs) -> tuple[list[RunResult], bool]:
             runs.append(run_result)
             if truncated:
                 truncated_any = True
+
     if truncated_any:
         logger.warning(
             "Fingerprint truncated across one or more runs",

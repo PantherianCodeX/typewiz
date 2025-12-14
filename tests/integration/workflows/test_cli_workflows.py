@@ -41,7 +41,7 @@ from ratchetr.core.types import Diagnostic, RunResult
 from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
 from ratchetr.paths import EnvOverrides, ResolvedPaths
 from tests.fixtures.builders import build_cli_manifest, build_empty_summary
-from tests.fixtures.stubs import StubEngine
+from tests.fixtures.stubs import RecordingEngine, StubEngine
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -265,7 +265,8 @@ def test_cli_audit(
     fake_run: RunResult,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    engine = StubEngine(fake_run, expected_profile="strict")
+    # Use RecordingEngine to support per-engine deduplication (both modes)
+    engine = RecordingEngine(diagnostics=fake_run.diagnostics, current_exit_code=1, target_exit_code=1)
     _patch_engine_resolution(monkeypatch, engine)
 
     (tmp_path / "pkg").mkdir(exist_ok=True)
@@ -304,8 +305,8 @@ def test_cli_audit(
     assert manifest_path.exists()
     assert dashboard_path.exists()
     assert dashboard_path.read_text(encoding="utf-8") != "stale"
-    assert any(mode is Mode.TARGET for mode, _, _ in engine.invocations)
-    assert all("--cli-flag" in args for _, args, _ in engine.invocations)
+    assert any(inv.context.mode is Mode.TARGET for inv in engine.invocations)
+    assert all("--cli-flag" in inv.plugin_args for inv in engine.invocations)
 
     manifest_json = cast("dict[str, object]", json.loads(manifest_path.read_text(encoding="utf-8")))
     runs_value = manifest_json.get("runs")
@@ -703,7 +704,8 @@ def test_cli_audit_without_markers(
     tmp_path: Path,
     fake_run: RunResult,
 ) -> None:
-    engine = StubEngine(fake_run)
+    # Use RecordingEngine to support per-engine deduplication (both modes)
+    engine = RecordingEngine(diagnostics=fake_run.diagnostics)
     _patch_engine_resolution(monkeypatch, engine)
     monkeypatch.chdir(tmp_path)
 
@@ -720,8 +722,8 @@ def test_cli_audit_without_markers(
     )
 
     assert exit_code == 0
-    # Fallback root detection should still run both modes
-    assert {mode for mode, *_ in engine.invocations} == {Mode.CURRENT, Mode.TARGET}
+    # Per-engine deduplication: plans equivalent, only TARGET runs (canonical)
+    assert {inv.context.mode for inv in engine.invocations} == {Mode.TARGET}
 
 
 # NOTE: Test removed - with contract-defined default of ["."], audit never fails
