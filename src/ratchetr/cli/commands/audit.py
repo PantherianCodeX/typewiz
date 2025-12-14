@@ -54,8 +54,7 @@ from ratchetr.core.model_types import (
 )
 from ratchetr.core.type_aliases import EngineName, ProfileName
 from ratchetr.json import normalise_enums_for_json
-from ratchetr.paths import OutputFormat, OutputTarget
-from ratchetr.runtime import default_full_paths
+from ratchetr.paths import EnvOverrides, OutputFormat, OutputTarget
 from ratchetr.services.audit import AuditResult, run_audit
 from ratchetr.services.dashboard import emit_dashboard_outputs, load_summary_from_manifest
 
@@ -192,16 +191,8 @@ def register_audit_command(
     )
     register_save_flag(audit, flag="--save-as", dest="save_as", short_flag="-s")
     register_save_flag(audit, flag="--dashboard", dest="dashboard", short_flag="-d")
-    register_argument(
-        audit,
-        "-e",
-        "--exclude",
-        dest="exclude",
-        action="append",
-        metavar="PATTERN",
-        default=None,
-        help="Exclude paths matching glob pattern (repeatable).",
-    )
+    # NOTE: --exclude flag roadmapped for future implementation (requires full
+    # include/exclude scope resolution system)
     register_argument(
         audit,
         "--compare-to",
@@ -225,9 +216,42 @@ def register_audit_command(
     register_readiness_flag(audit, default_enabled=False)
 
 
-def _resolve_full_paths(args: argparse.Namespace, config: Config, project_root: Path) -> list[str]:
-    cli_full_paths = [path for path in args.paths if path]
-    return cli_full_paths or config.audit.full_paths or default_full_paths(project_root)
+def _resolve_full_paths(
+    args: argparse.Namespace,
+    config: Config,
+    env_overrides: EnvOverrides,
+) -> list[str]:
+    """Resolve audit scope paths using contract-defined precedence chain.
+
+    Precedence (highest to lowest):
+    1. CLI positional arguments
+    2. Environment variable (RATCHETR_FULL_PATHS)
+    3. Config file (audit.full_paths)
+    4. Default: ["."] (scan everything from root)
+
+    Args:
+        args: Parsed CLI arguments.
+        config: Loaded configuration.
+        env_overrides: Environment variable overrides.
+
+    Returns:
+        List of paths to audit (relative to project root).
+    """
+    # 1. CLI positional arguments (highest priority)
+    cli_paths = [path for path in args.paths if path]
+    if cli_paths:
+        return cli_paths
+
+    # 2. Environment variable override
+    if env_overrides.full_paths:
+        return env_overrides.full_paths
+
+    # 3. Config file setting
+    if config.audit.full_paths:
+        return config.audit.full_paths
+
+    # 4. Default: scan everything from root (contract requirement)
+    return ["."]
 
 
 def normalise_modes_tuple(modes: Sequence[str] | None) -> tuple[bool, bool, bool]:
@@ -477,7 +501,7 @@ def _prepare_execution_plan(
 ) -> _AuditExecutionPlan:
     config = context.config
     project_root = context.resolved_paths.repo_root
-    selected_full_paths = _resolve_full_paths(args, config, project_root)
+    selected_full_paths = _resolve_full_paths(args, config, context.env_overrides)
     if not selected_full_paths:
         msg = "No paths found for full runs. Provide paths or configure 'full_paths'."
         raise SystemExit(msg)

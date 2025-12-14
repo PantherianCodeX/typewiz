@@ -54,3 +54,27 @@ def test_env_overrides_from_environ_derives_cache_and_active_overrides(tmp_path:
         "RATCHETR_LOG_DIR": (env_home / "logs").resolve(),
         "RATCHETR_CACHE_DIR": (env_home / ".cache").resolve(),
     }
+
+
+def test_env_overrides_parses_full_paths_comma_separated() -> None:
+    environ = {"RATCHETR_FULL_PATHS": "src,tests,lib"}
+    overrides = EnvOverrides.from_environ(environ)
+    assert overrides.full_paths == ["src", "tests", "lib"]
+
+
+def test_env_overrides_parses_full_paths_colon_separated() -> None:
+    environ = {"RATCHETR_FULL_PATHS": "src:tests:lib"}
+    overrides = EnvOverrides.from_environ(environ)
+    assert overrides.full_paths == ["src", "tests", "lib"]
+
+
+def test_env_overrides_handles_empty_full_paths() -> None:
+    environ = {"RATCHETR_FULL_PATHS": ""}
+    overrides = EnvOverrides.from_environ(environ)
+    assert overrides.full_paths is None
+
+
+def test_env_overrides_handles_missing_full_paths() -> None:
+    environ = {}
+    overrides = EnvOverrides.from_environ(environ)
+    assert overrides.full_paths is None

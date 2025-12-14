@@ -32,7 +32,7 @@ from ratchetr.engines import EngineContext, resolve_engines
 from ratchetr.json import normalise_enums_for_json
 from ratchetr.logging import structured_extra
 from ratchetr.manifest.builder import ManifestBuilder
-from ratchetr.runtime import consume, default_full_paths, detect_tool_versions
+from ratchetr.runtime import consume, detect_tool_versions
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -73,10 +73,23 @@ def _determine_full_paths(
     audit_config: AuditConfig,
     full_paths: Sequence[str] | None,
 ) -> list[RelPath]:
-    raw_full_paths = list(full_paths) if full_paths else (audit_config.full_paths or default_full_paths(root))
-    if not raw_full_paths:
-        message = "No directories to scan; configure 'full_paths' or pass 'full_paths' argument"
-        raise ValueError(message)
+    """Determine full paths for audit with contract-defined fallback.
+
+    Precedence:
+    1. Explicit full_paths argument (highest priority)
+    2. Config audit.full_paths
+    3. Default: ["."] (scan everything from root, per contract)
+
+    Args:
+        root: Project root directory.
+        audit_config: Audit configuration.
+        full_paths: Explicit paths override.
+
+    Returns:
+        Normalized relative paths to audit.
+    """
+    # Contract-defined default: scan everything from root
+    raw_full_paths = list(full_paths) if full_paths else (audit_config.full_paths or ["."])
     return normalise_paths(root, raw_full_paths)
 
 

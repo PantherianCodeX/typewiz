@@ -77,6 +77,7 @@ def test_h_cli_manifest_override_wins(cli_manifest: Path, tmp_path: Path) -> Non
         manifest_path=repo_root / "env-manifest.json",
         cache_dir=None,
         log_dir=None,
+        full_paths=None,
     )
 
     resolved = resolve_paths(
@@ -101,6 +102,7 @@ def test_h_cli_tool_home_override_wins(cli_tool_home: Path, tmp_path: Path) -> N
         manifest_path=None,
         cache_dir=None,
         log_dir=None,
+        full_paths=None,
     )
     config_paths = PathsConfig(ratchetr_dir=repo_root / "config-home")
 
@@ -128,6 +130,7 @@ def test_h_env_manifest_override_wins(env_manifest: Path, tmp_path: Path) -> Non
         manifest_path=env_manifest,
         cache_dir=None,
         log_dir=None,
+        full_paths=None,
     )
 
     resolved = resolve_paths(

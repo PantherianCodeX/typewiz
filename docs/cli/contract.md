@@ -182,33 +182,23 @@ rtr audit src tests -e tests/fixtures -e '**/test_data/**'
 Scope determination follows this precedence:
 
 1. **CLI positional args**: Override all other scope settings
-2. **Environment variable**: `RATCHETR_FULL_PATHS` (if implemented)
-3. **Config `full_paths`**: From `ratchetr.toml` `[audit]` section
-4. **Auto-detection**: Default Python package discovery
-
-Auto-detection looks for these directories (in order):
-
-- `ratchetr/`
-- `apps/`
-- `packages/`
-- `config/`
-- `infra/`
-- `tests/`
-
-If none found, defaults to `["."]` (scan everything from root).
+2. **Environment variable**: `RATCHETR_INCLUDES` and `RATCHETR_EXCLUDES`
+3. **Config `include_paths`/`exclude_paths`**: From `ratchetr.toml` `[audit]` or `pyproject.toml` `[tool.ratchetr.audit]`
+4. **NO Auto-detection**: Defaults to `["."]` (scan everything from root).
 
 ### Example
 
 ```toml
 # ratchetr.toml
 [audit]
-full_paths = ["src", "lib"]
+includes = ["src", "lib", "tests", "scripts/foo.py"]
+excludes = ["tests/fixtures"]
 ```
 
 ```bash
-# Config specifies ["src", "lib"]
+# Config specifies ["src", "lib", "tests", "scripts/foo.py"]
 rtr audit
-# Scans: src/, lib/
+# Scans: src/, lib/, tests/ directories and scripts/foo.py file
 
 # CLI overrides config
 rtr audit tests
@@ -270,6 +260,8 @@ All path-related environment variables:
 - `RATCHETR_MANIFEST` - Manifest file path override
 - `RATCHETR_CACHE_DIR` - Cache directory override
 - `RATCHETR_LOG_DIR` - Log directory override
+- `RATCHETR_INCLUDES` - List of files/folders to scan
+- `RATCHETR_EXCLUDES` - List of files/folders to exclude from scans
 
 ### Example
 
@@ -522,6 +514,10 @@ With `--dashboard html:reports/site/`:
 └── src/
 ```
 
+### Determining file or folder?
+
+For this repo, we will always assume file is provided unless trailing `/` is used. If the file doesn't exist, then we try it as a folder. This is safe on all OS's and provides consistent, predictable inputs and function.
+
 ## Implementation Notes
 
 ### Phase Implementation
@@ -543,8 +539,8 @@ This contract is for `ratchetr` version `0.1.x` (alpha). APIs and CLI flags may 
 
 ### Related Documentation
 
-- [`docs/cli/topics/overview.md`](topics/overview.md) - CLI overview and command list
-- [`docs/cli/topics/manifest.md`](topics/manifest.md) - Manifest format and tooling
-- [`docs/cli/topics/ratchet.md`](topics/ratchet.md) - Ratchet budget management
+- [`docs/cli/overview.md`](overview.md) - CLI overview and command list
+- [`docs/cli/manifest.md`](manifest.md) - Manifest format and tooling
+- [`docs/cli/ratchet.md`](ratchet.md) - Ratchet budget management
 - [`docs/ratchetr.md`](../ratchetr.md) - Architecture overview
 - [`examples/ratchetr.sample.toml`](../../examples/ratchetr.sample.toml) - Configuration examples

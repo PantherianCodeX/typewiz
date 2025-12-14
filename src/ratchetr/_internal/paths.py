@@ -44,6 +44,7 @@ TOOL_HOME_ENV: Final[str] = "RATCHETR_DIR"
 MANIFEST_ENV: Final[str] = "RATCHETR_MANIFEST"
 CACHE_ENV: Final[str] = "RATCHETR_CACHE_DIR"
 LOG_ENV: Final[str] = "RATCHETR_LOG_DIR"
+FULL_PATHS_ENV: Final[str] = "RATCHETR_FULL_PATHS"
 
 MANIFEST_CANDIDATE_NAMES: Final[tuple[str, ...]] = (
     DEFAULT_MANIFEST_FILENAME,
@@ -76,6 +77,7 @@ class EnvOverrides:
     manifest_path: Path | None
     cache_dir: Path | None
     log_dir: Path | None
+    full_paths: list[str] | None
 
     @classmethod
     def from_environ(cls, environ: Mapping[str, str] | None = None) -> EnvOverrides:
@@ -102,6 +104,7 @@ class EnvOverrides:
             manifest_path=_path_from_env(env, MANIFEST_ENV),
             cache_dir=cache_dir,
             log_dir=log_dir,
+            full_paths=_list_from_env(env, FULL_PATHS_ENV),
         )
 
     @property
@@ -506,6 +509,29 @@ def _path_from_env(environ: Mapping[str, str], name: str) -> Path | None:
     if not value:
         return None
     return Path(value)
+
+
+def _list_from_env(environ: Mapping[str, str], name: str) -> list[str] | None:
+    """Parse a list of strings from an environment variable.
+
+    Args:
+        environ: Environment mapping to read from.
+        name: Name of the environment variable.
+
+    Returns:
+        List of non-empty strings split by commas or colons, or None if the
+        variable is not set or empty.
+    """
+    raw = environ.get(name)
+    if raw is None:
+        return None
+    value = raw.strip()
+    if not value:
+        return None
+    separator = ":" if ":" in value and "," not in value else ","
+    parts = [part.strip() for part in value.split(separator)]
+    result = [part for part in parts if part]
+    return result or None
 
 
 __all__ = [

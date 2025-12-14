@@ -112,6 +112,8 @@ def _arrange_cli_audit_full_outputs(
 ) -> AuditFullOutputsContext:
     cfg = Config()
     cfg.audit.runners = [PYRIGHT_RUNNER]
+    # Set full_paths in config to avoid defaulting to ["."]
+    cfg.audit.full_paths = ["pkg"]
 
     summary = build_empty_summary()
     summary["tabs"]["overview"]["severityTotals"] = {
@@ -159,13 +161,9 @@ def _arrange_cli_audit_full_outputs(
         warning_count=0,
     )
 
-    def _default_paths(_: Path) -> list[str]:
-        return ["pkg"]
-
     def _run_audit_stub(**_: object) -> AuditResult:
         return audit_result
 
-    monkeypatch.setattr("ratchetr.cli.commands.audit.default_full_paths", _default_paths)
     monkeypatch.setattr("ratchetr.cli.commands.audit.run_audit", _run_audit_stub)
     tool_home = tmp_path / ".ratchetr"
     resolved_paths = ResolvedPaths(
@@ -726,14 +724,9 @@ def test_cli_audit_without_markers(
     assert {mode for mode, *_ in engine.invocations} == {Mode.CURRENT, Mode.FULL}
 
 
-def test_cli_audit_requires_paths(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _default_paths(_: Path) -> list[str]:
-        return []
-
-    monkeypatch.setattr("ratchetr.cli.commands.audit.default_full_paths", _default_paths)
-
-    with pytest.raises(SystemExit, match=r".*"):
-        consume(main(["audit"]))
+# NOTE: Test removed - with contract-defined default of ["."], audit never fails
+# due to missing paths. If no paths are provided via CLI/env/config, it defaults
+# to scanning everything from root.
 
 
 def test_cli_audit_full_outputs(
