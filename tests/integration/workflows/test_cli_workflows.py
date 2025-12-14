@@ -774,6 +774,15 @@ def test_cli_dashboard_outputs(
         "ratchetr.cli.app.render_dashboard_summary",
         renderer,
     )
+    # Also patch the service layer rendering functions
+    monkeypatch.setattr(
+        "ratchetr.services.dashboard.render_markdown",
+        lambda _: "markdown",
+    )
+    monkeypatch.setattr(
+        "ratchetr.services.dashboard.render_html",
+        lambda *_args, **_kwargs: "<html>",
+    )
 
     exit_code_json = _run_cli_command(["dashboard", "--manifest", str(manifest_path), "--out", "json"])
     assert exit_code_json == 0

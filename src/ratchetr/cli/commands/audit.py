@@ -57,6 +57,7 @@ from ratchetr.json import normalise_enums_for_json
 from ratchetr.paths import EnvOverrides, OutputFormat, OutputTarget
 from ratchetr.services.audit import AuditResult, run_audit
 from ratchetr.services.dashboard import emit_dashboard_outputs, load_summary_from_manifest
+from ratchetr.services.manifest import emit_manifest_output
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -65,6 +66,7 @@ if TYPE_CHECKING:
     from ratchetr.cli.types import SubparserCollection
     from ratchetr.core.summary_types import SummaryData
     from ratchetr.core.types import RunResult
+    from ratchetr.manifest.typed import ManifestData
 
 
 def register_audit_command(
@@ -351,7 +353,21 @@ def _build_delta_line(
         return ""
 
 
-def _emit_dashboard_outputs(override: AuditConfig, dashboard_view: DashboardView, summary: SummaryData) -> None:
+def _emit_dashboard_outputs(
+    override: AuditConfig,
+    dashboard_view: DashboardView,
+    summary: SummaryData,
+    *,
+    dry_run: bool = False,
+) -> None:
+    """Emit dashboard outputs using the service layer.
+
+    Args:
+        override: Audit config with dashboard paths.
+        dashboard_view: Default view for HTML.
+        summary: Dashboard summary data.
+        dry_run: If True, render but don't write files.
+    """
     view_choice = dashboard_view
     emit_dashboard_outputs(
         summary,
@@ -359,6 +375,7 @@ def _emit_dashboard_outputs(override: AuditConfig, dashboard_view: DashboardView
         markdown_path=override.dashboard_markdown,
         html_path=override.dashboard_html,
         default_view=view_choice,
+        dry_run=dry_run,
     )
 
 
@@ -544,9 +561,7 @@ def _run_audit_plan(plan: _AuditExecutionPlan) -> AuditResult:
         config=plan.config,
         override=plan.override,
         full_paths=plan.full_paths,
-        write_manifest_to=plan.manifest_target,
         build_summary_output=True,
-        persist_outputs=not plan.dry_run,
     )
 
 
@@ -581,11 +596,31 @@ def _summarize_audit_run(
 def _persist_audit_outputs(
     *,
     plan: _AuditExecutionPlan,
+    manifest: ManifestData,
     audit_summary: SummaryData,
 ) -> None:
-    if plan.dry_run:
-        return
-    _emit_dashboard_outputs(plan.override, plan.dashboard_view, audit_summary)
+    """Persist audit outputs (manifest and dashboards) via service layer.
+
+    Args:
+        plan: Audit execution plan with configuration and dry-run flag.
+        manifest: Manifest data to persist.
+        audit_summary: Summary data to persist.
+    """
+    # Write manifest if target is configured
+    if plan.manifest_target:
+        emit_manifest_output(
+            manifest,
+            manifest_path=plan.manifest_target,
+            dry_run=plan.dry_run,
+        )
+
+    # Write dashboards
+    _emit_dashboard_outputs(
+        plan.override,
+        plan.dashboard_view,
+        audit_summary,
+        dry_run=plan.dry_run,
+    )
 
 
 def _resolve_fail_on_policy(
@@ -651,7 +686,7 @@ def execute_audit(args: argparse.Namespace, context: CLIContext) -> int:
     )
     result = _run_audit_plan(plan)
     audit_summary, exit_code = _summarize_audit_run(args, plan=plan, result=result)
-    _persist_audit_outputs(plan=plan, audit_summary=audit_summary)
+    _persist_audit_outputs(plan=plan, manifest=result.manifest, audit_summary=audit_summary)
     return exit_code
 
 

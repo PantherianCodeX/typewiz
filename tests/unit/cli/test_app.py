@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -61,16 +61,6 @@ def test_main_requires_command() -> None:
 def test_main_unknown_command() -> None:
     with pytest.raises(SystemExit):
         _ = app.main(["unknown"])
-
-
-def test_dashboard_format_for_output_rejects_unknown() -> None:
-    class _UnknownFormat:
-        value = "unknown"
-
-    bogus_format = cast("OutputFormat", _UnknownFormat())
-
-    with pytest.raises(SystemExit, match="Unsupported dashboard output format"):
-        _ = app._dashboard_format_for_output(bogus_format)
 
 
 def test_main_fails_when_handler_missing(monkeypatch: pytest.MonkeyPatch) -> None:

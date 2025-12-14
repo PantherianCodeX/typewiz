@@ -31,6 +31,7 @@ from ratchetr.core.type_aliases import EngineName, RunnerName
 from ratchetr.manifest.loader import load_manifest_data
 from ratchetr.manifest.models import ManifestValidationError, manifest_json_schema, validate_manifest_payload
 from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
+from ratchetr.services.manifest import emit_manifest_output
 from tests.fixtures.stubs import RecordingEngine
 
 if TYPE_CHECKING:
@@ -96,7 +97,9 @@ def test_manifest_validates_against_schema(monkeypatch: pytest.MonkeyPatch, tmp_
     manifest_path = tmp_path / "manifest.json"
 
     override = AuditConfig(full_paths=["src"], runners=[STUB_RUNNER])
-    consume(run_audit(project_root=tmp_path, override=override, write_manifest_to=manifest_path))
+    result = run_audit(project_root=tmp_path, override=override)
+
+    emit_manifest_output(result.manifest, manifest_path=manifest_path)
 
     # Use the CLI validator to exercise both the jsonschema and fallback paths
     code = main(["manifest", "validate", str(manifest_path)])

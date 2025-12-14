@@ -68,3 +68,22 @@ def test_emit_dashboard_outputs_writes_files(tmp_path: Path, sample_summary: Sum
     assert markdown_path.exists()
     assert html_path.exists()
     assert html_path.read_text(encoding="utf-8").startswith("<")
+
+
+def test_emit_dashboard_outputs_dry_run(tmp_path: Path, sample_summary: SummaryData) -> None:
+    """Test that dry-run mode renders but doesn't write files."""
+    json_path = tmp_path / "reports" / "summary.json"
+    markdown_path = tmp_path / "reports" / "summary.md"
+    html_path = tmp_path / "reports" / "summary.html"
+    dashboard_service.emit_dashboard_outputs(
+        sample_summary,
+        json_path=json_path,
+        markdown_path=markdown_path,
+        html_path=html_path,
+        default_view=DashboardView.OVERVIEW,
+        dry_run=True,
+    )
+    # Files should NOT be written in dry-run mode
+    assert not json_path.exists()
+    assert not markdown_path.exists()
+    assert not html_path.exists()

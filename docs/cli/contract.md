@@ -167,22 +167,12 @@ rtr audit src tests
 
 This scans `src/` and `tests/` directories.
 
-### Exclude Scope
-
-**Flag**: `--exclude PATTERN` or `-e PATTERN`
-
-Subtractive scope using glob patterns:
-
-```bash
-rtr audit src tests -e tests/fixtures -e '**/test_data/**'
-```
-
 ### Precedence
 
 Scope determination follows this precedence:
 
 1. **CLI positional args**: Override all other scope settings
-2. **Environment variable**: `RATCHETR_INCLUDES` and `RATCHETR_EXCLUDES`
+2. **Environment variable**: `RATCHETR_INCLUDES`
 3. **Config `include_paths`/`exclude_paths`**: From `ratchetr.toml` `[audit]` or `pyproject.toml` `[tool.ratchetr.audit]`
 4. **NO Auto-detection**: Defaults to `["."]` (scan everything from root).
 
@@ -192,7 +182,6 @@ Scope determination follows this precedence:
 # ratchetr.toml
 [audit]
 includes = ["src", "lib", "tests", "scripts/foo.py"]
-excludes = ["tests/fixtures"]
 ```
 
 ```bash
@@ -260,8 +249,7 @@ All path-related environment variables:
 - `RATCHETR_MANIFEST` - Manifest file path override
 - `RATCHETR_CACHE_DIR` - Cache directory override
 - `RATCHETR_LOG_DIR` - Log directory override
-- `RATCHETR_INCLUDES` - List of files/folders to scan
-- `RATCHETR_EXCLUDES` - List of files/folders to exclude from scans
+- `RATCHETR_INCLUDES` - JSON string array: List of files/folders to scan
 
 ### Example
 
@@ -398,9 +386,9 @@ rtr audit
 # With short aliases and --exclude flag
 rtr audit -s json -s markdown \
           -d json -d html:site/ \
-          src tests -e tests/fixtures
+          src tests
 
-# Scans: src/, tests/ (excluding tests/fixtures/)
+# Scans: src/, tests/
 # Manifest outputs:
 #   - .ratchetr/manifest.json
 #   - .ratchetr/manifest.md
@@ -516,7 +504,7 @@ With `--dashboard html:reports/site/`:
 
 ### Determining file or folder?
 
-For this repo, we will always assume file is provided unless trailing `/` is used. If the file doesn't exist, then we try it as a folder. This is safe on all OS's and provides consistent, predictable inputs and function.
+For explicit filesystem paths (e.g., positional discovery inputs and output targets), ratchetr treats a value as a file unless it ends with /. If a non-/ path does not exist as a file, it may be treated as a directory input for discovery.
 
 ## Implementation Notes
 
@@ -526,12 +514,11 @@ This contract is implemented across multiple PRs:
 
 - **PR A** (this doc): Contract documentation
 - **PR B**: Root SSOT enforcement (eliminate redundant discovery)
-- **PR C**: CLI grammar updates (`-s`/`-d` aliases, `--exclude` flag)
+- **PR C**: CLI grammar updates (`-s`/`-d` aliases)
 - **PR D**: Scope precedence (remove heuristics, implement chain)
 - **PR E**: Single persistence pathway (unified dashboard writer)
 - **PR F**: Engine execution standardization and error handling
 - **PR G**: End-to-end wiring, tests, and documentation
-- **PR H**: Profile system (`--profile` flag)
 
 ### Version
 

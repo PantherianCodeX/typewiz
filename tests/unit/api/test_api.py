@@ -38,6 +38,7 @@ from ratchetr.core.type_aliases import EngineName, ProfileName, RunnerName, Tool
 from ratchetr.core.types import Diagnostic, RunResult
 from ratchetr.manifest.typed import ManifestData, ToolSummary
 from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
+from ratchetr.services.dashboard import emit_dashboard_outputs
 from tests.fixtures.stubs import AuditStubEngine, RecordingEngine
 
 if TYPE_CHECKING:
@@ -105,6 +106,14 @@ def test_run_audit_programmatic(
     summary = result.summary
     assert summary["topFolders"]
     assert result.error_count == 1
+
+    emit_dashboard_outputs(
+        summary,
+        json_path=tmp_path / "summary.json",
+        markdown_path=None,
+        html_path=None,
+        default_view="overview",
+    )
     assert (tmp_path / "summary.json").exists()
     full_run = next(run for run in result.runs if run.mode is Mode.FULL)
     assert full_run.category_mapping == {"unknownChecks": ["reportGeneralTypeIssues"]}

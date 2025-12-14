@@ -36,31 +36,28 @@ def run_audit(
     config: Config | None = None,
     override: AuditConfig | None = None,
     full_paths: Sequence[str] | None = None,
-    persist_outputs: bool = True,
     build_summary_output: bool = False,
-    write_manifest_to: Path | None = None,
 ) -> AuditResult:
     """Run the configured audit and return structured results.
+
+    Does NOT write any files (manifest or dashboard). Returns data structures
+    that can be persisted by the service layer.
 
     Args:
         project_root: Repository root location. Must be provided; root discovery
             happens at the CLI layer via resolve_paths().
-        config: Loaded `Config`object overriding file discovery.
+        config: Loaded `Config` object overriding file discovery.
         override: Additional overrides applied on top of ``config``.
         full_paths: Explicit include list overriding config values.
-        persist_outputs: Whether to write manifest outputs.
         build_summary_output: Whether to produce dashboard payloads.
-        write_manifest_to: Optional path override for manifest output.
 
     Returns:
-        `AuditResult`returned by the lower-level audit orchestrator.
+        `AuditResult` returned by the lower-level audit orchestrator.
     """
     return _run_audit(
         project_root=project_root,
         config=config,
         override=override,
         full_paths=full_paths,
-        persist_outputs=persist_outputs,
         build_summary_output=build_summary_output,
-        write_manifest_to=write_manifest_to,
     )

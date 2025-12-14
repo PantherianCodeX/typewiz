@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from ratchetr.core.model_types import LogComponent
 from ratchetr.error_codes import error_code_for
+from ratchetr.json import normalise_enums_for_json
 from ratchetr.logging import structured_extra
 from ratchetr.manifest.models import (
     ManifestValidationError,
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from ratchetr.json import JSONValue
+    from ratchetr.manifest.typed import ManifestData
 
 logger: logging.Logger = logging.getLogger("ratchetr.services.manifest")
 
@@ -225,9 +227,43 @@ def _validate_schema(
     return schema_errors, warnings
 
 
+def emit_manifest_output(
+    manifest: ManifestData,
+    *,
+    manifest_path: Path,
+    dry_run: bool = False,
+) -> None:
+    """Write manifest JSON to disk with optional dry-run mode.
+
+    Args:
+        manifest: Manifest data structure to serialize.
+        manifest_path: Target path for manifest file.
+        dry_run: If True, skip file write and log dry-run message.
+    """
+    content = json.dumps(normalise_enums_for_json(manifest), indent=2) + "\n"
+    if not dry_run:
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        manifest_path.write_text(content, encoding="utf-8")
+        logger.info(
+            "Wrote manifest to %s",
+            manifest_path,
+            extra=structured_extra(component=LogComponent.MANIFEST, path=manifest_path),
+        )
+    else:
+        logger.info(
+            "Would write manifest to %s (dry-run)",
+            manifest_path,
+            extra=structured_extra(
+                component=LogComponent.MANIFEST,
+                path=manifest_path,
+            ),
+        )
+
+
 __all__ = [
     "ManifestPayloadError",
     "ManifestValidationResult",
+    "emit_manifest_output",
     "load_manifest_json",
     "manifest_json_schema",
     "validate_manifest_file",

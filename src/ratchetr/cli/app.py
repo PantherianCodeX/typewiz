@@ -62,6 +62,7 @@ from ratchetr.logging import LOG_FORMATS, LOG_LEVELS, configure_logging
 from ratchetr.paths import OutputFormat, OutputTarget
 from ratchetr.runtime import consume
 from ratchetr.services.dashboard import (
+    emit_dashboard_outputs,
     load_summary_from_manifest,
     render_dashboard_summary,
 )
@@ -270,6 +271,12 @@ def _register_dashboard_command(
         default="overview",
         help="Default tab when generating HTML.",
     )
+    _register_argument(
+        dashboard,
+        "--dry-run",
+        action="store_true",
+        help="Render dashboards but skip writing files (validation only).",
+    )
 
 
 def _register_init_command(
@@ -387,11 +394,14 @@ def _execute_dashboard(args: argparse.Namespace, context: CLIContext) -> int:
 
     Args:
         args: Parsed command-line arguments containing manifest path, format, output path,
-            and view options.
+            view options, and dry-run flag.
         context: Shared CLI context containing resolved paths.
 
     Returns:
         int: Exit code (always 0 for success).
+
+    Raises:
+        SystemExit: If output format is unsupported.
     """
     manifest_path = discover_manifest_or_exit(context, cli_manifest=getattr(args, "manifest", None))
     summary = load_summary_from_manifest(manifest_path)
@@ -413,30 +423,45 @@ def _execute_dashboard(args: argparse.Namespace, context: CLIContext) -> int:
         _echo(rendered_stdout, newline=False)
     else:
         _echo(rendered_stdout)
+
+    # Get dry-run flag
+    dry_run = bool(getattr(args, "dry_run", False))
+
+    # Use service layer for file writes
     for target in targets:
-        target_format = _dashboard_format_for_output(target.format)
         output_path = _resolve_dashboard_target_path(target, context)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        rendered = render_dashboard_summary(
-            summary,
-            output_format=target_format,
-            default_view=view_choice,
-        )
-        consume(output_path.write_text(rendered, encoding="utf-8"))
+        if target.format is OutputFormat.JSON:
+            emit_dashboard_outputs(
+                summary,
+                json_path=output_path,
+                markdown_path=None,
+                html_path=None,
+                default_view=view_choice,
+                dry_run=dry_run,
+            )
+        elif target.format is OutputFormat.MARKDOWN:
+            emit_dashboard_outputs(
+                summary,
+                json_path=None,
+                markdown_path=output_path,
+                html_path=None,
+                default_view=view_choice,
+                dry_run=dry_run,
+            )
+        elif target.format is OutputFormat.HTML:
+            emit_dashboard_outputs(
+                summary,
+                json_path=None,
+                markdown_path=None,
+                html_path=output_path,
+                default_view=view_choice,
+                dry_run=dry_run,
+            )
+        else:
+            msg = f"Unsupported dashboard output format '{target.format.value}'"
+            raise SystemExit(msg)
+
     return 0
-
-
-def _dashboard_format_for_output(output_format: OutputFormat) -> DashboardFormat:
-    mapping = {
-        OutputFormat.JSON: DashboardFormat.JSON,
-        OutputFormat.MARKDOWN: DashboardFormat.MARKDOWN,
-        OutputFormat.HTML: DashboardFormat.HTML,
-    }
-    try:
-        return mapping[output_format]
-    except KeyError as exc:
-        message = f"Unsupported dashboard output format '{output_format.value}'"
-        raise SystemExit(message) from exc
 
 
 def _resolve_dashboard_target_path(target: OutputTarget, context: CLIContext) -> pathlib.Path:

@@ -103,6 +103,7 @@ def emit_dashboard_outputs(
     markdown_path: Path | None,
     html_path: Path | None,
     default_view: DashboardView | str,
+    dry_run: bool = False,
 ) -> None:
     """Write dashboard outputs to one or more file paths.
 
@@ -112,33 +113,58 @@ def emit_dashboard_outputs(
         markdown_path: Optional path for Markdown output.
         html_path: Optional path for HTML output.
         default_view: Default view for HTML rendering.
+        dry_run: If True, render but don't write files (for validation).
     """
     view = default_view if isinstance(default_view, DashboardView) else DashboardView.from_str(default_view)
     if json_path:
-        _ensure_parent(json_path)
         payload = normalise_enums_for_json(summary)
-        _ = json_path.write_text(_format_json(payload), encoding="utf-8")
-        logger.info(
-            "Wrote dashboard JSON to %s",
-            json_path,
-            extra=structured_extra(component=LogComponent.DASHBOARD, path=json_path),
-        )
+        content = _format_json(payload)
+        if not dry_run:
+            _ensure_parent(json_path)
+            _ = json_path.write_text(content, encoding="utf-8")
+            logger.info(
+                "Wrote dashboard JSON to %s",
+                json_path,
+                extra=structured_extra(component=LogComponent.DASHBOARD, path=json_path),
+            )
+        else:
+            logger.info(
+                "Would write dashboard JSON to %s (dry-run)",
+                json_path,
+                extra=structured_extra(component=LogComponent.DASHBOARD, path=json_path),
+            )
     if markdown_path:
-        _ensure_parent(markdown_path)
-        _ = markdown_path.write_text(render_markdown(summary), encoding="utf-8")
-        logger.info(
-            "Wrote dashboard markdown to %s",
-            markdown_path,
-            extra=structured_extra(component=LogComponent.DASHBOARD, path=markdown_path),
-        )
+        content = render_markdown(summary)
+        if not dry_run:
+            _ensure_parent(markdown_path)
+            _ = markdown_path.write_text(content, encoding="utf-8")
+            logger.info(
+                "Wrote dashboard markdown to %s",
+                markdown_path,
+                extra=structured_extra(component=LogComponent.DASHBOARD, path=markdown_path),
+            )
+        else:
+            logger.info(
+                "Would write dashboard markdown to %s (dry-run)",
+                markdown_path,
+                extra=structured_extra(component=LogComponent.DASHBOARD, path=markdown_path),
+            )
     if html_path:
-        _ensure_parent(html_path)
-        _ = html_path.write_text(render_html(summary, default_view=view.value), encoding="utf-8")
-        logger.info(
-            "Wrote dashboard html to %s",
-            html_path,
-            extra=structured_extra(component=LogComponent.DASHBOARD, path=html_path),
-        )
+        content = render_html(summary, default_view=view.value)
+        if not dry_run:
+            _ensure_parent(html_path)
+            _ = html_path.write_text(content, encoding="utf-8")
+            logger.info(
+                "Wrote dashboard html to %s",
+                html_path,
+                extra=structured_extra(component=LogComponent.DASHBOARD, path=html_path),
+            )
+        else:
+            logger.info(
+                "Would write dashboard html to %s (dry-run)",
+                html_path,
+                extra=structured_extra(component=LogComponent.DASHBOARD, path=html_path),
+            )
 
 
 def _format_json(payload: JSONValue) -> str:

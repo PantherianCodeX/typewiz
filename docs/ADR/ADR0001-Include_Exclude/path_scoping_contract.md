@@ -199,16 +199,16 @@ Negation is evaluated against ratchetr’s canonical candidate set and MUST NOT 
 
 For each candidate file:
 
-1. **Base state**
+1. Base state
 
    * If `includes` is empty: initial state is **included**.
    * If `includes` is non-empty: initial state is **excluded**.
 
-2. **Apply includes (if any)**
+2. Apply includes (if any)
 
    * If `includes` is non-empty, a candidate becomes included if it matches **any** include pattern.
 
-3. **Apply excludes (ordered)**
+3. Apply excludes (ordered)
 
    * Evaluate `excludes` in order, updating inclusion state:
 
