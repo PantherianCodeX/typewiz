@@ -23,7 +23,9 @@ from ratchetr.cli.helpers import (
     StdoutFormat,
     discover_manifest_or_exit,
     echo,
+    infer_stdout_format_from_save_flag,
     parse_readiness_tokens,
+    parse_save_flag,
     query_engines,
     query_hotspots,
     query_overview,
@@ -32,6 +34,7 @@ from ratchetr.cli.helpers import (
     query_runs,
     register_argument,
     register_readiness_flag,
+    register_save_flag,
     render_data,
 )
 from ratchetr.core.model_types import (
@@ -39,13 +42,15 @@ from ratchetr.core.model_types import (
     HotspotKind,
     QuerySection,
 )
+from ratchetr.paths import OutputFormat
 from ratchetr.services.dashboard import load_summary_from_manifest
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from ratchetr.cli.helpers import CLIContext
+    from ratchetr.cli.helpers import CLIContext, ReadinessOptions
     from ratchetr.cli.types import SubparserCollection
+    from ratchetr.core.summary_types import SummaryData
 
 
 def register_query_command(
@@ -75,6 +80,7 @@ def register_query_command(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=section_parents,
     )
+    _attach_query_output_flag(query_overview_parser)
     register_argument(
         query_overview_parser,
         "--include-categories",
@@ -94,6 +100,7 @@ def register_query_command(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=section_parents,
     )
+    _attach_query_output_flag(query_hotspots_parser)
     register_argument(
         query_hotspots_parser,
         "--kind",
@@ -115,6 +122,7 @@ def register_query_command(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=section_parents,
     )
+    _attach_query_output_flag(query_readiness_parser)
     register_readiness_flag(query_readiness_parser, default_enabled=True)
 
     query_runs_parser = query_sub.add_parser(
@@ -123,6 +131,7 @@ def register_query_command(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=section_parents,
     )
+    _attach_query_output_flag(query_runs_parser)
     register_argument(
         query_runs_parser,
         "--tool",
@@ -153,6 +162,7 @@ def register_query_command(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=section_parents,
     )
+    _attach_query_output_flag(query_engines_parser)
     register_argument(
         query_engines_parser,
         "--limit",
@@ -167,6 +177,7 @@ def register_query_command(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=section_parents,
     )
+    _attach_query_output_flag(query_rules_parser)
     register_argument(
         query_rules_parser,
         "--limit",
@@ -176,15 +187,72 @@ def register_query_command(
     )
     register_argument(
         query_rules_parser,
-        "--include-paths",
+        "--includes",
         action="store_true",
         help="Include top file paths per rule",
+    )
+
+
+def _attach_query_output_flag(parser: argparse.ArgumentParser) -> None:
+    register_save_flag(
+        parser,
+        flag="--save-as",
+        dest="output",
+        short_flag="-s",
+        aliases=("--output",),
     )
 
 
 def _render_payload(data: object, fmt: DataFormat) -> None:
     for line in render_data(data, fmt):
         echo(line)
+
+
+def _resolve_query_payload(
+    args: argparse.Namespace,
+    section: QuerySection,
+    summary: SummaryData,
+    readiness: ReadinessOptions,
+) -> object:
+    """Resolve the query payload based on section and arguments.
+
+    Args:
+        args: Parsed CLI namespace.
+        section: Query section to resolve.
+        summary: Loaded summary data.
+        readiness: Parsed readiness options.
+
+    Returns:
+        The resolved query payload.
+    """
+    match section:
+        case QuerySection.OVERVIEW:
+            return query_overview(
+                summary,
+                include_categories=args.include_categories,
+                include_runs=args.include_runs,
+            )
+        case QuerySection.HOTSPOTS:
+            kind = HotspotKind.from_str(args.kind)
+            return query_hotspots(summary, kind=kind, limit=args.limit)
+        case QuerySection.READINESS:
+            return query_readiness(
+                summary,
+                level=readiness.level,
+                statuses=list(readiness.statuses) if readiness.statuses else None,
+                limit=readiness.limit,
+                severities=list(readiness.severities) if readiness.severities else None,
+            )
+        case QuerySection.RUNS:
+            return query_runs(summary, tools=args.tools, modes=args.modes, limit=args.limit)
+        case QuerySection.ENGINES:
+            return query_engines(summary, limit=args.limit)
+        case QuerySection.RULES:
+            return query_rules(
+                summary,
+                limit=args.limit,
+                include_paths=bool(getattr(args, "includes", False)),
+            )
 
 
 def execute_query(args: argparse.Namespace, context: CLIContext) -> int:
@@ -202,7 +270,12 @@ def execute_query(args: argparse.Namespace, context: CLIContext) -> int:
     """
     manifest_path = discover_manifest_or_exit(context, cli_manifest=getattr(args, "manifest", None))
     summary = load_summary_from_manifest(manifest_path)
-    stdout_format = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    save_flag = parse_save_flag(
+        getattr(args, "output", None),
+        allowed_formats={OutputFormat.JSON},
+    )
+    base_stdout = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    stdout_format = infer_stdout_format_from_save_flag(args, base_stdout, save_flag=save_flag)
     data_format = DataFormat.JSON if stdout_format is StdoutFormat.JSON else DataFormat.TABLE
     section_value = args.query_section
     try:
@@ -211,55 +284,20 @@ def execute_query(args: argparse.Namespace, context: CLIContext) -> int:
     # fallback branch is unreachable in normal CLI flow
     except ValueError as exc:  # pragma: no cover
         raise SystemExit(str(exc)) from exc
+    readiness_tokens = getattr(args, "readiness", None)
+    readiness = parse_readiness_tokens(readiness_tokens, flag_present=readiness_tokens is not None)
+    payload = _resolve_query_payload(args, section, summary, readiness)
 
-    match section:
-        case QuerySection.OVERVIEW:
-            _render_payload(
-                query_overview(
-                    summary,
-                    include_categories=args.include_categories,
-                    include_runs=args.include_runs,
-                ),
-                data_format,
-            )
-        case QuerySection.HOTSPOTS:
-            kind = HotspotKind.from_str(args.kind)
-            _render_payload(
-                query_hotspots(summary, kind=kind, limit=args.limit),
-                data_format,
-            )
-        case QuerySection.READINESS:
-            readiness_tokens = getattr(args, "readiness", None)
-            readiness = parse_readiness_tokens(readiness_tokens, flag_present=readiness_tokens is not None)
-            _render_payload(
-                query_readiness(
-                    summary,
-                    level=readiness.level,
-                    statuses=list(readiness.statuses) if readiness.statuses else None,
-                    limit=readiness.limit,
-                    severities=list(readiness.severities) if readiness.severities else None,
-                ),
-                data_format,
-            )
-        case QuerySection.RUNS:
-            _render_payload(
-                query_runs(summary, tools=args.tools, modes=args.modes, limit=args.limit),
-                data_format,
-            )
-        case QuerySection.ENGINES:
-            _render_payload(
-                query_engines(summary, limit=args.limit),
-                data_format,
-            )
-        case QuerySection.RULES:
-            _render_payload(
-                query_rules(
-                    summary,
-                    limit=args.limit,
-                    include_paths=bool(getattr(args, "includes", False)),
-                ),
-                data_format,
-            )
+    json_lines = render_data(payload, DataFormat.JSON)
+    json_text = json_lines[0] if json_lines else ""
+    _render_payload(payload, data_format)
+
+    if save_flag.provided:
+        for target in save_flag.targets:
+            if target.path is None:
+                continue
+            target.path.parent.mkdir(parents=True, exist_ok=True)
+            target.path.write_text(json_text + "\n", encoding="utf-8")
 
     return 0
 

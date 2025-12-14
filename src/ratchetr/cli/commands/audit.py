@@ -191,7 +191,12 @@ def register_audit_command(
         default=None,
         help=("Non-zero exit when diagnostics reach this severity (aliases: none=never, any=any finding)."),
     )
-    register_save_flag(audit, flag="--save-as", dest="save_as", short_flag="-s")
+    register_save_flag(
+        audit,
+        flag="--save-as",
+        dest="output",
+        short_flag="-s",
+    )
     register_save_flag(audit, flag="--dashboard", dest="dashboard", short_flag="-d")
     # NOTE: --exclude flag roadmapped for future implementation (requires full
     # include/exclude scope resolution system)
@@ -668,7 +673,7 @@ def execute_audit(args: argparse.Namespace, context: CLIContext) -> int:
     stdout_format = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
     readiness_tokens = getattr(args, "readiness", None)
     readiness = parse_readiness_tokens(readiness_tokens, flag_present=readiness_tokens is not None)
-    manifest_flag = parse_save_flag(getattr(args, "save_as", None), allowed_formats={OutputFormat.JSON})
+    manifest_flag = parse_save_flag(getattr(args, "output", None), allowed_formats={OutputFormat.JSON})
     dashboard_flag = parse_save_flag(
         getattr(args, "dashboard", None),
         allowed_formats={OutputFormat.JSON, OutputFormat.MARKDOWN, OutputFormat.HTML},

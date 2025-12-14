@@ -200,7 +200,7 @@ def test_manifest_schema_cli_round_trip(tmp_path: Path) -> None:
     manifest = _sample_manifest()
     schema_path = tmp_path / "manifest.schema.json"
 
-    exit_code = main(["manifest", "schema", "--output", str(schema_path)])
+    exit_code = main(["manifest", "schema", "--save-as", str(schema_path)])
     assert exit_code == 0
 
     schema_text = schema_path.read_text(encoding="utf-8")

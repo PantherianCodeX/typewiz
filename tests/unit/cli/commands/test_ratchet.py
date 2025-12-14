@@ -425,7 +425,7 @@ def test_handle_info_displays_absence_of_targets(tmp_path: Path, capsys: pytest.
 
 def test_handle_rebaseline_uses_resolved_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     context = _make_context(tmp_path, ratchet_path=tmp_path / "ratchet.json")
-    resolved_output = tmp_path / "out" / "ratchet.json"
+    resolved_output = (tmp_path / "out" / "ratchet.json").resolve()
     captured: dict[str, object] = {}
 
     def fake_rebaseline(**kwargs: object) -> RatchetRebaselineResult:

@@ -88,7 +88,10 @@ def register_manifest_command(
     )
     register_argument(
         manifest_schema,
+        "-s",
+        "--save-as",
         "--output",
+        dest="output",
         type=Path,
         default=None,
         help="Write the schema to a path instead of stdout",
@@ -120,9 +123,10 @@ def _handle_validate(args: argparse.Namespace, context: CLIContext) -> int:
 def _handle_schema(args: argparse.Namespace) -> int:
     schema = manifest_json_schema()
     schema_text = json.dumps(schema, indent=args.indent)
-    if args.output:
-        _ = args.output.parent.mkdir(parents=True, exist_ok=True)
-        _ = args.output.write_text(schema_text + "\n", encoding="utf-8")
+    output: Path | None = getattr(args, "output", None)
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(schema_text + "\n", encoding="utf-8")
     else:
         echo(schema_text)
     return 0

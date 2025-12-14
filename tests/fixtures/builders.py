@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any
 
 from ratchetr._internal.utils import consume
 from ratchetr.core.model_types import Mode, OverrideEntry, ReadinessStatus, SeverityLevel
@@ -27,28 +27,29 @@ from ratchetr.core.summary_types import (
     CountsByCategory,
     CountsByRule,
     CountsBySeverity,
-    EnginesTab,
-    HotspotsTab,
-    OverviewTab,
     ReadinessOptionEntry,
     ReadinessOptionsPayload,
     ReadinessStrictEntry,
     ReadinessTab,
     RulePathEntry,
-    RunsTab,
     SummaryData,
     SummaryFileEntry,
     SummaryFolderEntry,
     SummaryRunEntry,
     SummaryTabs,
 )
-from ratchetr.core.type_aliases import CategoryKey, CategoryName, RelPath, RunId, ToolName
+from ratchetr.core.type_aliases import CategoryName, RelPath, RunId, ToolName
 from ratchetr.core.types import Diagnostic, RunResult
 from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
+from tests.fixtures.builders_helpers import (
+    TOOL_PYRIGHT,
+    TOOL_STUB,
+    build_diagnostic,
+    build_empty_summary,
+    build_readiness_summary,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
-
     from ratchetr.readiness.compute import ReadinessEntry
 
 __all__ = [
@@ -64,13 +65,20 @@ __all__ = [
     "build_sample_summary",
 ]
 
-TOOL_PYRIGHT: Final[ToolName] = ToolName("pyright")
-TOOL_STUB: Final[ToolName] = ToolName("stub")
-
 
 @dataclass(slots=True)
 class TestDataBuilder:
-    """Factory for rich sample payloads used in tests."""
+    """Factory for rich sample payloads used in tests.
+
+    Attributes:
+        project_root: Default project root inserted into generated payloads.
+        generated_at: Timestamp string used for deterministic fixtures.
+        tool_name: Default tool identifier used when building diagnostics/runs.
+        stub_tool_name: Secondary tool identifier used by stubbed fixtures.
+
+    Returns:
+        A `SummaryData` payload seeded with deterministic values for CLI tests.
+    """
 
     __test__ = False
 
@@ -80,7 +88,15 @@ class TestDataBuilder:
     stub_tool_name: ToolName = TOOL_STUB
 
     def build_sample_summary(self) -> SummaryData:
-        """Return a representative SummaryData payload used by dashboard tests."""
+        """Construct a representative `SummaryData` payload for dashboard tests.
+
+        This method builds a “rich” summary containing multiple populated tabs
+        (overview, engines, hotspots, readiness, runs). It is intended to exercise
+        dashboard rendering and summary aggregation paths with realistic-looking data.
+
+        Returns:
+            A synthetic `SummaryData` payload suitable for dashboard-oriented tests.
+        """
         pyright_override, mypy_override = self._build_sample_overrides()
         run_summary = self._build_sample_run_summary(
             pyright_override=pyright_override,
@@ -393,7 +409,15 @@ class TestDataBuilder:
         }
 
     def build_cli_summary(self) -> SummaryData:
-        """Return dashboard summary tailored to CLI helper tests."""
+        """Construct a `SummaryData` payload tailored to CLI helper tests.
+
+        This fixture favors determinism and minimal-but-valid structure while still
+        populating the fields commonly exercised by CLI formatting logic (overview,
+        hotspots, readiness, run metadata).
+
+        Returns:
+            A deterministic `SummaryData` fixture suitable for CLI-facing tests.
+        """
         readiness_tab: ReadinessTab = {
             "strict": {
                 ReadinessStatus.BLOCKED: [
@@ -501,10 +525,14 @@ class TestDataBuilder:
         return summary
 
     def build_cli_run_result(self) -> RunResult:
-        """Build a RunResult tailored to CLI printing tests.
+        """Construct a `RunResult` fixture tailored to CLI printing tests.
+
+        The returned run includes representative metadata and at least one diagnostic
+        so downstream code paths (formatting, grouping, rendering) are exercised.
 
         Returns:
-            `RunResult`seeded with representative diagnostics and metadata.
+            A deterministic `RunResult` seeded with representative diagnostics and
+            engine metadata for CLI tests.
         """
         diagnostic = Diagnostic(
             tool=self.tool_name,
@@ -532,13 +560,16 @@ class TestDataBuilder:
 
     @staticmethod
     def build_readiness_entries(count: int = 200) -> list[ReadinessEntry]:
-        """Generate readiness entries that stress readiness computation.
+        """Generate synthetic readiness entries for readiness computation tests.
+
+        The generated entries vary counts deterministically to provide a stable but
+        non-trivial dataset for readiness scoring and bucketing logic.
 
         Args:
-            count: Number of readiness records to emit.
+            count: Number of readiness records to generate.
 
         Returns:
-            List of synthetic readiness entries.
+            A list of synthetic readiness entries.
         """
         entries: list[ReadinessEntry] = []
         for index in range(count):
@@ -567,15 +598,18 @@ class TestDataBuilder:
         *,
         tool_name: ToolName | None = None,
     ) -> RunResult:
-        """Construct a run with many diagnostics for performance testing.
+        """Construct a `RunResult` containing many diagnostics for performance tests.
+
+        This fixture is intended for benchmarking and stress testing summary/aggregation
+        code paths by generating `num_files * diagnostics_per_file` diagnostics.
 
         Args:
-            num_files: Number of files represented in the run.
-            diagnostics_per_file: Diagnostics to generate per file.
-            tool_name: Optional override for the tool identifier.
+            num_files: Number of distinct file paths to include in the run.
+            diagnostics_per_file: Number of diagnostics to generate per file.
+            tool_name: Optional override for the tool identifier used in diagnostics.
 
         Returns:
-            `RunResult`packed with synthetic diagnostics.
+            A `RunResult` containing synthetic diagnostics suitable for performance tests.
         """
         diagnostics: list[Diagnostic] = []
         target_tool = tool_name or self.tool_name
@@ -584,7 +618,7 @@ class TestDataBuilder:
             diagnostics.extend(
                 Diagnostic(
                     tool=target_tool,
-                    severity=(SeverityLevel.ERROR if diag_index % 3 == 0 else SeverityLevel.WARNING),
+                    severity=(SeverityLevel.ERROR if not diag_index % 3 else SeverityLevel.WARNING),
                     path=path,
                     line=diag_index + 1,
                     column=1,
@@ -605,46 +639,98 @@ class TestDataBuilder:
 
 
 _DEFAULT_TEST_DATA_BUILDER = TestDataBuilder()
-DEFAULT_READINESS_CATEGORY: CategoryKey = "unknownChecks"
 
 
 def build_sample_summary() -> SummaryData:
-    """Convenience wrapper for the default sample summary.
+    """Build a rich `SummaryData` fixture for dashboard-style tests.
+
+    This is the preferred entry point for tests that validate dashboard rendering,
+    tab composition, and summary aggregation behavior. The returned payload is:
+
+    - Structurally complete (all expected top-level keys and tabs present).
+    - Deterministic (stable timestamps/paths) to support snapshot and golden tests.
+    - Representative (non-trivial hotspots/readiness content) to exercise UI logic.
 
     Returns:
-        Sample `SummaryData`used by CLI tests.
+        A rich, structurally complete `SummaryData` fixture.
     """
     return _DEFAULT_TEST_DATA_BUILDER.build_sample_summary()
 
 
 def build_cli_summary() -> SummaryData:
-    """Return the CLI helper sample summary."""
+    """Build a `SummaryData` fixture for CLI formatting and helper tests.
+
+    This is the preferred entry point for tests that exercise CLI-facing summary
+    traversal and formatting logic. The returned payload is intentionally minimal
+    while remaining structurally valid and stable:
+
+    - Ensures required keys exist (`generatedAt`, `projectRoot`, `tabs`, etc.).
+    - Populates commonly-consumed tabs (overview/hotspots/readiness/runs/engines).
+    - Uses deterministic values to keep assertions and snapshots reliable.
+
+    Returns:
+        A deterministic, structurally valid `SummaryData` fixture for CLI tests.
+    """
     return _DEFAULT_TEST_DATA_BUILDER.build_cli_summary()
 
 
 def build_cli_run_result() -> RunResult:
-    """Return a representative RunResult for CLI helper tests."""
+    """Build a `RunResult` fixture for CLI run output tests.
+
+    This is the preferred entry point for tests that validate rendering and formatting
+    of a single run, including diagnostic listing and run metadata presentation.
+    The returned run is deterministic and includes at least one diagnostic.
+
+    Returns:
+        A deterministic `RunResult` fixture seeded with representative diagnostics.
+    """
     return _DEFAULT_TEST_DATA_BUILDER.build_cli_run_result()
 
 
 def build_readiness_entries(count: int = 200) -> list[ReadinessEntry]:
-    """Return readiness entries for benchmarking tests."""
+    """Build readiness entries for readiness scoring and bucketing tests.
+
+    This wrapper provides a stable dataset with deterministic variation across entries,
+    suitable for benchmarking and validating readiness computations.
+
+    Args:
+        count: Number of readiness entries to generate.
+
+    Returns:
+        A list of synthetic readiness entries.
+    """
     return _DEFAULT_TEST_DATA_BUILDER.build_readiness_entries(count)
 
 
 def build_sample_run(num_files: int = 120, diagnostics_per_file: int = 5) -> RunResult:
-    """Return a RunResult suitable for benchmarking summarise_run."""
+    """Build a `RunResult` fixture for performance and summarization tests.
+
+    This wrapper is the preferred entry point for tests that benchmark or stress
+    summarization/aggregation code paths by generating a large number of diagnostics.
+
+    Args:
+        num_files: Number of distinct file paths represented in the run.
+        diagnostics_per_file: Number of diagnostics to generate per file.
+
+    Returns:
+        A `RunResult` containing synthetic diagnostics for performance-oriented tests.
+    """
     return _DEFAULT_TEST_DATA_BUILDER.build_sample_run(num_files, diagnostics_per_file)
 
 
 def build_cli_manifest(tmp_path: Path) -> Path:
-    """Generate a representative CLI manifest for integration tests.
+    """Generate a representative CLI manifest JSON file for integration tests.
+
+    The manifest includes multiple runs and representative nested structures
+    (per-folder/per-file summaries, engine options, and diagnostics). It is intended
+    for tests that validate manifest loading, schema compatibility, and CLI workflows
+    that operate over persisted artifacts.
 
     Args:
-        tmp_path: Temporary directory used to write the manifest file.
+        tmp_path: Temporary directory into which the manifest file is written.
 
     Returns:
-        Path to the generated manifest file.
+        Path to the generated manifest JSON file.
     """
     manifest: dict[str, Any] = {
         "generatedAt": "2025-11-05T00:00:00Z",
@@ -779,104 +865,3 @@ def build_cli_manifest(tmp_path: Path) -> Path:
     manifest_path = tmp_path / "manifest.json"
     consume(manifest_path.write_text(json.dumps(manifest), encoding="utf-8"))
     return manifest_path
-
-
-def build_empty_summary() -> SummaryData:
-    """Construct a blank SummaryData payload with the required structure.
-
-    Returns:
-        `SummaryData`skeleton with empty tabs.
-    """
-    run_summary: dict[RunId, SummaryRunEntry] = {}
-    severity_totals: CountsBySeverity = {}
-    category_totals: CountsByCategory = {}
-    top_rules: CountsByRule = {}
-    overview: OverviewTab = {
-        "severityTotals": severity_totals,
-        "categoryTotals": category_totals,
-        "runSummary": run_summary,
-    }
-    engines: EnginesTab = {"runSummary": run_summary}
-    top_folders: list[SummaryFolderEntry] = []
-    top_files: list[SummaryFileEntry] = []
-    hotspots: HotspotsTab = {
-        "topRules": top_rules,
-        "topFolders": top_folders,
-        "topFiles": top_files,
-        "ruleFiles": {},
-    }
-    readiness: ReadinessTab = {
-        "strict": {
-            ReadinessStatus.READY: [],
-            ReadinessStatus.CLOSE: [],
-            ReadinessStatus.BLOCKED: [],
-        },
-        "options": {},
-    }
-    runs: RunsTab = {"runSummary": run_summary}
-    tabs: SummaryTabs = {
-        "overview": overview,
-        "engines": engines,
-        "hotspots": hotspots,
-        "readiness": readiness,
-        "runs": runs,
-    }
-    summary: SummaryData = {
-        "generatedAt": "now",
-        "projectRoot": ".",
-        "runSummary": run_summary,
-        "severityTotals": severity_totals,
-        "categoryTotals": category_totals,
-        "topRules": top_rules,
-        "topFolders": top_folders,
-        "topFiles": top_files,
-        "ruleFiles": {},
-        "tabs": tabs,
-    }
-    return summary
-
-
-def build_diagnostic(
-    *,
-    tool: ToolName | None = None,
-    severity: SeverityLevel = SeverityLevel.ERROR,
-    path: Path | str = "src/app.py",
-    line: int = 1,
-    column: int = 1,
-    code: str = "reportGeneralTypeIssues",
-    message: str = "example diagnostic",
-) -> Diagnostic:
-    """Return a Diagnostic populated with sensible defaults for CLI-oriented tests."""
-    diag_tool = tool or TOOL_PYRIGHT
-    diag_path = Path(path)
-    return Diagnostic(
-        tool=diag_tool,
-        severity=severity,
-        path=diag_path,
-        line=line,
-        column=column,
-        code=code,
-        message=message,
-    )
-
-
-def build_readiness_summary(
-    *,
-    option_entries: Mapping[ReadinessStatus, Sequence[ReadinessOptionEntry]] | None = None,
-    strict_entries: Mapping[ReadinessStatus, Sequence[ReadinessStrictEntry]] | None = None,
-    category: CategoryKey = DEFAULT_READINESS_CATEGORY,
-    threshold: int = 0,
-) -> SummaryData:
-    """Return SummaryData populated with the supplied readiness entries."""
-    summary = build_empty_summary()
-    readiness_tab = summary["tabs"]["readiness"]
-    if option_entries is not None:
-        readiness_tab["options"] = {
-            category: {
-                "threshold": threshold,
-                "buckets": {status: tuple(entries) for status, entries in option_entries.items()},
-            },
-        }
-    if strict_entries is not None:
-        readiness_tab["strict"] = {status: list(entries) for status, entries in strict_entries.items()}
-    return summary

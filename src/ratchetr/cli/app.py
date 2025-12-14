@@ -39,6 +39,7 @@ from ratchetr.cli.helpers import (
     build_path_overrides,
     discover_manifest_or_exit,
     finalise_targets,
+    infer_stdout_format_from_save_flag,
     parse_readiness_tokens,
     parse_save_flag,
     query_readiness,
@@ -263,7 +264,13 @@ def _register_dashboard_command(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=parents or [],
     )
-    register_save_flag(dashboard, flag="--save-as", dest="save_as", short_flag="-s")
+    register_save_flag(
+        dashboard,
+        flag="--save-as",
+        dest="output",
+        short_flag="-s",
+        aliases=("--output",),
+    )
     _register_argument(
         dashboard,
         "--view",
@@ -301,8 +308,10 @@ def _register_init_command(
     )
     _register_argument(
         init,
-        "-o",
+        "-s",
+        "--save-as",
         "--output",
+        dest="output",
         type=pathlib.Path,
         default=pathlib.Path("ratchetr.toml"),
         help="Destination for the generated configuration file.",
@@ -407,12 +416,13 @@ def _execute_dashboard(args: argparse.Namespace, context: CLIContext) -> int:
     summary = load_summary_from_manifest(manifest_path)
     view_choice = DashboardView.from_str(args.view)
     save_flag = parse_save_flag(
-        getattr(args, "save_as", None),
+        getattr(args, "output", None),
         allowed_formats={OutputFormat.JSON, OutputFormat.MARKDOWN, OutputFormat.HTML},
     )
     default_target = OutputTarget(OutputFormat.HTML, path=context.resolved_paths.dashboard_path)
     targets = finalise_targets(save_flag, default_targets=(default_target,))
-    stdout_format = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    base_stdout = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    stdout_format = infer_stdout_format_from_save_flag(args, base_stdout, save_flag=save_flag)
     stdout_dashboard_format = DashboardFormat.JSON if stdout_format is StdoutFormat.JSON else DashboardFormat.MARKDOWN
     rendered_stdout = render_dashboard_summary(
         summary,

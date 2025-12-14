@@ -117,7 +117,7 @@ ratchetr query engines --manifest typing_audit.json --format table
 ratchetr query rules --manifest typing_audit.json --limit 10
 
 # Include offending files per rule
-ratchetr query rules --manifest typing_audit.json --include-paths --limit 5
+ratchetr query rules --manifest typing_audit.json --includes --limit 5
 
 # Filter readiness payloads by severity
 ratchetr query readiness --manifest typing_audit.json --severity warning --format table

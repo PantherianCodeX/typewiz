@@ -245,7 +245,10 @@ def _register_init_parser(subparsers: SubparserCollection) -> None:
 
     register_argument(
         init_output,
+        "-s",
+        "--save-as",
         "--output",
+        dest="output",
         type=Path,
         default=None,
         help="Destination for the generated ratchet file.",
@@ -363,7 +366,10 @@ def _register_update_parser(subparsers: SubparserCollection) -> None:
     )
     register_argument(
         update_output,
+        "-s",
+        "--save-as",
         "--output",
+        dest="output",
         type=Path,
         default=None,
         help="Optional destination for the updated ratchet (defaults to --ratchet).",
@@ -445,7 +451,10 @@ def _register_rebaseline_parser(subparsers: SubparserCollection) -> None:
     )
     register_argument(
         rebase_output,
+        "-s",
+        "--save-as",
         "--output",
+        dest="output",
         type=Path,
         default=None,
         help="Optional destination for the refreshed ratchet (defaults to --ratchet).",
@@ -454,7 +463,7 @@ def _register_rebaseline_parser(subparsers: SubparserCollection) -> None:
         rebase_output,
         "--force",
         action="store_true",
-        help="Allow overwriting the existing ratchet when not specifying --output.",
+        help="Allow overwriting the existing ratchet when not specifying --save-as.",
     )
 
 

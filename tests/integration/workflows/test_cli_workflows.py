@@ -334,7 +334,7 @@ def test_cli_dashboard_output(tmp_path: Path) -> None:
             "dashboard",
             "--manifest",
             str(manifest_path),
-            "--out",
+            "--save-as",
             "json",
         ],
     )
@@ -349,9 +349,8 @@ def test_cli_version_flag(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Captur
     assert "ratchetr" in output.lower()
 
 
-def test_cli_engines_list(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
-    monkeypatch.setenv("RATCHETR_LICENSE_KEY", "test")
-    exit_code = _run_cli_command(["engines", "list", "--out", "json"])
+def test_cli_engines_list(capsys: pytest.CaptureFixture[str]) -> None:
+    exit_code = _run_cli_command(["engines", "list", "--save-as", "json"])
     assert exit_code == 0
     data = json.loads(capsys.readouterr().out)
     assert any(entry["name"] == "pyright" for entry in data)
@@ -362,7 +361,6 @@ def test_cli_cache_clear(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Non
     cache_dir.mkdir(parents=True)
     consume((cache_dir / "cache.json").write_text("{}", encoding="utf-8"))
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("RATCHETR_LICENSE_KEY", "test")
     exit_code = _run_cli_command(["cache", "clear"])
     assert exit_code == 0
     assert not cache_dir.exists()
@@ -691,7 +689,7 @@ def test_cli_plugin_arg_validation(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
 
 def test_cli_init_writes_template(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     target = tmp_path / "ratchetr.toml"
-    exit_code = _run_cli_command(["init", "--output", str(target)])
+    exit_code = _run_cli_command(["init", "--save-as", str(target)])
     assert exit_code == 0
     out = capsys.readouterr().out
     assert "Wrote starter config" in out
@@ -786,7 +784,7 @@ def test_cli_dashboard_outputs(
         lambda *_args, **_kwargs: "<html>",
     )
 
-    exit_code_json = _run_cli_command(["dashboard", "--manifest", str(manifest_path), "--out", "json"])
+    exit_code_json = _run_cli_command(["dashboard", "--manifest", str(manifest_path), "--save-as", "json"])
     assert exit_code_json == 0
     out_json = capsys.readouterr().out
     assert json.loads(out_json) == summary
@@ -1050,8 +1048,8 @@ def test_cli_query_rules_limit(tmp_path: Path, capsys: pytest.CaptureFixture[str
             str(manifest_path),
             "--limit",
             "1",
-            "--include-paths",
-            "--out",
+            "--includes",
+            "--save-as",
             "json",
         ],
     )
@@ -1082,7 +1080,7 @@ def test_cli_manifest_validate_accepts_minimal_payload(
 
 def test_cli_manifest_schema_command(tmp_path: Path) -> None:
     schema_path = tmp_path / "schema.json"
-    exit_code = _run_cli_command(["manifest", "schema", "--output", str(schema_path), "--indent", "4"])
+    exit_code = _run_cli_command(["manifest", "schema", "--save-as", str(schema_path), "--indent", "4"])
     assert exit_code == 0
     assert schema_path.exists()
     schema_data = json.loads(schema_path.read_text(encoding="utf-8"))

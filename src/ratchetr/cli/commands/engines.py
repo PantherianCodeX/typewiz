@@ -19,10 +19,17 @@ from __future__ import annotations
 import argparse
 from typing import TYPE_CHECKING
 
-from ratchetr.cli.helpers import echo, render_data
-from ratchetr.cli.helpers.options import StdoutFormat
+from ratchetr.cli.helpers import (
+    StdoutFormat,
+    echo,
+    infer_stdout_format_from_save_flag,
+    parse_save_flag,
+    register_save_flag,
+    render_data,
+)
 from ratchetr.core.model_types import DataFormat
 from ratchetr.engines.registry import describe_engines
+from ratchetr.paths import OutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -50,17 +57,29 @@ def register_engines_command(
     )
     engines_sub = engines.add_subparsers(dest="engines_action", required=True)
 
-    engines_sub.add_parser(
+    engines_list = engines_sub.add_parser(
         "list",
         help="List registered engines",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=parents or [],
     )
+    register_save_flag(
+        engines_list,
+        flag="--save-as",
+        dest="output",
+        short_flag="-s",
+        aliases=("--output",),
+    )
 
 
 def _handle_list(args: argparse.Namespace) -> int:
     descriptors = describe_engines()
-    stdout_format = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    save_flag = parse_save_flag(
+        getattr(args, "output", None),
+        allowed_formats={OutputFormat.JSON},
+    )
+    base_stdout = StdoutFormat.from_str(getattr(args, "out", StdoutFormat.TEXT.value))
+    stdout_format = infer_stdout_format_from_save_flag(args, base_stdout, save_flag=save_flag)
     fmt = DataFormat.JSON if stdout_format is StdoutFormat.JSON else DataFormat.TABLE
     payload = [
         {
@@ -73,6 +92,14 @@ def _handle_list(args: argparse.Namespace) -> int:
     ]
     for line in render_data(payload, fmt):
         echo(line)
+    if save_flag.provided:
+        json_lines = render_data(payload, DataFormat.JSON)
+        json_text = json_lines[0] if json_lines else ""
+        for target in save_flag.targets:
+            if target.path is None:
+                continue
+            target.path.parent.mkdir(parents=True, exist_ok=True)
+            target.path.write_text(json_text + "\n", encoding="utf-8")
     return 0
 
 
