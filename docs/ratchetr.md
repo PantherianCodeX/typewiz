@@ -8,7 +8,7 @@ For installation and quick start, see [README.md](../README.md).
 
 ## Commands
 
-Run a full audit from the repository root:
+Run a targeted audit from the repository root:
 
 ```bash
 python -m ratchetr audit --max-depth 3
@@ -17,7 +17,7 @@ python -m ratchetr audit --max-depth 3
 This produces `typing_audit_manifest.json` (relative to the working directory) containing:
 
 - All diagnostics from the current enforced configuration (`mode="current"`).
-- An expansive run across the project directories (`mode="full"`).
+- An expansive run across the project directories (`mode="target"`).
 - Aggregated per-file and per-folder summaries with recommendations for enabling stricter checks.
 - The original tool-provided summary counts (when present) under `toolSummary`, alongside the parsed totals used in `summary`. If the two diverge, ratchetr logs a warning so the mismatch is visible in CI output.
 - Each diagnostic preserves the engine-provided payload under `raw`, normalised to a recursive JSON value (`JSONValue`) so downstream tooling can safely consume the data without resorting to casts or `Any`.
@@ -26,9 +26,9 @@ Manifests always declare `schemaVersion = "1"` and ratchetr enforces that value 
 
 Options:
 
-- `--skip-current` / `--skip-full` – limit runs to the requested modes.
+- `--skip-current` / `--skip-target` – limit runs to the requested modes.
 - `--runner <name>` – run a specific engine (repeatable; default: all registered).
-- `--full-path <path>` – add directories to the full-run command.
+- `--full-path <path>` – add directories to the run command.
 - `--manifest <path>` – override the output location.
 - `--dashboard-json`, `--dashboard-markdown`, `--dashboard-html` – write summaries in multiple formats.
 - `--plugin-arg engine=ARG` – forward an argument to a specific engine (e.g. `--plugin-arg pyright=--pythonversion=3.12`).
@@ -166,7 +166,7 @@ Implement the following on your engine class:
     - `paths`: directories/files for the full run; empty for "current" mode.
   - Execute your tool (see `ratchetr.engines.execution.run_pyright` / `run_mypy` as references) and return:
     - `engine`: `ToolName(self.name)`.
-    - `mode`: `"current"` or `"full"`.
+    - `mode`: `"current"` or `"target"`.
     - `command`: the argv used (for reproducibility and caching keys).
     - `exit_code`, `duration_ms`.
     - `diagnostics`: list of `Diagnostic` with stable path/line/column ordering.
@@ -196,9 +196,9 @@ config_version = 0
 
 [audit]
 manifest_path = "reports/typing/manifest.json"
-full_paths = ["apps", "packages"]
+target_paths = ["apps", "packages"]
 max_depth = 3
-skip_full = false
+skip_target = false
 skip_current = false
 runners = ["pyright", "mypy"]
 fail_on = "errors"
@@ -218,7 +218,7 @@ stable command ordering.
 ## Incremental cache
 
 Runs are cached in `.ratchetr_cache/cache.json`. The cache key combines the engine name, mode, command flags, and
-fingerprints (mtime, size, content hash) for all files under the configured `full_paths` and key config files
+fingerprints (mtime, size, content hash) for all files under the configured `target_paths` and key config files
 (`pyrightconfig.json`, `mypy.ini`, `ratchetr.toml`). When nothing relevant changes, ratchetr reuses the cached
 diagnostics and exit code, dramatically reducing CI runtimes for steady-state checks.
 

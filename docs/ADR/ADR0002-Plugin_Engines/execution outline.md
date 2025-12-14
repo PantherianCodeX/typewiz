@@ -9,7 +9,7 @@ Make engine execution **correct, deterministic, and mode-consistent**, with:
 * no runner-side heuristics
 * no implicit scope guessing
 * clear separation of **engine failures** vs **code diagnostics**
-* deterministic, per-engine deduplication between CURRENT and FULL
+* deterministic, per-engine deduplication between CURRENT and TARGET
 
 PR F **changes runtime behavior** and fixes known correctness bugs.
 
@@ -33,7 +33,7 @@ CLI positional args
 **The only mode difference:**
 
 * **CURRENT** participates in **CLI positional args**
-* **FULL** runs without any CLI positional scope input (no CLI positional override can affect FULL)
+* **TARGET** runs without any CLI positional scope input (no CLI positional override can affect TARGET)
 
 Nothing else differs (no alternate heuristics, no magic).
 
@@ -48,16 +48,16 @@ Engine execution is planned **per engine**, and deduplication happens **per engi
 | Mode    | Execution (per engine)                                                               |
 | ------- | ------------------------------------------------------------------------------------ |
 | CURRENT | Run the engine using scope resolved **with CLI positional args**                     |
-| FULL    | Run the engine using scope resolved **without CLI positional args**                  |
-| BOTH    | Plan CURRENT and FULL; run CURRENT then FULL **only if the per-engine plans differ** |
+| TARGET    | Run the engine using scope resolved **without CLI positional args**                  |
+| BOTH    | Plan CURRENT and TARGET; run CURRENT then TARGET **only if the per-engine plans differ** |
 
 **Deduplication rule (deterministic, non-interpretive):**
 
-* If `engine_plan_current == engine_plan_full` (after canonicalization), **skip CURRENT for that engine** and run **FULL only**.
+* If `engine_plan_current == engine_plan_target` (after canonicalization), **skip CURRENT for that engine** and run **TARGET only**.
 
 **Canonical run identity:**
 
-* FULL is the canonical run when deduplication occurs (required for ratcheting eligibility).
+* TARGET is the canonical run when deduplication occurs (required for ratcheting eligibility).
 
 ---
 
@@ -68,7 +68,7 @@ Engine execution is planned **per engine**, and deduplication happens **per engi
 **Delete or bypass (if properly used for another purpose)** any logic that:
 
 * infers scope from mode
-* injects `["."]` as a special FULL behavior (beyond being the default fallback)
+* injects `["."]` as a special TARGET behavior (beyond being the default fallback)
 * passes empty target lists to runners to “let the tool decide”
 * allows engines to decide scope implicitly
 
@@ -91,8 +91,8 @@ current_scope = resolve_scope(
     default=["."]
 )
 
-full_scope = resolve_scope(
-    cli_paths=None,  # <-- the only caveat: FULL has no CLI positional scope input
+target_scope = resolve_scope(
+    cli_paths=None,  # <-- the only caveat: TARGET has no CLI positional scope input
     env=env,
     config=config,
     default=["."]
@@ -103,7 +103,7 @@ Then construct per-engine plans:
 
 ```python
 plan_current = build_engine_plan(mode=Mode.CURRENT, scope=current_scope, ...)
-plan_full    = build_engine_plan(mode=Mode.FULL,    scope=full_scope,    ...)
+plan_target    = build_engine_plan(mode=Mode.TARGET,    scope=target_scope,    ...)
 ```
 
 Scheduling (per engine):
@@ -112,15 +112,15 @@ Scheduling (per engine):
 if requested_mode == Mode.CURRENT:
     run(plan_current)
 
-elif requested_mode == Mode.FULL:
-    run(plan_full)
+elif requested_mode == Mode.TARGET:
+    run(plan_target)
 
 else:  # BOTH
-    if plan_current == plan_full:
-        run(plan_full)  # FULL is canonical
+    if plan_current == plan_target:
+        run(plan_target)  # TARGET is canonical
     else:
         run(plan_current)
-        run(plan_full)
+        run(plan_target)
 ```
 
 #### Normalization requirements (industry-standard determinism)
@@ -143,7 +143,7 @@ Deduplication is **not path-only**. Equality is evaluated on the **per-engine ex
 
 #### `EnginePlan` must include (per engine)
 
-Only the dimensions that can affect how **that engine** runs and can differ between CURRENT and FULL inputs:
+Only the dimensions that can affect how **that engine** runs and can differ between CURRENT and TARGET inputs:
 
 * resolved target scope (canonicalized)
 * per-engine config selection (path or “none”)
@@ -165,7 +165,7 @@ Only the dimensions that can affect how **that engine** runs and can differ betw
 
 ### 3) Runner invocation parity (non-negotiable)
 
-CURRENT and FULL invocations for a given engine must be identical except for:
+CURRENT and TARGET invocations for a given engine must be identical except for:
 
 * execution order
 * target list (and if identical, CURRENT is skipped for that engine)
@@ -221,7 +221,7 @@ Plugin engines are tool-owned and language-agnostic. Ratchetr must not impose in
 
 ### 5) Config selection rules (consistent across modes; ergonomic; non-interpretive)
 
-Config selection must be deterministic and identical for CURRENT and FULL.
+Config selection must be deterministic and identical for CURRENT and TARGET.
 
 Recommended resolution order:
 
@@ -298,12 +298,12 @@ class Mode(StrEnum):
     CURRENT:
         Resolve scope using CLI > env > config > default.
 
-    FULL:
+    TARGET:
         Resolve scope using env > config > default
         (no CLI positional scope input participates).
 
     BOTH:
-        Plan CURRENT and FULL per engine and run CURRENT only
+        Plan CURRENT and TARGET per engine and run CURRENT only
         when the per-engine plans differ.
     """
 ```
@@ -317,7 +317,7 @@ No other semantics should be embedded in mode docs.
 * One scope resolver is used for both modes; only CLI positional scope input differs
 * Per-engine plan construction is deterministic and canonicalized (order-invariant scope)
 * Deduplication is per-engine and compares per-engine plan dimensions (not path-only)
-* FULL is the canonical run when deduplication occurs
+* TARGET is the canonical run when deduplication occurs
 * No engine infers scope implicitly; targets are always explicit
 * No engine receives an empty target list unless the resolved scope is truly empty (default `["."]` prevents this in normal operation)
 * Explicit empty include configuration deselects the engine and records a configuration error (no execution)

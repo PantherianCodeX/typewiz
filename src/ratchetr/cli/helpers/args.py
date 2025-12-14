@@ -214,7 +214,7 @@ def normalise_modes(values: Sequence[str] | None) -> list[Mode]:
         try:
             mode = Mode.from_str(raw)
         except ValueError as exc:
-            msg = f"{exc}. Valid modes: current, full"
+            msg = f"{exc}. Valid modes: current, target"
             raise SystemExit(msg) from exc
         if mode not in modes:
             modes.append(mode)

@@ -24,7 +24,7 @@
     },
     {
       "tool": "pyright",
-      "mode": "full",
+      "mode": "target",
       "command": [
         "pyright",
         "--outputjson",
@@ -207,7 +207,7 @@
               "column": 30,
               "severity": "error",
               "code": "reportOptionalMemberAccess",
-              "message": "\"full_clean\" is not a known attribute of \"None\""
+              "message": "\"target_clean\" is not a known attribute of \"None\""
             },
             {
               "line": 462,
@@ -9617,7 +9617,7 @@
     },
     {
       "tool": "mypy",
-      "mode": "full",
+      "mode": "target",
       "command": [
         "/usr/bin/python",
         "-m",

@@ -458,7 +458,7 @@ from the directory containing the override file.
 
 Each engine stores its diagnostics in `.ratchetr_cache/cache.json`. The cache key captures:
 
-- engine name and mode (`current` / `full`)
+- engine name and mode (`current` / `target`)
 - plugin arguments and resolved command flags
 - file fingerprints (mtime, size, content hash) for all scanned paths and configs
 
@@ -546,7 +546,7 @@ print(result.summary)  # dict with top folders/files and rule counts
 override = AuditConfig(
     full_paths=["apps", "packages"],
     skip_current=False,
-    skip_full=False,
+    skip_target=False,
     max_depth=3,
     dashboard_html=Path("reports/typing/summary.html"),
 )

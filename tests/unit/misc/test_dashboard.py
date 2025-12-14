@@ -221,7 +221,7 @@ def test_build_summary_skips_missing_entries(tmp_path: Path) -> None:
                 "RunPayload",
                 {
                     "tool": "stub",
-                    "mode": "full",
+                    "mode": "target",
                     "command": [],
                     "exitCode": 0,
                     "durationMs": 1,
@@ -264,7 +264,7 @@ def test_render_markdown_handles_empty_runs() -> None:
 def test_render_markdown_tool_totals_mismatch(sample_summary: SummaryData) -> None:
     summary = copy.deepcopy(sample_summary)
     run_summary = summary["tabs"]["overview"]["runSummary"]
-    run_id = RunId("mypy:full")
+    run_id = RunId("mypy:target")
     assert run_id in run_summary
     target = run_summary[run_id]
     target["toolSummary"] = {"errors": 2, "warnings": 0, "information": 0, "total": 2}

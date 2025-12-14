@@ -97,7 +97,7 @@ class EngineContext:
     Attributes:
         project_root: Root directory of the project being analyzed.
         audit_config: ratchetr audit configuration for the project.
-        mode: Execution mode (e.g., CURRENT for full project, DELTA for changes).
+        mode: Execution mode (e.g., CURRENT or TARGET).
         engine_options: Engine-specific configuration options.
     """
 
@@ -105,6 +105,72 @@ class EngineContext:
     audit_config: AuditConfig
     mode: Mode
     engine_options: EngineOptions
+
+
+@dataclass(slots=True, frozen=True)
+# ignore JUSTIFIED: EnginePlan represents all parameters that determine execution
+# equivalence for deduplication. All 11 attributes are essential and semantically
+# cohesive. Splitting would reduce clarity and violate single responsibility.
+class EnginePlan:  # pylint: disable=too-many-instance-attributes
+    """Resolved execution plan for a single engine run.
+
+    Captures all parameters that determine execution equivalence.
+    Plans are compared for deduplication: if plan_current == plan_target,
+    only TARGET runs (TARGET is canonical for ratcheting).
+
+    Note: This is distinct from OutputPlan (in _internal/paths.py), which
+    handles output artifact planning. EnginePlan handles execution inputs.
+
+    Attributes:
+        engine_name: Name of the engine (e.g., "mypy", "pyright").
+        mode: Execution mode (CURRENT or TARGET).
+        resolved_scope: Canonicalized, sorted, deduplicated scope paths.
+        plugin_args: Engine-specific command-line arguments (order-sensitive).
+        profile: Active profile name.
+        config_file: Path to engine configuration file.
+        include: Include path filters (canonicalized, sorted).
+        exclude: Exclude path filters (canonicalized, sorted).
+        overrides: Path-specific overrides (order-preserved from config).
+        category_mapping: Diagnostic category mappings.
+        root: Project root directory.
+    """
+
+    engine_name: ToolName
+    mode: Mode
+    resolved_scope: tuple[RelPath, ...]  # Sorted, immutable
+    plugin_args: tuple[str, ...]  # Order-sensitive
+    profile: ProfileName | None
+    config_file: Path | None
+    include: tuple[RelPath, ...]  # Sorted
+    exclude: tuple[RelPath, ...]  # Sorted
+    overrides: tuple[OverrideEntry, ...]
+    category_mapping: CategoryMapping
+    root: Path
+
+    def is_equivalent_to(self, other: EnginePlan) -> bool:
+        """Check equivalence for per-engine deduplication.
+
+        Two plans are equivalent if they would produce identical engine
+        execution. Mode is intentionally excluded - we compare inputs only.
+
+        Args:
+            other: Plan to compare against.
+
+        Returns:
+            True if plans are functionally equivalent.
+        """
+        return (
+            self.engine_name == other.engine_name
+            and self.resolved_scope == other.resolved_scope
+            and self.plugin_args == other.plugin_args
+            and self.profile == other.profile
+            and self.config_file == other.config_file
+            and self.include == other.include
+            and self.exclude == other.exclude
+            and self.overrides == other.overrides
+            and self.category_mapping == other.category_mapping
+            and self.root == other.root
+        )
 
 
 @dataclass(slots=True)

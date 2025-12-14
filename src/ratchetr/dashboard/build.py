@@ -555,10 +555,10 @@ def _select_top_files(
 
 def _build_top_folder_entries(
     top_folders: Sequence[tuple[str, Counter[str]]],
-    folder_entries_full: Sequence[ReadinessEntry],
+    folder_entries_target: Sequence[ReadinessEntry],
     folder_stats: _FolderAccumulators,
 ) -> list[SummaryFolderEntry]:
-    folder_entry_lookup: dict[str, ReadinessEntry] = {entry["path"]: entry for entry in folder_entries_full}
+    folder_entry_lookup: dict[str, ReadinessEntry] = {entry["path"]: entry for entry in folder_entries_target}
     payload: list[SummaryFolderEntry] = []
     for path, counts in top_folders:
         folder_entry = folder_entry_lookup.get(path)
@@ -729,12 +729,12 @@ def build_summary(manifest: ManifestData) -> SummaryData:
     for run in _coerce_run_entries(manifest):
         _consume_run(run, state=state)
 
-    folder_entries_full = state.folder_stats.build_entries()
-    readiness_tab = _build_readiness_section(folder_entries_full)
+    folder_entries_target = state.folder_stats.build_entries()
+    readiness_tab = _build_readiness_section(folder_entries_target)
     top_rules_dict = _build_top_rules(state.rule_totals)
     top_folders_list = _build_top_folder_entries(
         _select_top_folders(state.folder_stats),
-        folder_entries_full,
+        folder_entries_target,
         state.folder_stats,
     )
     top_files_list = _build_top_file_entries(_select_top_files(state.file_entries))

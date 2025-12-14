@@ -41,8 +41,7 @@ class MypyEngine(BaseEngine):
 
     This engine runs mypy on Python projects, handling configuration file
     detection, command-line argument construction, and result parsing.
-    It supports both CURRENT mode (full project analysis) and DELTA mode
-    (targeted file analysis).
+    It supports both CURRENT mode (targeted file analysis) and TARGET mode.
 
     Attributes:
         name: The engine identifier "mypy".
@@ -85,8 +84,8 @@ class MypyEngine(BaseEngine):
 
         Constructs the complete command to run mypy, including the Python
         executable, configuration file, mode-specific flags, and target paths.
-        In CURRENT mode, analyzes the full project. In DELTA mode, only
-        analyzes the specified paths.
+        In CURRENT mode, analyzes with current CLI settings. In TARGET mode, all
+        configured paths are analyzed.
 
         Args:
             context: Execution context with mode, config, and project info.

@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2025-12-14
 **Owners:** Ratchetr maintainers
-**Scope:** How ratchetr resolves scan scope for engine runs, how it plans and deduplicates CURRENT/FULL executions **per engine**, how it treats built-in vs plugin engines, and how engine failures are represented and surfaced (separate from code diagnostics).
+**Scope:** How ratchetr resolves scan scope for engine runs, how it plans and deduplicates CURRENT/TARGET executions **per engine**, how it treats built-in vs plugin engines, and how engine failures are represented and surfaced (separate from code diagnostics).
 
 ---
 
@@ -12,7 +12,7 @@
 Ratchetr orchestrates multiple engines (built-ins and plugins) to produce diagnostics and dashboards from a single run. The tool must be predictable and automation-friendly:
 
 * Scope selection must be deterministic and consistent with the project’s general precedence rules.
-* “CURRENT” and “FULL” runs must be comparable without introducing special-case heuristics.
+* “CURRENT” and “TARGET” runs must be comparable without introducing special-case heuristics.
 * The system must avoid doing redundant work when the effective run inputs are equivalent.
 * Engine execution failures must be clearly separated from code diagnostics, without polluting results or inventing tool behaviors.
 
@@ -26,19 +26,19 @@ Ratchetr will:
 
 1. Use **one scope-resolution algorithm** with a single precedence chain:
 
-   ```
+   ```text
    CLI positional args > environment variables > config file > default ["."]
    ```
 
 2. Define the only mode distinction as **CLI positional scope participation**:
 
    * **CURRENT** participates in CLI positional args
-   * **FULL** runs without any CLI positional scope input
+   * **TARGET** runs without any CLI positional scope input
 
 3. Plan and deduplicate **per engine** using an explicit, canonicalized `EnginePlan`:
 
-   * For each engine, build `EnginePlan(CURRENT)` and `EnginePlan(FULL)`
-   * If plans are equal after canonicalization, execute **FULL only** for that engine (FULL is canonical)
+   * For each engine, build `EnginePlan(CURRENT)` and `EnginePlan(TARGET)`
+   * If plans are equal after canonicalization, execute **TARGET only** for that engine (TARGET is canonical)
 
 4. Require determinism through canonicalization:
 
@@ -57,7 +57,7 @@ Ratchetr will:
 
 7. Enforce deterministic config selection and recording:
 
-   ```
+   ```text
    CLI config override > env override > ratchetr config > tool-native discovery
    ```
 
@@ -85,16 +85,16 @@ Scope is resolved via a single, shared algorithm consistent with ratchetr’s ge
 
 Precedence:
 
-```
+```text
 CLI positional args > environment variables > config file > default ["."]
 ```
 
 Mode input rule:
 
 * CURRENT supplies `cli_paths` to scope resolution.
-* FULL supplies no CLI positional scope input (i.e., CLI positional args do not participate).
+* TARGET supplies no CLI positional scope input (i.e., CLI positional args do not participate).
 
-**Rationale:** This eliminates mode-specific heuristics and ensures a uniform mental model. FULL is “full” because it is not restricted by CLI positional scope input, while still honoring the same environment/config/default sources.
+**Rationale:** This eliminates mode-specific heuristics and ensures a uniform mental model. TARGET is “target” because it is not restricted by CLI positional scope input, while still honoring the same environment/config/default sources.
 
 ---
 
@@ -146,14 +146,14 @@ Ratchetr constructs an `EnginePlan` per engine per mode. `EnginePlan` captures t
 For each engine:
 
 * If requested mode is CURRENT: execute CURRENT plan (no deduplication).
-* If requested mode is FULL: execute FULL plan (no deduplication).
+* If requested mode is TARGET: execute TARGET plan (no deduplication).
 * If requested mode is BOTH (or default that implies both):
 
   * Build both plans.
-  * If plans are equal after canonicalization: execute **FULL only** (FULL is canonical).
-  * Otherwise: execute CURRENT then FULL.
+  * If plans are equal after canonicalization: execute **TARGET only** (TARGET is canonical).
+  * Otherwise: execute CURRENT then TARGET.
 
-**Rationale:** This avoids running equivalent work twice, while preserving the ability to request a specific mode explicitly. FULL is canonical for ratcheting eligibility and for consistent “final” reporting.
+**Rationale:** This avoids running equivalent work twice, while preserving the ability to request a specific mode explicitly. TARGET is canonical for ratcheting eligibility and for consistent “final” reporting.
 
 ---
 
@@ -186,7 +186,7 @@ Where ratchetr owns execution for a built-in Python engine:
 
 Config selection follows a deterministic selection order:
 
-```
+```text
 CLI override > env override > ratchetr config > tool-native discovery
 ```
 
@@ -194,7 +194,7 @@ Ratchetr:
 
 * selects and records the config path used (or “none”)
 * does not interpret tool-native config semantics
-* applies identical selection rules to CURRENT and FULL (mode does not affect selection)
+* applies identical selection rules to CURRENT and TARGET (mode does not affect selection)
 
 **Rationale:** Users need transparency (what config was used) without ratchetr becoming a semantic interpreter of each tool’s configuration language.
 
@@ -249,7 +249,7 @@ At minimum:
 
 ## 4. Alternatives Considered
 
-### 4.1 Global deduplication of CURRENT vs FULL (whole-run equality)
+### 4.1 Global deduplication of CURRENT vs TARGET (whole-run equality)
 
 Rejected. Whole-run equality is susceptible to unrelated engine differences and couples deduplication to global state, increasing the chance of missed or redundant work. Per-engine equality is the correct granularity.
 

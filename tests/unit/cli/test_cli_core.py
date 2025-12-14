@@ -101,7 +101,7 @@ def _build_cli_runs(tmp_path: Path) -> tuple[RunResult, RunResult]:
     )
     run_present = RunResult(
         tool=PYRIGHT_TOOL,
-        mode=Mode.FULL,
+        mode=Mode.TARGET,
         command=["pyright", "."],
         exit_code=0,
         duration_ms=0.1,
@@ -212,13 +212,13 @@ def test_normalise_modes_tuple_rejects_unknown_value() -> None:
 
 def test_normalise_modes_returns_modes_for_values() -> None:
     # Arrange
-    requested = ["current", "full"]
+    requested = ["current", "target"]
 
     # Act
     modes = normalise_modes(requested)
 
     # Assert
-    assert modes == [Mode.CURRENT, Mode.FULL]
+    assert modes == [Mode.CURRENT, Mode.TARGET]
 
 
 def test_normalise_modes_returns_empty_when_not_requested() -> None:
@@ -392,4 +392,4 @@ def test_print_summary_compact_style_includes_overrides(
     # Assert
     output = capsys.readouterr().out
     assert "overrides" in output
-    assert "pyright:full exit=0" in output
+    assert "pyright:target exit=0" in output

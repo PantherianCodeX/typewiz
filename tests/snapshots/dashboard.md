@@ -14,7 +14,7 @@
 | Run | Errors | Warnings | Information | Command |
 | --- | ---: | ---: | ---: | --- |
 | `pyright:current` | 0 | 0 | 0 | `pyright --outputjson` |
-| `mypy:full` | 1 | 1 | 0 | `python -m mypy` |
+| `mypy:target` | 1 | 1 | 0 | `python -m mypy` |
 
 ## Engine details
 
@@ -28,7 +28,7 @@
 - Folder overrides:
   - `apps/platform` (plugin args: `--warnings`)
 
-### `mypy:full`
+### `mypy:target`
 
 - Profile: strict
 - Config file: mypy.ini
@@ -76,7 +76,7 @@
 - Total diagnostics: 0
 - Severity breakdown: {}
 
-### `mypy:full`
+### `mypy:target`
 
 - Errors: 1
 - Warnings: 1

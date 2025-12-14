@@ -16,7 +16,7 @@ Subcommands:
   - Flags: `--level file|folder` (default: `folder`), `--status STATUS` (repeatable),
     `--severity error|warning|information` (repeatable), `--limit N`, `--format json|table`.
 - `ratchetr query runs --manifest ...`: raw run metadata filtered by tool or mode.
-  - Flags: `--tool NAME` (repeatable), `--mode current|full` (repeatable), `--limit N`, `--format json|table`.
+  - Flags: `--tool NAME` (repeatable), `--mode current|target` (repeatable), `--limit N`, `--format json|table`.
 - `ratchetr query engines --manifest ...`: engine configuration applied to each run.
   - Flags: `--limit N`, `--format json|table`.
 - `ratchetr query rules --manifest ...`: most frequent rule identifiers.

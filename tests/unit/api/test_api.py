@@ -67,7 +67,7 @@ def fake_run_result(tmp_path: Path) -> RunResult:
     ]
     return RunResult(
         tool=STUB_TOOL,
-        mode=Mode.FULL,
+        mode=Mode.TARGET,
         command=["stub"],
         exit_code=1,
         duration_ms=5.0,
@@ -115,24 +115,24 @@ def test_run_audit_programmatic(
         default_view="overview",
     )
     assert (tmp_path / "summary.json").exists()
-    full_run = next(run for run in result.runs if run.mode is Mode.FULL)
-    assert full_run.category_mapping == {"unknownChecks": ["reportGeneralTypeIssues"]}
-    assert full_run.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
+    target_run = next(run for run in result.runs if run.mode is Mode.TARGET)
+    assert target_run.category_mapping == {"unknownChecks": ["reportGeneralTypeIssues"]}
+    assert target_run.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
     manifest = result.manifest
     assert "runs" in manifest
     manifest_runs = manifest["runs"]
-    manifest_full_run = next(run for run in manifest_runs if run["mode"] == "full")
-    engine_options = manifest_full_run["engineOptions"]
+    manifest_target_run = next(run for run in manifest_runs if run["mode"] == "target")
+    engine_options = manifest_target_run["engineOptions"]
     assert "categoryMapping" in engine_options
     assert engine_options["categoryMapping"] == {"unknownChecks": ["reportGeneralTypeIssues"]}
-    assert "toolSummary" in manifest_full_run
-    assert manifest_full_run["toolSummary"] == {
+    assert "toolSummary" in manifest_target_run
+    assert manifest_target_run["toolSummary"] == {
         "errors": 1,
         "warnings": 0,
         "information": 0,
         "total": 1,
     }
-    summary_payload = manifest_full_run["summary"]
+    summary_payload = manifest_target_run["summary"]
     assert "categoryCounts" in summary_payload
     assert summary_payload["categoryCounts"].get("unknownChecks") == 1
     readiness = summary["tabs"]["readiness"]
@@ -177,11 +177,11 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
 
     assert len(engine.invocations) == 2
     modes = {invocation.mode for invocation in engine.invocations}
-    assert modes == {Mode.CURRENT, Mode.FULL}
-    full_invocation = next(inv for inv in engine.invocations if inv.mode is Mode.FULL)
-    assert full_invocation.plugin_args == ["--base", "--engine", "--strict"]
-    assert sorted(full_invocation.paths) == ["extra", "src"]
-    assert full_invocation.profile == STRICT_PROFILE
+    assert modes == {Mode.CURRENT, Mode.TARGET}
+    target_invocation = next(inv for inv in engine.invocations if inv.mode is Mode.TARGET)
+    assert target_invocation.plugin_args == ["--base", "--engine", "--strict"]
+    assert sorted(target_invocation.paths) == ["extra", "src"]
+    assert target_invocation.profile == STRICT_PROFILE
 
     assert {run.profile for run in result.runs} == {STRICT_PROFILE}
     assert all(run.plugin_args == ["--base", "--engine", "--strict"] for run in result.runs)
@@ -246,17 +246,17 @@ exclude = ["legacy"]
     result = run_audit(project_root=tmp_path, config=None, build_summary_output=False)
 
     assert engine.invocations
-    full_invocation = next(inv for inv in engine.invocations if inv.mode is Mode.FULL)
-    full_context = full_invocation.context
-    assert full_context.engine_options.profile == "strict"
-    assert "--billing" in full_context.engine_options.plugin_args
-    assert any("packages/billing" in path for path in full_context.engine_options.include)
-    assert any("packages/billing/legacy" in path for path in full_context.engine_options.exclude)
+    target_invocation = next(inv for inv in engine.invocations if inv.mode is Mode.TARGET)
+    target_context = target_invocation.context
+    assert target_context.engine_options.profile == "strict"
+    assert "--billing" in target_context.engine_options.plugin_args
+    assert any("packages/billing" in path for path in target_context.engine_options.include)
+    assert any("packages/billing/legacy" in path for path in target_context.engine_options.exclude)
 
     manifest = result.manifest
     assert "runs" in manifest
     manifest_runs = manifest["runs"]
-    run_payload = next(run for run in manifest_runs if run["mode"] == "full")
+    run_payload = next(run for run in manifest_runs if run["mode"] == "target")
     engine_options = run_payload["engineOptions"]
     assert "profile" in engine_options
     assert engine_options["profile"] == "strict"
@@ -290,8 +290,8 @@ def test_run_audit_cache_preserves_tool_summary(
 
     engine = RecordingEngine(
         diagnostics=diagnostics,
-        tool_summary_on_full={"errors": 1, "warnings": 0, "information": 0, "total": 1},
-        full_exit_code=1,
+        tool_summary_on_target={"errors": 1, "warnings": 0, "information": 0, "total": 1},
+        target_exit_code=1,
         current_exit_code=0,
     )
 
@@ -307,27 +307,27 @@ def test_run_audit_cache_preserves_tool_summary(
     override = AuditConfig(full_paths=["pkg"], runners=[STUB_RUNNER])
 
     first = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
-    assert sum(1 for inv in engine.invocations if inv.mode is Mode.FULL) == 1
-    first_full = next(run for run in first.runs if run.mode is Mode.FULL)
-    assert first_full.cached is False
-    assert first_full.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
+    assert sum(1 for inv in engine.invocations if inv.mode is Mode.TARGET) == 1
+    first_target = next(run for run in first.runs if run.mode is Mode.TARGET)
+    assert first_target.cached is False
+    assert first_target.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
     cache_path = tmp_path / ".ratchetr_cache" / "cache.json"
     assert cache_path.exists()
     assert not (tmp_path / ".ratchetr_cache.json").exists()
     runs_first = first.manifest.get("runs") or []
-    first_manifest_full = next(run for run in runs_first if run.get("mode") == "full")
-    tool_summary = first_manifest_full.get("toolSummary") or {}
+    first_manifest_target = next(run for run in runs_first if run.get("mode") == "target")
+    tool_summary = first_manifest_target.get("toolSummary") or {}
     assert tool_summary.get("total") == 1
 
     second = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
     # cache hit should avoid new invocations
-    assert sum(1 for inv in engine.invocations if inv.mode is Mode.FULL) == 1
-    cached_full = next(run for run in second.runs if run.mode is Mode.FULL)
-    assert cached_full.cached is True
-    assert cached_full.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
+    assert sum(1 for inv in engine.invocations if inv.mode is Mode.TARGET) == 1
+    cached_target = next(run for run in second.runs if run.mode is Mode.TARGET)
+    assert cached_target.cached is True
+    assert cached_target.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
     runs_second = second.manifest.get("runs") or []
-    cached_manifest_full = next(run for run in runs_second if run.get("mode") == "full")
-    cached_tool_summary = cached_manifest_full.get("toolSummary") or {}
+    cached_manifest_target = next(run for run in runs_second if run.get("mode") == "target")
+    cached_tool_summary = cached_manifest_target.get("toolSummary") or {}
     assert cached_tool_summary.get("errors") == 1
 
 

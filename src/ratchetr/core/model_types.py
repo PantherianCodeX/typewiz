@@ -43,15 +43,32 @@ if TYPE_CHECKING:
 
 
 class Mode(StrEnum):
-    """Enumeration of type checking execution modes.
+    """Execution scheduling modes.
+
+    CURRENT: Scope precedence includes CLI positional args:
+        1. CLI positional arguments (e.g., `rtr audit src/ tests/`)
+        2. Environment variable (RATCHETR_FULL_PATHS)
+        3. Config file (audit.full_paths)
+        4. Default: ["."]
+
+    TARGET: Scope precedence excludes CLI positional args:
+        1. Environment variable (RATCHETR_FULL_PATHS)
+        2. Config file (audit.full_paths)
+        3. Default: ["."]
+
+    When CURRENT and TARGET produce equivalent EnginePlans for an engine,
+    only TARGET executes (TARGET is canonical for ratcheting eligibility).
+
+    Note: "FULL" is reserved for future all-options-enabled mode supplied
+    by plugins, where the plugin determines comprehensive analysis scope.
 
     Attributes:
-        CURRENT: Check only files changed in the current working tree.
-        FULL: Check all files in the project.
+        CURRENT: Check using scope that may include CLI-specified paths.
+        TARGET: Check using environment/config/default scope only.
     """
 
     CURRENT = "current"
-    FULL = "full"
+    TARGET = "target"
 
     @classmethod
     def from_str(cls, raw: str) -> Mode:
@@ -631,6 +648,47 @@ class ManifestAction(StrEnum):
             return cls(value)
         except ValueError as exc:
             msg = f"Unknown manifest action '{raw}'"
+            raise ValueError(msg) from exc
+
+
+class EngineErrorKind(StrEnum):
+    """Enumeration of symbolic engine error categories.
+
+    These kinds distinguish different failure modes during engine execution,
+    enabling structured error handling and reporting.
+
+    Attributes:
+        ENGINE_OUTPUT_PARSE_FAILED: Engine ran but output couldn't be parsed.
+        ENGINE_NO_PARSEABLE_OUTPUT: Engine produced no output to parse.
+        ENGINE_TOOL_NOT_FOUND: Engine executable not found in PATH.
+        ENGINE_CRASHED: Engine process crashed or was terminated.
+        ENGINE_CONFIG_ERROR: Configuration error prevented execution.
+    """
+
+    ENGINE_OUTPUT_PARSE_FAILED = "engine-output-parse-failed"
+    ENGINE_NO_PARSEABLE_OUTPUT = "engine-no-parseable-output"
+    ENGINE_TOOL_NOT_FOUND = "engine-tool-not-found"
+    ENGINE_CRASHED = "engine-crashed"
+    ENGINE_CONFIG_ERROR = "engine-config-error"
+
+    @classmethod
+    def from_str(cls, raw: str) -> EngineErrorKind:
+        """Create an EngineErrorKind enum from a string value.
+
+        Args:
+            raw: String representation of the error kind.
+
+        Returns:
+            EngineErrorKind enum value.
+
+        Raises:
+            ValueError: If the string does not match any EngineErrorKind value.
+        """
+        value = raw.strip().lower()
+        try:
+            return cls(value)
+        except ValueError as exc:
+            msg = f"Unknown engine error kind '{raw}'"
             raise ValueError(msg) from exc
 
 

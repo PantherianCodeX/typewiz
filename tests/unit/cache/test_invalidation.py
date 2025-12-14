@@ -47,8 +47,8 @@ def _prepare_workspace(tmp_path: Path) -> None:
     consume((tmp_path / "src" / "mod.py").write_text("x = 1\n", encoding="utf-8"))
 
 
-def _full_invocation_count(engine: RecordingEngine) -> int:
-    return sum(1 for invocation in engine.invocations if invocation.mode is Mode.FULL)
+def _target_invocation_count(engine: RecordingEngine) -> int:
+    return sum(1 for invocation in engine.invocations if invocation.mode is Mode.TARGET)
 
 
 def test_cache_invalidation_on_tool_version_change(
@@ -66,7 +66,7 @@ def test_cache_invalidation_on_tool_version_change(
     monkeypatch.setattr("ratchetr.audit.api.detect_tool_versions", _versions_v1)
     override = AuditConfig(full_paths=["src"], runners=[STUB_RUNNER])
     consume(run_audit(project_root=tmp_path, override=override))
-    assert _full_invocation_count(engine) == 1
+    assert _target_invocation_count(engine) == 1
 
     # Second run with version 2.0 should bypass cache
     def _versions_v2(_: Sequence[str]) -> dict[str, str]:
@@ -74,7 +74,7 @@ def test_cache_invalidation_on_tool_version_change(
 
     monkeypatch.setattr("ratchetr.audit.api.detect_tool_versions", _versions_v2)
     consume(run_audit(project_root=tmp_path, override=override))
-    assert _full_invocation_count(engine) == 2
+    assert _target_invocation_count(engine) == 2
 
 
 def test_cache_invalidation_on_config_change(
@@ -98,12 +98,12 @@ def test_cache_invalidation_on_config_change(
     )
 
     consume(run_audit(project_root=tmp_path, config=config))
-    assert _full_invocation_count(engine) == 1
+    assert _target_invocation_count(engine) == 1
 
     # Modify config; cache key should change
     consume(cfg_file.write_text("a=2\n", encoding="utf-8"))
     consume(run_audit(project_root=tmp_path, config=config))
-    assert _full_invocation_count(engine) == 2
+    assert _target_invocation_count(engine) == 2
 
 
 def test_cache_invalidation_on_plugin_args_change(
@@ -116,7 +116,7 @@ def test_cache_invalidation_on_plugin_args_change(
 
     base = AuditConfig(full_paths=["src"], runners=[STUB_RUNNER])
     consume(run_audit(project_root=tmp_path, override=base))
-    assert _full_invocation_count(engine) == 1
+    assert _target_invocation_count(engine) == 1
 
     # Add a plugin arg which participates in the cache key; expect a miss
     override = AuditConfig(
@@ -125,7 +125,7 @@ def test_cache_invalidation_on_plugin_args_change(
         plugin_args={STUB: ["--flag"]},
     )
     consume(run_audit(project_root=tmp_path, override=override))
-    assert _full_invocation_count(engine) == 2
+    assert _target_invocation_count(engine) == 2
 
 
 STUB = EngineName("stub")

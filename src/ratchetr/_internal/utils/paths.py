@@ -58,7 +58,7 @@ def default_full_paths(root: Path) -> list[str]:
         root: Project root to scan for standard package directories.
 
     Returns:
-        List of relative folder names to include in full runs.
+        List of relative folder names to include in engine runs.
     """
     candidates = ["ratchetr", "apps", "packages", "config", "infra", "tests"]
     paths: list[str] = []

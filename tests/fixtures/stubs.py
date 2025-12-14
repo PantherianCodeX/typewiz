@@ -49,13 +49,31 @@ class StubEngine:
         self.invocations: list[tuple[Mode, list[str], list[str]]] = []
 
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+        """Execute a stubbed engine run and record the invocation.
+
+        Records invocation details for later verification in tests. Returns different
+        results based on the execution mode: empty diagnostics for TARGET mode, or
+        the pre-configured result for other modes.
+
+        Note:
+            If expected_profile is set, asserts that it matches the context's profile.
+
+        Args:
+            context: Execution context containing mode, options, and configuration.
+            paths: File paths to be analyzed by the engine.
+
+        Returns:
+            EngineResult containing command, exit code, duration, and diagnostics.
+            For TARGET mode, returns a clean result with no diagnostics. For other
+            modes, returns the pre-configured result from initialization.
+        """
         if self.expected_profile is not None:
             assert context.engine_options.profile == self.expected_profile
         self.invocations.append(
             (context.mode, list(context.engine_options.plugin_args), list(paths)),
         )
         tool_name = ToolName(self.name)
-        if context.mode is Mode.FULL:
+        if context.mode is Mode.TARGET:
             return EngineResult(
                 engine=tool_name,
                 mode=context.mode,
@@ -74,14 +92,24 @@ class StubEngine:
         )
 
     def category_mapping(self) -> dict[str, list[str]]:
+        """Return the category mapping configuration.
+
+        Returns:
+            A copy of the default category mapping dictionary.
+        """
         return dict(self.DEFAULT_CATEGORY_MAPPING)
 
     def fingerprint_targets(self, _context: EngineContext, _paths: Sequence[str]) -> Sequence[str]:
+        """Determine which files should be fingerprinted.
+
+        Returns:
+            A list of file paths to fingerprint, from the default configuration.
+        """
         return list(self.DEFAULT_FINGERPRINT_TARGETS)
 
 
 class AuditStubEngine:
-    """Stub used by API tests to emulate full/current runs."""
+    """Stub used by API tests to emulate target/current runs."""
 
     name: str
 
@@ -95,6 +123,21 @@ class AuditStubEngine:
         self._result = result
 
     def run(self, context: EngineContext, _paths: Sequence[str]) -> EngineResult:
+        """Execute a stubbed audit run for target/current mode testing.
+
+        Emulates engine execution for API tests that need to distinguish between
+        TARGET and CURRENT mode runs. Returns empty diagnostics for CURRENT mode,
+        or the pre-configured result with tool summary for other modes.
+
+        Args:
+            context: Execution context containing mode, options, and configuration.
+
+        Returns:
+            EngineResult containing command, exit code, duration, diagnostics, and
+            optionally a tool summary. For CURRENT mode, returns a clean result with
+            no diagnostics or summary. For other modes, returns the pre-configured
+            result from initialization including any tool summary.
+        """
         tool_name = ToolName(self.name)
         if context.mode is Mode.CURRENT:
             return EngineResult(
@@ -119,9 +162,19 @@ class AuditStubEngine:
         )
 
     def category_mapping(self) -> dict[str, list[str]]:
+        """Return the category mapping configuration.
+
+        Returns:
+            A copy of the default category mapping dictionary.
+        """
         return dict(self.DEFAULT_CATEGORY_MAPPING)
 
     def fingerprint_targets(self, _context: EngineContext, _paths: Sequence[str]) -> Sequence[str]:
+        """Determine which files should be fingerprinted.
+
+        Returns:
+            A list of file paths to fingerprint, from the default configuration.
+        """
         return list(self.DEFAULT_FINGERPRINT_TARGETS)
 
 
@@ -136,6 +189,11 @@ class EngineInvocation:
 
     @property
     def mode(self) -> Mode:
+        """Get the execution mode from the context.
+
+        Returns:
+            The execution mode (TARGET or CURRENT) from the invocation context.
+        """
         return self.context.mode
 
 
@@ -148,8 +206,8 @@ class RecordingEngine:
         self,
         *,
         diagnostics: Sequence[Diagnostic] | None = None,
-        tool_summary_on_full: ToolSummary | None = None,
-        full_exit_code: int = 0,
+        tool_summary_on_target: ToolSummary | None = None,
+        target_exit_code: int = 0,
         current_exit_code: int = 0,
         category_mapping: dict[str, list[str]] | None = None,
         fingerprint_targets: Sequence[str] | None = None,
@@ -157,14 +215,30 @@ class RecordingEngine:
         """Set up the recording engine with canned diagnostics and metadata."""
         super().__init__()
         self._diagnostics = list(diagnostics or [])
-        self._tool_summary_on_full = tool_summary_on_full
-        self._full_exit_code = full_exit_code
+        self._tool_summary_on_target = tool_summary_on_target
+        self._target_exit_code = target_exit_code
         self._current_exit_code = current_exit_code
         self._category_mapping = category_mapping or {}
         self._fingerprint_targets = tuple(fingerprint_targets or ())
         self.invocations: list[EngineInvocation] = []
 
     def run(self, context: EngineContext, paths: Sequence[str]) -> EngineResult:
+        """Execute a stubbed engine run and record detailed invocation data.
+
+        Records comprehensive invocation details including context, plugin arguments,
+        paths, and profile for later inspection in tests. Returns pre-configured
+        diagnostics and exit codes that vary based on execution mode.
+
+        Args:
+            context: Execution context containing mode, options, and configuration.
+            paths: File paths to be analyzed by the engine.
+
+        Returns:
+            EngineResult containing command, exit code, duration, diagnostics, and
+            optionally a tool summary. Exit code is determined by mode (TARGET uses
+            target_exit_code, CURRENT uses current_exit_code). Tool summary is only
+            included for TARGET mode when configured during initialization.
+        """
         invocation = EngineInvocation(
             context=context,
             plugin_args=list(context.engine_options.plugin_args),
@@ -172,10 +246,10 @@ class RecordingEngine:
             profile=context.engine_options.profile,
         )
         self.invocations.append(invocation)
-        exit_code = self._full_exit_code if context.mode is Mode.FULL else self._current_exit_code
+        exit_code = self._target_exit_code if context.mode is Mode.TARGET else self._current_exit_code
         tool_summary = (
-            cast("ToolSummary", dict(self._tool_summary_on_full))
-            if context.mode is Mode.FULL and self._tool_summary_on_full is not None
+            cast("ToolSummary", dict(self._tool_summary_on_target))
+            if context.mode is Mode.TARGET and self._tool_summary_on_target is not None
             else None
         )
         return EngineResult(
@@ -189,7 +263,17 @@ class RecordingEngine:
         )
 
     def category_mapping(self) -> dict[str, list[str]]:
+        """Return the category mapping configuration.
+
+        Returns:
+            A copy of the configured category mapping dictionary.
+        """
         return dict(self._category_mapping)
 
     def fingerprint_targets(self, _context: EngineContext, _paths: Sequence[str]) -> Sequence[str]:
+        """Determine which files should be fingerprinted.
+
+        Returns:
+            A list of file paths to fingerprint, from the configured targets.
+        """
         return list(self._fingerprint_targets)

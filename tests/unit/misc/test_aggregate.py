@@ -62,7 +62,7 @@ def test_summarise_run_typed_output() -> None:
     ]
     run = RunResult(
         tool=PYRIGHT_TOOL,
-        mode=Mode.FULL,
+        mode=Mode.TARGET,
         command=["pyright"],
         exit_code=0,
         duration_ms=10.0,

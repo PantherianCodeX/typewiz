@@ -80,15 +80,15 @@ def test_mypy_engine_builds_command_with_defaults(tmp_path: Path, monkeypatch: p
     _ = engine.run(context, [])
 
 
-def test_mypy_engine_full_mode_appends_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_mypy_engine_target_mode_appends_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     engine = MypyEngine()
     monkeypatch.setattr("ratchetr.engines.builtin.mypy.python_executable", lambda: "py")
-    context = _make_context(tmp_path, mode=Mode.FULL)
+    context = _make_context(tmp_path, mode=Mode.TARGET)
     paths = [RelPath("pkg/app.py"), RelPath("pkg/utils.py")]
 
     def fake_run_mypy(root: Path, *, mode: Mode, command: list[str]) -> EngineResult:
         assert root == tmp_path
-        assert mode == Mode.FULL
+        assert mode == Mode.TARGET
         assert command[-2:] == ["pkg/app.py", "pkg/utils.py"]
         assert "--hide-error-context" in command
         return EngineResult(
@@ -147,15 +147,15 @@ def test_pyright_engine_current_prefers_default_config(tmp_path: Path, monkeypat
     assert str(default_config) in recorded["command"]
 
 
-def test_pyright_engine_full_with_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pyright_engine_target_with_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     engine = PyrightEngine()
-    context = _make_context(tmp_path, mode=Mode.FULL, plugin_args=["--verifytypes"])
+    context = _make_context(tmp_path, mode=Mode.TARGET, plugin_args=["--verifytypes"])
     paths = [RelPath("src/app.py")]
-    context_no_paths = _make_context(tmp_path, mode=Mode.FULL)
+    context_no_paths = _make_context(tmp_path, mode=Mode.TARGET)
 
     def fake_run_pyright(root: Path, *, mode: Mode, command: list[str]) -> EngineResult:
         assert root == tmp_path
-        assert mode == Mode.FULL
+        assert mode == Mode.TARGET
         # When explicit paths are provided, the last argument should be the path.
         if command[-1] != str(tmp_path):
             assert command[-1] == "src/app.py"

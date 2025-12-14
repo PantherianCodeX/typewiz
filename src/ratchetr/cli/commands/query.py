@@ -137,7 +137,7 @@ def register_query_command(
         dest="modes",
         action="append",
         default=None,
-        help="Filter by mode (repeatable, e.g., current or full)",
+        help="Filter by mode (repeatable, e.g., current or target)",
     )
     register_argument(
         query_runs_parser,

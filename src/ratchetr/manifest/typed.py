@@ -217,11 +217,13 @@ class EngineError(TypedDict, total=False):
     All fields are optional.
 
     Attributes:
+        kind: Symbolic error kind (from EngineErrorKind enum).
         message: Error message.
         exitCode: Exit code from the engine process.
         stderr: Standard error output from the engine.
     """
 
+    kind: str  # EngineErrorKind value
     message: str
     exitCode: int
     stderr: str

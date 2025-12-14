@@ -82,7 +82,7 @@ def test_run_pyright_records_tool_summary(tmp_path: Path, monkeypatch: pytest.Mo
     consume((tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8"))
     _patch_run_command(monkeypatch, payload)
 
-    result = run_pyright(tmp_path, mode=Mode.FULL, command=["pyright", "--outputjson"])
+    result = run_pyright(tmp_path, mode=Mode.TARGET, command=["pyright", "--outputjson"])
 
     assert result.tool_summary == {"errors": 1, "warnings": 0, "information": 0, "total": 1}
     assert len(result.diagnostics) == 1

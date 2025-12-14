@@ -59,7 +59,7 @@ def _sample_manifest() -> ManifestData:
 
 def test_normalise_mode_accepts_modes_and_rejects_invalid() -> None:
     assert ratchet_core._normalise_mode(Mode.CURRENT) is Mode.CURRENT
-    assert ratchet_core._normalise_mode("full") == Mode.FULL
+    assert ratchet_core._normalise_mode("target") == Mode.TARGET
     assert ratchet_core._normalise_mode("nope") is None
 
 
@@ -186,14 +186,14 @@ def test_collect_manifest_runs_and_lookup_helpers_ignore_bad_entries() -> None:
     assert ratchet_core._select_run_ids(manifest, ["pyright:current"]) == [RunId("pyright:current")]
     lookup = ratchet_core._run_by_id(manifest)
     assert RunId("pyright:current") in lookup
-    assert RunId("pyright:full") not in lookup
+    assert RunId("pyright:target") not in lookup
 
 
 def test_run_id_helpers_trim_blanks() -> None:
-    values = ["pyright:current", RunId("mypy:full"), " "]
+    values = ["pyright:current", RunId("mypy:target"), " "]
     normalised = ratchet_core._normalise_run_id_values(values)
     assert RunId("pyright:current") in normalised
-    assert RunId("mypy:full") in normalised
+    assert RunId("mypy:target") in normalised
     assert len(normalised) == 2
     assert RunId("pyright:current") in ratchet_core._normalise_run_id_set(values)
 
@@ -282,7 +282,7 @@ def test_compare_manifest_to_ratchet_respects_requested_runs() -> None:
         "projectRoot": None,
         "runs": {
             "pyright:current": {"severities": ["error"], "paths": {}},
-            "pyright:full": {"severities": ["error"], "paths": {}},
+            "pyright:target": {"severities": ["error"], "paths": {}},
         },
     })
     manifest = _sample_manifest()

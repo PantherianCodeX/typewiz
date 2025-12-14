@@ -285,7 +285,7 @@
     "Mode": {
       "enum": [
         "current",
-        "full"
+        "target"
       ],
       "title": "Mode",
       "type": "string"

@@ -52,7 +52,7 @@
       "type": "string",
       "enum": [
         "current",
-        "full"
+        "target"
       ]
     },
     "runBudget": {

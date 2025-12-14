@@ -82,7 +82,7 @@ def _run_payloads() -> st.SearchStrategy[dict[str, Any]]:
     return st.fixed_dictionaries(
         {
             "tool": st.sampled_from(["pyright", "mypy"]),
-            "mode": st.sampled_from(["current", "full"]),
+            "mode": st.sampled_from(["current", "target"]),
             "command": st.lists(st.text(min_size=1, max_size=10), min_size=1, max_size=5),
             "exitCode": st.integers(min_value=0, max_value=3),
             "durationMs": st.floats(

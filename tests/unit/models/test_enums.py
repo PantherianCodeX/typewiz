@@ -24,6 +24,7 @@ from ratchetr.core.model_types import (
     DashboardFormat,
     DashboardView,
     DataFormat,
+    EngineErrorKind,
     FailOnPolicy,
     HotspotKind,
     LogComponent,
@@ -65,7 +66,7 @@ def test_cli_enums_accept_case_insensitive_values() -> None:
     ("value", "expected"),
     [
         ("CURRENT", Mode.CURRENT),
-        ("full", Mode.FULL),
+        ("target", Mode.TARGET),
     ],
 )
 def test_mode_from_str_accepts_variants(value: str, expected: Mode) -> None:
@@ -174,3 +175,24 @@ def test_clone_override_entries_returns_copies() -> None:
     assert cloned == entries
     cloned[0]["pluginArgs"] = ["--relaxed"]
     assert entries[0].get("pluginArgs") == ["--strict"]
+
+
+def test_engine_error_kind_enum() -> None:
+    """Test EngineErrorKind enum values."""
+    assert EngineErrorKind.ENGINE_OUTPUT_PARSE_FAILED.value == "engine-output-parse-failed"
+    assert EngineErrorKind.ENGINE_NO_PARSEABLE_OUTPUT.value == "engine-no-parseable-output"
+    assert EngineErrorKind.ENGINE_TOOL_NOT_FOUND.value == "engine-tool-not-found"
+    assert EngineErrorKind.ENGINE_CRASHED.value == "engine-crashed"
+    assert EngineErrorKind.ENGINE_CONFIG_ERROR.value == "engine-config-error"
+
+
+def test_engine_error_kind_from_str() -> None:
+    """Test EngineErrorKind.from_str()."""
+    assert EngineErrorKind.from_str("engine-output-parse-failed") == EngineErrorKind.ENGINE_OUTPUT_PARSE_FAILED
+    assert EngineErrorKind.from_str("engine-tool-not-found") == EngineErrorKind.ENGINE_TOOL_NOT_FOUND
+
+
+def test_engine_error_kind_from_str_invalid() -> None:
+    """Test EngineErrorKind.from_str() with invalid value."""
+    with pytest.raises(ValueError, match="Unknown engine error kind"):
+        EngineErrorKind.from_str("invalid-kind")

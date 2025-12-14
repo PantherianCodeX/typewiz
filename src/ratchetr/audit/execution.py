@@ -241,7 +241,7 @@ def _paths_for_mode(
     engine_options: EngineOptions,
     full_paths_normalised: Sequence[RelPath],
 ) -> list[RelPath]:
-    if mode is Mode.FULL:
+    if mode is Mode.TARGET:
         return apply_engine_paths(
             full_paths_normalised,
             engine_options.include,
@@ -511,7 +511,7 @@ def execute_engine_mode(  # noqa: PLR0913
 
     Args:
         engine: Engine under execution.
-        mode: `Mode`being evaluated (``current``/``full``).
+        mode: `Mode`being evaluated (``current``/``target``).
         context: Engine context produced by ``resolve_engine_options``.
         audit_config: Audit configuration for filtering paths and caching.
         cache: Persistent cache used to store previous run outputs.

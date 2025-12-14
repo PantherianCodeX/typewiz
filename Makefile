@@ -71,7 +71,7 @@ all.full: all.fix all all.ratchetr ## Run all checks, fixes, and report generati
 ##@ Lint & Format
 # ----------------------------------------------------------------------
 
-lint: lint.ruff lint.format lint.pylint lint.markdown ## Lint code and docs
+lint: lint.ruff lint.format lint.markdown lint.pylint ## Lint code and docs
 	@printf "  =+= All lint checks completed =+=\n\n"
 
 lint.ruff: ## Run ruff lint

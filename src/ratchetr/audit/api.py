@@ -132,8 +132,8 @@ def _iterate_modes(audit_config: AuditConfig) -> list[Mode]:
     modes: list[Mode] = []
     if not audit_config.skip_current:
         modes.append(Mode.CURRENT)
-    if not audit_config.skip_full:
-        modes.append(Mode.FULL)
+    if not audit_config.skip_target:
+        modes.append(Mode.TARGET)
     return modes
 
 

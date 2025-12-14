@@ -311,7 +311,7 @@ class AuditConfig:  # pylint: disable=too-many-instance-attributes
         max_files: Maximum number of files to include in the audit.
         max_bytes: Maximum total size in bytes of files to include in the audit.
         skip_current: Whether to skip files in the current directory.
-        skip_full: Whether to skip the full audit and only check changed files.
+        skip_target: Whether to skip the target audit and only check changed files.
         fail_on: Policy for when the audit should fail (e.g., on errors, warnings).
         hash_workers: Number of workers for parallel file hashing, or "auto" to
             determine automatically.
@@ -332,7 +332,7 @@ class AuditConfig:  # pylint: disable=too-many-instance-attributes
     max_files: int | None = None
     max_bytes: int | None = None
     skip_current: bool | None = None
-    skip_full: bool | None = None
+    skip_target: bool | None = None
     fail_on: FailOnPolicy | None = None
     hash_workers: int | Literal["auto"] | None = None
     dashboard_json: Path | None = None
@@ -645,7 +645,7 @@ class AuditConfigModel(BaseModel):
         max_files: Maximum number of files to include in the audit.
         max_bytes: Maximum total size in bytes of files to include in the audit.
         skip_current: Whether to skip files in the current directory.
-        skip_full: Whether to skip the full audit and only check changed files.
+        skip_target: Whether to skip the full audit and only check changed files.
         fail_on: Policy for when the audit should fail.
         dashboard_json: Optional path to save JSON format dashboard output.
         dashboard_markdown: Optional path to save Markdown format dashboard output.
@@ -664,7 +664,7 @@ class AuditConfigModel(BaseModel):
     max_files: int | None = None
     max_bytes: int | None = None
     skip_current: bool | None = None
-    skip_full: bool | None = None
+    skip_target: bool | None = None
     fail_on: FailOnPolicy | None = None
     dashboard_json: Path | None = None
     dashboard_markdown: Path | None = None

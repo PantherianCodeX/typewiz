@@ -111,7 +111,7 @@ def register_audit_command(
         dest="modes",
         action="append",
         default=None,
-        help="Select which modes to run (repeatable: current, full).",
+        help="Select which modes to run (repeatable: current, target).",
     )
     register_argument(
         audit,
@@ -263,7 +263,7 @@ def normalise_modes_tuple(modes: Sequence[str] | None) -> tuple[bool, bool, bool
         modes: Optional sequence of raw mode strings from the CLI.
 
     Returns:
-        Tuple of `(run_any, run_current, run_full)`flags indicating which audit modes to execute.
+        Tuple of `(run_any, run_current, run_target)`flags indicating which audit modes to execute.
 
     Raises:
         SystemExit: If no modes are selected after normalisation.
@@ -272,11 +272,11 @@ def normalise_modes_tuple(modes: Sequence[str] | None) -> tuple[bool, bool, bool
     if not normalised:
         return (False, True, True)
     run_current = Mode.CURRENT in normalised
-    run_full = Mode.FULL in normalised
-    if not run_current and not run_full:
-        msg = "No modes selected. Choose at least one of: current, full."
+    run_target = Mode.TARGET in normalised
+    if not run_current and not run_target:
+        msg = "No modes selected. Choose at least one of: current, target."
         raise SystemExit(msg)
-    return (True, run_current, run_full)
+    return (True, run_current, run_target)
 
 
 def _update_override_with_plugin_args(override: AuditConfig, entries: Sequence[str]) -> None:
@@ -384,7 +384,7 @@ def _build_cli_override(
     *,
     modes_specified: bool,
     run_current: bool,
-    run_full: bool,
+    run_target: bool,
     cli_fail_on: FailOnPolicy | None,
     manifest_target: Path | None,
     dashboard_targets: tuple[OutputTarget, ...],
@@ -396,7 +396,7 @@ def _build_cli_override(
         max_files=args.max_files,
         max_bytes=args.max_fingerprint_bytes,
         skip_current=(not run_current) if modes_specified else None,
-        skip_full=(not run_full) if modes_specified else None,
+        skip_target=(not run_target) if modes_specified else None,
         fail_on=cli_fail_on,
         hash_workers=parse_hash_workers(args.hash_workers),
         respect_gitignore=args.respect_gitignore,
@@ -520,16 +520,16 @@ def _prepare_execution_plan(
     project_root = context.resolved_paths.repo_root
     selected_full_paths = _resolve_full_paths(args, config, context.env_overrides)
     if not selected_full_paths:
-        msg = "No paths found for full runs. Provide paths or configure 'full_paths'."
+        msg = "No paths found for target runs. Provide paths or configure 'full_paths'."
         raise SystemExit(msg)
 
-    modes_specified, run_current, run_full = normalise_modes_tuple(args.modes)
+    modes_specified, run_current, run_target = normalise_modes_tuple(args.modes)
     cli_fail_on = FailOnPolicy.from_str(args.fail_on) if args.fail_on else None
     override = _build_cli_override(
         args,
         modes_specified=modes_specified,
         run_current=run_current,
-        run_full=run_full,
+        run_target=run_target,
         cli_fail_on=cli_fail_on,
         manifest_target=manifest_target,
         dashboard_targets=dashboard_targets,

@@ -119,7 +119,7 @@ def test_run_mypy_parses_stdout_and_stderr(tmp_path: Path, monkeypatch: pytest.M
         return _CommandResult(stdout=stdout, stderr=stderr, exit_code=1)
 
     monkeypatch.setattr("ratchetr.engines.execution.run_command", fake_run_command)
-    result = run_mypy(tmp_path, mode=Mode.FULL, command=["python", "-m", "mypy"])
+    result = run_mypy(tmp_path, mode=Mode.TARGET, command=["python", "-m", "mypy"])
     messages = [diag.message for diag in result.diagnostics]
     assert any("config error" in message for message in messages)
     assert any("invalid line" in message for message in messages)

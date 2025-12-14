@@ -116,7 +116,7 @@ class RunResult:  # pylint: disable=too-many-instance-attributes
 
     Attributes:
         tool: Name of the type checking tool used.
-        mode: Execution mode (current or full).
+        mode: Execution mode (current or target).
         command: Full command line used to execute the tool.
         exit_code: Exit code returned by the type checker process.
         duration_ms: Execution duration in milliseconds.

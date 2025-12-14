@@ -3,7 +3,7 @@
 config_version = 0
 
 [audit]
-# full_paths controls the directories scanned during full audits. When omitted,
+# full_paths controls the directories scanned during target audits. When omitted,
 # ratchetr auto-detects common Python folders (src/, packages/, tests/, etc.).
 # full_paths = ["src", "tests"]
 

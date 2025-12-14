@@ -27,13 +27,13 @@ pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
 
 
 def _signature_payload(hash_value: str) -> EngineSignaturePayloadWithHash:
-    return EngineSignaturePayloadWithHash(tool="pyright", mode=Mode.FULL, engineOptions={}, hash=hash_value)
+    return EngineSignaturePayloadWithHash(tool="pyright", mode=Mode.TARGET, engineOptions={}, hash=hash_value)
 
 
 def test_run_report_format_lines_includes_signature_details() -> None:
     finding = RatchetFinding(path="pkg", severity=SeverityLevel.ERROR, allowed=1, actual=3)
     report = RatchetRunReport(
-        run_id=RunId("pyright:full"),
+        run_id=RunId("pyright:target"),
         severities=[SeverityLevel.ERROR],
         violations=[finding],
         improvements=[],

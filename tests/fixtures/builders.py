@@ -204,7 +204,7 @@ class TestDataBuilder:
                     "overrides": [pyright_override],
                 },
             },
-            RunId("mypy:full"): {
+            RunId("mypy:target"): {
                 "command": ["python", "-m", "mypy"],
                 "errors": 1,
                 "warnings": 1,
@@ -722,7 +722,7 @@ def build_cli_manifest(tmp_path: Path) -> Path:
             },
             {
                 "tool": "mypy",
-                "mode": "full",
+                "mode": "target",
                 "command": ["mypy", "--strict"],
                 "exitCode": 0,
                 "durationMs": 15,

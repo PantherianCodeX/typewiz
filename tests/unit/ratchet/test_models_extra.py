@@ -69,7 +69,7 @@ def test_ratchet_model_normalises_run_keys() -> None:
             "paths": {},
             "targets": {},
         },
-        "a:full": {
+        "a:target": {
             "severities": ["warning"],
             "paths": {},
             "targets": {},
@@ -81,4 +81,4 @@ def test_ratchet_model_normalises_run_keys() -> None:
         "projectRoot": None,
         "runs": raw_runs,
     })
-    assert list(model.runs.keys()) == [RunId("a:full"), RunId("b:current")]
+    assert list(model.runs.keys()) == [RunId("a:target"), RunId("b:current")]

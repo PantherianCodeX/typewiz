@@ -40,11 +40,11 @@ Ratchetr must be deterministic about *how it compares and passes args*, but it m
 
 Deduplication is **per engine** using a per-engine equivalence function:
 
-`EnginePlan(CURRENT) == EnginePlan(FULL)` iff all **engine-relevant plan dimensions that could differ between CURRENT and FULL** match after canonicalization.
+`EnginePlan(CURRENT) == EnginePlan(TARGET)` iff all **engine-relevant plan dimensions that could differ between CURRENT and TARGET** match after canonicalization.
 
 #### Must include (for that engine)
 
-Only the parts that can affect *that engine’s run* and can differ between CURRENT vs FULL configuration inputs:
+Only the parts that can affect *that engine’s run* and can differ between CURRENT vs TARGET configuration inputs:
 
 * **Effective target scope** (ResolvedScope)
 * **Per-engine config selection** (path or “none”)
@@ -66,11 +66,11 @@ Only the parts that can affect *that engine’s run* and can differ between CURR
 
 For requested mode `BOTH` (or default BOTH):
 
-* Compute per-engine `plan_current` and `plan_full`
-* If plans are equal for that engine: run **FULL only** for that engine (canonical for ratcheting)
-* Else: run CURRENT then FULL for that engine
+* Compute per-engine `plan_current` and `plan_target`
+* If plans are equal for that engine: run **TARGET only** for that engine (canonical for ratcheting)
+* Else: run CURRENT then TARGET for that engine
 
-For requested mode `CURRENT` or `FULL`, do not deduplicate; honor request.
+For requested mode `CURRENT` or `TARGET`, do not deduplicate; honor request.
 
 ---
 
@@ -89,9 +89,9 @@ Validate: `resolve_scope(mode, cli_paths, env_paths, config_paths, default=["."]
 * default: [`.`]
 * expected: [`src`, `tests`]
 
-**SR-PREC-002 (FULL has no CLI scope input):**
+**SR-PREC-002 (TARGET has no CLI scope input):**
 
-* mode: FULL
+* mode: TARGET
 * cli: [`src`, `tests`] (supplied but must not participate)
 * env: [`lib`]
 * config: [`pkg`]
@@ -107,9 +107,9 @@ Validate: `resolve_scope(mode, cli_paths, env_paths, config_paths, default=["."]
 * default: [`.`]
 * expected: [`lib`]
 
-**SR-PREC-004 (FULL falls back to CONFIG when ENV omitted):**
+**SR-PREC-004 (TARGET falls back to CONFIG when ENV omitted):**
 
-* mode: FULL
+* mode: TARGET
 * cli: [`src`]
 * env: []
 * config: [`pkg`]
@@ -123,9 +123,9 @@ Validate: `resolve_scope(mode, cli_paths, env_paths, config_paths, default=["."]
 * default: [`.`]
 * expected: [`.`]
 
-**SR-PREC-006 (DEFAULT applies for FULL as well):**
+**SR-PREC-006 (DEFAULT applies for TARGET as well):**
 
-* mode: FULL
+* mode: TARGET
 * cli/env/config: []
 * default: [`.`]
 * expected: [`.`]
@@ -182,10 +182,10 @@ Validate: `build_engine_plan(engine_id, mode, resolved_scope, config_selection, 
 
 * engine: A
 * current config selection input yields `cfgA.toml`
-* full config selection input yields `cfgA.toml`
+* target config selection input yields `cfgA.toml`
 * expected:
 
-  * plan_current.config == plan_full.config == `cfgA.toml`
+  * plan_current.config == plan_target.config == `cfgA.toml`
 
 ### 2.3 Args handling (explicitly avoids semantic invention)
 
@@ -193,7 +193,7 @@ Validate: `build_engine_plan(engine_id, mode, resolved_scope, config_selection, 
 
 * engine: A
 * current args: [`--foo`, `--bar`]
-* full args: [`--bar`, `--foo`]
+* target args: [`--bar`, `--foo`]
 * expected: plans not equal (unless your interface explicitly defines these args as order-insensitive)
 
 **EP-ARGS-ORDER-002 (args determinism when collected from multiple sources):**
@@ -211,35 +211,35 @@ Validate: `build_engine_plan(engine_id, mode, resolved_scope, config_selection, 
 
 ## 3) Per-Engine Equivalence + Scheduling Suite (pure)
 
-Validate: `plan_engine_runs(requested_mode, plan_current, plan_full) -> [EngineRun]`
+Validate: `plan_engine_runs(requested_mode, plan_current, plan_target) -> [EngineRun]`
 
 ### 3.1 Dedup only when BOTH/default requested
 
-**MS-ENG-001 (BOTH + plans differ → run CURRENT then FULL):**
+**MS-ENG-001 (BOTH + plans differ → run CURRENT then TARGET):**
 
 * requested_mode: BOTH
 * plan_current.targets: [`src`]
-* plan_full.targets: [`.`]
+* plan_target.targets: [`.`]
 * other A-relevant plan dimensions equal
-* expected runs: [`CURRENT`, `FULL`]
+* expected runs: [`CURRENT`, `TARGET`]
 
-**MS-ENG-002 (BOTH + plans equal → run FULL only):**
+**MS-ENG-002 (BOTH + plans equal → run TARGET only):**
 
 * requested_mode: BOTH
-* plan_current == plan_full
-* expected runs: [`FULL`] (canonical)
+* plan_current == plan_target
+* expected runs: [`TARGET`] (canonical)
 
 **MS-ENG-003 (CURRENT-only never deduped):**
 
 * requested_mode: CURRENT
-* plan_current == plan_full
+* plan_current == plan_target
 * expected runs: [`CURRENT`]
 
-**MS-ENG-004 (FULL-only never deduped):**
+**MS-ENG-004 (TARGET-only never deduped):**
 
-* requested_mode: FULL
-* plan_current == plan_full
-* expected runs: [`FULL`]
+* requested_mode: TARGET
+* plan_current == plan_target
+* expected runs: [`TARGET`]
 
 ### 3.2 False equivalence guards (engine-relevant non-path parameters)
 
@@ -247,15 +247,15 @@ Validate: `plan_engine_runs(requested_mode, plan_current, plan_full) -> [EngineR
 
 * requested_mode: BOTH
 * targets equal
-* plan_current.config != plan_full.config
-* expected: [`CURRENT`, `FULL`]
+* plan_current.config != plan_target.config
+* expected: [`CURRENT`, `TARGET`]
 
 **MS-ENG-NEQ-002 (targets equal but args differ → no dedup):**
 
 * requested_mode: BOTH
 * targets equal
 * args differ
-* expected: [`CURRENT`, `FULL`]
+* expected: [`CURRENT`, `TARGET`]
 
 **MS-ENG-NEQ-003 (targets equal but enablement differs → no dedup):**
 
@@ -269,8 +269,8 @@ Validate: `plan_engine_runs(requested_mode, plan_current, plan_full) -> [EngineR
 
 * requested_mode: BOTH
 * plan_current.targets: [`src`, `tests`]
-* plan_full.targets: [`tests`, `src`]
-* expected: plans equal → [`FULL`]
+* plan_target.targets: [`tests`, `src`]
+* expected: plans equal → [`TARGET`]
 
 ---
 
@@ -392,8 +392,8 @@ Validate classification into diagnostics vs engine_error, with symbolic kinds + 
 * plugin engine configured identically via env/config
 * expected:
 
-  * plan_current differs from plan_full only when CLI scope influences CURRENT targets
-  * otherwise dedup to FULL
+  * plan_current differs from plan_target only when CLI scope influences CURRENT targets
+  * otherwise dedup to TARGET
 
 ---
 
@@ -401,9 +401,9 @@ Validate classification into diagnostics vs engine_error, with symbolic kinds + 
 
 ### 7.1 Deterministic ordering
 
-**DT-ORDER-001 (CURRENT then FULL when both run):**
+**DT-ORDER-001 (CURRENT then TARGET when both run):**
 
-* expected: per-engine run ordering stable: CURRENT then FULL (when both planned)
+* expected: per-engine run ordering stable: CURRENT then TARGET (when both planned)
 
 ### 7.2 Deterministic output ordering within records
 
@@ -429,7 +429,7 @@ Validate classification into diagnostics vs engine_error, with symbolic kinds + 
 This matrix verifies PR-F guarantees:
 
 * One precedence chain, reused verbatim
-* FULL has no CLI positional scope input; CURRENT does
+* TARGET has no CLI positional scope input; CURRENT does
 * Dedup/skip is **per engine**, not global
 * Dedup occurs only when BOTH/default requested
 * Dedup compares **per-engine plan dimensions that could differ for that engine**, not other engines

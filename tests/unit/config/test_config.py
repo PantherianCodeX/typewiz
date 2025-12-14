@@ -67,7 +67,7 @@ def test_load_config_from_toml(tmp_path: Path) -> None:
             """
 [audit]
 full_paths = ["apps", "packages"]
-skip_full = true
+skip_target = true
 max_depth = 5
 runners = ["pyright"]
 plugin_args.pyright = ["--pythonversion", "3.12"]
@@ -78,7 +78,7 @@ dashboard_html = "reports/dashboard.html"
     )
     cfg = load_config(config_path)
     assert cfg.audit.full_paths == ["apps", "packages"]
-    assert cfg.audit.skip_full is True
+    assert cfg.audit.skip_target is True
     assert cfg.audit.max_depth == 5
     assert cfg.audit.dashboard_html == (config_path.parent / "reports" / "dashboard.html")
     assert cfg.audit.plugin_args[PYRIGHT] == ["--pythonversion", "3.12"]
@@ -541,12 +541,12 @@ def test_ratchet_config_model_defaults_when_empty() -> None:
 
 
 def test_ratchet_config_runs_coerced_to_run_id() -> None:
-    model = RatchetConfigModel.model_validate({"runs": ["pyright:current", "  mypy:full  "]})
-    assert model.runs == [RunId("pyright:current"), RunId("mypy:full")]
+    model = RatchetConfigModel.model_validate({"runs": ["pyright:current", "  mypy:target  "]})
+    assert model.runs == [RunId("pyright:current"), RunId("mypy:target")]
     config = RatchetConfig(
-        runs=[RunId("pyright:current "), RunId("mypy:full")],
+        runs=[RunId("pyright:current "), RunId("mypy:target")],
     )
-    assert config.runs == [RunId("pyright:current"), RunId("mypy:full")]
+    assert config.runs == [RunId("pyright:current"), RunId("mypy:target")]
 
 
 def test_ensure_list_behaviour() -> None:

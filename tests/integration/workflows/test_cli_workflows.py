@@ -58,8 +58,8 @@ PYRIGHT_TOOL = ToolName("pyright")
 
 
 @dataclass(slots=True)
-class AuditFullOutputsContext:
-    """Container for paths produced by the full audit workflow."""
+class AuditTargetOutputsContext:
+    """Container for paths produced by the target audit workflow."""
 
     compare_path: Path
     dashboard_json: Path
@@ -106,13 +106,13 @@ def _make_dashboard_renderer(
     return _render_dashboard
 
 
-def _arrange_cli_audit_full_outputs(
+def _arrange_cli_audit_target_outputs(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-) -> AuditFullOutputsContext:
+) -> AuditTargetOutputsContext:
     cfg = Config()
     cfg.audit.runners = [PYRIGHT_RUNNER]
-    # Set full_paths in config to avoid defaulting to ["."]
+    # Set target full_paths in config to avoid defaulting to ["."]
     cfg.audit.full_paths = ["pkg"]
 
     summary = build_empty_summary()
@@ -137,7 +137,7 @@ def _arrange_cli_audit_full_outputs(
         code="information",
         message="info",
     )
-    override_entry_full: OverrideEntry = {"path": "pkg", "profile": "strict"}
+    override_entry_current: OverrideEntry = {"path": "pkg", "profile": "strict"}
     run = RunResult(
         tool=PYRIGHT_TOOL,
         mode=Mode.CURRENT,
@@ -150,7 +150,7 @@ def _arrange_cli_audit_full_outputs(
         plugin_args=["--strict"],
         include=[RelPath("pkg")],
         exclude=[],
-        overrides=[override_entry_full],
+        overrides=[override_entry_current],
         scanned_paths=[RelPath("pkg")],
     )
     audit_result = AuditResult(
@@ -220,7 +220,7 @@ def _arrange_cli_audit_full_outputs(
     dashboard_json = tmp_path / "dashboard.json"
     dashboard_md = tmp_path / "dashboard.md"
     dashboard_html = tmp_path / "dashboard.html"
-    return AuditFullOutputsContext(
+    return AuditTargetOutputsContext(
         compare_path=compare_path,
         dashboard_json=dashboard_json,
         dashboard_md=dashboard_md,
@@ -229,7 +229,7 @@ def _arrange_cli_audit_full_outputs(
 
 
 def _act_cli_audit_full_outputs(
-    context: AuditFullOutputsContext,
+    context: AuditTargetOutputsContext,
     capsys: pytest.CaptureFixture[str],
 ) -> tuple[int, str]:
     exit_code = _run_cli_command(
@@ -304,7 +304,7 @@ def test_cli_audit(
     assert manifest_path.exists()
     assert dashboard_path.exists()
     assert dashboard_path.read_text(encoding="utf-8") != "stale"
-    assert any(mode is Mode.FULL for mode, _, _ in engine.invocations)
+    assert any(mode is Mode.TARGET for mode, _, _ in engine.invocations)
     assert all("--cli-flag" in args for _, args, _ in engine.invocations)
 
     manifest_json = cast("dict[str, object]", json.loads(manifest_path.read_text(encoding="utf-8")))
@@ -523,8 +523,8 @@ exclude = ["unused"]
     assert "- config" not in captured.out
 
     manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
-    full_run = next(run for run in manifest_data["runs"] if run["mode"] == "full")
-    engine_options = full_run["engineOptions"]
+    target_run = next(run for run in manifest_data["runs"] if run["mode"] == "target")
+    engine_options = target_run["engineOptions"]
     assert "--extras" in engine_options["pluginArgs"]
 
 
@@ -632,7 +632,7 @@ def test_cli_audit_hash_workers_override(
     assert getattr(override, "hash_workers", None) == "auto"
 
 
-def test_cli_mode_only_full(
+def test_cli_mode_only_target(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     fake_run: RunResult,
@@ -650,13 +650,13 @@ def test_cli_mode_only_full(
             "--root",
             str(tmp_path),
             "--mode",
-            "full",
+            "target",
             "pkg",
         ],
     )
 
     assert exit_code == 0
-    assert engine.invocations == [(Mode.FULL, [], ["pkg"])]
+    assert engine.invocations == [(Mode.TARGET, [], ["pkg"])]
 
 
 def test_cli_plugin_arg_validation(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -721,7 +721,7 @@ def test_cli_audit_without_markers(
 
     assert exit_code == 0
     # Fallback root detection should still run both modes
-    assert {mode for mode, *_ in engine.invocations} == {Mode.CURRENT, Mode.FULL}
+    assert {mode for mode, *_ in engine.invocations} == {Mode.CURRENT, Mode.TARGET}
 
 
 # NOTE: Test removed - with contract-defined default of ["."], audit never fails
@@ -734,7 +734,7 @@ def test_cli_audit_full_outputs(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    context = _arrange_cli_audit_full_outputs(monkeypatch, tmp_path)
+    context = _arrange_cli_audit_target_outputs(monkeypatch, tmp_path)
     exit_code, output = _act_cli_audit_full_outputs(context, capsys)
 
     assert "delta: errors=0 warnings=0 info=+1" in output

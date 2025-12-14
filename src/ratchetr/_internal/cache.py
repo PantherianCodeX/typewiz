@@ -476,7 +476,7 @@ class EngineCache:
 
         Args:
             engine: Engine name.
-            mode: Execution mode (current or full).
+            mode: Execution mode (current or target).
             paths: Paths included in the run.
             flags: Flags passed to the engine invocation.
 
