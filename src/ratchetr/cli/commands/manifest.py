@@ -90,7 +90,6 @@ def register_manifest_command(
         manifest_schema,
         "-s",
         "--save-as",
-        "--output",
         dest="output",
         type=Path,
         default=None,

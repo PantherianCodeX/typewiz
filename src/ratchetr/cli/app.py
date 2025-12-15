@@ -269,7 +269,6 @@ def _register_dashboard_command(
         flag="--save-as",
         dest="output",
         short_flag="-s",
-        aliases=("--output",),
     )
     _register_argument(
         dashboard,
@@ -310,7 +309,6 @@ def _register_init_command(
         init,
         "-s",
         "--save-as",
-        "--output",
         dest="output",
         type=pathlib.Path,
         default=pathlib.Path("ratchetr.toml"),
