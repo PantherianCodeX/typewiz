@@ -19,8 +19,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
+from ratchetr.config.constants import DEFAULT_RATCHET_FILENAME, DEFAULT_TOOL_HOME_DIRNAME
 from ratchetr.core.model_types import DEFAULT_SEVERITIES, SeverityLevel, SignaturePolicy
 from ratchetr.core.type_aliases import RunId
+from ratchetr.paths import MANIFEST_CANDIDATE_NAMES
 from ratchetr.services.ratchet import apply_target_overrides, split_target_mapping
 
 from .args import parse_comma_separated, parse_key_value_entries
@@ -28,13 +30,7 @@ from .args import parse_comma_separated, parse_key_value_entries
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-MANIFEST_CANDIDATE_NAMES: Final[tuple[str, ...]] = (
-    "typing_audit.json",
-    "typing_audit_manifest.json",
-    "reports/typing/typing_audit.json",
-    "reports/typing/manifest.json",
-)
-DEFAULT_RATCHET_FILENAME: Final[Path] = Path(".ratchetr/ratchet.json")
+DEFAULT_RATCHET_PATH: Final[Path] = Path(f"{DEFAULT_TOOL_HOME_DIRNAME}/{DEFAULT_RATCHET_FILENAME}")
 
 
 def _coerce_severity_value(value: str | SeverityLevel) -> SeverityLevel:
@@ -230,7 +226,7 @@ def discover_manifest_path(
     Attempts to find the manifest in the following order:
     1. Explicit path from CLI (must exist)
     2. Configured path from config file (if exists)
-    3. Standard candidate locations (typing_audit.json, etc.)
+    3. Standard candidate locations (manifest.json, .ratchetr/manifest.json)
 
     Args:
         project_root: The project root directory.
@@ -273,7 +269,7 @@ def discover_ratchet_path(
     Determines the ratchet file path in the following order:
     1. Explicit path from CLI
     2. Configured path from config file
-    3. Default location (.ratchetr/ratchet.json)
+    3. Default location (defined by `DEFAULT_RATCHET_FILENAME` in `config/constants.py`)
 
     Args:
         project_root: The project root directory.
@@ -292,7 +288,7 @@ def discover_ratchet_path(
     elif configured is not None:
         resolved = resolve_path(project_root, configured)
     else:
-        resolved = (project_root / DEFAULT_RATCHET_FILENAME).resolve()
+        resolved = (project_root / DEFAULT_RATCHET_PATH).resolve()
     if require_exists and not resolved.exists():
         msg = f"Ratchet file not found at {resolved}"
         raise SystemExit(msg)
@@ -311,9 +307,9 @@ def ensure_parent(path: Path) -> None:
 
 
 __all__ = [
-    "DEFAULT_RATCHET_FILENAME",
+    "DEFAULT_RATCHET_PATH",
     "DEFAULT_SEVERITIES",
-    "MANIFEST_CANDIDATE_NAMES",
+    "DEFAULT_TOOL_HOME_DIRNAME",
     "apply_target_overrides",
     "discover_manifest_path",
     "discover_ratchet_path",

@@ -343,12 +343,12 @@ def _plugin_args_details(run: RunResult, *, expanded: bool) -> list[tuple[str, s
 
 def _paths_details(run: RunResult, *, expanded: bool) -> list[tuple[str, str]]:
     details: list[tuple[str, str]] = []
-    include_paths = format_list([str(path) for path in run.include])
-    exclude_paths = format_list([str(path) for path in run.exclude])
-    if include_paths != "—" or expanded:
-        details.append(("include", include_paths))
-    if exclude_paths != "—" or expanded:
-        details.append(("exclude", exclude_paths))
+    default_include = format_list([str(path) for path in run.include])
+    default_exclude = format_list([str(path) for path in run.exclude])
+    if default_include != "—" or expanded:
+        details.append(("include", default_include))
+    if default_exclude != "—" or expanded:
+        details.append(("exclude", default_exclude))
     return details
 
 
@@ -730,12 +730,12 @@ def _parse_single_override(candidate: object) -> OverrideEntry | None:
     plugin_args = coerce_str_list(override_map.get("pluginArgs", []))
     if plugin_args:
         typed_entry["pluginArgs"] = plugin_args
-    include_paths = _coerce_rel_path_list(override_map.get("include", []))
-    if include_paths:
-        typed_entry["include"] = include_paths
-    exclude_paths = _coerce_rel_path_list(override_map.get("exclude", []))
-    if exclude_paths:
-        typed_entry["exclude"] = exclude_paths
+    default_include = _coerce_rel_path_list(override_map.get("include", []))
+    if default_include:
+        typed_entry["include"] = default_include
+    default_exclude = _coerce_rel_path_list(override_map.get("exclude", []))
+    if default_exclude:
+        typed_entry["exclude"] = default_exclude
     return typed_entry or None
 
 
@@ -747,28 +747,28 @@ def query_rules(
     summary: SummaryData,
     *,
     limit: int,
-    include_paths: bool,
+    default_include: bool,
 ) -> list[RuleEntry]:
     """Build the payload for `ratchetr query rules`.
 
     Args:
         summary: Manifest summary payload.
         limit: Maximum number of rule entries to include.
-        include_paths: Whether to attach file-level contributions per rule.
+        default_include: Whether to attach file-level contributions per rule.
 
     Returns:
         Rule entries describing counts and optional path contributions.
     """
     hotspots = summary["tabs"]["hotspots"]
     rules = hotspots.get("topRules", {})
-    rule_paths = hotspots.get("ruleFiles", {}) if include_paths else {}
+    rule_paths = hotspots.get("ruleFiles", {}) if default_include else {}
     entries = list(rules.items())
     if limit > 0:
         entries = entries[:limit]
     result: list[RuleEntry] = []
     for rule, count in entries:
         entry: RuleEntry = RuleEntry(rule=rule, count=int(count))
-        if include_paths:
+        if default_include:
             path_entries = [
                 RulePathEntry(path=str(path_entry["path"]), count=int(path_entry["count"]))
                 for path_entry in rule_paths.get(rule, [])

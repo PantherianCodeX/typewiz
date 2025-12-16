@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from ratchetr._internal.paths import (
+from ratchetr._infra.paths import (
     CACHE_ENV,
     CONFIG_ENV,
     DEFAULT_CACHE_DIRNAME,
@@ -24,6 +24,7 @@ from ratchetr._internal.paths import (
     DEFAULT_LOG_DIRNAME,
     DEFAULT_MANIFEST_FILENAME,
     DEFAULT_TOOL_HOME_DIRNAME,
+    INCLUDE_ENV,
     LOG_ENV,
     MANIFEST_CANDIDATE_NAMES,
     MANIFEST_ENV,
@@ -50,6 +51,7 @@ __all__ = [
     "DEFAULT_LOG_DIRNAME",
     "DEFAULT_MANIFEST_FILENAME",
     "DEFAULT_TOOL_HOME_DIRNAME",
+    "INCLUDE_ENV",
     "LOG_ENV",
     "MANIFEST_CANDIDATE_NAMES",
     "MANIFEST_ENV",

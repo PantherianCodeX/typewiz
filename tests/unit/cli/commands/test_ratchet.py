@@ -34,6 +34,7 @@ from ratchetr.cli.commands.ratchet import (
     handle_update,
 )
 from ratchetr.cli.helpers import CLIContext, StdoutFormat
+from ratchetr.cli.helpers.ratchet import DEFAULT_RATCHET_FILENAME, DEFAULT_TOOL_HOME_DIRNAME
 from ratchetr.config import RatchetConfig
 from ratchetr.core.model_types import RatchetAction, SeverityLevel, SignaturePolicy
 from ratchetr.core.type_aliases import RunId
@@ -87,7 +88,7 @@ def _make_context(  # noqa: PLR0913
         )
     )
     cfg = config or RatchetConfig()
-    manifest_path = project_root / "typing_audit.json"
+    manifest_path = project_root / ".ratchetr/manifest"
     return RatchetContext(
         project_root=project_root,
         config=cfg,
@@ -139,12 +140,12 @@ def test_handle_init_writes_ratchet_and_applies_targets(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    output_path = tmp_path / "ratchet.json"
+    output_path = tmp_path / DEFAULT_RATCHET_FILENAME
     captured_keywords: dict[str, object] = {}
     baseline_model = RatchetModel.model_validate(
         {
             "generatedAt": "2025-01-01T00:00:00Z",
-            "manifestPath": str(tmp_path / "typing_audit.json"),
+            "manifestPath": str(tmp_path / ".ratchetr/manifest"),
             "projectRoot": str(tmp_path),
             "runs": {},
         },
@@ -180,7 +181,7 @@ def test_handle_init_refuses_overwrite_without_force(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    output_path = tmp_path / "ratchet.json"
+    output_path = tmp_path / DEFAULT_RATCHET_FILENAME
 
     def fail_init(**_: object) -> None:
         raise ratchet_cmd.RatchetFileExistsError(output_path)
@@ -204,7 +205,7 @@ def test_handle_init_defaults_output_path(
         dummy_model = RatchetModel.model_validate(
             {
                 "generatedAt": "2025-01-01T00:00:00Z",
-                "manifestPath": str(tmp_path / "typing_audit.json"),
+                "manifestPath": str(tmp_path / ".ratchetr/manifest"),
                 "projectRoot": str(tmp_path),
                 "runs": {},
             },
@@ -218,7 +219,7 @@ def test_handle_init_defaults_output_path(
 
     exit_code = handle_init(context, args)
     assert exit_code == 0
-    assert captured["output_path"] == (tmp_path / ".ratchetr" / "ratchet.json").resolve()
+    assert captured["output_path"] == (tmp_path / DEFAULT_TOOL_HOME_DIRNAME / DEFAULT_RATCHET_FILENAME).resolve()
 
 
 def test_handle_update_dry_run_skips_write(
@@ -226,7 +227,7 @@ def test_handle_update_dry_run_skips_write(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    ratchet_path = tmp_path / "ratchet.json"
+    ratchet_path = tmp_path / DEFAULT_RATCHET_FILENAME
     context = _make_context(tmp_path, ratchet_path=ratchet_path)
 
     report = RatchetReport(
@@ -245,7 +246,7 @@ def test_handle_update_dry_run_skips_write(
         dummy_model = RatchetModel.model_validate(
             {
                 "generatedAt": "2025-01-02T00:00:00Z",
-                "manifestPath": str(tmp_path / "typing_audit.json"),
+                "manifestPath": str(tmp_path / ".ratchetr/manifest"),
                 "projectRoot": str(tmp_path),
                 "runs": {},
             },
@@ -284,8 +285,8 @@ def test_handle_update_returns_error_on_service_failure(tmp_path: Path, monkeypa
 def test_handle_update_reports_written_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    context = _make_context(tmp_path, ratchet_path=tmp_path / "ratchet.json")
-    output_path = tmp_path / "ratchet.json"
+    context = _make_context(tmp_path, ratchet_path=tmp_path / DEFAULT_RATCHET_FILENAME)
+    output_path = tmp_path / DEFAULT_RATCHET_FILENAME
 
     def fake_update(**_: object) -> RatchetUpdateResult:
         dummy_model = RatchetModel.model_validate(
@@ -399,7 +400,7 @@ def test_handle_info_reports_configuration(tmp_path: Path, capsys: pytest.Captur
     context = _make_context(
         tmp_path,
         config=config,
-        ratchet_path=tmp_path / "ratchet.json",
+        ratchet_path=tmp_path / DEFAULT_RATCHET_FILENAME,
         runs=[RunId("pyright:current")],
         limit=5,
         summary_only=True,
@@ -424,8 +425,8 @@ def test_handle_info_displays_absence_of_targets(tmp_path: Path, capsys: pytest.
 
 
 def test_handle_rebaseline_uses_resolved_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    context = _make_context(tmp_path, ratchet_path=tmp_path / "ratchet.json")
-    resolved_output = (tmp_path / "out" / "ratchet.json").resolve()
+    context = _make_context(tmp_path, ratchet_path=tmp_path / DEFAULT_RATCHET_FILENAME)
+    resolved_output = (tmp_path / "out" / DEFAULT_RATCHET_FILENAME).resolve()
     captured: dict[str, object] = {}
 
     def fake_rebaseline(**kwargs: object) -> RatchetRebaselineResult:
@@ -456,7 +457,7 @@ def test_handle_rebaseline_requires_existing_path(tmp_path: Path) -> None:
 
 
 def test_handle_rebaseline_reports_service_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    context = _make_context(tmp_path, ratchet_path=tmp_path / "ratchet.json")
+    context = _make_context(tmp_path, ratchet_path=tmp_path / DEFAULT_RATCHET_FILENAME)
 
     def boom(**_: object) -> RatchetRebaselineResult:
         msg = "cannot rebaseline"
@@ -511,7 +512,7 @@ def test_execute_ratchet_dispatches_actions(
 ) -> None:
     manifest_path = cli_context.resolved_paths.manifest_path
     manifest_path.write_text("{}", encoding="utf-8")
-    ratchet_path = cli_context.resolved_paths.tool_home / "ratchet.json"
+    ratchet_path = cli_context.resolved_paths.tool_home / DEFAULT_RATCHET_FILENAME
     ratchet_path.write_text("{}", encoding="utf-8")
 
     monkeypatch.setattr(

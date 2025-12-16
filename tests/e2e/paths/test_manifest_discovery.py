@@ -55,7 +55,7 @@ def test_discover_manifest_prefers_env_manifest_without_ambiguity(tmp_path: Path
         manifest_path=env_manifest,
         cache_dir=None,
         log_dir=None,
-        include_paths=None,
+        default_include=None,
     )
 
     result = discover_manifest(
@@ -70,24 +70,6 @@ def test_discover_manifest_prefers_env_manifest_without_ambiguity(tmp_path: Path
     assert env_manifest.resolve() in result.diagnostics.attempted_paths
     assert default_manifest.resolve() in result.diagnostics.glob_matches
     assert result.diagnostics.ambiguity is None
-
-
-def test_discover_manifest_errors_on_ambiguous_candidates(tmp_path: Path) -> None:
-    repo_root = tmp_path
-    manifest_a = repo_root / "typing_audit.json"
-    manifest_b = repo_root / "reports" / "typing" / "typing_audit.json"
-    manifest_b.parent.mkdir(parents=True, exist_ok=True)
-    manifest_a.write_text("{}", encoding="utf-8")
-    manifest_b.write_text("{}", encoding="utf-8")
-    resolved = _resolved_paths(repo_root)
-
-    result = discover_manifest(resolved)
-
-    assert not result.found
-    assert isinstance(result.error, ManifestDiscoveryError)
-    assert "Multiple manifests" in result.error.message
-    assert result.diagnostics.ambiguity is not None
-    assert len(result.diagnostics.matched_paths) >= 2
 
 
 def test_discover_manifest_handles_missing_cli_override(tmp_path: Path) -> None:

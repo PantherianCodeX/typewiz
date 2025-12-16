@@ -24,7 +24,7 @@ from pydantic import ValidationError
 
 import ratchetr.config as config_module
 import ratchetr.config.models as config_models
-from ratchetr._internal.utils import consume
+from ratchetr._infra.utils import consume
 from ratchetr.audit.options import merge_audit_configs
 from ratchetr.config import (
     AuditConfig,
@@ -66,7 +66,7 @@ def test_load_config_from_toml(tmp_path: Path) -> None:
         config_path.write_text(
             """
 [audit]
-include_paths = ["apps", "packages"]
+default_include = ["apps", "packages"]
 skip_target = true
 max_depth = 5
 runners = ["pyright"]
@@ -77,7 +77,7 @@ dashboard_html = "reports/dashboard.html"
         ),
     )
     cfg = load_config(config_path)
-    assert cfg.audit.include_paths == ["apps", "packages"]
+    assert cfg.audit.default_include == ["apps", "packages"]
     assert cfg.audit.skip_target is True
     assert cfg.audit.max_depth == 5
     assert cfg.audit.dashboard_html == (config_path.parent / "reports" / "dashboard.html")
@@ -90,7 +90,7 @@ def test_load_config_from_pyproject_section(tmp_path: Path, monkeypatch: pytest.
     pyproject_path.write_text(
         """
 [tool.ratchetr.audit]
-include_paths = ["apps"]
+default_include = ["apps"]
 runners = ["pyright"]
 dashboard_html = "reports/dashboard.html"
 
@@ -106,7 +106,7 @@ log_dir = "build/logs"
 
     cfg = load_config()
 
-    assert cfg.audit.include_paths == ["apps"]
+    assert cfg.audit.default_include == ["apps"]
     assert cfg.audit.dashboard_html == (tmp_path / "reports" / "dashboard.html")
     assert cfg.paths.ratchetr_dir == (tmp_path / ".custom-ratchetr")
     assert cfg.paths.manifest_path == (tmp_path / "manifests" / "custom.json")
@@ -119,7 +119,7 @@ def test_load_config_prefers_standalone_over_pyproject(tmp_path: Path, monkeypat
     pyproject_path.write_text(
         """
 [tool.ratchetr.audit]
-include_paths = ["from-pyproject"]
+default_include = ["from-pyproject"]
 """,
         encoding="utf-8",
     )
@@ -127,7 +127,7 @@ include_paths = ["from-pyproject"]
     config_path.write_text(
         """
 [audit]
-include_paths = ["from-standalone"]
+default_include = ["from-standalone"]
 """,
         encoding="utf-8",
     )
@@ -135,7 +135,7 @@ include_paths = ["from-standalone"]
 
     cfg = load_config()
 
-    assert cfg.audit.include_paths == ["from-standalone"]
+    assert cfg.audit.default_include == ["from-standalone"]
     assert cfg.paths.ratchetr_dir is None
 
 
@@ -144,7 +144,7 @@ def test_load_config_allows_tool_sections_in_standalone(tmp_path: Path) -> None:
     config_path.write_text(
         """
 [audit]
-include_paths = ["from-standalone"]
+default_include = ["from-standalone"]
 
 [tool.unrelated]
 value = "ignored"
@@ -154,7 +154,7 @@ value = "ignored"
 
     cfg = load_config(config_path)
 
-    assert cfg.audit.include_paths == ["from-standalone"]
+    assert cfg.audit.default_include == ["from-standalone"]
     assert cfg.paths.ratchetr_dir is None
 
 
@@ -192,7 +192,7 @@ def test_load_config_rejects_non_table_ratchetr_section_in_standalone(tmp_path: 
     config_path.write_text(
         """
 [audit]
-include_paths = []
+default_include = []
 
 [tool]
 ratchetr = "invalid"
@@ -210,7 +210,7 @@ def test_load_config_engine_profiles(tmp_path: Path) -> None:
         config_path.write_text(
             """
 [audit]
-include_paths = ["src"]
+default_include = ["src"]
 plugin_args.stub = ["--base"]
 
 [audit.active_profiles]
@@ -298,7 +298,7 @@ def test_load_config_discovers_folder_overrides(tmp_path: Path) -> None:
 config_version = 0
 
 [audit]
-include_paths = ["src"]
+default_include = ["src"]
 """,
             encoding="utf-8",
         ),
@@ -337,7 +337,7 @@ def test_load_config_defaults_without_file(monkeypatch: pytest.MonkeyPatch, tmp_
     cfg = load_config()
     expected = sorted([RunnerName(MYPY), RunnerName(PYRIGHT)])
     assert sorted(cfg.audit.runners or []) == expected
-    assert cfg.audit.include_paths is None
+    assert cfg.audit.default_include is None
 
 
 def test_load_config_raises_for_unknown_default_profile(tmp_path: Path) -> None:
@@ -580,11 +580,11 @@ def test_audit_config_model_coercions() -> None:
             }
         },
         "active_profiles": {"pyright": "strict"},
-        "include_paths": "src",
+        "default_include": "src",
     })
     assert model.fail_on is FailOnPolicy.WARNINGS
     assert model.plugin_args == {"pyright": ["--foo"]}
-    assert model.include_paths == ["src"]
+    assert model.default_include == ["src"]
 
 
 def test_audit_config_model_invalid_fail_on() -> None:

@@ -23,7 +23,7 @@
 - Type checkers: `mypy` and `pyright` must pass in strict mode. Config is in `mypy.ini` and `pyrightconfig.json` and already strict.
 - Public typing: maintain `src/ratchetr/py.typed` and run `make verifytypes` to validate exported types.
 - Pydantic v2 is the canonical way to model/validate internal configuration and data interchange (see `src/ratchetr/config/models.py`).
-- External/interop formats must be specified with JSON Schema (see `schemas/typing_audit_manifest.schema.json`). Keep schema and code in sync.
+- External/interop formats must be specified with JSON Schema (see `schemas/manifest.schema.json`). Keep schema and code in sync.
 
 ## Design & Patterns
 
@@ -73,7 +73,7 @@
 
 ## Error Handling & Codes
 
-- Raise precise, typed exceptions (see `src/ratchetr/_internal/exceptions.py`) and map to stable error codes (see `src/ratchetr/_internal/error_codes.py`).
+- Raise precise, typed exceptions (see `src/ratchetr/_infra/exceptions.py`) and map to stable error codes (see `src/ratchetr/_infra/error_codes.py`).
 - Keep docs synchronized with `docs/EXCEPTIONS.md`; CI enforces via `make check.error-codes`.
 
 ## Documentation

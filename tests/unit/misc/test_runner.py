@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from ratchetr._internal.utils import CommandOutput, consume
+from ratchetr._infra.utils import CommandOutput, consume
 from ratchetr.core.model_types import Mode, SeverityLevel
 from ratchetr.engines.execution import run_pyright
 

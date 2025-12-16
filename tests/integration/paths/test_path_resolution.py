@@ -43,7 +43,7 @@ def test_resolve_paths_prefers_cli_over_env_and_config(tmp_path: Path) -> None:
         manifest_path=repo_root / "env_manifest.json",
         cache_dir=repo_root / "env_cache",
         log_dir=repo_root / "env_logs",
-        include_paths=None,
+        default_include=None,
     )
     config_paths = PathsConfig(
         ratchetr_dir=repo_root / "config_home",
@@ -77,7 +77,7 @@ def test_resolve_paths_env_overrides_and_derives_defaults(tmp_path: Path) -> Non
         manifest_path=None,
         cache_dir=None,
         log_dir=None,
-        include_paths=None,
+        default_include=None,
     )
     config_paths = PathsConfig(ratchetr_dir=repo_root / "config_home")
 
@@ -114,7 +114,7 @@ def test_resolve_paths_prefers_env_root_and_config_directory(tmp_path: Path) -> 
             manifest_path=None,
             cache_dir=None,
             log_dir=None,
-            include_paths=None,
+            default_include=None,
         ),
         cwd=tmp_path,
     )
@@ -128,7 +128,7 @@ def test_resolve_paths_prefers_env_root_and_config_directory(tmp_path: Path) -> 
             manifest_path=None,
             cache_dir=None,
             log_dir=None,
-            include_paths=None,
+            default_include=None,
         ),
         config_path=config_path,
         cwd=tmp_path,
@@ -162,7 +162,7 @@ def test_resolve_paths_env_config_override_relative_to_cwd(tmp_path: Path) -> No
         manifest_path=None,
         cache_dir=None,
         log_dir=None,
-        include_paths=None,
+        default_include=None,
     )
 
     resolved = resolve_paths(env_overrides=env_overrides, cwd=working_dir)

@@ -74,7 +74,7 @@ def test_manifest_builder_adds_run_and_writes(tmp_path: Path, monkeypatch: pytes
 
     monkeypatch.setattr("ratchetr.manifest.builder.detect_tool_versions", fake_detect_tool_versions)
 
-    output_path = tmp_path / "reports" / "typing_audit.json"
+    output_path = tmp_path / "reports" / ".ratchetr/manifest"
     builder.write(output_path)
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["fingerprintTruncated"] is True

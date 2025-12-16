@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from ratchetr._internal.utils import consume
+from ratchetr._infra.utils import consume
 from ratchetr.core.model_types import Mode, OverrideEntry, ReadinessStatus, SeverityLevel
 from ratchetr.core.summary_types import (
     CountsByCategory,

@@ -59,9 +59,8 @@ from .options import (
     register_save_flag,
 )
 from .ratchet import (
-    DEFAULT_RATCHET_FILENAME,
+    DEFAULT_RATCHET_PATH,
     DEFAULT_SEVERITIES,
-    MANIFEST_CANDIDATE_NAMES,
     apply_target_overrides,
     discover_manifest_path,
     discover_ratchet_path,
@@ -78,9 +77,8 @@ from .ratchet import (
 )
 
 __all__ = [
-    "DEFAULT_RATCHET_FILENAME",
+    "DEFAULT_RATCHET_PATH",
     "DEFAULT_SEVERITIES",
-    "MANIFEST_CANDIDATE_NAMES",
     "READINESS_TOKENS_HELP",
     "SUMMARY_FIELD_CHOICES",
     "ArgumentRegistrar",

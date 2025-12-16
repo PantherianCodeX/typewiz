@@ -118,7 +118,7 @@ class EnginePlan:  # pylint: disable=too-many-instance-attributes
     Plans are compared for deduplication: if plan_current == plan_target,
     only TARGET runs (TARGET is canonical for ratcheting).
 
-    Note: This is distinct from OutputPlan (in _internal/paths.py), which
+    Note: This is distinct from OutputPlan (in _infra/paths.py), which
     handles output artifact planning. EnginePlan handles execution inputs.
 
     Attributes:

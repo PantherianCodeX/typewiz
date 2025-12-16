@@ -44,7 +44,7 @@ __all__ = list(_EXPOSED_MODULES)  # pyright: ignore[reportUnsupportedDunderAll]
 
 def __getattr__(name: str) -> ModuleType:
     if name not in _EXPOSED_MODULES:
-        message = f"module 'ratchetr._internal' has no attribute '{name}'"
+        message = f"module 'ratchetr._infra' has no attribute '{name}'"
         raise AttributeError(message)
     module = importlib.import_module(f"{__name__}.{name}")
     globals()[name] = module

@@ -34,7 +34,7 @@ core utilities to keep every module above 90% coverage.
 - **Schema-first design**: JSON Schema validation for manifests, ratchets, and config
 - **Structured logging**: Typed logging facade with JSON output support for observability
 - **Error code system**: Stable error codes documented in docs/EXCEPTIONS.md
-- **Public API surface**: Clean separation between `ratchetr.api` (public) and `ratchetr._internal` (private)
+- **Public API surface**: Clean separation between `ratchetr.api` (public) and `ratchetr._infra` (private)
 
 ### Licensing
 

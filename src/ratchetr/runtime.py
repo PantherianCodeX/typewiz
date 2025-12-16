@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Public runtime helpers for ratchetr layers above `_internal`."""
+"""Public runtime helpers for ratchetr layers above `_infra`."""
 
 from __future__ import annotations
 
-from ratchetr._internal.utils import (
+from ratchetr._infra.utils import (
     ROOT_MARKERS,
     CommandOutput,
     RootMarker,

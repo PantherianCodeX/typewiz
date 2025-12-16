@@ -16,6 +16,6 @@
 
 from __future__ import annotations
 
-from ratchetr._internal.error_codes import error_code_catalog, error_code_for
+from ratchetr._infra.error_codes import error_code_catalog, error_code_for
 
 __all__ = ["error_code_catalog", "error_code_for"]

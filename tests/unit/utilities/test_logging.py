@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from ratchetr._internal.logging_utils import LOG_LEVELS, configure_logging, structured_extra
+from ratchetr._infra.logging_utils import LOG_LEVELS, configure_logging, structured_extra
 from ratchetr.core.model_types import LogComponent, Mode, SeverityLevel
 
 if TYPE_CHECKING:
@@ -112,7 +112,7 @@ def test_structured_extra_normalises_inputs(tmp_path: Path) -> None:
         tool="pyright",
         mode="current",
         counts={SeverityLevel.ERROR: 2},
-        manifest=tmp_path / "typing_audit.json",
+        manifest=tmp_path / ".ratchetr/manifest",
         run_id="pyright:current",
         details={"runs": 4},
     )
@@ -121,7 +121,7 @@ def test_structured_extra_normalises_inputs(tmp_path: Path) -> None:
     assert "counts" in extra
     assert extra["counts"][SeverityLevel.ERROR] == 2
     assert "manifest" in extra
-    assert extra["manifest"].endswith("typing_audit.json")
+    assert extra["manifest"].endswith(".ratchetr/manifest")
     assert "run_id" in extra
     assert extra["run_id"] == "pyright:current"
     assert "details" in extra

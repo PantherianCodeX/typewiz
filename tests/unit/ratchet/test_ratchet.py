@@ -328,7 +328,7 @@ def test_apply_auto_update_skips_missing_manifest_runs() -> None:
 def test_refresh_signatures_handles_subset_and_missing_manifest(tmp_path: Path) -> None:
     ratchet_model = RatchetModel.model_validate({
         "generatedAt": "2025-01-01T00:00:00Z",
-        "manifestPath": str(tmp_path / "typing_audit.json"),
+        "manifestPath": str(tmp_path / ".ratchetr/manifest"),
         "projectRoot": str(tmp_path),
         "runs": {
             "pyright:current": {

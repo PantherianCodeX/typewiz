@@ -68,15 +68,15 @@ standards, and release process.
 ## Usage
 
 Generate a manifest and dashboards (ratchetr auto-detects common Python folders
-when `include_paths` is not configured):
+when `default_include` is not configured):
 
 ```bash
-ratchetr audit --max-depth 3 src tests --manifest typing_audit.json
-ratchetr dashboard --manifest typing_audit.json --format markdown --output dashboard.md
-ratchetr dashboard --manifest typing_audit.json --format html --output dashboard.html
+ratchetr audit --max-depth 3 src tests --manifest manifest.json
+ratchetr dashboard --manifest manifest.json --format markdown --output dashboard.md
+ratchetr dashboard --manifest manifest.json --format html --output dashboard.html
 
 # fingerprinting options for large repos
-ratchetr audit --respect-gitignore --max-files 50000 --manifest typing_audit.json
+ratchetr audit --respect-gitignore --max-files 50000 --manifest manifest.json
 # parallelise hashing or skip writes entirely
 ratchetr audit --hash-workers auto --dry-run
 ```
@@ -99,28 +99,28 @@ directly—no more piping through `jq` or custom scripts.
 
 ```bash
 # Severity overview with per-run totals as a quick CI check (table or json)
-ratchetr query overview --manifest typing_audit.json --include-runs --format table
+ratchetr query overview --manifest manifest.json --include-runs --format table
 
 # Top error-producing files, limited to five entries
-ratchetr query hotspots --manifest typing_audit.json --kind files --limit 5
+ratchetr query hotspots --manifest manifest.json --kind files --limit 5
 
 # Folder-level readiness buckets surfaced as JSON for dashboards
-ratchetr query readiness --manifest typing_audit.json --level folder --status blocked --status close
+ratchetr query readiness --manifest manifest.json --level folder --status blocked --status close
 
 # Filter runs by tool/mode to see error pressure for specific engines
-ratchetr query runs --manifest typing_audit.json --tool pyright --mode current --format table
+ratchetr query runs --manifest manifest.json --tool pyright --mode current --format table
 
 # Inspect engine profiles (plugin args, includes/excludes) captured in the manifest
-ratchetr query engines --manifest typing_audit.json --format table
+ratchetr query engines --manifest manifest.json --format table
 
 # Quick snapshot of the most frequent diagnostic rules
-ratchetr query rules --manifest typing_audit.json --limit 10
+ratchetr query rules --manifest manifest.json --limit 10
 
 # Include offending files per rule
-ratchetr query rules --manifest typing_audit.json --includes --limit 5
+ratchetr query rules --manifest manifest.json --includes --limit 5
 
 # Filter readiness payloads by severity
-ratchetr query readiness --manifest typing_audit.json --severity warning --format table
+ratchetr query readiness --manifest manifest.json --severity warning --format table
 ```
 
 Each subcommand accepts `--format json` (default) or `--format table` for a
@@ -143,13 +143,13 @@ ratchet budget and checking it in CI:
 
 ```bash
 # capture current diagnostics per file
-ratchetr ratchet init --manifest typing_audit.json --output .ratchetr/ratchet.json --run pyright:current --severities errors,warnings --target errors=0
+ratchetr ratchet init --manifest manifest.json --output .ratchetr/ratchet.json --run pyright:current --severities errors,warnings --target errors=0
 
 # fail builds when a file exceeds its allowance (also flags engine/profile drift)
-ratchetr ratchet check --manifest typing_audit.json --ratchet .ratchetr/ratchet.json
+ratchetr ratchet check --manifest manifest.json --ratchet .ratchetr/ratchet.json
 
 # auto-ratchet improvements down to new baselines after fixes land
-ratchetr ratchet update --manifest typing_audit.json --ratchet .ratchetr/ratchet.json
+ratchetr ratchet update --manifest manifest.json --ratchet .ratchetr/ratchet.json
 ```
 
 Ratchet files record the merged engine options (profiles, plugin args,
@@ -195,12 +195,12 @@ under the hood), so temporary or vendor folders aren’t touched unless you opt 
 
 ```bash
 # quick ad-hoc mapping
-python scripts/refactor_imports.py --map ratchetr.logging_utils=ratchetr.logging --map ratchetr._internal.exceptions=ratchetr.exceptions
+python scripts/refactor_imports.py --map ratchetr.logging_utils=ratchetr.logging --map ratchetr._infra.exceptions=ratchetr.exceptions
 
 # store large migrations in a file
 cat > mappings.txt <<'EOF'
 ratchetr.logging_utils=ratchetr.logging
-ratchetr._internal.exceptions=ratchetr.exceptions
+ratchetr._infra.exceptions=ratchetr.exceptions
 EOF
 python scripts/refactor_imports.py --mapping-file mappings.txt --apply
 
@@ -217,7 +217,7 @@ It only touches `import`/`from` statements under `src/` by default; pass
 ### Public shims (runtime/helpers)
 
 Downstream code should import shared helpers from the supported shims instead of
-the private `_internal` modules. The stable surfaces are:
+the private `_infra` modules. The stable surfaces are:
 
 - `ratchetr.runtime` for JSON/command helpers and path resolution utilities.
 - `ratchetr.logging` for CLI logging setup.
@@ -225,12 +225,12 @@ the private `_internal` modules. The stable surfaces are:
 - `ratchetr.cache` and `ratchetr.collections` for cache helpers and dedupe utilities.
 
 These modules are what the CLI and services layer use today; importing directly
-from `ratchetr._internal` is blocked in CI and will fail guardrail tests.
+from `ratchetr._infra` is blocked in CI and will fail guardrail tests.
 
 Validate a manifest against the bundled JSON Schema:
 
 ```bash
-ratchetr manifest validate typing_audit.json
+ratchetr manifest validate manifest.json
 ```
 
 Manifests must declare `schemaVersion` `"1"` exactly; older payloads or files missing the field now fail fast instead of being upgraded implicitly. Re-run `ratchetr audit` to regenerate manifests before running query/ratchet commands if your artefacts predate the current schema.
@@ -322,7 +322,7 @@ Built-in adapters live under `ratchetr.engines.builtin` (see `pyright` and
 `mypy`) and are good templates for production plugins. Higher layers
 (CLI/services) consume public modules such as `ratchetr.runtime` and
 `ratchetr.logging`; direct imports from
-`ratchetr._internal` are disallowed and enforced via tests.
+`ratchetr._infra` are disallowed and enforced via tests.
 
 Declare the entry point in your `pyproject.toml`:
 
@@ -351,7 +351,7 @@ ratchetr audit --runner simple
 Add deltas to the compact CI line by comparing against a previous manifest:
 
 ```bash
-ratchetr audit --manifest typing_audit.json --compare-to last_manifest.json
+ratchetr audit --manifest manifest.json --compare-to last_manifest.json
 ```
 
 Totals are printed along with `delta: errors=±N warnings=±N info=±N`.
@@ -367,7 +367,7 @@ config_version = 0
 
 [audit]
 # Let ratchetr auto-detect python packages by default. Uncomment to override.
-# include_paths = ["src", "tests"]
+# default_include = ["src", "tests"]
 runners = ["pyright", "mypy"]
 fail_on = "errors"
 ```
@@ -412,7 +412,7 @@ optional checks. Use profiles to stage enforcement per package, and verify
 with:
 
 ```bash
-ratchetr dashboard --manifest typing_audit.json --format json | jq '.tabs.readiness'
+ratchetr dashboard --manifest manifest.json --format json | jq '.tabs.readiness'
 ```
 
 `--summary full` expands output and automatically includes every field
@@ -431,7 +431,7 @@ audit completes. Use `--readiness-level file` for per-file output or bump
 The standalone readiness command mirrors the new behaviour:
 
 ```bash
-ratchetr readiness --manifest typing_audit.json --status blocked --status ready
+ratchetr readiness --manifest manifest.json --status blocked --status ready
 ```
 
 It now accepts multiple `--status` arguments, renders headers for every bucket, and reports `<none>` when a bucket is empty so the output stays informative in CI logs. Pair it with `--severity error --severity warning` to focus on high-signal findings, and `--details` to include per-entry severity counts.
@@ -544,7 +544,7 @@ print(result.summary)  # dict with top folders/files and rule counts
 
 # Advanced: override behavior
 override = AuditConfig(
-    include_paths=["apps", "packages"],
+    default_include=["apps", "packages"],
     skip_current=False,
     skip_target=False,
     max_depth=3,
@@ -553,7 +553,7 @@ override = AuditConfig(
 result = run_audit(
     project_root=Path.cwd(),
     override=override,
-    write_manifest_to=Path("typing_audit_manifest.json"),
+    write_manifest_to=Path(".ratchetr/manifest.json"),
     build_summary_output=True,
 )
 print(result.summary["topFolders"][:3])
@@ -578,7 +578,7 @@ from ratchetr.api import (
     validate_manifest_file,
 )
 
-audit = AuditConfig(include_paths=["src"])
+audit = AuditConfig(default_include=["src"])
 result = run_audit(project_root=Path.cwd(), override=audit, build_summary_output=True)
 
 # Render a markdown summary (build one if the audit skipped it)
@@ -586,7 +586,7 @@ summary = result.summary or build_summary(result.manifest)
 print(render_markdown(summary))
 
 # Validate the manifest output (JSON Schema if `jsonschema` is installed)
-manifest_path = Path("typing_audit_manifest.json")
+manifest_path = Path("ratchter/manifest.json")
 validation = validate_manifest_file(manifest_path)
 assert validation.is_valid, validation.payload_errors
 ```
@@ -596,8 +596,8 @@ assert validation.is_valid, validation.payload_errors
 Render dashboards from any manifest:
 
 ```bash
-python -m ratchetr dashboard --manifest typing_audit_manifest.json --format markdown --output typing_dashboard.md
-python -m ratchetr dashboard --manifest typing_audit_manifest.json --format html --view engines --output typing_dashboard.html
+python -m ratchetr dashboard --manifest ratchter/manifest.json --format markdown --output typing_dashboard.md
+python -m ratchetr dashboard --manifest ratchter/manifest.json --format html --view engines --output typing_dashboard.html
 ```
 
 - `json` (default) – machine-readable summary with per-tab sections under `tabs.*` (overview, engines, hotspots, readiness, runs).

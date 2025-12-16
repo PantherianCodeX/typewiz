@@ -22,6 +22,7 @@ DEFAULT_TOOL_HOME_DIRNAME: Final[str] = ".ratchetr"
 DEFAULT_CACHE_DIRNAME: Final[str] = ".cache"
 DEFAULT_LOG_DIRNAME: Final[str] = "logs"
 DEFAULT_MANIFEST_FILENAME: Final[str] = "manifest.json"
+DEFAULT_RATCHET_FILENAME: Final[str] = "ratchet.json"
 DEFAULT_DASHBOARD_FILENAME: Final[str] = "dashboard.html"
 
 __all__ = [
@@ -29,5 +30,6 @@ __all__ = [
     "DEFAULT_DASHBOARD_FILENAME",
     "DEFAULT_LOG_DIRNAME",
     "DEFAULT_MANIFEST_FILENAME",
+    "DEFAULT_RATCHET_FILENAME",
     "DEFAULT_TOOL_HOME_DIRNAME",
 ]

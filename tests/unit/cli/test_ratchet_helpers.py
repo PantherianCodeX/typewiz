@@ -22,6 +22,7 @@ import pytest
 
 from ratchetr.cli.helpers.ratchet import (
     DEFAULT_RATCHET_FILENAME,
+    DEFAULT_RATCHET_PATH,
     DEFAULT_SEVERITIES,
     discover_manifest_path,
     discover_ratchet_path,
@@ -36,6 +37,7 @@ from ratchetr.cli.helpers.ratchet import (
     resolve_summary_only,
     split_target_mapping,
 )
+from ratchetr.config.constants import DEFAULT_MANIFEST_FILENAME
 from ratchetr.core.model_types import SeverityLevel, SignaturePolicy
 from ratchetr.core.type_aliases import RunId
 
@@ -66,14 +68,16 @@ def test_discover_manifest_path_prefers_explicit(tmp_path: Path) -> None:
 
 
 def test_discover_manifest_path_falls_back_to_conventional(tmp_path: Path) -> None:
-    manifest = tmp_path / "typing_audit.json"
+    # Use the first candidate name from MANIFEST_CANDIDATE_NAMES
+    manifest = tmp_path / DEFAULT_MANIFEST_FILENAME
+    manifest.parent.mkdir(parents=True, exist_ok=True)
     _ = manifest.write_text("{}", encoding="utf-8")
     discovered = discover_manifest_path(tmp_path, explicit=None, configured=None)
     assert discovered == manifest.resolve()
 
 
 def test_discover_manifest_path_prefers_configured_when_present(tmp_path: Path) -> None:
-    configured = tmp_path / "reports" / "typing_audit.json"
+    configured = tmp_path / "reports" / DEFAULT_MANIFEST_FILENAME
     configured.parent.mkdir(parents=True, exist_ok=True)
     _ = configured.write_text("{}", encoding="utf-8")
     manifest = discover_manifest_path(tmp_path, explicit=None, configured=configured)
@@ -92,7 +96,7 @@ def test_discover_ratchet_path_defaults(tmp_path: Path) -> None:
         configured=None,
         require_exists=False,
     )
-    assert result == (tmp_path / DEFAULT_RATCHET_FILENAME).resolve()
+    assert result == (tmp_path / DEFAULT_RATCHET_PATH).resolve()
 
 
 def test_discover_manifest_path_requires_existing(tmp_path: Path) -> None:
@@ -101,7 +105,7 @@ def test_discover_manifest_path_requires_existing(tmp_path: Path) -> None:
 
 
 def test_discover_ratchet_path_prefers_configured(tmp_path: Path) -> None:
-    configured = tmp_path / "configs" / "ratchet.json"
+    configured = tmp_path / "configs" / DEFAULT_RATCHET_FILENAME
     configured.parent.mkdir(parents=True, exist_ok=True)
     _ = configured.write_text("{}", encoding="utf-8")
     resolved = discover_ratchet_path(

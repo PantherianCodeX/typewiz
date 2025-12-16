@@ -22,7 +22,7 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import HealthCheck, assume, given, settings
 
-from ratchetr._internal.utils import consume
+from ratchetr._infra.utils import consume
 from ratchetr.manifest.models import ManifestValidationError, validate_manifest_payload
 from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
 from tests.property.strategies import path_strings, severity_counts

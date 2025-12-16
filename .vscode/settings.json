@@ -9,17 +9,13 @@
   "json.schemas": [
     {
       "fileMatch": [
-        "/typing_audit.json",
-        "/typing_audit_manifest.json",
-        "/reports/typing/typing_audit.json",
-        "/reports/typing/manifest.json"
+        "/.ratchetr/manifest.json"
       ],
-      "url": "${workspaceFolder}/schemas/typing_audit_manifest.schema.json"
+      "url": "${workspaceFolder}/schemas/manifest.schema.json"
     },
     {
       "fileMatch": [
-        "/.ratchetr/ratchet.json",
-        "/ratchet.json"
+        "/.ratchetr/ratchet.json"
       ],
       "url": "${workspaceFolder}/schemas/ratchet.schema.json"
     }

@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 import pytest
 from pydantic import ValidationError
 
+from ratchetr.config.constants import DEFAULT_RATCHET_FILENAME
 from ratchetr.manifest.versioning import CURRENT_MANIFEST_VERSION
 from ratchetr.ratchet.io import current_timestamp, load_manifest, load_ratchet, write_ratchet
 from ratchetr.ratchet.models import RatchetModel
@@ -35,7 +36,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.ratchet]
 def _sample_model(tmp_path: Path) -> RatchetModel:
     return RatchetModel.model_validate({
         "generatedAt": "2025-01-01T00:00:00Z",
-        "manifestPath": str(tmp_path / "typing_audit.json"),
+        "manifestPath": str(tmp_path / ".ratchetr/manifest"),
         "projectRoot": str(tmp_path),
         "runs": {
             "pyright:current": {
@@ -49,7 +50,7 @@ def _sample_model(tmp_path: Path) -> RatchetModel:
 
 def test_write_and_load_ratchet_round_trip(tmp_path: Path) -> None:
     model = _sample_model(tmp_path)
-    ratchet_path = tmp_path / "ratchet.json"
+    ratchet_path = tmp_path / DEFAULT_RATCHET_FILENAME
     write_ratchet(ratchet_path, model)
 
     loaded = load_ratchet(ratchet_path)
@@ -57,7 +58,7 @@ def test_write_and_load_ratchet_round_trip(tmp_path: Path) -> None:
 
 
 def test_load_ratchet_invalid_payload(tmp_path: Path) -> None:
-    ratchet_path = tmp_path / "ratchet.json"
+    ratchet_path = tmp_path / DEFAULT_RATCHET_FILENAME
     _ = ratchet_path.write_text("{}", encoding="utf-8")
 
     with pytest.raises(ValidationError, match="Field required"):

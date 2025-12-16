@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from ratchetr._internal.utils import consume
+from ratchetr._infra.utils import consume
 from ratchetr.cli.app import write_config_template
 from ratchetr.cli.commands.audit import normalise_modes_tuple
 from ratchetr.cli.helpers import (

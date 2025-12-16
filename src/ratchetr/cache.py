@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from ratchetr._internal.cache import (
+from ratchetr._infra.cache import (
     CachedRun,
     EngineCache,
     collect_file_hashes,

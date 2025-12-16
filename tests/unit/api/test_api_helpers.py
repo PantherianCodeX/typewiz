@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from ratchetr._internal.utils import consume
+from ratchetr._infra.utils import consume
 from ratchetr.audit.execution import apply_engine_paths, resolve_engine_options
 from ratchetr.audit.options import merge_engine_settings_map
 from ratchetr.audit.paths import (
@@ -97,7 +97,7 @@ def test_fingerprint_targets_dedupe(tmp_path: Path) -> None:
     targets = fingerprint_targets(
         tmp_path,
         mode_paths=["src"],
-        include_paths=["pkg"],
+        default_include=["pkg"],
         extra=["src"],
     )
     assert targets[0] == "src"
@@ -202,7 +202,7 @@ def test_resolve_engine_options_with_overrides(tmp_path: Path) -> None:
         engine_settings={EngineName("stub"): engine_config},
         path_overrides=[override],
         active_profiles={EngineName("stub"): lenient_profile},
-        include_paths=["src"],
+        default_include=["src"],
     )
 
     engine_options = resolve_engine_options(tmp_path, audit_config, MinimalEngine())

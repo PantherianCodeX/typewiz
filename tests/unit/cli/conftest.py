@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from ratchetr._internal.paths import EnvOverrides, ResolvedPaths
+from ratchetr._infra.paths import EnvOverrides, ResolvedPaths
 from ratchetr.cli.helpers import CLIContext
 from ratchetr.config import Config
 
