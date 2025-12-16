@@ -36,7 +36,7 @@ from ratchetr.readiness.views import (
     FolderReadinessPayload,
     collect_readiness_view,
 )
-from tests.property_based.strategies import path_strings, severity_counts
+from tests.property.strategies import path_strings, severity_counts
 
 if TYPE_CHECKING:
     from ratchetr.core.type_aliases import CategoryKey

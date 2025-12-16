@@ -38,7 +38,7 @@ class SnapshotMissingError(AssertionError):
 
 
 def _snapshots_root() -> Path:
-    return Path(__file__).resolve().parents[1] / "snapshots"
+    return Path(__file__).resolve().parents[1] / "fixtures" / "snapshots"
 
 
 @pytest.fixture
