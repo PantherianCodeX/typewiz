@@ -1,0 +1,364 @@
+.
+├── .github
+│   └── workflows
+│       ├── ci.yml
+│       ├── nightly.yml
+│       └── release.yml
+├── docs
+│   ├── cli
+│   │   ├── contract.md
+│   │   ├── flag_matrix.md
+│   │   └── topics
+│   │       ├── manifest.md
+│   │       ├── overview.md
+│   │       ├── plugins.md
+│   │       ├── query.md
+│   │       └── ratchet.md
+│   ├── EXCEPTIONS.md
+│   ├── internal
+│   │   └── ADR
+│   │       ├── 0001
+│   │       │   ├── path_scoping_contract.md
+│   │       │   ├── reference_implementation_outline.md
+│   │       │   └── test_matrix.md
+│   │       ├── 0002
+│   │       │   ├── execution outline.md
+│   │       │   └── test matrix.md
+│   │       ├── 0004
+│   │       │   └── Codebase Compliance Review (dev-3).md
+│   │       ├── ADR-0001 Include and Exclude.md
+│   │       ├── ADR-0002 Plugin Engines.md
+│   │       ├── ADR-0003 Policy Boundaries.md
+│   │       ├── ADR-0004 Taxonomy
+│   │       └── ADR-0004 Taxonomy and Naming.md
+│   └── ratchetr.md
+├── examples
+│   ├── __init__.py
+│   ├── mypy-project
+│   │   ├── __init__.py
+│   │   ├── mypy.ini
+│   │   ├── pyrightconfig.json
+│   │   ├── ratchetr.toml
+│   │   ├── README.md
+│   │   └── src
+│   │       ├── example_pkg
+│   │       │   ├── __init__.py
+│   │       │   └── typing_demo.py
+│   │       └── __init__.py
+│   ├── plugins
+│   │   ├── __init__.py
+│   │   └── simple_engine.py
+│   ├── pyright-project
+│   │   ├── __init__.py
+│   │   ├── pyrightconfig.json
+│   │   ├── ratchetr.toml
+│   │   ├── README.md
+│   │   └── src
+│   │       ├── example_pkg
+│   │       │   ├── __init__.py
+│   │       │   └── typing_demo.py
+│   │       └── __init__.py
+│   ├── ratchetr.sample.toml
+│   ├── README.md
+│   └── typing_audit_manifest.json
+├── schemas
+│   ├── ratchet.schema.json
+│   └── typing_audit_manifest.schema.json
+├── scripts
+│   ├── check_error_codes.py
+│   ├── check_ignores.py
+│   ├── check_license_headers.py
+│   ├── clean_build_artifacts.py
+│   ├── codex-vscode.sh
+│   ├── __init__.py
+│   ├── install_test_wheel.py
+│   ├── make_find.py
+│   ├── make_help.py
+│   └── refactor_imports.py
+├── src
+│   └── ratchetr
+│       ├── adapters
+│       ├── api.py
+│       ├── audit
+│       │   ├── api.py
+│       │   ├── execution.py
+│       │   ├── __init__.py
+│       │   ├── options.py
+│       │   └── paths.py
+│       ├── cache.py
+│       ├── cli
+│       │   ├── app.py
+│       │   ├── commands
+│       │   │   ├── audit.py
+│       │   │   ├── cache.py
+│       │   │   ├── engines.py
+│       │   │   ├── help.py
+│       │   │   ├── __init__.py
+│       │   │   ├── manifest.py
+│       │   │   ├── query.py
+│       │   │   └── ratchet.py
+│       │   ├── helpers
+│       │   │   ├── args.py
+│       │   │   ├── context.py
+│       │   │   ├── formatting.py
+│       │   │   ├── __init__.py
+│       │   │   ├── io.py
+│       │   │   ├── options.py
+│       │   │   └── ratchet.py
+│       │   ├── __init__.py
+│       │   └── types.py
+│       ├── collections.py
+│       ├── common
+│       │   ├── __init__.py
+│       │   └── override_utils.py
+│       ├── compat
+│       │   ├── datetime.py
+│       │   ├── enums.py
+│       │   ├── __init__.py
+│       │   ├── toml.py
+│       │   └── typing.py
+│       ├── config
+│       │   ├── constants.py
+│       │   ├── __init__.py
+│       │   ├── loader.py
+│       │   ├── models.py
+│       │   └── validation.py
+│       ├── core
+│       │   ├── categories.py
+│       │   ├── __init__.py
+│       │   ├── model_types.py
+│       │   ├── summary_types.py
+│       │   ├── type_aliases.py
+│       │   └── types.py
+│       ├── dashboard
+│       │   ├── build.py
+│       │   ├── __init__.py
+│       │   ├── render_html.py
+│       │   └── render_markdown.py
+│       ├── engines
+│       │   ├── base.py
+│       │   ├── builtin
+│       │   │   ├── __init__.py
+│       │   │   ├── mypy.py
+│       │   │   └── pyright.py
+│       │   ├── execution.py
+│       │   ├── __init__.py
+│       │   └── registry.py
+│       ├── error_codes.py
+│       ├── exceptions.py
+│       ├── __init__.py
+│       ├── _internal
+│       │   ├── cache.py
+│       │   ├── collection_utils.py
+│       │   ├── error_codes.py
+│       │   ├── exceptions.py
+│       │   ├── __init__.py
+│       │   ├── logging_utils.py
+│       │   ├── paths.py
+│       │   ├── precedence.py
+│       │   └── utils
+│       │       ├── common.py
+│       │       ├── __init__.py
+│       │       ├── locks.py
+│       │       ├── paths.py
+│       │       ├── process.py
+│       │       └── versions.py
+│       ├── json.py
+│       ├── logging.py
+│       ├── __main__.py
+│       ├── manifest
+│       │   ├── aggregate.py
+│       │   ├── builder.py
+│       │   ├── __init__.py
+│       │   ├── loader.py
+│       │   ├── models.py
+│       │   ├── typed.py
+│       │   └── versioning.py
+│       ├── paths.py
+│       ├── precedence.py
+│       ├── py.typed
+│       ├── ratchet
+│       │   ├── core.py
+│       │   ├── __init__.py
+│       │   ├── io.py
+│       │   ├── models.py
+│       │   ├── policies.py
+│       │   └── summary.py
+│       ├── readiness
+│       │   ├── compute.py
+│       │   ├── __init__.py
+│       │   └── views.py
+│       ├── runtime.py
+│       └── services
+│           ├── audit.py
+│           ├── dashboard.py
+│           ├── __init__.py
+│           ├── manifest.py
+│           ├── ratchet.py
+│           └── readiness.py
+├── tests
+│   ├── conftest.py
+│   ├── e2e
+│   │   ├── paths
+│   │   │   └── test_manifest_discovery.py
+│   │   └── workflows
+│   │       └── test_end_to_end.py
+│   ├── fixtures
+│   │   ├── builders_helpers.py
+│   │   ├── builders.py
+│   │   ├── __init__.py
+│   │   ├── snapshots
+│   │   │   ├── dashboard.html
+│   │   │   └── dashboard.md
+│   │   ├── snapshots.py
+│   │   └── stubs.py
+│   ├── __init__.py
+│   ├── integration
+│   │   ├── config
+│   │   │   └── test_config_loader.py
+│   │   ├── conftest.py
+│   │   ├── __init__.py
+│   │   ├── paths
+│   │   │   └── test_path_resolution.py
+│   │   └── workflows
+│   │       ├── __init__.py
+│   │       ├── test_cli_workflows.py
+│   │       ├── test_manifest_generation.py
+│   │       └── test_ratchet_workflows.py
+│   ├── performance
+│   │   ├── benchmarks
+│   │   │   ├── __init__.py
+│   │   │   └── test_core_operations.py
+│   │   ├── conftest.py
+│   │   └── __init__.py
+│   ├── property
+│   │   ├── conftest.py
+│   │   ├── __init__.py
+│   │   ├── strategies
+│   │   │   ├── __init__.py
+│   │   │   └── test_common.py
+│   │   ├── test_enums.py
+│   │   ├── test_manifest.py
+│   │   ├── test_paths.py
+│   │   ├── test_readiness.py
+│   │   └── test_runtime_paths.py
+│   ├── README.md
+│   └── unit
+│       ├── api
+│       │   ├── __init__.py
+│       │   ├── test_api_audit_coverage.py
+│       │   ├── test_api_helpers.py
+│       │   └── test_api.py
+│       ├── audit
+│       │   └── test_scope_resolution.py
+│       ├── cache
+│       │   ├── __init__.py
+│       │   ├── test_hashing.py
+│       │   ├── test_internal.py
+│       │   └── test_invalidation.py
+│       ├── cli
+│       │   ├── commands
+│       │   │   ├── __init__.py
+│       │   │   ├── test_cache.py
+│       │   │   ├── test_engines.py
+│       │   │   ├── test_manifest.py
+│       │   │   └── test_ratchet.py
+│       │   ├── conftest.py
+│       │   ├── __init__.py
+│       │   ├── test_app.py
+│       │   ├── test_cli_core.py
+│       │   ├── test_help_command.py
+│       │   ├── test_helpers.py
+│       │   ├── test_options_context.py
+│       │   ├── test_ratchet_helpers.py
+│       │   └── test_types.py
+│       ├── common
+│       │   ├── test_override_utils.py
+│       │   └── test_paths.py
+│       ├── compat
+│       │   └── test_compat_modules.py
+│       ├── config
+│       │   ├── __init__.py
+│       │   ├── test_audit_options.py
+│       │   ├── test_config.py
+│       │   └── test_validation.py
+│       ├── conftest.py
+│       ├── dashboard
+│       │   └── test_build_helpers.py
+│       ├── engines
+│       │   ├── __init__.py
+│       │   ├── test_base.py
+│       │   ├── test_builtin.py
+│       │   ├── test_engine_plan.py
+│       │   ├── test_execution.py
+│       │   └── test_registry.py
+│       ├── __init__.py
+│       ├── _internal
+│       │   └── test_precedence.py
+│       ├── manifest
+│       │   ├── __init__.py
+│       │   ├── test_aggregate_helpers.py
+│       │   ├── test_builder.py
+│       │   ├── test_models_helpers.py
+│       │   └── test_schema.py
+│       ├── misc
+│       │   ├── __init__.py
+│       │   ├── test_aggregate.py
+│       │   ├── test_dashboard.py
+│       │   ├── test_import_guardrails.py
+│       │   ├── test_internal_package.py
+│       │   ├── test_main.py
+│       │   └── test_runner.py
+│       ├── models
+│       │   ├── __init__.py
+│       │   ├── test_enums.py
+│       │   └── test_types.py
+│       ├── ratchet
+│       │   ├── __init__.py
+│       │   ├── test_core_helpers.py
+│       │   ├── test_io.py
+│       │   ├── test_models_extra.py
+│       │   ├── test_ratchet.py
+│       │   ├── test_schema.py
+│       │   ├── test_services.py
+│       │   └── test_summary.py
+│       ├── readiness
+│       │   ├── __init__.py
+│       │   ├── test_compute.py
+│       │   ├── test_readiness.py
+│       │   └── test_views.py
+│       ├── scripts
+│       │   ├── test_check_error_codes.py
+│       │   ├── test_check_ignores.py
+│       │   ├── test_make_find.py
+│       │   └── test_refactor_imports.py
+│       ├── services
+│       │   ├── test_dashboard_service.py
+│       │   └── test_manifest_service.py
+│       └── utilities
+│           ├── __init__.py
+│           ├── test_error_codes.py
+│           ├── test_logging.py
+│           ├── test_overrides.py
+│           └── test_utils.py
+├── typings
+│   ├── hypothesis
+│   │   ├── __init__.pyi
+│   │   └── strategies
+│   │       └── __init__.pyi
+│   └── tomli
+│       └── __init__.pyi
+├── .gitignore
+├── .pre-commit-config.yml
+├── AGENTS.md
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── LICENSE
+├── Makefile
+├── NOTICE
+├── pyproject.toml
+├── README.md
+├── ROADMAP.md
+└── uv.lock
+
+76 directories, 278 files

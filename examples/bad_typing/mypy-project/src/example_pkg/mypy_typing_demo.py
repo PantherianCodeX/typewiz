@@ -13,20 +13,20 @@
 # limitations under the License.
 
 # ignore JUSTIFIED: File contains purposely bad code for demonstation purposes
-# pragma: no cover  # type: ignore  # ruff: noqa: PGH003  # pylint: skip-file
+# pragma: no cover  # type: ignore  # pylint: skip-file
 
 """Demonstration of typing issues that mypy can detect."""
 
 
-# ignore JUSTIFIED: demo leaves this function untyped so mypy can report missing
-# annotations while Ruff tolerates the pattern
-def greet(name):  # noqa: ANN001, ANN201
+# Intentional: demo leaves this function untyped so mypy can report missing
+# annotations while Ruff tolerates the pattern (but catches all others in this demo).
+def greet(name):
     return f"Hello, {name}!"
 
 
-# ignore JUSTIFIED: demo uses the wrong return type to showcase mypy's
+# Intentional: demo uses the wrong return type to showcase mypy's
 # return-type mismatch diagnostics
-def add_numbers(x: int, y: int) -> str:  # noqa: FURB118
+def add_numbers(x: int, y: int) -> str:
     return x + y  # Returns int, not str
 
 
@@ -35,24 +35,24 @@ def process_data(items: list) -> int:
 
 
 # Intentional: class with incomplete typing so mypy reports missing
-# annotations; noqa keeps Ruff from blocking this demo
+# annotations;
 class Calculator:
-    # ignore JUSTIFIED: constructor parameter stays untyped so mypy can report missing
+    # Intentional: constructor parameter stays untyped so mypy can report missing
     # annotations
-    def __init__(self, initial_value):  # noqa: ANN001, ANN204
+    def __init__(self, initial_value):
         self.value = initial_value
 
-    # ignore JUSTIFIED: method omits a return annotation so mypy can report incomplete
+    # Intentional: method omits a return annotation so mypy can report incomplete
     # method typing
-    def add(self, amount: int):  # noqa: ANN201
+    def add(self, amount: int):
         self.value += amount
         return self.value
 
 
 if __name__ == "__main__":
-    # ignore JUSTIFIED: demo uses print statements to show runtime behaviour; T201 is
+    # Intentional: demo uses print statements to show runtime behaviour; T201 is
     # suppressed only in this example module
-    print(greet("World"))  # noqa: T201
-    # ignore JUSTIFIED: demo uses print statements to show runtime behaviour; T201 is
+    print(greet("World"))
+    # Intentional: demo uses print statements to show runtime behaviour; T201 is
     # suppressed only in this example module
-    print(add_numbers(5, 3))  # noqa: T201
+    print(add_numbers(5, 3))

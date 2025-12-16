@@ -253,6 +253,11 @@ unfixable = []
 # - Stack Overflow: https://stackoverflow.com/questions/68428293/s101-use-of-assert-detected-for-python-tests
 # - Ruff issue #14149: https://github.com/astral-sh/ruff/issues/14149
 # - Ruff issue #16892: https://github.com/astral-sh/ruff/issues/16892 (SLF001 in tests)
+# Bad examples don't get scanned and examples don't need an init
+"examples/bad_typing/**/*.py" = ["ALL"]
+"examples/**/*.py" = ["INP001"]
+# Scripts: Utility scripts have different standards
+"scripts/**/*.py" = ["T201", "INP001"]
 "tests/**/*.py" = [
     "S101",      # assert statements are fundamental to pytest
     "SLF001",    # Testing internals requires private member access
@@ -267,8 +272,6 @@ unfixable = []
 "tests/performance/**/*.py" = ["S603", "S607"]
 # Specific test file testing git operations
 "tests/unit/misc/test_refactor_imports.py" = ["S404", "S603", "S607"]
-# Scripts: Utility scripts have different standards
-"scripts/**/*.py" = ["T201"]
 # TypedDict modules mirror external schemas that require camelCase keys
 # TODO: Restrict N815 ignores to JSON boundary after implementing schema validation
 "src/ratchetr/core/model_types.py" = ["N815"]
