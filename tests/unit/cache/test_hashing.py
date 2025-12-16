@@ -20,9 +20,9 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from ratchetr._internal import cache as cache_module
-from ratchetr._internal.cache import collect_file_hashes
-from ratchetr._internal.utils import consume
+from ratchetr._infra import cache as cache_module
+from ratchetr._infra.cache import collect_file_hashes
+from ratchetr._infra.utils import consume
 from ratchetr.core.type_aliases import PathKey
 
 if TYPE_CHECKING:
@@ -64,8 +64,8 @@ def test_collect_file_hashes_respects_gitignore(
     def fake_git_list(root: Path) -> set[str]:
         return {"project/keep.py"} if root == repo_root else set()
 
-    monkeypatch.setattr("ratchetr._internal.cache._git_repo_root", fake_repo_root)
-    monkeypatch.setattr("ratchetr._internal.cache._git_list_files", fake_git_list)
+    monkeypatch.setattr("ratchetr._infra.cache._git_repo_root", fake_repo_root)
+    monkeypatch.setattr("ratchetr._infra.cache._git_list_files", fake_git_list)
 
     hashes, _ = collect_file_hashes(project_root, paths=["."], respect_gitignore=True)
 
@@ -88,7 +88,7 @@ def test_collect_file_hashes_reuses_baseline(
         assert path.name == "sample.py"
         return {"hash": "stub", "mtime": 0, "size": 0}
 
-    monkeypatch.setattr("ratchetr._internal.cache._fingerprint", record_fingerprint)
+    monkeypatch.setattr("ratchetr._infra.cache._fingerprint", record_fingerprint)
 
     hashes, truncated = collect_file_hashes(
         tmp_path,
@@ -116,7 +116,7 @@ def test_collect_file_hashes_honours_worker_env(
         return {key: {"hash": "stub", "mtime": 0, "size": 0} for key, _ in pending}
 
     monkeypatch.setenv("RATCHETR_HASH_WORKERS", "4")
-    monkeypatch.setattr("ratchetr._internal.cache._compute_hashes", fake_compute)
+    monkeypatch.setattr("ratchetr._infra.cache._compute_hashes", fake_compute)
 
     hashes, _ = collect_file_hashes(tmp_path, paths=["worker.py"])
 

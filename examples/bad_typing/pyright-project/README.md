@@ -13,20 +13,20 @@ This example demonstrates using ratchetr to audit Python code with pyright.
 Generate a typing audit manifest:
 
 ```bash
-ratchetr audit src --manifest typing_audit.json
+ratchetr audit src --manifest .ratchetr/manifest
 ```
 
 View the results:
 
 ```bash
 # Markdown dashboard
-ratchetr dashboard --manifest typing_audit.json --format markdown --output dashboard.md
+ratchetr dashboard --manifest .ratchetr/manifest --format markdown --output dashboard.md
 
 # HTML dashboard
-ratchetr dashboard --manifest typing_audit.json --format html --output dashboard.html
+ratchetr dashboard --manifest .ratchetr/manifest --format html --output dashboard.html
 
 # Query readiness metrics
-ratchetr query readiness --manifest typing_audit.json --level file --format table
+ratchetr query readiness --manifest .ratchetr/manifest --level file --format table
 ```
 
 ## Expected Diagnostics
@@ -45,8 +45,8 @@ Create a typing budget to prevent regressions:
 
 ```bash
 # Initialize with current state
-ratchetr ratchet init --manifest typing_audit.json --output ratchet.json --run pyright:current --severities errors,warnings
+ratchetr ratchet init --manifest .ratchetr/manifest --output ratchet.json --run pyright:current --severities errors,warnings
 
 # Enforce budget in CI
-ratchetr ratchet check --manifest typing_audit.json --ratchet ratchet.json
+ratchetr ratchet check --manifest .ratchetr/manifest --ratchet ratchet.json
 ```

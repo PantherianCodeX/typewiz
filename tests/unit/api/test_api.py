@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from ratchetr import AuditConfig, Config, run_audit
-from ratchetr._internal.utils import consume
+from ratchetr._infra.utils import consume
 from ratchetr.api import build_summary as api_build_summary
 from ratchetr.api import render_dashboard_summary, validate_manifest_file
 from ratchetr.api import render_html as api_render_html
@@ -90,7 +90,7 @@ def test_run_audit_programmatic(
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     consume((tmp_path / "pyrightconfig.json").write_text("{}", encoding="utf-8"))
     override = AuditConfig(
-        include_paths=["src"],
+        default_include=["src"],
         dashboard_json=tmp_path / "summary.json",
         runners=[STUB_RUNNER],
     )
@@ -98,7 +98,7 @@ def test_run_audit_programmatic(
     result = run_audit(
         project_root=tmp_path,
         override=override,
-        include_paths=["src"],
+        default_include=["src"],
         build_summary_output=True,
     )
 
@@ -165,7 +165,7 @@ def test_run_audit_applies_engine_profiles(monkeypatch: pytest.MonkeyPatch, tmp_
     settings = EngineSettings(plugin_args=["--engine"], profiles={STRICT_PROFILE: profile})
     config = Config(
         audit=AuditConfig(
-            include_paths=["src"],
+            default_include=["src"],
             plugin_args={STUB: ["--base"]},
             engine_settings={STUB: settings},
             active_profiles={STUB: STRICT_PROFILE},
@@ -216,7 +216,7 @@ def test_run_audit_respects_folder_overrides(
 config_version = 0
 
 [audit]
-include_paths = ["packages"]
+default_include = ["packages"]
 runners = ["stub"]
 """,
             encoding="utf-8",
@@ -304,7 +304,7 @@ def test_run_audit_cache_preserves_tool_summary(
     (tmp_path / "pkg").mkdir(parents=True, exist_ok=True)
     consume((tmp_path / "pkg" / "module.py").write_text("x = 1\n", encoding="utf-8"))
 
-    override = AuditConfig(include_paths=["pkg"], runners=[STUB_RUNNER])
+    override = AuditConfig(default_include=["pkg"], runners=[STUB_RUNNER])
 
     first = run_audit(project_root=tmp_path, override=override, build_summary_output=False)
     assert sum(1 for inv in engine.invocations if inv.mode is Mode.TARGET) == 1

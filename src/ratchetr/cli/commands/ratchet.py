@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 
 from ratchetr.cli.helpers import (
-    DEFAULT_RATCHET_FILENAME,
+    DEFAULT_RATCHET_PATH,
     StdoutFormat,
     discover_manifest_or_exit,
     discover_ratchet_path,
@@ -512,7 +512,7 @@ def handle_init(context: RatchetContext, args: argparse.Namespace) -> int:
     """
     output: Path | None = getattr(args, "output", None)
     if output is None:
-        output = context.ratchet_path or (context.project_root / DEFAULT_RATCHET_FILENAME).resolve()
+        output = context.ratchet_path or (context.project_root / DEFAULT_RATCHET_PATH).resolve()
     else:
         output = resolve_path(context.project_root, output)
 

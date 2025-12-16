@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from ratchetr._internal.utils import consume
+from ratchetr._infra.utils import consume
 from ratchetr.api import AuditResult
 from ratchetr.cli.app import main
 from ratchetr.cli.helpers import CLIContext
@@ -112,8 +112,8 @@ def _arrange_cli_audit_target_outputs(
 ) -> AuditTargetOutputsContext:
     cfg = Config()
     cfg.audit.runners = [PYRIGHT_RUNNER]
-    # Set target include_paths in config to avoid defaulting to ["."]
-    cfg.audit.include_paths = ["pkg"]
+    # Set target default_include in config to avoid defaulting to ["."]
+    cfg.audit.default_include = ["pkg"]
 
     summary = build_empty_summary()
     summary["tabs"]["overview"]["severityTotals"] = {
@@ -461,7 +461,7 @@ def test_cli_summary_extras(
         config_path.write_text(
             """
 [audit]
-include_paths = ["src"]
+default_include = ["src"]
 
 [audit.engines.stub]
 include = ["extras"]

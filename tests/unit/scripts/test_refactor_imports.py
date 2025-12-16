@@ -52,22 +52,22 @@ def test_relative_import_resolves_to_absolute_module() -> None:
     content = "from ..utils import helper\n"
     new_content, changed = MODULE.rewrite_content(
         content,
-        {"pkg.utils": "pkg._internal.utils"},
+        {"pkg.utils": "pkg._infra.utils"},
         current_module="pkg.sub.module",
     )
     assert changed
-    assert new_content == "from pkg._internal.utils import helper\n"
+    assert new_content == "from pkg._infra.utils import helper\n"
 
 
 def test_identity_mapping_normalizes_relative_path() -> None:
-    content = "from .._internal.utils import helper\n"
+    content = "from .._infra.utils import helper\n"
     new_content, changed = MODULE.rewrite_content(
         content,
-        {"pkg._internal.utils": "pkg._internal.utils"},
+        {"pkg._infra.utils": "pkg._infra.utils"},
         current_module="pkg.core.mod",
     )
     assert changed
-    assert new_content == "from pkg._internal.utils import helper\n"
+    assert new_content == "from pkg._infra.utils import helper\n"
 
 
 def test_cli_apply_updates_files(tmp_path: Path) -> None:

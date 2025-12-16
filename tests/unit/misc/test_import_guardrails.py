@@ -37,33 +37,33 @@ DOMAIN_ROOTS = [
 ]
 
 
-def _collect_internal_imports(source: Path) -> list[str]:
+def _collect_infra_imports(source: Path) -> list[str]:
     tree = ast.parse(source.read_text(encoding="utf-8"))
     offenders: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            offenders.extend(alias.name for alias in node.names if alias.name.startswith("ratchetr._internal"))
+            offenders.extend(alias.name for alias in node.names if alias.name.startswith("ratchetr._infra"))
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
-            if module.startswith("ratchetr._internal"):
+            if module.startswith("ratchetr._infra"):
                 offenders.append(module)
     return offenders
 
 
-def test_cli_does_not_import_internal_modules() -> None:
+def test_cli_does_not_import_infra_modules() -> None:
     offenders: dict[Path, list[str]] = {}
     for path in CLI_ROOT.rglob("*.py"):
-        imports = _collect_internal_imports(path)
+        imports = _collect_infra_imports(path)
         if imports:
             offenders[path] = imports
-    assert not offenders, f"CLI modules must not import ratchetr._internal: {offenders}"
+    assert not offenders, f"CLI modules must not import ratchetr._infra: {offenders}"
 
 
 def test_domain_modules_use_public_shims() -> None:
     offenders: dict[Path, list[str]] = {}
     for root in DOMAIN_ROOTS:
         for path in root.rglob("*.py"):
-            imports = _collect_internal_imports(path)
+            imports = _collect_infra_imports(path)
             if imports:
                 offenders[path] = imports
-    assert not offenders, f"Domain modules must use shims instead of ratchetr._internal: {offenders}"
+    assert not offenders, f"Domain modules must use shims instead of ratchetr._infra: {offenders}"

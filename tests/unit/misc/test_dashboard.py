@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from ratchetr._internal.utils import consume
+from ratchetr._infra.utils import consume
 from ratchetr.api import build_summary, load_manifest, render_html, render_markdown
 from ratchetr.core.model_types import OverrideEntry, SeverityLevel
 from ratchetr.core.type_aliases import RelPath, RunId

@@ -250,7 +250,7 @@ def _resolve_query_payload(
             return query_rules(
                 summary,
                 limit=args.limit,
-                include_paths=bool(getattr(args, "include", False)),
+                default_include=bool(getattr(args, "include", False)),
             )
 
 

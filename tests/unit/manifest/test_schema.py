@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from ratchetr._internal.utils import consume
+from ratchetr._infra.utils import consume
 from ratchetr.api import run_audit
 from ratchetr.cli import main
 from ratchetr.config import AuditConfig
@@ -96,7 +96,7 @@ def test_manifest_validates_against_schema(monkeypatch: pytest.MonkeyPatch, tmp_
     consume((tmp_path / "src" / "mod.py").write_text("x=1\n", encoding="utf-8"))
     manifest_path = tmp_path / "manifest.json"
 
-    override = AuditConfig(include_paths=["src"], runners=[STUB_RUNNER])
+    override = AuditConfig(default_include=["src"], runners=[STUB_RUNNER])
     result = run_audit(project_root=tmp_path, override=override)
 
     emit_manifest_output(result.manifest, manifest_path=manifest_path)

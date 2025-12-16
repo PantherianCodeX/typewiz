@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
+from ratchetr.config.constants import DEFAULT_RATCHET_FILENAME
 from ratchetr.core.model_types import SeverityLevel, SignaturePolicy
 from ratchetr.core.type_aliases import RunId
 from ratchetr.ratchet.models import RatchetModel
@@ -55,7 +56,7 @@ def _ratchet_model(tmp_path: Path) -> RatchetModel:
     return RatchetModel.model_validate(
         {
             "generatedAt": "2024-01-01T00:00:00Z",
-            "manifestPath": str(tmp_path / "typing_audit.json"),
+            "manifestPath": str(tmp_path / ".ratchetr/manifest"),
             "projectRoot": str(tmp_path),
             "runs": {
                 "pyright:current": {
@@ -123,7 +124,7 @@ def _detailed_manifest(
 
 def test_init_ratchet_invokes_builder_and_writer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manifest = _manifest(tmp_path)
-    output_path = tmp_path / "ratchet.json"
+    output_path = tmp_path / DEFAULT_RATCHET_FILENAME
     model = _ratchet_model(tmp_path)
     captured: dict[str, dict[str, object]] = {}
 
@@ -142,7 +143,7 @@ def test_init_ratchet_invokes_builder_and_writer(tmp_path: Path, monkeypatch: py
     result = ratchet_service.init_ratchet(
         manifest=manifest,
         runs=None,
-        manifest_path=tmp_path / "typing_audit.json",
+        manifest_path=tmp_path / ".ratchetr/manifest",
         severities=None,
         targets=None,
         output_path=output_path,
@@ -156,14 +157,14 @@ def test_init_ratchet_invokes_builder_and_writer(tmp_path: Path, monkeypatch: py
 
 def test_init_ratchet_requires_force(tmp_path: Path) -> None:
     manifest = _manifest(tmp_path)
-    output_path = tmp_path / "ratchet.json"
+    output_path = tmp_path / DEFAULT_RATCHET_FILENAME
     _ = output_path.write_text("{}", encoding="utf-8")
 
     with pytest.raises(RatchetFileExistsError, match="Refusing to overwrite existing ratchet"):
         _ = ratchet_service.init_ratchet(
             manifest=manifest,
             runs=None,
-            manifest_path=tmp_path / "typing_audit.json",
+            manifest_path=tmp_path / ".ratchetr/manifest",
             severities=None,
             targets=None,
             output_path=output_path,
@@ -172,7 +173,7 @@ def test_init_ratchet_requires_force(tmp_path: Path) -> None:
 
 
 def test_check_ratchet_warns_on_signature_mismatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    ratchet_path = tmp_path / "ratchet.json"
+    ratchet_path = tmp_path / DEFAULT_RATCHET_FILENAME
     model = _ratchet_model(tmp_path)
 
     def fake_load(path: Path) -> RatchetModel | None:
@@ -206,7 +207,7 @@ def test_check_ratchet_warns_on_signature_mismatch(tmp_path: Path, monkeypatch: 
 
 
 def test_update_ratchet_writes_updated_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    ratchet_path = tmp_path / "ratchet.json"
+    ratchet_path = tmp_path / DEFAULT_RATCHET_FILENAME
     base_model = _ratchet_model(tmp_path)
 
     def fake_update_load(path: Path) -> RatchetModel | None:
@@ -286,7 +287,7 @@ def test_update_ratchet_requires_existing_path(tmp_path: Path) -> None:
 
 
 def test_rebaseline_ratchet_writes_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    ratchet_path = tmp_path / "ratchet.json"
+    ratchet_path = tmp_path / DEFAULT_RATCHET_FILENAME
     base_model = _ratchet_model(tmp_path)
 
     def fake_rebaseline_load(path: Path) -> RatchetModel | None:

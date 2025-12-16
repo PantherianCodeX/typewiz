@@ -13,5 +13,5 @@ Use these commands in CI to guard against malformed artefacts in your pipeline.
 Validation no longer upgrades legacy manifests: only `schemaVersion: "1"` is accepted, and the loader rejects missing
 fields or coercion attempts. Re-run `ratchetr audit` if your stored manifest predates the current schema.
 
-See `docs/ratchetr.md` for a tour of the manifest structure, and `examples/typing_audit_manifest.json` under `examples/`
+See `docs/ratchetr.md` for a tour of the manifest structure, and `examples/ratchter/manifest.json` under `examples/`
 for a concrete sample produced by `ratchetr audit`.

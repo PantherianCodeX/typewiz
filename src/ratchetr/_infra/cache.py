@@ -27,8 +27,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Literal, cast
 
-from ratchetr._internal.utils import consume, file_lock
-from ratchetr._internal.utils.process import CommandOutput, run_command
+from ratchetr._infra.utils import consume, file_lock
+from ratchetr._infra.utils.process import CommandOutput, run_command
 from ratchetr.compat import TypedDict
 from ratchetr.config.validation import coerce_int, coerce_object_list, coerce_str_list
 from ratchetr.core.categories import coerce_category_key
@@ -233,12 +233,12 @@ def _normalise_override_entry(raw: Mapping[str, object]) -> OverrideEntry:
     plugin_args = coerce_str_list(raw.get("pluginArgs", []))
     if plugin_args:
         entry["pluginArgs"] = plugin_args
-    include_paths = [RelPath(str(path)) for path in coerce_str_list(raw.get("include", [])) if str(path).strip()]
-    if include_paths:
-        entry["include"] = include_paths
-    exclude_paths = [RelPath(str(path)) for path in coerce_str_list(raw.get("exclude", [])) if str(path).strip()]
-    if exclude_paths:
-        entry["exclude"] = exclude_paths
+    default_include = [RelPath(str(path)) for path in coerce_str_list(raw.get("include", [])) if str(path).strip()]
+    if default_include:
+        entry["include"] = default_include
+    default_exclude = [RelPath(str(path)) for path in coerce_str_list(raw.get("exclude", [])) if str(path).strip()]
+    if default_exclude:
+        entry["exclude"] = default_exclude
     return entry
 
 

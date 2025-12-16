@@ -21,8 +21,8 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from ratchetr._internal import cache as cache_module
-from ratchetr._internal.cache import EngineCache
+from ratchetr._infra import cache as cache_module
+from ratchetr._infra.cache import EngineCache
 from ratchetr.core.model_types import FileHashPayload, Mode, SeverityLevel
 from ratchetr.core.type_aliases import PathKey, RelPath, ToolName
 from ratchetr.core.types import Diagnostic

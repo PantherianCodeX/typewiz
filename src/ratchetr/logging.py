@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from ratchetr._internal.logging_utils import (
+from ratchetr._infra.logging_utils import (
     LOG_FORMATS,
     LOG_LEVELS,
     LogConfig,

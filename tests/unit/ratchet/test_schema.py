@@ -139,7 +139,7 @@ def test_ratchet_schema_validates_sample(validator_name: str) -> None:
         runs=None,
         severities=[SeverityLevel.ERROR, SeverityLevel.WARNING],
         targets={"error": 0},
-        manifest_path="typing_audit.json",
+        manifest_path=".ratchetr/manifest",
     )
     payload = ratchet_model.model_dump(by_alias=True, mode="json")
     validator.validate(payload)

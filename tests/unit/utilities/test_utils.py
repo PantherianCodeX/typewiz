@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from ratchetr._internal.utils import (
+from ratchetr._infra.utils import (
     CommandOutput,
     consume,
     detect_tool_versions,
@@ -31,8 +31,8 @@ from ratchetr._internal.utils import (
     resolve_project_root,
     run_command,
 )
-from ratchetr._internal.utils import locks as locks_mod
-from ratchetr._internal.utils import versions as versions_mod
+from ratchetr._infra.utils import locks as locks_mod
+from ratchetr._infra.utils import versions as versions_mod
 from ratchetr.core.model_types import ReadinessStatus, SeverityLevel
 from ratchetr.json import as_int, as_list, as_mapping, as_str, normalise_enums_for_json, require_json
 

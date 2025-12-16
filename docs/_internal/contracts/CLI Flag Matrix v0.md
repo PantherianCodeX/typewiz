@@ -32,7 +32,7 @@ Run typing audits and produce manifests/dashboards.
 
 | Argument | Type | Default | Precedence | Description | Error Behavior |
 |----------|------|---------|------------|-------------|----------------|
-| `PATH` | list | `["."]` (CURRENT mode) or env/config (TARGET mode) | CLI > `RATCHETR_INCLUDE_PATHS` > config > default | Directories/files to audit | "path not found" if invalid |
+| `PATH` | list | `["."]` (CURRENT mode) or env/config (TARGET mode) | CLI > `RATCHETR_INCLUDE` > config > default | Directories/files to audit | "path not found" if invalid |
 
 ### Options
 
@@ -63,7 +63,7 @@ Run typing audits and produce manifests/dashboards.
 
 - **CURRENT mode**: CLI positional args participate (`rtr audit src` → CURRENT scans `src/`, TARGET scans from env/config/default)
 - **TARGET mode**: CLI positional args DO NOT participate (both CURRENT and TARGET use env/config/default)
-- Precedence chain: CLI positional (CURRENT only) > `RATCHETR_INCLUDE_PATHS` > config `audit.include_paths` > default `["."]`
+- Precedence chain: CLI positional (CURRENT only) > `RATCHETR_INCLUDE` > config `audit.default_include` > default `["."]`
 
 ---
 
@@ -250,7 +250,7 @@ All path-related environment variables:
 | `RATCHETR_MANIFEST` | all commands | path | Override manifest location | `<tool_home>/manifest.json` |
 | `RATCHETR_CACHE_DIR` | all commands | path | Override cache directory | `<tool_home>/.cache` |
 | `RATCHETR_LOG_DIR` | all commands | path | Override log directory | `<tool_home>/logs` |
-| `RATCHETR_INCLUDE_PATHS` | audit only | JSON array | Override include paths for audit scope | config or `["."]` |
+| `RATCHETR_INCLUDE` | audit only | JSON array | Override include paths for audit scope | config or `["."]` |
 
 ---
 
@@ -364,13 +364,13 @@ CLI flags > Environment variables > Config file > Defaults
 **CURRENT mode:**
 
 ```text
-CLI positional args > RATCHETR_INCLUDE_PATHS > config audit.include_paths > ["."]
+CLI positional args > RATCHETR_INCLUDE > config audit.default_include > ["."]
 ```
 
 **TARGET mode:**
 
 ```text
-RATCHETR_INCLUDE_PATHS > config audit.include_paths > ["."]
+RATCHETR_INCLUDE > config audit.default_include > ["."]
 (CLI positional args DO NOT participate in TARGET)
 ```
 
@@ -395,7 +395,7 @@ Deduplication is **plan-based** and **per-engine**:
 - If CURRENT and TARGET plans are equivalent for an engine → run TARGET only (canonical)
 - Plan equivalence considers: targets, args, profile, config, enablement
 - Ordering differences are canonicalized (sorted) before comparison
-- Deselected engines (explicit empty `include_paths`) are not executed
+- Deselected engines (explicit empty `default_include`) are not executed
 
 ---
 

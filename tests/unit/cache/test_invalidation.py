@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from ratchetr._internal.utils import consume
+from ratchetr._infra.utils import consume
 from ratchetr.api import run_audit
 from ratchetr.config import AuditConfig, Config, EngineSettings
 from ratchetr.core.model_types import Mode
@@ -64,7 +64,7 @@ def test_cache_invalidation_on_tool_version_change(
         return {"stub": "1.0"}
 
     monkeypatch.setattr("ratchetr.audit.api.detect_tool_versions", _versions_v1)
-    override = AuditConfig(include_paths=["src"], runners=[STUB_RUNNER])
+    override = AuditConfig(default_include=["src"], runners=[STUB_RUNNER])
     consume(run_audit(project_root=tmp_path, override=override))
     assert _target_invocation_count(engine) == 1
 
@@ -91,7 +91,7 @@ def test_cache_invalidation_on_config_change(
     settings = EngineSettings(config_file=cfg_file)
     config = Config(
         audit=AuditConfig(
-            include_paths=["src"],
+            default_include=["src"],
             runners=[STUB_RUNNER],
             engine_settings={STUB: settings},
         ),
@@ -114,13 +114,13 @@ def test_cache_invalidation_on_plugin_args_change(
     _patch_engine_resolution(monkeypatch, engine)
     _prepare_workspace(tmp_path)
 
-    base = AuditConfig(include_paths=["src"], runners=[STUB_RUNNER])
+    base = AuditConfig(default_include=["src"], runners=[STUB_RUNNER])
     consume(run_audit(project_root=tmp_path, override=base))
     assert _target_invocation_count(engine) == 1
 
     # Add a plugin arg which participates in the cache key; expect a miss
     override = AuditConfig(
-        include_paths=["src"],
+        default_include=["src"],
         runners=[STUB_RUNNER],
         plugin_args={STUB: ["--flag"]},
     )

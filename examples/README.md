@@ -22,8 +22,8 @@ Each example is self-contained with its own README. General pattern:
 
 ```bash
 cd <example-directory>
-ratchetr audit src --manifest typing_audit.json
-ratchetr dashboard --manifest typing_audit.json --format html --output dashboard.html
+ratchetr audit src --manifest .ratchetr/manifest
+ratchetr dashboard --manifest .ratchetr/manifest --format html --output dashboard.html
 ```
 
 ## Requirements

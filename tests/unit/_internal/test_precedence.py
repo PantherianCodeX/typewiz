@@ -16,7 +16,7 @@
 
 from pathlib import Path
 
-from ratchetr._internal.precedence import resolve_with_precedence
+from ratchetr._infra.precedence import resolve_with_precedence
 
 
 def test_resolve_with_precedence_cli_wins() -> None:

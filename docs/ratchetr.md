@@ -14,7 +14,7 @@ Run a targeted audit from the repository root:
 python -m ratchetr audit --max-depth 3
 ```
 
-This produces `typing_audit_manifest.json` (relative to the working directory) containing:
+This produces `ratchter/manifest.json` (relative to the working directory) containing:
 
 - All diagnostics from the current enforced configuration (`mode="current"`).
 - An expansive run across the project directories (`mode="target"`).
@@ -75,8 +75,8 @@ Paths in `include`/`exclude` are resolved relative to the override file; engine 
 Generate a condensed dashboard view from an existing manifest:
 
 ```bash
-python -m ratchetr dashboard --manifest typing_audit_manifest.json --format markdown --output typing_dashboard.md
-python -m ratchetr dashboard --manifest typing_audit_manifest.json --format html --view engines --output typing_dashboard.html
+python -m ratchetr dashboard --manifest ratchter/manifest.json --format markdown --output typing_dashboard.md
+python -m ratchetr dashboard --manifest ratchter/manifest.json --format html --view engines --output typing_dashboard.html
 ```
 
 - `json` (default) – machine-readable summary with tabbed sections under `tabs.*` (overview, engines, hotspots, readiness, runs).
@@ -90,18 +90,18 @@ Ratchets answer the “no regressions” requirement by snapshotting per-file di
 ```bash
 # Generate a baseline from the latest manifest.
 ratchetr ratchet init \
-  --manifest reports/typing/typing_audit.json \
+  --manifest .ratchetr/manifest.json \
   --output .ratchetr/ratchet.json \
   --run pyright:current --severities errors,warnings --target errors=0
 
 # Gate CI: any file that exceeds its allowance fails the step.
 ratchetr ratchet check \
-  --manifest reports/typing/typing_audit.json \
+  --manifest .ratchetr/manifest \
   --ratchet .ratchetr/ratchet.json
 
 # After improvements, ratchet budgets drop automatically (never above configured targets).
 ratchetr ratchet update \
-  --manifest reports/typing/typing_audit.json \
+  --manifest .ratchetr/manifest \
   --ratchet .ratchetr/ratchet.json
 ```
 

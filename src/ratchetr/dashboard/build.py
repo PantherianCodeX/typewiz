@@ -299,16 +299,16 @@ def _build_engine_options_payload(options_map: Mapping[str, JSONValue]) -> Engin
     profile = _clean_optional_str(options_map.get("profile"))
     config_file = _clean_optional_str(options_map.get("configFile"))
     plugin_args = coerce_str_list(options_map.get("pluginArgs", []))
-    include_paths = _coerce_rel_paths(coerce_str_list(options_map.get("include", [])))
-    exclude_paths = _coerce_rel_paths(coerce_str_list(options_map.get("exclude", [])))
+    default_include = _coerce_rel_paths(coerce_str_list(options_map.get("include", [])))
+    default_exclude = _coerce_rel_paths(coerce_str_list(options_map.get("exclude", [])))
     overrides = _parse_manifest_overrides(options_map.get("overrides", []))
     category_mapping = _parse_category_mapping(options_map.get("categoryMapping"))
     return {
         "profile": profile,
         "configFile": config_file,
         "pluginArgs": plugin_args,
-        "include": include_paths,
-        "exclude": exclude_paths,
+        "include": default_include,
+        "exclude": default_exclude,
         "overrides": clone_override_entries(overrides),
         "categoryMapping": category_mapping,
     }

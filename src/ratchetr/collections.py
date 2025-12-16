@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from ratchetr._internal.collection_utils import dedupe_preserve, merge_preserve
+from ratchetr._infra.collection_utils import dedupe_preserve, merge_preserve
 
 __all__ = [
     "dedupe_preserve",

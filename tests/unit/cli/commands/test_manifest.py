@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from ratchetr._internal.paths import PathOverrides
+from ratchetr._infra.paths import PathOverrides
 from ratchetr.cli.commands import manifest as manifest_cmd
 from ratchetr.cli.helpers import CLIContext, build_cli_context
 

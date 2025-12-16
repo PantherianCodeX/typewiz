@@ -20,18 +20,18 @@ import importlib
 
 import pytest
 
-import ratchetr._internal as internal
+import ratchetr._infra as internal
 
 pytestmark = pytest.mark.unit
 
 
-def test_internal_lazy_imports_cache_module() -> None:
+def test_infra_lazy_imports_cache_module() -> None:
     cache_mod = internal.cache
     assert cache_mod is internal.cache
-    assert importlib.import_module("ratchetr._internal.cache") is cache_mod
+    assert importlib.import_module("ratchetr._infra.cache") is cache_mod
 
 
-def test_internal_dir_and_invalid_attribute() -> None:
+def test_infra_dir_and_invalid_attribute() -> None:
     listing = dir(internal)
     assert "cache" in listing
     with pytest.raises(AttributeError, match="has no attribute 'not_real'"):

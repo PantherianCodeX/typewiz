@@ -4,7 +4,7 @@
 
 `ratchetr query` reads an existing manifest (typically produced by `ratchetr audit`)
 and emits targeted slices as JSON or table output. All subcommands require
-`--manifest path/to/typing_audit_manifest.json`.
+`--manifest path/to/manifest.json`.
 
 Subcommands:
 
@@ -23,4 +23,4 @@ Subcommands:
   - Flags: `--limit N`, `--includes`, `--format json|table`.
 
 Use `ratchetr help query` for the latest flag defaults. For manifest field details see `docs/ratchetr.md`, and for
-end-to-end examples see the manifests under `examples/` (for example `examples/typing_audit_manifest.json`).
+end-to-end examples see the manifests under `examples/` (for example `examples/manifest.json`).

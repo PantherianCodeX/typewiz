@@ -23,8 +23,8 @@ import pytest
 from pydantic import ValidationError
 from pydantic_core import PydanticCustomError
 
-from ratchetr._internal.error_codes import error_code_catalog, error_code_for
-from ratchetr._internal.exceptions import RatchetrError, RatchetrTypeError, RatchetrValidationError
+from ratchetr._infra.error_codes import error_code_catalog, error_code_for
+from ratchetr._infra.exceptions import RatchetrError, RatchetrTypeError, RatchetrValidationError
 from ratchetr.config import ConfigValidationError
 from ratchetr.manifest.models import ManifestValidationError
 
@@ -63,7 +63,7 @@ def test_error_code_catalog_uniqueness() -> None:
     catalog = error_code_catalog()
     codes = list(catalog.values())
     assert len(set(codes)) == len(codes)
-    assert catalog["ratchetr._internal.exceptions.RatchetrError"] == "TW000"
+    assert catalog["ratchetr._infra.exceptions.RatchetrError"] == "TW000"
 
 
 def test_error_code_documentation_is_in_sync() -> None:

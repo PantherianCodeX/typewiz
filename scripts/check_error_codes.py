@@ -40,7 +40,7 @@ def _load_error_codes(src_path: Path) -> Iterable[str]:
     src_str = str(src_path)
     if src_str not in sys.path:
         sys.path.insert(0, src_str)
-    module = importlib.import_module("ratchetr._internal.error_codes")
+    module = importlib.import_module("ratchetr._infra.error_codes")
     error_catalog = module.error_code_catalog()
     return [str(code) for code in error_catalog.values()]
 

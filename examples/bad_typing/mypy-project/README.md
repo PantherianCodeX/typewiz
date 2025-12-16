@@ -13,21 +13,21 @@ This example demonstrates using ratchetr to audit Python code with mypy.
 Generate a typing audit manifest:
 
 ```bash
-ratchetr audit src --manifest typing_audit.json
+ratchetr audit src --manifest .ratchetr/manifest
 ```
 
 View the results in different formats:
 
 ```bash
 # Markdown dashboard
-ratchetr dashboard --manifest typing_audit.json --format markdown --output dashboard.md
+ratchetr dashboard --manifest .ratchetr/manifest --format markdown --output dashboard.md
 
 # HTML dashboard
-ratchetr dashboard --manifest typing_audit.json --format html --output dashboard.html
+ratchetr dashboard --manifest .ratchetr/manifest --format html --output dashboard.html
 
 # Query specific information
-ratchetr query overview --manifest typing_audit.json --format table
-ratchetr query hotspots --manifest typing_audit.json --kind files --limit 5
+ratchetr query overview --manifest .ratchetr/manifest --format table
+ratchetr query hotspots --manifest .ratchetr/manifest --kind files --limit 5
 ```
 
 ## Expected Diagnostics
@@ -45,8 +45,8 @@ Lock in current diagnostic counts to prevent regressions:
 
 ```bash
 # Initialize ratchet budget
-ratchetr ratchet init --manifest typing_audit.json --output ratchet.json --run mypy:current
+ratchetr ratchet init --manifest .ratchetr/manifest --output ratchet.json --run mypy:current
 
 # Check for new violations
-ratchetr ratchet check --manifest typing_audit.json --ratchet ratchet.json
+ratchetr ratchet check --manifest .ratchetr/manifest --ratchet ratchet.json
 ```

@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
-from ratchetr._internal.utils.paths import resolve_project_root
+from ratchetr._infra.utils.paths import resolve_project_root
 from ratchetr.compat import StrEnum
 from ratchetr.config import PathsConfig
 from ratchetr.config.constants import (
@@ -44,14 +44,11 @@ TOOL_HOME_ENV: Final[str] = "RATCHETR_DIR"
 MANIFEST_ENV: Final[str] = "RATCHETR_MANIFEST"
 CACHE_ENV: Final[str] = "RATCHETR_CACHE_DIR"
 LOG_ENV: Final[str] = "RATCHETR_LOG_DIR"
-FULL_PATHS_ENV: Final[str] = "RATCHETR_INCLUDE_PATHS"
+INCLUDE_ENV: Final[str] = "RATCHETR_INCLUDE"
 
 MANIFEST_CANDIDATE_NAMES: Final[tuple[str, ...]] = (
     DEFAULT_MANIFEST_FILENAME,
-    "typing_audit.json",
-    "typing_audit_manifest.json",
-    "reports/typing/typing_audit.json",
-    "reports/typing/manifest.json",
+    f"{DEFAULT_TOOL_HOME_DIRNAME}/{DEFAULT_MANIFEST_FILENAME}",
 )
 
 
@@ -77,7 +74,7 @@ class EnvOverrides:
     manifest_path: Path | None
     cache_dir: Path | None
     log_dir: Path | None
-    include_paths: list[str] | None
+    default_include: list[str] | None
 
     @classmethod
     def from_environ(cls, environ: Mapping[str, str] | None = None) -> EnvOverrides:
@@ -104,7 +101,7 @@ class EnvOverrides:
             manifest_path=_path_from_env(env, MANIFEST_ENV),
             cache_dir=cache_dir,
             log_dir=log_dir,
-            include_paths=_list_from_env(env, FULL_PATHS_ENV),
+            default_include=_list_from_env(env, INCLUDE_ENV),
         )
 
     @property
@@ -369,26 +366,21 @@ def discover_manifest(
     for name in candidate_names:
         _record_candidate(resolved.repo_root / name, attempts, matches, seen)
 
-    ambiguity = None
-    error: ManifestDiscoveryError | None = None
-    if len(matches) > 1:
-        ambiguity = "Multiple manifests discovered; provide --manifest to choose one"
-        error = ManifestDiscoveryError(message=ambiguity)
     diagnostics = _build_diagnostics(
         resolved,
         env,
         attempts,
         matches,
         cli_manifest=None,
-        ambiguity=ambiguity,
+        ambiguity=None,
     )
-    if matches and error is None:
+    if matches:
         return ManifestDiscoveryResult(manifest_path=matches[0], diagnostics=diagnostics, error=None)
 
     return ManifestDiscoveryResult(
         manifest_path=None,
         diagnostics=diagnostics,
-        error=error or ManifestDiscoveryError(message="No manifest discovered"),
+        error=ManifestDiscoveryError(message="No manifest discovered"),
     )
 
 
@@ -452,7 +444,6 @@ def _build_diagnostics(
 def _discover_globs(resolved: ResolvedPaths) -> tuple[Path, ...]:
     globbed: list[Path] = []
     globbed.extend(sorted(resolved.tool_home.glob("manifest*.json")))
-    globbed.extend(sorted(resolved.repo_root.glob("typing_audit*.json")))
     return tuple(Path(path).resolve() for path in globbed)
 
 

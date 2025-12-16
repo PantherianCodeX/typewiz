@@ -16,6 +16,6 @@
 
 from __future__ import annotations
 
-from ratchetr._internal.precedence import resolve_with_precedence
+from ratchetr._infra.precedence import resolve_with_precedence
 
 __all__ = ["resolve_with_precedence"]

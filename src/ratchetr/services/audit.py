@@ -35,7 +35,7 @@ def run_audit(
     project_root: Path,
     config: Config | None = None,
     override: AuditConfig | None = None,
-    include_paths: Sequence[str] | None = None,
+    default_include: Sequence[str] | None = None,
     build_summary_output: bool = False,
 ) -> AuditResult:
     """Run the configured audit and return structured results.
@@ -48,7 +48,7 @@ def run_audit(
             happens at the CLI layer via resolve_paths().
         config: Loaded `Config` object overriding file discovery.
         override: Additional overrides applied on top of ``config``.
-        include_paths: Explicit include list overriding config values.
+        default_include: Explicit include list overriding config values.
         build_summary_output: Whether to produce dashboard payloads.
 
     Returns:
@@ -58,6 +58,6 @@ def run_audit(
         project_root=project_root,
         config=config,
         override=override,
-        include_paths=include_paths,
+        default_include=default_include,
         build_summary_output=build_summary_output,
     )

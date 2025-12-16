@@ -25,7 +25,7 @@ from ratchetr import AuditConfig, Config, run_audit
 from ratchetr.audit.api import (
     AuditResult,
     _compute_run_totals,
-    _determine_include_paths,
+    _determine_default_include,
     _iterate_modes,
     _prepare_audit_inputs,
 )
@@ -76,30 +76,30 @@ class TestIterateModes:
 
 
 class TestDetermineIncludePaths:
-    """Test _determine_include_paths function."""
+    """Test _determine_default_include function."""
 
     @staticmethod
-    def test_include_paths_explicit_override(tmp_path: Path) -> None:
-        """Explicit include_paths parameter takes precedence."""
-        config = AuditConfig(include_paths=["config_path"])
+    def test_default_include_explicit_override(tmp_path: Path) -> None:
+        """Explicit default_include parameter takes precedence."""
+        config = AuditConfig(default_include=["config_path"])
         explicit = ["explicit_path"]
-        result = _determine_include_paths(tmp_path, config, explicit)
+        result = _determine_default_include(tmp_path, config, explicit)
         assert str(result[0]) == "explicit_path"
 
     @staticmethod
-    def test_include_paths_from_config(tmp_path: Path) -> None:
-        """Config include_paths used when no explicit override."""
-        config = AuditConfig(include_paths=["src", "tests"])
-        result = _determine_include_paths(tmp_path, config, None)
+    def test_default_include_from_config(tmp_path: Path) -> None:
+        """Config default_include used when no explicit override."""
+        config = AuditConfig(default_include=["src", "tests"])
+        result = _determine_default_include(tmp_path, config, None)
         assert len(result) == 2
         assert str(result[0]) == "src"
         assert str(result[1]) == "tests"
 
     @staticmethod
-    def test_include_paths_default_fallback(tmp_path: Path) -> None:
+    def test_default_include_default_fallback(tmp_path: Path) -> None:
         """Default to ['.'] when config and explicit are both None/empty."""
-        config = AuditConfig(include_paths=None)
-        result = _determine_include_paths(tmp_path, config, None)
+        config = AuditConfig(default_include=None)
+        result = _determine_default_include(tmp_path, config, None)
         assert len(result) == 1
         assert str(result[0]) == "."
 
@@ -256,7 +256,7 @@ class TestPrepareAuditInputs:
             project_root=tmp_path,
             config=config,
             override=None,
-            include_paths=None,
+            default_include=None,
         )
         assert inputs.root == tmp_path
         assert cfg.audit.runners == ["pyright"]
@@ -272,22 +272,22 @@ class TestPrepareAuditInputs:
                 project_root=tmp_path,
                 config=None,
                 override=override_config,
-                include_paths=None,
+                default_include=None,
             )
             # Override should be merged
             assert inputs.audit_config.runners == ["mypy"]
 
     @staticmethod
-    def test_prepare_audit_inputs_explicit_include_paths(tmp_path: Path) -> None:
-        """Explicit include_paths override config."""
+    def test_prepare_audit_inputs_explicit_default_include(tmp_path: Path) -> None:
+        """Explicit default_include override config."""
         config = Config(audit=AuditConfig(runners=["pyright"]))
         _, inputs = _prepare_audit_inputs(
             project_root=tmp_path,
             config=config,
             override=None,
-            include_paths=["src", "tests"],
+            default_include=["src", "tests"],
         )
-        assert len(inputs.include_paths_normalised) == 2
+        assert len(inputs.default_include_normalised) == 2
 
 
 class TestRunAuditIntegration:

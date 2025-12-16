@@ -15,8 +15,8 @@ SEC_DIR              ?= $(OUTPUT_DIR)/security
 LINT_DIR		     ?= $(OUTPUT_DIR)/lint
 TYPE_DIR		     ?= $(OUTPUT_DIR)/type
 
-RATCHETR_DIR  	     ?= $(OUTPUT_DIR)/ratchetr
-MANIFEST_PATH        ?= $(RATCHETR_DIR)/typing_audit.json
+RATCHETR_DIR  	     ?= $(OUTPUT_DIR)/.ratchetr
+MANIFEST_PATH        ?= $(RATCHETR_DIR)/manifest.json
 
 RATCHETR_STATUSES    ?= blocked ready
 RATCHETR_LEVEL       ?= folder
