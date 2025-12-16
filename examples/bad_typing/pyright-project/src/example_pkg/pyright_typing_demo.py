@@ -13,40 +13,38 @@
 # limitations under the License.
 
 # ignore JUSTIFIED: File contains purposely bad code for demonstation purposes
-# pragma: no cover  # type: ignore  # ruff: noqa: PGH003  # pylint: skip-file
+# pragma: no cover  # type: ignore  # pylint: skip-file
 
 """Demonstration of typing issues that pyright can detect."""
 
 from typing import Optional
 
 
-# ignore JUSTIFIED: demo omits a None guard so pyright can report unsafe access while
-# Ruff tolerates this pattern
-def process_optional(value: Optional[str]) -> int:  # noqa: UP045
+# Intentional: demo omits a None guard so pyright can report unsafe access while
+# Ruff tolerates the pattern (but catches all others in this demo).
+def process_optional(value: Optional[str]) -> int:
     return len(value)  # Should check if value is None first
 
 
-# ignore JUSTIFIED: demo uses implicit Any so pyright can report missing parameter
+# Intentional: demo uses implicit Any so pyright can report missing parameter
 # types
-def implicit_any(data):  # noqa: ANN001, ANN201
+def implicit_any(data):
     return data.get("key")  # Unknown attribute access
 
 
-# ignore JUSTIFIED: demo omits type narrowing so pyright can report invalid attribute
+# Intentional: demo omits type narrowing so pyright can report invalid attribute
 # access on a union
 def type_narrowing_demo(value: str | int) -> str:
     return value.upper()  # Error: 'int' has no attribute 'upper'
 
 
 class DataProcessor:
-    # ignore JUSTIFIED: demo uses an overly general dict type so pyright can report
-    # configuration shape issues
-    def __init__(self, config: dict):  # noqa: ANN204
+    def __init__(self, config: dict):
         self.config = config
 
-    # ignore JUSTIFIED: demo omits a return annotation so pyright can report incomplete
+    # Intentional: omits a return annotation so pyright can report incomplete
     # method typing
-    def get_setting(self, key: str):  # noqa: ANN201
+    def get_setting(self, key: str):
         return self.config.get(key, "default")
 
 
@@ -62,9 +60,9 @@ def incomplete_match(value: str | int | None) -> str:
 
 
 if __name__ == "__main__":
-    # ignore JUSTIFIED: demo uses print statements to show runtime behaviour; T201 is
+    # Intentional: demo uses print statements to show runtime behaviour; T201 is
     # suppressed only in this example module
-    print(process_optional("test"))  # noqa: T201
-    # ignore JUSTIFIED: demo uses print statements to show runtime behaviour; T201 is
+    print(process_optional("test"))
+    # Intentional: demo uses print statements to show runtime behaviour; T201 is
     # suppressed only in this example module
-    print(implicit_any({"key": "value"}))  # noqa: T201
+    print(implicit_any({"key": "value"}))
