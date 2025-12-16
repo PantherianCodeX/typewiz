@@ -22,7 +22,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 
 from ratchetr.audit.paths import normalise_paths
-from tests.property_based.strategies import path_parts
+from tests.property.strategies import path_parts
 
 if TYPE_CHECKING:
     from pathlib import Path

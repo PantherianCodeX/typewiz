@@ -296,3 +296,5 @@ Rejected. Many tools emit valid machine-readable diagnostics while returning non
 * Add timeouts only after explicit override mechanisms exist.
 * Expand structured recording of configuration errors (including explicit empty scope) into manifest metadata consistently across commands.
 * Harden documentation and help examples to reflect plan-based per-engine deduplication and the single mode caveat.
+
+---

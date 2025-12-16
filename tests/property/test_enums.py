@@ -20,7 +20,7 @@ import pytest
 from hypothesis import given
 
 from ratchetr.core.model_types import SeverityLevel
-from tests.property_based.strategies import arbitrary_cli_noise
+from tests.property.strategies import arbitrary_cli_noise
 
 pytestmark = pytest.mark.property
 
