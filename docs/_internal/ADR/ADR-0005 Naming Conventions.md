@@ -35,7 +35,7 @@ This ADR scopes **naming only** (types, fields, modules, packages, external cont
 
 ## Decision Outcome
 
-**Chosen Option:** Adopt **repo-wide naming conventions** with mandatory suffix rules for key object families, provenance-aware naming for scope controls, and strict boundary rules for external casing/keys.
+**Chosen Option:** Adopt **repo-wide naming conventions** with mandatory suffix rules for key object families, explicit provenance fields for records that require provenance, provenance-aware naming for scope controls, and strict boundary rules for external casing/keys.
 
 This is intentionally strict pre-release: rename churn is cheaper now than post-release.
 
@@ -44,10 +44,50 @@ This is intentionally strict pre-release: rename churn is cheaper now than post-
 ## Naming Principles
 
 1. **Internal default is snake_case** (fields, locals, parameters, internal dict keys).
-2. **External contracts are explicit**: CLI flags, env vars, config keys, and JSON schemas may choose different naming, but translation must be deliberate and isolated.
-3. **Names encode lifecycle stage** where applicable: input intent vs. resolved/canonicalized values vs. executable plans vs. results vs. persisted artifacts.
+2. **External contracts are explicit:** CLI flags, env vars, config keys, and persisted artifacts may choose different naming, but translation must be deliberate and isolated.
+3. **Names encode lifecycle stage** where applicable: input intent vs resolved/canonicalized values vs executable plans vs results vs persisted artifacts.
 4. **Avoid ambiguous nouns** unless qualified by a suffix/prefix that signals intent.
 5. **Prefer one canonical name per concept** and refactor legacy names opportunistically.
+6. **American English only:** identifiers use `normalize`, `normalized`, `normalization` (not `normalise`, etc.). When a term becomes part of a cross-feature concept, it must be spelled consistently everywhere.
+
+---
+
+## Terminology
+
+Ratchetr uses the following terms as **distinct concepts**, not synonyms:
+
+* **Plugin** — a loadable/registrable extension unit. Plugins may provide one or more engines. (“Packaging and discovery.”)
+* **Engine** — a runnable capability that produces ratchetr diagnostics for a target language/toolchain. (“The thing that runs.”)
+* **Tool** — an external analyzer invoked by an engine (e.g., pyright, mypy, ruff). (“The third-party program/library and invocation details.”)
+
+ASCII mental model:
+
+```
+plugin (extension package)
+  └─ provides → engine (runnable capability)
+        └─ invokes → tool (external analyzer)
+```
+
+**Rule:** do not use `plugin`, `engine`, and `tool` interchangeably.
+
+---
+
+## Provenance fields
+
+Some records must carry provenance so downstream consumers can reliably answer “where did this come from?” without inference.
+
+* `origin` (mandatory when provenance is relevant) — the **ultimate source** at the point the record entered ratchetr’s canonical stream.
+
+  * Values MUST be low-cardinality and stable (e.g., `engine` | `ratchetr`).
+* `producer` (optional) — the component that **materialized/emitted** the record in its current canonical form (“last writer” / materializer).
+
+  * Values SHOULD remain controlled and meaningful (e.g., `engine`, `cache`, `ratchetr`), but `producer` MUST NOT replace `origin`.
+
+Rules:
+
+1. `origin` is assigned at first creation of the canonical record and MUST be preserved by downstream transforms.
+2. `producer` MAY change when a record is re-materialized (rehydrated, adapted, re-emitted).
+3. Do not invent synonyms (`source`, `emitter`) unless a distinct meaning is required and documented.
 
 ---
 
@@ -65,36 +105,74 @@ Use these suffixes when the concept exists; do not invent near-synonyms:
 * `*Policy` — rules/constraints that govern how decisions are made.
 * `*Plan` — executable blueprint (complete enough to run without guessing).
 * `*Invocation` / `*Task` — smallest unit of executable work.
-* `*Result` — runtime outcome of executing a unit (status, timings, counts, errors).
+* `*Result` — runtime outcome of executing a unit (status, timings, counts, failures).
 * `*Artifact` — persisted output (files, indexes, caches) with stable semantics.
 * `*Summary` — aggregated structure for rollups.
 * `*Report` — formatted view (text/JSON/HTML) derived from results/summaries/artifacts.
-* `*Finding` / `*Event` — structured diagnostic emitted during any stage.
 
-Special-purpose suffixes:
+Diagnostics and lifecycle records:
 
-* `*Model` — validation models. Do not use for runtime dataclasses.
-* `*Payload` — wire/persisted mapping intended for serialization (dict-shaped).
+* `*Diagnostic` — canonical “reportable condition” record.
+
+  * When a `Diagnostic` carries provenance, it uses the global `origin` / `producer` fields.
+* `*Event` — structured lifecycle/telemetry signal (timeline/log stream). Events are not a substitute for diagnostics.
+
+Structured non-exception outcome records:
+
+* `*Issue` — non-exception structured record for notable conditions that are not binary failures.
+* `*Failure` — non-exception structured record representing a failed operation/step.
+* `*Violation` — non-exception structured record representing a policy/contract breach.
+
+### Special-purpose suffixes
+
+* `*Model` — validation models (framework-agnostic). Do not use for runtime dataclasses.
+* `*Payload` — dict-shaped record intended for serialization (internal shape; see adapters for wire casing).
 * `*Record` — presentation-friendly row/view representation.
 * `*Entry` — an element within a collection (store/list/map).
 * `*Overrides` — optional override bundle (not effective state).
-* `*Diagnostics` — troubleshooting bundle (avoid collision with engine/tool “Diagnostic” terms).
+* `*DebugBundle` / `*TroubleshootingBundle` — a bundle of diagnostics and related context (never a single diagnostic record).
 * `*Check` — predicate/evaluator helper.
 
 ### Prefix rules
 
-* Use `Effective*` for final, merged choices (post-precedence).
-* Use `Canonical*` only when stable identity is the point (e.g., canonical path key).
+* `Effective*` — final, merged choices (post-precedence).
+* `Canonical*` — stable identity is the point (e.g., canonical path key).
 
 ### Avoid ambiguous nouns
 
-Avoid generic names without taxonomy signals: `Data`, `Info`, `State`, `Details`, `Options`, `Payload` (unless wire/persisted), and unqualified `Spec`.
+Avoid generic names without taxonomy signals: `Data`, `Info`, `State`, `Details`, `Options`, and unqualified `Spec`.
 
 ### Collections
 
 Prefer semantic plurals:
 
 * `EngineInvocations`, `ScopeTargets`, `OutputTargets`, `CacheEntries`, `RuleCounts`.
+
+---
+
+## Diagnostics and tool-native shapes
+
+`Diagnostic` is ratchetr’s canonical record for reportable conditions, regardless of whether the underlying information came from an engine/tool or from ratchetr itself.
+
+To avoid terminology collisions with external analyzers:
+
+* Raw tool/engine-native shapes MUST NOT be named `Diagnostic`.
+* Use `ToolDiagnostic` (preferred) or `ToolMessage` for tool-native payloads prior to canonicalization.
+* If an engine needs a domain-local intermediate type, qualify it (e.g., `PyrightToolDiagnostic`) and translate into the canonical `Diagnostic`.
+
+Rule of thumb:
+
+```
+reportable condition → Diagnostic
+lifecycle/timeline   → Event
+```
+
+---
+
+## Error suffix reservation
+
+* Exception types MUST end in `Error` (e.g., `ConfigError`, `ManifestVersionError`).
+* Non-exception records MUST NOT use the `Error` suffix. Use `*Issue`, `*Failure`, `*Violation`, `*Diagnostic`, `*Result`, etc.
 
 ---
 
@@ -106,7 +184,7 @@ To prevent ambiguity between “what the user asked for”, “engine overrides�
 * Per-engine override controls: `engine_include`, `engine_exclude`
 * Computed merged lists used for execution: `effective_include`, `effective_exclude`
 
-**Rule:** Unqualified `include`/`exclude` are reserved for external UX (CLI/env/config) or for clearly engine-local structures where provenance cannot be confused.
+Rule: unqualified `include`/`exclude` are reserved for external UX (CLI/env/config) or for clearly engine-local structures where provenance cannot be confused.
 
 When the values are **concrete path lists** (not selector patterns), prefer `*_paths` for internal fields (e.g., `scanned_paths`, `selected_paths`) to signal that these are resolved paths, not selector patterns.
 
@@ -128,7 +206,7 @@ Rules:
 
 ### Engine names and profile names
 
-* Engine identifiers (`EngineName`, `RunnerName`) MUST be lowercase and stable (e.g., `pyright`, `mypy`).
+* Engine identifiers MUST be lowercase and stable (e.g., `pyright`, `mypy`).
 * Profiles are user-facing tokens; they SHOULD be lowercase and human-readable (e.g., `baseline`, `strict`).
 * Do not encode implementation detail in identifiers (avoid `pyright_v1`, `mypy_new`); versioning is captured via config or tool version metadata.
 
@@ -139,19 +217,13 @@ Use explicit unit suffixes for numeric values:
 * `_ms`, `_seconds`, `_bytes`, `_count` (internal snake_case)
 * Wire fields may use unit suffixes but MUST remain in adapters if camelCase is required.
 
----
+### Normalization naming
 
-## Exceptions and Errors
+When code performs canonicalization/normalization steps:
 
-Naming:
-
-* Exceptions MUST end in `Error` (`ManifestVersionError`, `ConfigError`).
-* Base exception type SHOULD be `RatchetrError` for domain-level failures; use standard built-ins (e.g., `ValueError`) only for narrow “invalid argument” cases at pure-function boundaries.
-
-Placement:
-
-* Domain exceptions belong in `exceptions.py` within the owning package.
-* Infrastructure exceptions belong in the private infrastructure package.
+* Prefer verb form `normalize_*` for functions (e.g., `normalize_patterns`, `normalize_paths`).
+* Prefer adjective form `normalized_*` for derived values (e.g., `normalized_root`, `normalized_patterns`).
+* Prefer noun form `normalization_*` for policies/settings describing the rules (e.g., `normalization_policy`).
 
 ---
 
@@ -159,10 +231,10 @@ Placement:
 
 ### Standard filenames (preferred)
 
-To keep navigation predictable, prefer these canonical filenames when applicable:
+Prefer these canonical filenames when applicable:
 
 * `models.py` — validation models (`*Model`).
-* `typed.py` — wire/persisted payload types (`*Payload`, `*Entry`, etc.). If these payloads require camelCase, they MUST live behind adapters.
+* `typed.py` — internal payload types (`*Payload`, `*Entry`, etc.) in **snake_case**.
 * `types.py` — runtime dataclasses/enums/types local to the domain.
 * `type_aliases.py` — type aliases and NewTypes.
 * `exceptions.py` — domain exceptions.
@@ -172,21 +244,34 @@ To keep navigation predictable, prefer these canonical filenames when applicable
 * `loader.py` / `builder.py` — load/build steps when those concepts are real in the domain.
 * `views.py` — presentation-only view types used by renderers.
 
+### Constants, paths, and filesystem identifiers
+
+Names that relate to the filesystem MUST communicate whether they represent a **basename**, a **directory**, or a **path**.
+
+Suffix rules (mandatory):
+
+* `*_FILENAME` — basename only (no separators). Example: `DEFAULT_MANIFEST_FILENAME = "manifest.json"`.
+* `*_DIRNAME` — directory name only (no separators). Example: `DEFAULT_TOOL_HOME_DIRNAME = ".ratchetr"`.
+* `*_PATH` — a path value (relative or absolute). Example: `DEFAULT_RATCHET_PATH = Path(".ratchetr/ratchet.json")`.
+* `*_DIR` — a directory path (a `Path` expected to be a directory location).
+
+Rule: do not use `*_FILENAME` for values that may contain a parent directory, and do not use `*_PATH` for basename-only constants.
+
+Single source of truth (mandatory):
+
+* Canonical artifact filenames and candidate-name lists MUST be defined once (prefer `config/constants.py` for basenames and `_infra/paths.py` for discovery candidates) and imported everywhere.
+* Duplicated candidate-name lists are prohibited.
+
 ### Avoid generic “utils/helpers” naming
 
-Avoid catch-all module names such as `utils.py`, `helpers.py`, or pervasive `*_utils.py` / `*_helpers.py`. In nearly all cases, a concrete noun communicates intent more precisely (e.g., `paths.py`, `json.py`, `overrides.py`, `logging.py`, `rendering.py`).
+Avoid catch-all module names such as `utils.py`, `helpers.py`, or pervasive `*_utils.py` / `*_helpers.py`. Prefer concrete nouns (`paths.py`, `json.py`, `overrides.py`, `logging.py`, `rendering.py`).
 
 If a bucket is unavoidable, it must have a documented, enforceable meaning:
 
-* `utils/` contains **primitives**: small, deterministic building blocks that are broadly reusable and minimally coupled (ideally pure functions).
-* `helpers/` contains **glue**: convenience wrappers, orchestration, formatting, and layer-specific ergonomics (often I/O and tool wiring).
+* `utils/` contains primitives (small, deterministic building blocks; minimal coupling).
+* `helpers/` contains glue (convenience wrappers, orchestration, formatting; often I/O).
 
-**Rule:** `_infra/` should not be a dumping ground for glue. Prefer eliminating buckets by using concrete modules at `_infra/` root. If a bucket is still required in `_infra/`, it should generally be `utils/` (primitives), while glue belongs in the consuming layer (`cli/`, `adapters/`, `tests/`) where policy and boundary context are explicit.
-
-Examples (preferred):
-
-* `_infra/paths.py` instead of `_infra/utils/path_utils.py`
-* `cli/helpers/options.py` is acceptable (CLI glue), but `core/helpers.py` is not.
+Rule: `_infra/` should not be a dumping ground for glue. Prefer eliminating buckets by using concrete modules at `_infra/` root. If a bucket is still required in `_infra/`, it should generally be `utils/` (primitives).
 
 ---
 
@@ -197,9 +282,9 @@ Examples (preferred):
 Recommended structure:
 
 * `adapters/<artifact>/` for artifact-specific translation (e.g., `adapters/manifest/`, `adapters/summary/`)
-* `adapters/<artifact>/wire.py` (or `to_wire.py` / `from_wire.py`) to make the translation intent unambiguous
+* `adapters/<artifact>/wire.py` (or `to_wire.py` / `from_wire.py`) to make translation intent explicit
 
-**Rule:** Feature packages may define `*Payload`/TypedDict shapes, but they must remain **snake_case** unless they are adapter-owned.
+Rule: feature packages may define internal `*Payload`/TypedDict shapes, but they must remain **snake_case** unless adapter-owned.
 
 ---
 
@@ -214,10 +299,24 @@ Recommended structure:
 
 * Use `RATCHETR_` prefix.
 * Use uppercase snake-case.
-* Names describe the user-facing concept, not internal implementation.
-  * `RATCHETR_INCLUDE` for include selectors/targets
-  * `RATCHETR_ROOT` for repository root override
-  * `RATCHETR_DIR` for tool home directory override
+* Names describe the **user-facing concept**, not internal implementation detail.
+
+Canonical variables:
+
+* `RATCHETR_CONFIG` — config file override (explicit path).
+* `RATCHETR_ROOT` — repository root override.
+* `RATCHETR_DIR` — tool home directory override (e.g., `.ratchetr/`).
+* `RATCHETR_INCLUDE` — include selectors/targets.
+* `RATCHETR_EXCLUDE` — exclude selectors/targets.
+* `RATCHETR_MANIFEST` — manifest output file override (explicit path).
+* `RATCHETR_CACHE_DIR` — cache directory override (explicit path).
+* `RATCHETR_LOG_DIR` — log directory override (explicit path).
+
+**Rules:**
+
+* Internal constant names for env vars MUST use a clear suffix (e.g., `*_ENV`).
+* List-valued env vars MUST be encoded as a JSON array of strings (e.g., ["src", "tests"]), not comma-separated strings.
+* The variable name should still communicate plurality/collection intent where possible, except where matching/mirroring external schema overrides.
 
 ### Configuration file names
 
@@ -244,16 +343,18 @@ Legacy artifact filenames are not supported.
 
 When introducing a new type/module/field:
 
-1. **Identify the boundary**: internal runtime vs. external contract vs. wire/persisted.
-2. **Choose lifecycle stage**: token/spec/resolved/policy/plan/invocation/result/artifact/summary/report/finding.
-3. **Choose the container**:
+1. Identify the boundary: internal runtime vs external contract vs wire/persisted.
+2. Choose lifecycle stage: token/spec/resolved/policy/plan/invocation/result/artifact/summary/report/diagnostic/event/issue/failure/violation.
+3. Choose the container:
+
    * validation model (`*Model` in `models.py`)
    * runtime type (`types.py`)
-   * wire payload (`*Payload` in adapters; or snake_case in `typed.py` + adapter translations)
-4. **Apply provenance naming** if scope-related.
-5. **Avoid ambiguous nouns**; prefer names that communicate what makes the thing distinct.
-6. **Prefer existing vocabulary** over inventing near-synonyms.
-7. **Ensure the module name matches the dominant abstraction** (do not hide domain concepts inside `*_utils.py`).
+   * internal payload (`*Payload` in `typed.py`)
+   * wire mapping (adapters)
+4. Apply provenance naming: use `origin` and `producer` when provenance is relevant.
+5. Avoid ambiguous nouns; prefer names that communicate what makes the thing distinct.
+6. Prefer existing vocabulary over inventing near-synonyms.
+7. Ensure the module name matches the dominant abstraction (avoid `*_utils.py` catch-alls).
 
 ---
 
@@ -269,7 +370,7 @@ When introducing a new type/module/field:
 ### Negative / Tradeoffs
 
 * Some pre-release rename churn is expected and intentional.
-* Requires discipline and ongoing review to keep legacy names aligned.
+* Requires discipline and ongoing review to keep naming aligned.
 * Adapter introduction may require short-term duplication during migrations.
 
 ---
@@ -277,60 +378,20 @@ When introducing a new type/module/field:
 ## Implementation Notes
 
 1. Add lightweight structural checks (or lint rules) for:
+
    * camelCase outside adapters
    * prohibited catch-all module naming
-   * reserved suffixes (`*Model`, `*Payload`, etc.) misuse
-2. Ensure docs and examples use the external contract naming consistently.
-3. Prefer staged migrations:
-   * introduce adapters and translate to stable internal snake_case
-   * keep compatibility readers for legacy persisted shapes
-   * remove legacy naming when the ecosystem converges
+   * reserved suffix misuse (`*Model`, `*Payload`, `*Error`, etc.)
+2. Ensure docs/examples use the external contract naming consistently.
+3. Prefer staged migrations: introduce adapters and translate to stable internal snake_case; retire legacy persisted shapes/keys when feasible.
 
 ---
 
-## Appendix A: Known Violations in `ratchetr-0.1.0-6` (inventory)
+## Appendix A: Known Violations (inventory)
 
-This appendix is an observed, non-exhaustive inventory intended to drive cleanup work. It should be updated or removed once the repo converges.
+This appendix is a non-exhaustive inventory intended to drive cleanup work. It should be updated or removed once the repo converges.
 
-### A.1 Boundary casing leakage (camelCase outside adapters)
-
-* Violation of ADR-0004 Taxonomy, which restricts external-based naming conventions from leaving the `adapters/` boundary layer.
-
-camelCase TypedDict fields and dict keys exist outside `src/ratchetr/adapters/`, notably:
-
-* `src/ratchetr/core/summary_types.py` (e.g., `severityBreakdown`, `ruleFiles`, `runSummary`)
-* `src/ratchetr/manifest/typed.py` (e.g., `severityBreakdown`, `ruleFiles`, `runSummary`)
-* `src/ratchetr/manifest/models.py`
-* `src/ratchetr/cli/helpers/formatting.py` (e.g., `pluginArgs`, `ruleFiles`)
-* `src/ratchetr/dashboard/build.py`
-* `src/ratchetr/ratchet/models.py`
-* `src/ratchetr/readiness/compute.py`
-* `src/ratchetr/readiness/views.py`
-* `src/ratchetr/_infra/cache.py`
-* `src/ratchetr/common/override_utils.py`
-* `src/ratchetr/audit/api.py` (e.g., `engine_error` includes `exitCode`)
-
-**Expected direction:** internal structures are snake_case; adapters own wire/persisted camelCase mappings. `src/ratchetr/adapters/` currently exists but is empty.
-
----
-
-### A.2 Generic module naming (`utils`, `helpers`, and `*_utils.py`)
-
-Potentially over-generic module names and/or buckets (naming does not communicate intent precisely):
-
-* `src/ratchetr/_infra/collection_utils.py`
-* `src/ratchetr/_infra/logging_utils.py`
-* `src/ratchetr/common/override_utils.py`
-
-**Why this violates the ADR:** catch-all naming obscures responsibility and encourages “grab-bag” growth.
-
-**Expected direction:** rename to concrete nouns matching the dominant abstraction, for example:
-
-* `collections.py` (or `collection_ops.py` if needed)
-* `logging.py` (or `log_format.py` / `log_config.py` if more precise)
-* `overrides.py`
-
-**Bucket rule:** avoid `utils.py` / `helpers.py` buckets entirely when feasible. If a bucket is unavoidable, `utils/` must be primitives and `helpers/` must be layer-local glue (preferably not in `_infra/`).
+(Inventory intentionally omitted here; track in code review notes or an issue tracker to avoid making ADR-0005 depend on a particular snapshot.)
 
 ---
 

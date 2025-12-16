@@ -80,13 +80,13 @@ def test_effective_hash_workers_with_invalid_spec(monkeypatch: pytest.MonkeyPatc
     assert cache_module._effective_hash_workers("bogus") == 2
 
 
-def test_normalise_helpers() -> None:
-    mapping = cache_module._normalise_category_mapping({
+def test_normalize_helpers() -> None:
+    mapping = cache_module._normalize_category_mapping({
         "unknownChecks": [" Foo ", "foo", "BAR "],
         "bad": ["ignored"],
     })
     assert mapping["unknownChecks"] == ["Foo", "BAR"]
-    override = cache_module._normalise_override_entry({
+    override = cache_module._normalize_override_entry({
         "path": " src ",
         "profile": " strict ",
         "pluginArgs": ["--first", "--first"],
@@ -98,9 +98,9 @@ def test_normalise_helpers() -> None:
     assert override["pluginArgs"] == ["--first", "--first"]
     assert override["include"] == [RelPath("apps")]
     assert override["exclude"] == [RelPath("tmp")]
-    diag = cache_module._normalise_diagnostic_payload({"tool": "pyright", "path": "pkg/app.py"})
+    diag = cache_module._normalize_diagnostic_payload({"tool": "pyright", "path": "pkg/app.py"})
     assert diag["tool"] == "pyright"
-    file_hash = cache_module._normalise_file_hash_payload({"hash": "abc", "size": "10"})
+    file_hash = cache_module._normalize_file_hash_payload({"hash": "abc", "size": "10"})
     assert file_hash["size"] == 10
 
 

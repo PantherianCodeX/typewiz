@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-from ratchetr.audit.options import normalise_category_mapping, prepare_category_mapping
+from ratchetr.audit.options import normalize_category_mapping, prepare_category_mapping
 
 pytestmark = pytest.mark.unit
 
@@ -37,13 +37,13 @@ def test_prepare_category_mapping_filters_invalid_keys() -> None:
     assert list(mapping["unknownChecks"]) == ["foo", "foo"]
 
 
-def test_normalise_category_mapping_dedupes_and_orders() -> None:
-    normalised = normalise_category_mapping(
+def test_normalize_category_mapping_dedupes_and_orders() -> None:
+    normalized = normalize_category_mapping(
         {
             "optionalChecks": ["Opt", "opt"],
             "unknownChecks": ["Foo", "bar", "foo"],
         },
     )
-    assert list(normalised) == ["optionalChecks", "unknownChecks"]
-    assert normalised["optionalChecks"] == ["Opt"]
-    assert normalised["unknownChecks"] == ["Foo", "bar"]
+    assert list(normalized) == ["optionalChecks", "unknownChecks"]
+    assert normalized["optionalChecks"] == ["Opt"]
+    assert normalized["unknownChecks"] == ["Foo", "bar"]

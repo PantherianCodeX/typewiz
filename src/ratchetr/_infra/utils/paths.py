@@ -23,7 +23,7 @@ from typing import Any, Final, Literal, TypeAlias, cast
 from ratchetr.core.model_types import LogComponent
 from ratchetr.logging import structured_extra
 
-logger: logging.Logger = logging.getLogger("ratchetr.internal.paths")
+logger: logging.Logger = logging.getLogger("ratchetr._infra.paths")
 
 __all__ = ["ROOT_MARKERS", "RootMarker", "resolve_project_root"]
 

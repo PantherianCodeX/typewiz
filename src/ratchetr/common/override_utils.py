@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 def get_override_components(
     entry: OverrideEntry,
 ) -> tuple[str, str | None, list[str], list[RelPath], list[RelPath]]:
-    """Return normalised override components for consistent rendering.
+    """Return normalized override components for consistent rendering.
 
     Args:
         entry: Override mapping pulled from manifest data.
@@ -104,7 +104,7 @@ def override_detail_lines(entry: OverrideEntry) -> tuple[str, list[str]]:
     """Return a `(path, details)`tuple for detailed override reporting.
 
     Args:
-        entry: Override entry to normalise.
+        entry: Override entry to normalize.
 
     Returns:
         Tuple containing the override path and a list of detail strings.

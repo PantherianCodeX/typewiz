@@ -57,10 +57,10 @@ def _sample_manifest() -> ManifestData:
     )
 
 
-def test_normalise_mode_accepts_modes_and_rejects_invalid() -> None:
-    assert ratchet_core._normalise_mode(Mode.CURRENT) is Mode.CURRENT
-    assert ratchet_core._normalise_mode("target") == Mode.TARGET
-    assert ratchet_core._normalise_mode("nope") is None
+def test_normalize_mode_accepts_modes_and_rejects_invalid() -> None:
+    assert ratchet_core._normalize_mode(Mode.CURRENT) is Mode.CURRENT
+    assert ratchet_core._normalize_mode("target") == Mode.TARGET
+    assert ratchet_core._normalize_mode("nope") is None
 
 
 def test_severity_counts_from_file_prefers_diagnostics_over_totals() -> None:
@@ -86,7 +86,7 @@ def test_severity_counts_from_file_uses_total_fields_when_no_diagnostics() -> No
     assert counts[SeverityLevel.INFORMATION] == 3
 
 
-def test_overrides_and_category_mapping_are_normalised() -> None:
+def test_overrides_and_category_mapping_are_normalized() -> None:
     raw = _map_payload({
         "overrides": [{"b": 2, "a": 1}],
         "categoryMapping": {
@@ -94,9 +94,9 @@ def test_overrides_and_category_mapping_are_normalised() -> None:
             "invalid": ["skip"],
         },
     })
-    overrides = ratchet_core._normalise_overrides(raw)
+    overrides = ratchet_core._normalize_overrides(raw)
     assert overrides == [{"a": 1, "b": 2}]
-    category_map = ratchet_core._normalise_category_mapping(raw)
+    category_map = ratchet_core._normalize_category_mapping(raw)
     assert category_map == {"general": ["src"]}
 
 
@@ -110,23 +110,23 @@ def test_canonicalise_engine_options_handles_full_payload_and_none() -> None:
         "overrides": [{"foo": "bar"}],
         "categoryMapping": {"general": ["src"]},
     })
-    normalised = ratchet_core._canonicalise_engine_options(raw)
-    assert normalised["profile"] == "baseline"
-    assert normalised["configFile"] == "pyproject.toml"
-    assert normalised["pluginArgs"] == ["--strict"]
-    assert normalised["include"] == ["src"]
-    assert normalised["exclude"] == ["tests"]
-    assert normalised["overrides"] == [{"foo": "bar"}]
-    assert normalised["categoryMapping"] == {"general": ["src"]}
+    normalized = ratchet_core._canonicalise_engine_options(raw)
+    assert normalized["profile"] == "baseline"
+    assert normalized["configFile"] == "pyproject.toml"
+    assert normalized["pluginArgs"] == ["--strict"]
+    assert normalized["include"] == ["src"]
+    assert normalized["exclude"] == ["tests"]
+    assert normalized["overrides"] == [{"foo": "bar"}]
+    assert normalized["categoryMapping"] == {"general": ["src"]}
     assert ratchet_core._canonicalise_engine_options(None) == {}
 
 
-def test_normalise_severity_list_handles_empty_and_duplicates() -> None:
-    assert ratchet_core._normalise_severity_list(None) == list(DEFAULT_SEVERITIES)
-    assert ratchet_core._normalise_severity_list([]) == list(DEFAULT_SEVERITIES)
-    filtered = ratchet_core._normalise_severity_list(cast("Sequence[SeverityLevel]", [None, None]))
+def test_normalize_severity_list_handles_empty_and_duplicates() -> None:
+    assert ratchet_core._normalize_severity_list(None) == list(DEFAULT_SEVERITIES)
+    assert ratchet_core._normalize_severity_list([]) == list(DEFAULT_SEVERITIES)
+    filtered = ratchet_core._normalize_severity_list(cast("Sequence[SeverityLevel]", [None, None]))
     assert filtered == list(DEFAULT_SEVERITIES)
-    deduped = ratchet_core._normalise_severity_list([SeverityLevel.WARNING, SeverityLevel.WARNING, SeverityLevel.ERROR])
+    deduped = ratchet_core._normalize_severity_list([SeverityLevel.WARNING, SeverityLevel.WARNING, SeverityLevel.ERROR])
     assert deduped == [SeverityLevel.ERROR, SeverityLevel.WARNING]
 
 
@@ -191,11 +191,11 @@ def test_collect_manifest_runs_and_lookup_helpers_ignore_bad_entries() -> None:
 
 def test_run_id_helpers_trim_blanks() -> None:
     values = ["pyright:current", RunId("mypy:target"), " "]
-    normalised = ratchet_core._normalise_run_id_values(values)
-    assert RunId("pyright:current") in normalised
-    assert RunId("mypy:target") in normalised
-    assert len(normalised) == 2
-    assert RunId("pyright:current") in ratchet_core._normalise_run_id_set(values)
+    normalized = ratchet_core._normalize_run_id_values(values)
+    assert RunId("pyright:current") in normalized
+    assert RunId("mypy:target") in normalized
+    assert len(normalized) == 2
+    assert RunId("pyright:current") in ratchet_core._normalize_run_id_set(values)
 
 
 def test_collect_path_counts_filters_empty_paths() -> None:

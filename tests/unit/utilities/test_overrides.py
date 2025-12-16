@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.unit
 
 
-def test_get_override_components_normalises_values() -> None:
+def test_get_override_components_normalizes_values() -> None:
     entry = cast(
         "OverrideEntry",
         {

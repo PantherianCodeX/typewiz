@@ -227,7 +227,7 @@ def merge_audit_configs(base: AuditConfig, override: AuditConfig | None) -> Audi
 
 
 def prepare_category_mapping(value: object) -> Mapping[CategoryKey, Sequence[str]] | None:
-    """Normalise raw engine category mappings into a predictable structure.
+    """Normalize raw engine category mappings into a predictable structure.
 
     Args:
         value: Arbitrary JSON-like payload returned by an engine.
@@ -251,7 +251,7 @@ def prepare_category_mapping(value: object) -> Mapping[CategoryKey, Sequence[str
     return prepared
 
 
-def normalise_category_mapping(
+def normalize_category_mapping(
     mapping: Mapping[CategoryKey, Sequence[str]] | None,
 ) -> dict[CategoryKey, list[str]]:
     """Provide a deterministic ordering for category mappings.
@@ -265,7 +265,7 @@ def normalise_category_mapping(
     """
     if mapping is None:
         return {}
-    normalised: dict[CategoryKey, list[str]] = {}
+    normalized: dict[CategoryKey, list[str]] = {}
     for category_key, raw_values in mapping.items():
         deduped: list[str] = []
         seen: set[str] = set()
@@ -278,5 +278,5 @@ def normalise_category_mapping(
                 continue
             seen.add(lowered)
             deduped.append(candidate)
-        normalised[category_key] = deduped
-    return normalised
+        normalized[category_key] = deduped
+    return normalized

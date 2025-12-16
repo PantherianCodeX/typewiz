@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 import pytest
 from hypothesis import HealthCheck, given, settings
 
-from ratchetr.audit.paths import normalise_paths
+from ratchetr.audit.paths import normalize_paths
 from tests.property.strategies import path_parts
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ pytestmark = pytest.mark.property
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(parts=path_parts())
-def test_h_normalise_paths_dedup_and_posix(parts: list[str], tmp_path: Path) -> None:
+def test_h_normalize_paths_dedup_and_posix(parts: list[str], tmp_path: Path) -> None:
     # Build directories for each path under tmp_path
     raw_inputs: list[str] = []
     for p in parts:
@@ -42,7 +42,7 @@ def test_h_normalise_paths_dedup_and_posix(parts: list[str], tmp_path: Path) -> 
         # include variants with trailing slashes
         raw_inputs.extend([sub, f"{sub}/"])
 
-    result = normalise_paths(tmp_path, raw_inputs)
+    result = normalize_paths(tmp_path, raw_inputs)
     # Deduplication: result length <= number of unique normalized inputs
     assert len(result) <= len({s.rstrip("/") for s in raw_inputs})
     # POSIX style and no trailing slashes

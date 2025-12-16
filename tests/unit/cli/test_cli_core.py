@@ -22,11 +22,11 @@ import pytest
 
 from ratchetr._infra.utils import consume
 from ratchetr.cli.app import write_config_template
-from ratchetr.cli.commands.audit import normalise_modes_tuple
+from ratchetr.cli.commands.audit import normalize_modes_tuple
 from ratchetr.cli.helpers import (
     collect_plugin_args,
     collect_profile_args,
-    normalise_modes,
+    normalize_modes,
     parse_summary_fields,
 )
 from ratchetr.cli.helpers.formatting import (
@@ -123,7 +123,7 @@ def _build_cli_runs(tmp_path: Path) -> tuple[RunResult, RunResult]:
         ("all", ALL_SUMMARY_FIELDS),
     ],
 )
-def test_parse_summary_fields_normalises_input(raw: str, expected: list[SummaryField]) -> None:
+def test_parse_summary_fields_normalizes_input(raw: str, expected: list[SummaryField]) -> None:
     # Arrange
     valid_fields = SUMMARY_FIELD_CHOICES
 
@@ -193,37 +193,37 @@ def test_collect_profile_args_rejects_invalid_entries(entries: list[str]) -> Non
         (["current"], (True, True, False)),
     ],
 )
-def test_normalise_modes_tuple_handles_cli_flags(raw: list[str] | None, expected: tuple[bool, bool, bool]) -> None:
+def test_normalize_modes_tuple_handles_cli_flags(raw: list[str] | None, expected: tuple[bool, bool, bool]) -> None:
     # Act
-    result = normalise_modes_tuple(raw)
+    result = normalize_modes_tuple(raw)
 
     # Assert
     assert result == expected
 
 
-def test_normalise_modes_tuple_rejects_unknown_value() -> None:
+def test_normalize_modes_tuple_rejects_unknown_value() -> None:
     # Arrange
     raw = ["unknown"]
 
     # Act / Assert
     with pytest.raises(SystemExit, match=r".*"):
-        consume(normalise_modes_tuple(raw))
+        consume(normalize_modes_tuple(raw))
 
 
-def test_normalise_modes_returns_modes_for_values() -> None:
+def test_normalize_modes_returns_modes_for_values() -> None:
     # Arrange
     requested = ["current", "target"]
 
     # Act
-    modes = normalise_modes(requested)
+    modes = normalize_modes(requested)
 
     # Assert
     assert modes == [Mode.CURRENT, Mode.TARGET]
 
 
-def test_normalise_modes_returns_empty_when_not_requested() -> None:
+def test_normalize_modes_returns_empty_when_not_requested() -> None:
     # Act
-    modes = normalise_modes(None)
+    modes = normalize_modes(None)
 
     # Assert
     assert modes == []

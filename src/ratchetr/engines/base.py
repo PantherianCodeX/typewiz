@@ -199,7 +199,7 @@ class EngineResult:
     duration_ms: float
     diagnostics: list[Diagnostic]
     cached: bool = False
-    # Optional: raw tool-provided summary counts (normalised to errors/warnings/information/total)
+    # Optional: raw tool-provided summary counts (normalized to errors/warnings/information/total)
     tool_summary: ToolSummary | None = None
 
     def __post_init__(self) -> None:

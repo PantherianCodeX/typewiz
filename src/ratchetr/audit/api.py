@@ -27,7 +27,7 @@ from ratchetr.audit.execution import (
     resolve_scope_for_mode,
 )
 from ratchetr.audit.options import merge_audit_configs
-from ratchetr.audit.paths import normalise_paths
+from ratchetr.audit.paths import normalize_paths
 from ratchetr.cache import EngineCache
 from ratchetr.config import AuditConfig, Config, load_config
 from ratchetr.core.model_types import LogComponent, Mode, SeverityLevel
@@ -66,7 +66,7 @@ class AuditResult:
 class _AuditInputs:
     root: Path
     audit_config: AuditConfig
-    default_include_normalised: list[RelPath]
+    default_include_normalized: list[RelPath]
     cli_paths: list[str] | None
     engines: list[BaseEngine]
     tool_versions: dict[str, str]
@@ -95,7 +95,7 @@ def _determine_default_include(
     """
     # Contract-defined default: scan everything from root
     raw_default_include = list(default_include) if default_include else (audit_config.default_include or ["."])
-    return normalise_paths(root, raw_default_include)
+    return normalize_paths(root, raw_default_include)
 
 
 def _prepare_audit_inputs(
@@ -108,14 +108,14 @@ def _prepare_audit_inputs(
     cfg = config or load_config(None)
     audit_config = merge_audit_configs(cfg.audit, override)
     root = project_root
-    default_include_normalised = _determine_default_include(root, audit_config, default_include)
+    default_include_normalized = _determine_default_include(root, audit_config, default_include)
     engines = resolve_engines(audit_config.runners)
     tool_versions = detect_tool_versions([engine.name for engine in engines])
     cache = EngineCache(root)
     inputs = _AuditInputs(
         root=root,
         audit_config=audit_config,
-        default_include_normalised=default_include_normalised,
+        default_include_normalized=default_include_normalized,
         cli_paths=None,  # CLI threading deferred to orchestration refactor
         engines=engines,
         tool_versions=tool_versions,
@@ -125,7 +125,7 @@ def _prepare_audit_inputs(
     logger.debug(
         "Audit inputs resolved root=%s default_include=%s runners=%s tool_versions=%s",
         root,
-        [str(path) for path in default_include_normalised],
+        [str(path) for path in default_include_normalized],
         [engine.name for engine in engines],
         tool_versions,
         extra=structured_extra(
@@ -279,7 +279,7 @@ def _run_engines(inputs: _AuditInputs) -> tuple[list[RunResult], bool]:  # noqa:
                 cache=inputs.cache,
                 tool_versions=inputs.tool_versions,
                 root=inputs.root,
-                default_include_normalised=inputs.default_include_normalised,
+                default_include_normalized=inputs.default_include_normalized,
             )
             runs.append(run_result)
             if truncated:

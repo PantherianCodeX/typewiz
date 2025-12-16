@@ -27,7 +27,7 @@ from ratchetr.cli.helpers.ratchet import (
     discover_manifest_path,
     discover_ratchet_path,
     ensure_parent,
-    normalise_runs,
+    normalize_runs,
     parse_target_entries,
     resolve_limit,
     resolve_path,
@@ -141,7 +141,7 @@ def test_resolve_runs_prefers_cli_values() -> None:
     assert resolve_runs(["pyright:current"], [RunId("mypy:current")]) == [RunId("pyright:current")]
     assert resolve_runs(None, [RunId("mypy:current")]) == [RunId("mypy:current")]
     assert resolve_runs([], []) is None
-    assert normalise_runs(["", RunId("custom")]) == [RunId("custom")]
+    assert normalize_runs(["", RunId("custom")]) == [RunId("custom")]
 
 
 def test_resolve_severities_handles_defaults() -> None:

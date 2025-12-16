@@ -148,7 +148,7 @@ class RunResult:  # pylint: disable=too-many-instance-attributes
     exclude: list[RelPath] = field(default_factory=_default_relpath_list)
     overrides: list[OverrideEntry] = field(default_factory=_default_overrides_list)
     category_mapping: CategoryMapping = field(default_factory=_default_category_mapping)
-    # Optional: raw tool-provided summary counts (normalised to errors/warnings/information/total)
+    # Optional: raw tool-provided summary counts (normalized to errors/warnings/information/total)
     tool_summary: ToolSummary | None = None
     scanned_paths: list[RelPath] = field(default_factory=_default_relpath_list)
     engine_error: EngineError | None = None

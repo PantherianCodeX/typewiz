@@ -137,7 +137,7 @@ class RatchetRunBudgetModel(BaseModel):
 
     @field_validator("severities", mode="before")
     @classmethod
-    def _normalise_severities(cls, value: object) -> list[SeverityLevel]:
+    def _normalize_severities(cls, value: object) -> list[SeverityLevel]:
         """Normalize and validate the severities field.
 
         Args:
@@ -225,7 +225,7 @@ class RatchetModel(BaseModel):
     runs: dict[RunId, RatchetRunBudgetModel] = Field(default_factory=_default_run_budget_map)
 
     @model_validator(mode="after")
-    def _normalise(self) -> RatchetModel:
+    def _normalize(self) -> RatchetModel:
         """Normalize the runs dictionary after validation.
 
         Returns:

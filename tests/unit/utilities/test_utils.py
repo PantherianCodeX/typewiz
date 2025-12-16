@@ -34,7 +34,7 @@ from ratchetr._infra.utils import (
 from ratchetr._infra.utils import locks as locks_mod
 from ratchetr._infra.utils import versions as versions_mod
 from ratchetr.core.model_types import ReadinessStatus, SeverityLevel
-from ratchetr.json import as_int, as_list, as_mapping, as_str, normalise_enums_for_json, require_json
+from ratchetr.json import as_int, as_list, as_mapping, as_str, normalize_enums_for_json, require_json
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -83,7 +83,7 @@ def test_resolve_project_root_handles_file_inputs(tmp_path: Path) -> None:
     assert resolve_project_root(target) == workspace
 
 
-def test_normalise_enums_for_json_converts_keys_and_nested_values() -> None:
+def test_normalize_enums_for_json_converts_keys_and_nested_values() -> None:
     payload = {
         ReadinessStatus.READY: {
             "status": ReadinessStatus.CLOSE,
@@ -91,10 +91,10 @@ def test_normalise_enums_for_json_converts_keys_and_nested_values() -> None:
         },
         "nested": [{"severity": SeverityLevel.ERROR}],
     }
-    normalised = normalise_enums_for_json(payload)
-    assert isinstance(normalised, dict)
-    normalised_dict = cast("dict[str, object]", normalised)
-    ready_raw = normalised_dict.get("ready")
+    normalized = normalize_enums_for_json(payload)
+    assert isinstance(normalized, dict)
+    normalized_dict = cast("dict[str, object]", normalized)
+    ready_raw = normalized_dict.get("ready")
     assert isinstance(ready_raw, dict)
     ready_bucket = cast("dict[str, object]", ready_raw)
     assert ready_bucket.get("status") == "close"
@@ -102,14 +102,14 @@ def test_normalise_enums_for_json_converts_keys_and_nested_values() -> None:
     assert isinstance(counts_value, list)
     assert counts_value
     assert counts_value[0] == "blocked"
-    nested_raw = normalised_dict.get("nested")
+    nested_raw = normalized_dict.get("nested")
     assert isinstance(nested_raw, list)
     assert nested_raw
     first_nested = cast("dict[str, object]", nested_raw[0])
     assert first_nested.get("severity") == "error"
 
 
-def test_normalise_enums_for_json_handles_non_string_keys_and_tuples() -> None:
+def test_normalize_enums_for_json_handles_non_string_keys_and_tuples() -> None:
     class DummyKey:
         def __str__(self) -> str:
             return "dummy"
@@ -118,10 +118,10 @@ def test_normalise_enums_for_json_handles_non_string_keys_and_tuples() -> None:
         DummyKey(): SeverityLevel.WARNING,
         "tuple": (SeverityLevel.INFORMATION, "literal"),
     }
-    normalised = normalise_enums_for_json(payload)
-    normalised_dict = cast("dict[str, object]", normalised)
-    assert normalised_dict.get("dummy") == "warning"
-    tuple_result = normalised_dict.get("tuple")
+    normalized = normalize_enums_for_json(payload)
+    normalized_dict = cast("dict[str, object]", normalized)
+    assert normalized_dict.get("dummy") == "warning"
+    tuple_result = normalized_dict.get("tuple")
     assert isinstance(tuple_result, list)
     assert tuple_result[0] == "information"
     assert tuple_result[1] == "literal"
@@ -221,7 +221,7 @@ def test_run_command_requires_arguments() -> None:
 
 
 def test_run_command_logs_warning_on_failure(caplog: pytest.LogCaptureFixture) -> None:
-    caplog.set_level(logging.WARNING, logger="ratchetr.internal.process")
+    caplog.set_level(logging.WARNING, logger="ratchetr._infra.process")
     result = run_command([sys.executable, "-c", "import sys; sys.exit(1)"])
     assert result.exit_code != 0
     assert any("Command failed" in record.message for record in caplog.records)

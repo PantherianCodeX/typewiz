@@ -296,7 +296,7 @@ class _Categoriser:
         return _GENERAL_CATEGORY
 
 
-def _normalise_rel_path(path: Path) -> str:
+def _normalize_rel_path(path: Path) -> str:
     """Normalize path separators to forward slashes.
 
     Args:
@@ -550,7 +550,7 @@ def summarise_run(run: RunResult, *, max_depth: int = 3) -> AggregatedData:
     categoriser = _Categoriser(category_mapping)
 
     for diag in run.diagnostics:
-        rel_path = _normalise_rel_path(diag.path)
+        rel_path = _normalize_rel_path(diag.path)
         summary = _ensure_file_summary(files, rel_path)
         file_diag: FileDiagnostic = {
             "line": diag.line,

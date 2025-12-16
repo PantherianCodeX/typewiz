@@ -176,7 +176,7 @@ class FileReadinessRecord:  # pylint: disable=too-many-instance-attributes
         if self.categories:
             payload["categories"] = dict(self.categories)
         if self.category_status:
-            # Normalise to camelCase used across summary structures
+            # normalize to camelCase used across summary structures
             payload["categoryStatus"] = dict(self.category_status)
         return payload
 
@@ -381,7 +381,7 @@ def _coerce_strict_entries(value: object) -> list[ReadinessStrictEntry]:
     return entries
 
 
-def _normalise_folder_entry(entry: ReadinessOptionEntry) -> FolderReadinessRecord:
+def _normalize_folder_entry(entry: ReadinessOptionEntry) -> FolderReadinessRecord:
     """Normalize an option entry to a folder readiness record.
 
     Args:
@@ -404,7 +404,7 @@ def _normalise_folder_entry(entry: ReadinessOptionEntry) -> FolderReadinessRecor
     )
 
 
-def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
+def _normalize_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
     """Normalize a strict entry to a file readiness record.
 
     Args:
@@ -460,7 +460,7 @@ def _normalise_file_entry(entry: ReadinessStrictEntry) -> FileReadinessRecord:
     )
 
 
-def _normalise_severity_filters(
+def _normalize_severity_filters(
     severities: Sequence[SeverityLevel] | None,
 ) -> tuple[SeverityLevel, ...]:
     """Normalize and deduplicate severity filters.
@@ -549,7 +549,7 @@ def _extract_file_entries(
     return []
 
 
-def _normalise_status_filters(
+def _normalize_status_filters(
     statuses: Sequence[ReadinessStatus] | None,
 ) -> list[ReadinessStatus]:
     """Normalize and deduplicate status filters.
@@ -562,11 +562,11 @@ def _normalise_status_filters(
     """
     if statuses is None:
         return [ReadinessStatus.BLOCKED]
-    normalised: list[ReadinessStatus] = []
+    normalized: list[ReadinessStatus] = []
     for status in statuses:
-        if status not in normalised:
-            normalised.append(status)
-    return normalised or [ReadinessStatus.BLOCKED]
+        if status not in normalized:
+            normalized.append(status)
+    return normalized or [ReadinessStatus.BLOCKED]
 
 
 def _folder_payload_for_status(
@@ -603,7 +603,7 @@ def _folder_payload_for_status(
     records: list[FolderReadinessRecord] = []
     for option_entry in entries:
         try:
-            records.append(_normalise_folder_entry(option_entry))
+            records.append(_normalize_folder_entry(option_entry))
         # ignore JUSTIFIED: preserve original ValueError context when wrapping in
         # ReadinessValidationError
         except ValueError as exc:  # noqa: PERF203
@@ -638,7 +638,7 @@ def _file_payload_for_status(
     records: list[FileReadinessRecord] = []
     for strict_entry in entries:
         try:
-            records.append(_normalise_file_entry(strict_entry))
+            records.append(_normalize_file_entry(strict_entry))
         # ignore JUSTIFIED: preserve original ValueError context when wrapping in
         # ReadinessValidationError
         except ValueError as exc:  # noqa: PERF203
@@ -679,11 +679,11 @@ def collect_readiness_view(
     options_tab = _coerce_options_map(readiness_tab.get("options"))
     strict_map = _coerce_strict_map(readiness_tab.get("strict"))
 
-    statuses_normalised = _normalise_status_filters(statuses)
-    severity_filter = _normalise_severity_filters(severities)
+    statuses_normalized = _normalize_status_filters(statuses)
+    severity_filter = _normalize_severity_filters(severities)
     if level is ReadinessLevel.FOLDER:
         view: FolderReadinessView = {}
-        for status in statuses_normalised:
+        for status in statuses_normalized:
             view[status] = _folder_payload_for_status(
                 options_tab,
                 status,
@@ -692,7 +692,7 @@ def collect_readiness_view(
             )
         return view
     file_view: FileReadinessView = {}
-    for status in statuses_normalised:
+    for status in statuses_normalized:
         file_view[status] = _file_payload_for_status(
             strict_map,
             status,

@@ -20,7 +20,7 @@ This produces `ratchter/manifest.json` (relative to the working directory) conta
 - An expansive run across the project directories (`mode="target"`).
 - Aggregated per-file and per-folder summaries with recommendations for enabling stricter checks.
 - The original tool-provided summary counts (when present) under `toolSummary`, alongside the parsed totals used in `summary`. If the two diverge, ratchetr logs a warning so the mismatch is visible in CI output.
-- Each diagnostic preserves the engine-provided payload under `raw`, normalised to a recursive JSON value (`JSONValue`) so downstream tooling can safely consume the data without resorting to casts or `Any`.
+- Each diagnostic preserves the engine-provided payload under `raw`, normalized to a recursive JSON value (`JSONValue`) so downstream tooling can safely consume the data without resorting to casts or `Any`.
 
 Manifests always declare `schemaVersion = "1"` and ratchetr enforces that value strictly. If you still have artefacts from older builds, regenerate them with the current `ratchetr audit` command before invoking the manifest tooling.
 

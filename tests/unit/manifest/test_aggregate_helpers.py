@@ -62,7 +62,7 @@ def test_categoriser_matches_fallback_and_custom_patterns() -> None:
     assert categoriser.categorise("unknown-type") == "unknownChecks"
 
 
-def test_split_rel_path_normalises_and_caches() -> None:
+def test_split_rel_path_normalizes_and_caches() -> None:
     path = "src/module/app.py"
     parts = _split_rel_path(path)
     assert parts[0] == "src"

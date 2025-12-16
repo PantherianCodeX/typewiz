@@ -27,8 +27,8 @@ from ratchetr.audit.execution import apply_engine_paths, resolve_engine_options
 from ratchetr.audit.options import merge_engine_settings_map
 from ratchetr.audit.paths import (
     fingerprint_targets,
-    normalise_override_entries,
-    normalise_paths,
+    normalize_override_entries,
+    normalize_paths,
     relative_override_path,
 )
 from ratchetr.compat import override
@@ -80,14 +80,14 @@ def test_merge_engine_settings_map_merges_profiles() -> None:
     assert merged[aux].plugin_args == ["--aux"]
 
 
-def test_normalise_paths_handles_duplicates(tmp_path: Path) -> None:
+def test_normalize_paths_handles_duplicates(tmp_path: Path) -> None:
     project_root = tmp_path
     (tmp_path / "src").mkdir()
     paths = ["src", "src/", str(tmp_path / "outside")]
-    normalised = normalise_paths(project_root, paths)
-    assert normalised[0].endswith("src")
-    assert "outside" in normalised
-    assert len(normalised) == 2
+    normalized = normalize_paths(project_root, paths)
+    assert normalized[0].endswith("src")
+    assert "outside" in normalized
+    assert len(normalized) == 2
 
 
 def test_fingerprint_targets_dedupe(tmp_path: Path) -> None:
@@ -105,10 +105,10 @@ def test_fingerprint_targets_dedupe(tmp_path: Path) -> None:
     assert len(targets) == len(set(targets))
 
 
-def test_normalise_override_entries_defaults(tmp_path: Path) -> None:
+def test_normalize_override_entries_defaults(tmp_path: Path) -> None:
     override_path = tmp_path / "pkg"
     override_path.mkdir(parents=True)
-    entries = normalise_override_entries(tmp_path, override_path, [])
+    entries = normalize_override_entries(tmp_path, override_path, [])
     assert entries == [RelPath("pkg")]
 
 

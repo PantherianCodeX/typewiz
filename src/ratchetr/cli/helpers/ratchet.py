@@ -75,7 +75,7 @@ def parse_target_entries(entries: Sequence[str]) -> dict[str, int]:
     return mapping
 
 
-def normalise_runs(runs: Sequence[str | RunId] | None) -> list[RunId]:
+def normalize_runs(runs: Sequence[str | RunId] | None) -> list[RunId]:
     """Normalize run identifiers to a canonical list of RunId values.
 
     Strips whitespace from each run identifier and filters out empty entries.
@@ -88,13 +88,13 @@ def normalise_runs(runs: Sequence[str | RunId] | None) -> list[RunId]:
     """
     if not runs:
         return []
-    normalised: list[RunId] = []
+    normalized: list[RunId] = []
     for value in runs:
         token = str(value).strip()
         if not token:
             continue
-        normalised.append(RunId(token))
-    return normalised
+        normalized.append(RunId(token))
+    return normalized
 
 
 def resolve_runs(cli_runs: Sequence[str | RunId] | None, config_runs: Sequence[RunId]) -> list[RunId] | None:
@@ -110,7 +110,7 @@ def resolve_runs(cli_runs: Sequence[str | RunId] | None, config_runs: Sequence[R
     Returns:
         list[RunId] | None: Resolved list of runs, or None if no runs specified.
     """
-    runs = normalise_runs(cli_runs) or normalise_runs(config_runs)
+    runs = normalize_runs(cli_runs) or normalize_runs(config_runs)
     return runs or None
 
 
@@ -129,14 +129,14 @@ def resolve_severities(cli_value: str | None, config_values: Sequence[SeverityLe
     """
     raw_values: Sequence[str | SeverityLevel]
     raw_values = parse_comma_separated(cli_value) if cli_value else list(config_values)
-    normalised: list[SeverityLevel] = [_coerce_severity_value(value) for value in raw_values if value]
-    if not normalised:
-        config_normalised: list[SeverityLevel] = [_coerce_severity_value(value) for value in config_values if value]
+    normalized: list[SeverityLevel] = [_coerce_severity_value(value) for value in raw_values if value]
+    if not normalized:
+        config_normalized: list[SeverityLevel] = [_coerce_severity_value(value) for value in config_values if value]
         default_severities: list[SeverityLevel] = list(DEFAULT_SEVERITIES)
-        normalised = config_normalised or default_severities
+        normalized = config_normalized or default_severities
     seen: set[SeverityLevel] = set()
     ordered: list[SeverityLevel] = []
-    for severity in normalised:
+    for severity in normalized:
         if severity not in seen:
             seen.add(severity)
             ordered.append(severity)
@@ -314,7 +314,7 @@ __all__ = [
     "discover_manifest_path",
     "discover_ratchet_path",
     "ensure_parent",
-    "normalise_runs",
+    "normalize_runs",
     "parse_target_entries",
     "resolve_limit",
     "resolve_path",

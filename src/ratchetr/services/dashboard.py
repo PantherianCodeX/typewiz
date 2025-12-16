@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 from ratchetr.core.model_types import DashboardFormat, DashboardView, LogComponent
 from ratchetr.dashboard import build_summary, load_manifest, render_markdown
 from ratchetr.dashboard.render_html import render_html
-from ratchetr.json import JSONValue, normalise_enums_for_json
+from ratchetr.json import JSONValue, normalize_enums_for_json
 from ratchetr.logging import structured_extra
 
 if TYPE_CHECKING:
@@ -90,7 +90,7 @@ def render_dashboard_summary(
         extra=structured_extra(component=LogComponent.DASHBOARD, details={"view": view.value}),
     )
     if output_format is DashboardFormat.JSON:
-        return _format_json(normalise_enums_for_json(summary))
+        return _format_json(normalize_enums_for_json(summary))
     if output_format is DashboardFormat.MARKDOWN:
         return render_markdown(summary)
     return render_html(summary, default_view=view.value)
@@ -117,7 +117,7 @@ def emit_dashboard_outputs(
     """
     view = default_view if isinstance(default_view, DashboardView) else DashboardView.from_str(default_view)
     if json_path:
-        payload = normalise_enums_for_json(summary)
+        payload = normalize_enums_for_json(summary)
         content = _format_json(payload)
         if not dry_run:
             _ensure_parent(json_path)

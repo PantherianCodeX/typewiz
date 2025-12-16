@@ -38,9 +38,9 @@ from ratchetr.readiness.views import (
     _file_payload_for_status,
     _folder_matches_severity,
     _folder_payload_for_status,
-    _normalise_file_entry,
-    _normalise_severity_filters,
-    _normalise_status_filters,
+    _normalize_file_entry,
+    _normalize_severity_filters,
+    _normalize_status_filters,
     collect_readiness_view,
 )
 from tests.fixtures.builders import build_readiness_summary
@@ -123,28 +123,28 @@ def test_coerce_strict_map_with_entries() -> None:
     assert ReadinessStatus.READY in result
 
 
-def test_normalise_file_entry_rejects_negative_counts() -> None:
+def test_normalize_file_entry_rejects_negative_counts() -> None:
     entry = {"path": "src", "diagnostics": -1, "errors": 0, "warnings": 0, "information": 0}
     with pytest.raises(ValueError, match="diagnostics must be non-negative"):
-        _normalise_file_entry(entry)
+        _normalize_file_entry(entry)
     entry["diagnostics"] = 1
     entry["errors"] = -1
     with pytest.raises(ValueError, match="errors must be non-negative"):
-        _normalise_file_entry(entry)
+        _normalize_file_entry(entry)
     entry["errors"] = 0
     entry["warnings"] = -1
     with pytest.raises(ValueError, match="warnings must be non-negative"):
-        _normalise_file_entry(entry)
+        _normalize_file_entry(entry)
     entry["warnings"] = 0
     entry["information"] = -1
     with pytest.raises(ValueError, match="information must be non-negative"):
-        _normalise_file_entry(entry)
+        _normalize_file_entry(entry)
 
 
-def test_normalise_filters_and_matches() -> None:
-    assert _normalise_status_filters(None) == [ReadinessStatus.BLOCKED]
-    assert _normalise_status_filters([ReadinessStatus.READY, ReadinessStatus.READY]) == [ReadinessStatus.READY]
-    assert _normalise_severity_filters([SeverityLevel.ERROR, SeverityLevel.ERROR]) == (SeverityLevel.ERROR,)
+def test_normalize_filters_and_matches() -> None:
+    assert _normalize_status_filters(None) == [ReadinessStatus.BLOCKED]
+    assert _normalize_status_filters([ReadinessStatus.READY, ReadinessStatus.READY]) == [ReadinessStatus.READY]
+    assert _normalize_severity_filters([SeverityLevel.ERROR, SeverityLevel.ERROR]) == (SeverityLevel.ERROR,)
     record = type("Record", (), {"errors": 1, "warnings": 0, "information": 0})()
     assert _folder_matches_severity(record, [SeverityLevel.ERROR])
     assert _file_matches_severity(record, [SeverityLevel.ERROR]) is True

@@ -56,7 +56,7 @@ def test_execute_help_lists_topics(
     output = capsys.readouterr().out
     assert "[ratchetr] Available help topics:" in output
     assert "overview" in output
-    # Underscores should be normalised to hyphenated topic names.
+    # Underscores should be normalized to hyphenated topic names.
     assert "ratchet-basics" in output
 
 

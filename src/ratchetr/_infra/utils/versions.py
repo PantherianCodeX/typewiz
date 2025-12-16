@@ -24,7 +24,7 @@ from ratchetr.logging import structured_extra
 
 from .process import python_executable, run_command
 
-logger: logging.Logger = logging.getLogger("ratchetr.internal.versions")
+logger: logging.Logger = logging.getLogger("ratchetr._infra.versions")
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

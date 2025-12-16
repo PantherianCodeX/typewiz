@@ -31,7 +31,7 @@ from ratchetr.cli.helpers import (
     collect_plugin_args,
     collect_profile_args,
     finalise_targets,
-    normalise_modes,
+    normalize_modes,
     parse_hash_workers,
     parse_readiness_tokens,
     parse_save_flag,
@@ -53,7 +53,7 @@ from ratchetr.core.model_types import (
     SummaryStyle,
 )
 from ratchetr.core.type_aliases import EngineName, ProfileName
-from ratchetr.json import normalise_enums_for_json
+from ratchetr.json import normalize_enums_for_json
 from ratchetr.paths import EnvOverrides, OutputFormat, OutputTarget
 from ratchetr.services.audit import AuditResult, run_audit
 from ratchetr.services.dashboard import emit_dashboard_outputs, load_summary_from_manifest
@@ -261,8 +261,8 @@ def _resolve_default_include(
     return ["."]
 
 
-def normalise_modes_tuple(modes: Sequence[str] | None) -> tuple[bool, bool, bool]:
-    """Normalise CLI mode selections into booleans for manifest handling.
+def normalize_modes_tuple(modes: Sequence[str] | None) -> tuple[bool, bool, bool]:
+    """Normalize CLI mode selections into booleans for manifest handling.
 
     Args:
         modes: Optional sequence of raw mode strings from the CLI.
@@ -273,11 +273,11 @@ def normalise_modes_tuple(modes: Sequence[str] | None) -> tuple[bool, bool, bool
     Raises:
         SystemExit: If no modes are selected after normalisation.
     """
-    normalised = normalise_modes(modes)
-    if not normalised:
+    normalized = normalize_modes(modes)
+    if not normalized:
         return (False, True, True)
-    run_current = Mode.CURRENT in normalised
-    run_target = Mode.TARGET in normalised
+    run_current = Mode.CURRENT in normalized
+    run_target = Mode.TARGET in normalized
     if not run_current and not run_target:
         msg = "No modes selected. Choose at least one of: current, target."
         raise SystemExit(msg)
@@ -528,7 +528,7 @@ def _prepare_execution_plan(
         msg = "No paths found for target runs. Provide paths or configure 'default_include'."
         raise SystemExit(msg)
 
-    modes_specified, run_current, run_target = normalise_modes_tuple(args.modes)
+    modes_specified, run_current, run_target = normalize_modes_tuple(args.modes)
     cli_fail_on = FailOnPolicy.from_str(args.fail_on) if args.fail_on else None
     override = _build_cli_override(
         args,
@@ -582,7 +582,7 @@ def _summarize_audit_run(
     exit_code = _determine_exit_code(fail_on_policy, error_count, warning_count, info_count)
 
     if plan.stdout_format is StdoutFormat.JSON:
-        _echo(json.dumps(normalise_enums_for_json(audit_summary), indent=2))
+        _echo(json.dumps(normalize_enums_for_json(audit_summary), indent=2))
         return audit_summary, exit_code
 
     print_summary(result.runs, plan.summary_fields, plan.summary_style)

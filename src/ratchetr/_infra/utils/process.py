@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any, cast
 from ratchetr.core.model_types import LogComponent
 from ratchetr.logging import structured_extra
 
-logger: logging.Logger = logging.getLogger("ratchetr.internal.process")
+logger: logging.Logger = logging.getLogger("ratchetr._infra.process")
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

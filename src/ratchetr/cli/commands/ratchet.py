@@ -38,7 +38,7 @@ from ratchetr.cli.helpers import (
     resolve_summary_only,
 )
 from ratchetr.core.model_types import DataFormat, RatchetAction, SignaturePolicy
-from ratchetr.json import normalise_enums_for_json
+from ratchetr.json import normalize_enums_for_json
 from ratchetr.services.ratchet import (
     RatchetFileExistsError,
     RatchetPathRequiredError,
@@ -569,7 +569,7 @@ def handle_check(context: RatchetContext, args: argparse.Namespace) -> int:
     output_format = DataFormat.JSON if stdout_format is StdoutFormat.JSON else DataFormat.TABLE
 
     if output_format is DataFormat.JSON:
-        echo(json.dumps(normalise_enums_for_json(result.report.to_payload()), indent=2))
+        echo(json.dumps(normalize_enums_for_json(result.report.to_payload()), indent=2))
     else:
         for line in result.report.format_lines(
             ignore_signature=result.ignore_signature,

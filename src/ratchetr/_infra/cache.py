@@ -43,7 +43,7 @@ from ratchetr.core.type_aliases import (
     ToolName,
 )
 from ratchetr.core.types import Diagnostic
-from ratchetr.json import JSONValue, normalise_enums_for_json
+from ratchetr.json import JSONValue, normalize_enums_for_json
 from ratchetr.logging import structured_extra
 from ratchetr.manifest.typed import ToolSummary
 
@@ -193,7 +193,7 @@ def _compute_hashes(
     return hashes
 
 
-def _normalise_category_mapping(
+def _normalize_category_mapping(
     mapping: Mapping[CategoryKey, Sequence[str]]
     | Mapping[CategoryName, Sequence[str]]
     | Mapping[str, Sequence[str]]
@@ -201,7 +201,7 @@ def _normalise_category_mapping(
 ) -> CategoryMapping:
     if not mapping:
         return {}
-    normalised: CategoryMapping = {}
+    normalized: CategoryMapping = {}
     sorted_items = sorted(mapping.items(), key=lambda item: str(item[0]).strip())
     for raw_key, raw_values in sorted_items:
         category_key = coerce_category_key(raw_key)
@@ -218,11 +218,11 @@ def _normalise_category_mapping(
                 continue
             seen.add(lowered)
             values.append(candidate)
-        normalised[category_key] = values
-    return normalised
+        normalized[category_key] = values
+    return normalized
 
 
-def _normalise_override_entry(raw: Mapping[str, object]) -> OverrideEntry:
+def _normalize_override_entry(raw: Mapping[str, object]) -> OverrideEntry:
     entry: OverrideEntry = {}
     path = raw.get("path")
     if isinstance(path, str) and path.strip():
@@ -242,7 +242,7 @@ def _normalise_override_entry(raw: Mapping[str, object]) -> OverrideEntry:
     return entry
 
 
-def _normalise_diagnostic_payload(raw: Mapping[str, JSONValue]) -> DiagnosticPayload:
+def _normalize_diagnostic_payload(raw: Mapping[str, JSONValue]) -> DiagnosticPayload:
     payload: DiagnosticPayload = {}
     tool = raw.get("tool")
     if isinstance(tool, str) and tool:
@@ -270,7 +270,7 @@ def _normalise_diagnostic_payload(raw: Mapping[str, JSONValue]) -> DiagnosticPay
     return payload
 
 
-def _normalise_file_hash_payload(raw: Mapping[str, object]) -> FileHashPayload:
+def _normalize_file_hash_payload(raw: Mapping[str, object]) -> FileHashPayload:
     payload: FileHashPayload = {}
     hash_val = raw.get("hash")
     if isinstance(hash_val, str) and hash_val:
@@ -320,7 +320,7 @@ def fingerprint_path(path: Path) -> FileHashPayload:
     return _fingerprint(path)
 
 
-# ignore JUSTIFIED: keep parse/normalise coupled for single-pass run; refactor later
+# ignore JUSTIFIED: keep parse/normalize coupled for single-pass run; refactor later
 def _parse_cache_entry(  # noqa: PLR0914, FIX002, TD003  # TODO@PantherianCodeX: Split parsing/normalisation to reduce locals
     key_str: str,
     entry: _EntryJson,
@@ -345,31 +345,31 @@ def _parse_cache_entry(  # noqa: PLR0914, FIX002, TD003  # TODO@PantherianCodeX:
     include_list: list[RelPath] = [RelPath(str(i)) for i in include_any]
     exclude_list: list[RelPath] = [RelPath(str(i)) for i in exclude_any]
     overrides_list: list[OverrideEntry] = [
-        _normalise_override_entry(cast("Mapping[str, object]", override_raw))
+        _normalize_override_entry(cast("Mapping[str, object]", override_raw))
         for override_raw in coerce_object_list(overrides_any)
         if isinstance(override_raw, Mapping)
     ]
     file_hashes_map: dict[PathKey, FileHashPayload] = {}
     file_hashes_mapping: Mapping[str, Mapping[str, object]] = file_hashes_any
     for hash_key, hash_payload in file_hashes_mapping.items():
-        file_hashes_map[PathKey(hash_key)] = _normalise_file_hash_payload(hash_payload)
+        file_hashes_map[PathKey(hash_key)] = _normalize_file_hash_payload(hash_payload)
     diagnostics_list: list[DiagnosticPayload] = [
-        _normalise_diagnostic_payload(cast("Mapping[str, JSONValue]", diag_raw))
+        _normalize_diagnostic_payload(cast("Mapping[str, JSONValue]", diag_raw))
         for diag_raw in coerce_object_list(diagnostics_any)
         if isinstance(diag_raw, Mapping)
     ]
     exit_code_int = int(exit_code)
     duration_val = float(duration_ms)
-    tool_summary_normalised: ToolSummary | None
+    tool_summary_normalized: ToolSummary | None
     if isinstance(tool_summary_any, dict):
-        tool_summary_normalised = ToolSummary(
+        tool_summary_normalized = ToolSummary(
             errors=int(tool_summary_any.get("errors", 0)),
             warnings=int(tool_summary_any.get("warnings", 0)),
             information=int(tool_summary_any.get("information", 0)),
             total=int(tool_summary_any.get("total", 0)),
         )
     else:
-        tool_summary_normalised = None
+        tool_summary_normalized = None
 
     cache_entry = CacheEntry(
         command=command_list,
@@ -383,8 +383,8 @@ def _parse_cache_entry(  # noqa: PLR0914, FIX002, TD003  # TODO@PantherianCodeX:
         include=include_list,
         exclude=exclude_list,
         overrides=overrides_list,
-        category_mapping=_normalise_category_mapping(category_mapping_any),
-        tool_summary=tool_summary_normalised,
+        category_mapping=_normalize_category_mapping(category_mapping_any),
+        tool_summary=tool_summary_normalized,
     )
     return cache_key, cache_entry
 
@@ -443,7 +443,7 @@ class EngineCache:
                 for key, entry in sorted(self._entries.items())
             },
         }
-        payload_json = normalise_enums_for_json(payload)
+        payload_json = normalize_enums_for_json(payload)
         lock_path = self.path.with_suffix(self.path.suffix + ".lock")
         tmp_path = self.path.with_suffix(".tmp")
         with file_lock(lock_path):
@@ -631,7 +631,7 @@ class EngineCache:
             include=include_list,
             exclude=exclude_list,
             overrides=clone_override_entries(overrides),
-            category_mapping=_normalise_category_mapping(category_mapping),
+            category_mapping=_normalize_category_mapping(category_mapping),
             tool_summary=(
                 ToolSummary(
                     errors=int(tool_summary.get("errors", 0)),

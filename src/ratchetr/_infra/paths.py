@@ -198,7 +198,7 @@ class OutputFormat(StrEnum):
             raw: Text representation of an output format.
 
         Returns:
-            OutputFormat: Normalised output format value.
+            OutputFormat: normalized output format value.
 
         Raises:
             ValueError: If the format cannot be parsed.

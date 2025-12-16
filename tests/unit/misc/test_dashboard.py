@@ -289,7 +289,7 @@ def test_prepare_run_payload_returns_expected_values() -> None:
     assert command == ["pyright"]
 
 
-def test_build_engine_options_payload_normalises_lists() -> None:
+def test_build_engine_options_payload_normalizes_lists() -> None:
     payload = _build_engine_options_payload(
         cast(
             "dict[str, JSONValue]",

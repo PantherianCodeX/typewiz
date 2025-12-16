@@ -36,7 +36,7 @@ __all__ = [
     "as_list",
     "as_mapping",
     "as_str",
-    "normalise_enums_for_json",
+    "normalize_enums_for_json",
     "require_json",
 ]
 
@@ -123,7 +123,7 @@ def as_int(value: object, default: int = 0) -> int:
     return default
 
 
-def normalise_enums_for_json(value: object) -> JSONValue:
+def normalize_enums_for_json(value: object) -> JSONValue:
     """Recursively convert Enum keys/values to their string payloads for JSON serialisation.
 
     Args:

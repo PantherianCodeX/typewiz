@@ -358,7 +358,7 @@ default_profile = "strict"
         consume(load_config(config_path))
 
 
-def test_load_config_normalises_policy_enums(tmp_path: Path) -> None:
+def test_load_config_normalizes_policy_enums(tmp_path: Path) -> None:
     config_path = tmp_path / "ratchetr.toml"
     consume(
         config_path.write_text(

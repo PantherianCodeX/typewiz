@@ -21,8 +21,8 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
-from ratchetr.audit.options import normalise_category_mapping, prepare_category_mapping
-from ratchetr.audit.paths import canonicalize_scope, normalise_override_entries, normalise_paths, relative_override_path
+from ratchetr.audit.options import normalize_category_mapping, prepare_category_mapping
+from ratchetr.audit.paths import canonicalize_scope, normalize_override_entries, normalize_paths, relative_override_path
 from ratchetr.audit.paths import fingerprint_targets as build_fingerprint_targets
 from ratchetr.cache import CachedRun, EngineCache, collect_file_hashes, fingerprint_path
 from ratchetr.collections import merge_preserve
@@ -120,8 +120,8 @@ def _initial_option_state(  # noqa: PLR0917, FIX002, TD003  # TODO@PantherianCod
 ) -> _EngineOptionState:
     plugin_args = _merge_base_plugin_args(audit_config, engine_name, settings, profile)
     include_raw, exclude_raw = _merge_base_paths(settings, profile)
-    include = normalise_paths(project_root, include_raw)
-    exclude = normalise_paths(project_root, exclude_raw)
+    include = normalize_paths(project_root, include_raw)
+    exclude = normalize_paths(project_root, exclude_raw)
     config_file = None
     if profile and profile.config_file:
         config_file = profile.config_file
@@ -196,12 +196,12 @@ def _apply_path_override(
     path_settings = override.engine_settings.get(engine_name)
     if path_settings:
         state.plugin_args = merge_preserve(state.plugin_args, path_settings.plugin_args)
-        include_override = normalise_override_entries(
+        include_override = normalize_override_entries(
             project_root,
             override.path,
             path_settings.include,
         )
-        exclude_override = normalise_override_entries(
+        exclude_override = normalize_override_entries(
             project_root,
             override.path,
             path_settings.exclude,
@@ -217,12 +217,12 @@ def _apply_path_override(
         profile_override = path_settings.profiles.get(state.profile)
     if profile_override:
         state.plugin_args = merge_preserve(state.plugin_args, profile_override.plugin_args)
-        include_profile_override = normalise_override_entries(
+        include_profile_override = normalize_override_entries(
             project_root,
             override.path,
             profile_override.include,
         )
-        exclude_profile_override = normalise_override_entries(
+        exclude_profile_override = normalize_override_entries(
             project_root,
             override.path,
             profile_override.exclude,
@@ -389,7 +389,7 @@ def build_engine_plan(
 def _paths_for_mode(
     mode: Mode,
     engine_options: EngineOptions,
-    default_include_normalised: Sequence[RelPath],
+    default_include_normalized: Sequence[RelPath],
 ) -> list[RelPath]:
     """Legacy adapter for _resolve_scope_for_mode.
 
@@ -400,14 +400,14 @@ def _paths_for_mode(
     Args:
         mode: Execution mode (CURRENT or TARGET).
         engine_options: Engine configuration with include/exclude filters.
-        default_include_normalised: Already-normalized paths.
+        default_include_normalized: Already-normalized paths.
 
     Returns:
         Filtered paths based on mode.
     """
     if mode is Mode.TARGET:
         return apply_engine_paths(
-            default_include_normalised,
+            default_include_normalized,
             engine_options.include,
             engine_options.exclude,
         )
@@ -457,14 +457,14 @@ def _fingerprint_targets_for_run(
     context: EngineContext,
     root: Path,
     mode_paths: Sequence[RelPath],
-    default_include_normalised: Sequence[RelPath],
+    default_include_normalized: Sequence[RelPath],
 ) -> list[RelPath]:
     fingerprint_result = list(engine.fingerprint_targets(context, list(mode_paths)))
-    engine_fingerprints = normalise_paths(root, fingerprint_result)
+    engine_fingerprints = normalize_paths(root, fingerprint_result)
     return build_fingerprint_targets(
         root,
         list(mode_paths),
-        default_include_normalised,
+        default_include_normalized,
         extra=engine_fingerprints,
     )
 
@@ -481,7 +481,7 @@ def _prepare_cache_inputs(  # noqa: PLR0913
     context: EngineContext,
     audit_config: AuditConfig,
     root: Path,
-    default_include_normalised: Sequence[RelPath],
+    default_include_normalized: Sequence[RelPath],
     mode_paths: Sequence[RelPath],
 ) -> tuple[CacheKey, dict[PathKey, FileHashPayload], bool]:
     cache_flags = _build_cache_flags(engine.name, engine_options, tool_versions)
@@ -492,7 +492,7 @@ def _prepare_cache_inputs(  # noqa: PLR0913
         context=context,
         root=root,
         mode_paths=mode_paths,
-        default_include_normalised=default_include_normalised,
+        default_include_normalized=default_include_normalized,
     )
     file_hashes, truncated = collect_file_hashes(
         root,
@@ -605,7 +605,7 @@ def resolve_engine_options(
         exclude=state.exclude,
         profile=state.profile,
         overrides=applied_details,
-        category_mapping=normalise_category_mapping(cat_map_input),
+        category_mapping=normalize_category_mapping(cat_map_input),
     )
 
 
@@ -620,7 +620,7 @@ def execute_engine_mode(  # noqa: PLR0913
     cache: EngineCache,
     tool_versions: Mapping[str, str],
     root: Path,
-    default_include_normalised: Sequence[RelPath],
+    default_include_normalized: Sequence[RelPath],
 ) -> tuple[RunResult, bool]:
     """Execute or fetch a cached engine run and return the result.
 
@@ -633,14 +633,14 @@ def execute_engine_mode(  # noqa: PLR0913
         tool_versions: Mapping of executable identifiers to version strings for
             cache invalidation.
         root: Project root directory.
-        default_include_normalised: Canonicalised set of include paths for caching.
+        default_include_normalized: Canonicalised set of include paths for caching.
 
     Returns:
         A tuple containing the `RunResult`(either cached or freshly executed)
         and a boolean indicating whether fingerprint inputs were truncated.
     """
     engine_options = context.engine_options
-    mode_paths = _paths_for_mode(mode, engine_options, default_include_normalised)
+    mode_paths = _paths_for_mode(mode, engine_options, default_include_normalized)
     cache_key, file_hashes, truncated = _prepare_cache_inputs(
         engine=engine,
         mode=mode,
@@ -650,7 +650,7 @@ def execute_engine_mode(  # noqa: PLR0913
         context=context,
         audit_config=audit_config,
         root=root,
-        default_include_normalised=default_include_normalised,
+        default_include_normalized=default_include_normalized,
         mode_paths=mode_paths,
     )
 

@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, cast
 
 from ratchetr.compat import UTC
 from ratchetr.core.model_types import LogComponent, clone_override_entries
-from ratchetr.json import normalise_enums_for_json
+from ratchetr.json import normalize_enums_for_json
 from ratchetr.logging import structured_extra
 from ratchetr.runtime import consume, detect_tool_versions
 
@@ -184,5 +184,5 @@ class ManifestBuilder:
             )
         if self.fingerprint_truncated:
             self.data["fingerprintTruncated"] = True
-        payload = normalise_enums_for_json(self.data)
+        payload = normalize_enums_for_json(self.data)
         consume(path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8"))

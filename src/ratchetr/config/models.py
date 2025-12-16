@@ -511,7 +511,7 @@ class EngineProfileModel(BaseModel):
         raise ConfigFieldTypeError(msg)
 
     @model_validator(mode="after")
-    def _normalise(self) -> EngineProfileModel:
+    def _normalize(self) -> EngineProfileModel:
         self.plugin_args = dedupe_preserve(self.plugin_args)
         self.include = dedupe_preserve(self.include)
         self.exclude = dedupe_preserve(self.exclude)
@@ -559,15 +559,15 @@ class EngineSettingsModel(BaseModel):
         raise ConfigFieldTypeError(msg)
 
     @model_validator(mode="after")
-    def _normalise(self) -> EngineSettingsModel:
+    def _normalize(self) -> EngineSettingsModel:
         self.plugin_args = dedupe_preserve(self.plugin_args)
         self.include = dedupe_preserve(self.include)
         self.exclude = dedupe_preserve(self.exclude)
-        normalised_profiles: dict[str, EngineProfileModel] = {}
+        normalized_profiles: dict[str, EngineProfileModel] = {}
         for key in sorted(self.profiles):
             profile = self.profiles[key]
-            normalised_profiles[key.strip()] = profile
-        self.profiles = normalised_profiles
+            normalized_profiles[key.strip()] = profile
+        self.profiles = normalized_profiles
         if self.default_profile and self.default_profile not in self.profiles:
             raise UndefinedDefaultProfileError(self.default_profile)
         return self
@@ -590,7 +590,7 @@ class PathOverrideModel(BaseModel):
     active_profiles: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def _normalise(self) -> PathOverrideModel:
+    def _normalize(self) -> PathOverrideModel:
         engines_map: dict[str, EngineSettingsModel] = {}
         for key in sorted(self.engines):
             engines_map[key.strip()] = self.engines[key]
@@ -690,7 +690,7 @@ class AuditConfigModel(BaseModel):
 
     @field_validator("fail_on", mode="before")
     @classmethod
-    def _normalise_fail_on(cls, value: object) -> FailOnPolicy | None:
+    def _normalize_fail_on(cls, value: object) -> FailOnPolicy | None:
         if value is None:
             return None
         if isinstance(value, FailOnPolicy):
@@ -719,13 +719,13 @@ class AuditConfigModel(BaseModel):
         return result
 
     @model_validator(mode="after")
-    def _normalise(self) -> AuditConfigModel:
+    def _normalize(self) -> AuditConfigModel:
         # ensure deterministic order for plugin args
-        normalised: dict[str, list[str]] = {}
+        normalized: dict[str, list[str]] = {}
         for key in sorted(self.plugin_args):
             values = dedupe_preserve(self.plugin_args[key])
-            normalised[key] = values
-        self.plugin_args = normalised
+            normalized[key] = values
+        self.plugin_args = normalized
         engines: dict[str, EngineSettingsModel] = {}
         for key in sorted(self.engine_settings):
             engines[key.strip()] = self.engine_settings[key]
@@ -812,7 +812,7 @@ class RatchetConfigModel(BaseModel):
 
     @field_validator("signature", mode="before")
     @classmethod
-    def _normalise_signature(cls, value: object) -> SignaturePolicy:
+    def _normalize_signature(cls, value: object) -> SignaturePolicy:
         if value is None:
             return SignaturePolicy.FAIL
         if isinstance(value, SignaturePolicy):

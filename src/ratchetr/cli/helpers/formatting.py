@@ -41,7 +41,7 @@ from ratchetr.core.model_types import (
 )
 from ratchetr.core.type_aliases import RelPath, RunId
 from ratchetr.error_codes import error_code_for
-from ratchetr.json import JSONValue, normalise_enums_for_json
+from ratchetr.json import JSONValue, normalize_enums_for_json
 from ratchetr.readiness.views import ReadinessValidationError, ReadinessViewResult
 from ratchetr.services.readiness import (
     collect_readiness_view as service_collect_readiness_view,
@@ -190,7 +190,7 @@ class RuleEntry(RuleEntryRequired, total=False):
 ReadinessQueryPayload: TypeAlias = ReadinessViewResult
 
 
-def _normalise_format(fmt: Literal["json", "table"] | DataFormat) -> Literal["json", "table"]:
+def _normalize_format(fmt: Literal["json", "table"] | DataFormat) -> Literal["json", "table"]:
     """Normalize CLI format inputs to literal strings.
 
     Args:
@@ -465,9 +465,9 @@ def render_data(data: object, fmt: Literal["json", "table"] | DataFormat) -> lis
     Returns:
         List of lines representing the formatted payload.
     """
-    fmt_value = _normalise_format(fmt)
+    fmt_value = _normalize_format(fmt)
     if fmt_value == "json":
-        return [json.dumps(normalise_enums_for_json(data), indent=2, ensure_ascii=False)]
+        return [json.dumps(normalize_enums_for_json(data), indent=2, ensure_ascii=False)]
     if isinstance(data, list):
         table_rows: list[Mapping[str, JSONValue]] = []
         for item in cast("Sequence[object]", data):

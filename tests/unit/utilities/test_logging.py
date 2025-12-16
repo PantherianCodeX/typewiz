@@ -106,7 +106,7 @@ def test_configure_logging_honors_env_overrides(
     assert all("warned" not in line for line in lines)
 
 
-def test_structured_extra_normalises_inputs(tmp_path: Path) -> None:
+def test_structured_extra_normalizes_inputs(tmp_path: Path) -> None:
     extra = structured_extra(
         component=LogComponent.CLI,
         tool="pyright",

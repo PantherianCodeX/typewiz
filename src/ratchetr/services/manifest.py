@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from ratchetr.core.model_types import LogComponent
 from ratchetr.error_codes import error_code_for
-from ratchetr.json import normalise_enums_for_json
+from ratchetr.json import normalize_enums_for_json
 from ratchetr.logging import structured_extra
 from ratchetr.manifest.models import (
     ManifestValidationError,
@@ -240,7 +240,7 @@ def emit_manifest_output(
         manifest_path: Target path for manifest file.
         dry_run: If True, skip file write and log dry-run message.
     """
-    content = json.dumps(normalise_enums_for_json(manifest), indent=2) + "\n"
+    content = json.dumps(normalize_enums_for_json(manifest), indent=2) + "\n"
     if not dry_run:
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest_path.write_text(content, encoding="utf-8")

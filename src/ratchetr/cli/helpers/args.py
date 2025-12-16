@@ -148,7 +148,7 @@ def parse_int_mapping(
 
 
 def collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
-    """Normalise `--plugin-arg`inputs into a mapping keyed by runner.
+    """Normalize `--plugin-arg`inputs into a mapping keyed by runner.
 
     Args:
         entries: CLI chunks formatted as `RUNNER=ARG`(or ``RUNNER:ARG``).
@@ -181,7 +181,7 @@ def collect_plugin_args(entries: Sequence[str]) -> dict[str, list[str]]:
 
 
 def collect_profile_args(entries: Sequence[str]) -> dict[str, str]:
-    """Normalise `--profile`overrides provided on the command line.
+    """Normalize `--profile`overrides provided on the command line.
 
     Args:
         entries: CLI values provided to ``--profile``.
@@ -195,8 +195,8 @@ def collect_profile_args(entries: Sequence[str]) -> dict[str, str]:
     return dict(parse_key_value_entries(entries, argument="--profile"))
 
 
-def normalise_modes(values: Sequence[str] | None) -> list[Mode]:
-    """Validate `--mode`selectors and normalise to canonical `Mode`values.
+def normalize_modes(values: Sequence[str] | None) -> list[Mode]:
+    """Validate `--mode`selectors and normalize to canonical `Mode`values.
 
     Args:
         values: Raw `--mode`arguments, or `None`if not provided.
@@ -222,7 +222,7 @@ def normalise_modes(values: Sequence[str] | None) -> list[Mode]:
 
 
 def parse_hash_workers(value: str | None) -> int | Literal["auto"] | None:
-    """Return a normalised hash worker spec ('auto' or non-negative integer).
+    """Return a normalized hash worker spec ('auto' or non-negative integer).
 
     Args:
         value: CLI value supplied to ``--hash-workers``.
@@ -256,7 +256,7 @@ __all__ = [
     "ArgumentRegistrar",
     "collect_plugin_args",
     "collect_profile_args",
-    "normalise_modes",
+    "normalize_modes",
     "parse_comma_separated",
     "parse_hash_workers",
     "parse_int_mapping",

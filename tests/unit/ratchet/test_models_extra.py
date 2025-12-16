@@ -47,7 +47,7 @@ def test_run_budget_targets_requires_mapping() -> None:
         })
 
 
-def test_run_budget_normalises_values() -> None:
+def test_run_budget_normalizes_values() -> None:
     run_model = RatchetRunBudgetModel.model_validate({
         "severities": ["warning", "error", "warning"],
         "paths": {
@@ -62,7 +62,7 @@ def test_run_budget_normalises_values() -> None:
     assert run_model.targets[SeverityLevel.WARNING] == 2
 
 
-def test_ratchet_model_normalises_run_keys() -> None:
+def test_ratchet_model_normalizes_run_keys() -> None:
     raw_runs: dict[str, object] = {
         "b:current": {
             "severities": ["error"],

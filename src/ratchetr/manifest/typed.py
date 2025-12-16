@@ -75,7 +75,7 @@ class FolderEntryRequired(TypedDict):
         errors: Count of error-level diagnostics in this folder.
         warnings: Count of warning-level diagnostics in this folder.
         information: Count of information-level diagnostics in this folder.
-        codeCounts: Dictionary mapping diagnostic codes to counts.
+        code_counts: Dictionary mapping diagnostic codes to counts.
         recommendations: List of recommendations for improving typing health.
     """
 

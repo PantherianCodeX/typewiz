@@ -32,7 +32,7 @@ from ratchetr.json import (
     as_list,
     as_mapping,
     as_str,
-    normalise_enums_for_json,
+    normalize_enums_for_json,
     require_json,
 )
 
@@ -47,7 +47,7 @@ __all__ = [
     "as_str",
     "consume",
     "detect_tool_versions",
-    "normalise_enums_for_json",
+    "normalize_enums_for_json",
     "python_executable",
     "require_json",
     "resolve_project_root",

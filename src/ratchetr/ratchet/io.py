@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from ratchetr.compat import UTC
-from ratchetr.json import normalise_enums_for_json
+from ratchetr.json import normalize_enums_for_json
 from ratchetr.manifest.loader import load_manifest_data
 
 from .models import RatchetModel
@@ -58,7 +58,7 @@ def write_ratchet(path: Path, model: RatchetModel) -> None:
     """Persist a ratchet model to disk."""
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = model.model_dump(by_alias=True, exclude_none=True)
-    payload_json = normalise_enums_for_json(payload)
+    payload_json = normalize_enums_for_json(payload)
     _ = path.write_text(json.dumps(payload_json, indent=2) + "\n", encoding="utf-8")
 
 

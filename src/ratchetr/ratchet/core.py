@@ -27,7 +27,7 @@ from ratchetr.config.validation import coerce_int, coerce_mapping, coerce_object
 from ratchetr.core.categories import coerce_category_key
 from ratchetr.core.model_types import DEFAULT_SEVERITIES, Mode, SeverityLevel
 from ratchetr.core.type_aliases import CategoryKey, RunId, ToolName
-from ratchetr.json import JSONValue, normalise_enums_for_json
+from ratchetr.json import JSONValue, normalize_enums_for_json
 
 from .models import (
     RATCHET_SCHEMA_VERSION,
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from ratchetr.manifest.typed import ManifestData
 
 
-def _normalise_mode(value: object) -> Mode | None:
+def _normalize_mode(value: object) -> Mode | None:
     if isinstance(value, Mode):
         return value
     if isinstance(value, str):
@@ -87,16 +87,16 @@ def _string_list(raw: Mapping[str, JSONValue], key: str) -> list[str]:
     return [str(item) for item in values] if values else []
 
 
-def _normalise_overrides(raw: Mapping[str, JSONValue]) -> list[dict[str, JSONValue]]:
+def _normalize_overrides(raw: Mapping[str, JSONValue]) -> list[dict[str, JSONValue]]:
     overrides = coerce_object_list(raw.get("overrides"))
-    normalised: list[dict[str, JSONValue]] = []
+    normalized: list[dict[str, JSONValue]] = []
     for override in overrides:
         override_map = coerce_mapping(override)
-        normalised.append({str(key): override_map[key] for key in sorted(override_map)})
-    return normalised
+        normalized.append({str(key): override_map[key] for key in sorted(override_map)})
+    return normalized
 
 
-def _normalise_category_mapping(raw: Mapping[str, JSONValue]) -> dict[CategoryKey, list[str]]:
+def _normalize_category_mapping(raw: Mapping[str, JSONValue]) -> dict[CategoryKey, list[str]]:
     category_mapping = raw.get("categoryMapping")
     if not isinstance(category_mapping, Mapping):
         return {}
@@ -126,16 +126,16 @@ def _canonicalise_engine_options(
         if values:
             json_list: list[JSONValue] = [cast("JSONValue", value) for value in values]
             result[key] = json_list
-    overrides = _normalise_overrides(raw)
+    overrides = _normalize_overrides(raw)
     if overrides:
         result["overrides"] = cast("JSONValue", overrides)
-    category_mapping = _normalise_category_mapping(raw)
+    category_mapping = _normalize_category_mapping(raw)
     if category_mapping:
         result["categoryMapping"] = cast("JSONValue", category_mapping)
     return result
 
 
-def _normalise_severity_list(
+def _normalize_severity_list(
     severities: Sequence[SeverityLevel] | None,
 ) -> list[SeverityLevel]:
     if not severities:
@@ -193,7 +193,7 @@ def _engine_signature_payload(run: Mapping[str, JSONValue]) -> EngineSignaturePa
         coerce_mapping(run.get("engineOptions")) if isinstance(run.get("engineOptions"), Mapping) else None,
     )
     engine_options_dict: dict[str, JSONValue] = dict(engine_options)
-    mode = _normalise_mode(run.get("mode"))
+    mode = _normalize_mode(run.get("mode"))
     return EngineSignaturePayload(
         tool=str(run.get("tool")) if run.get("tool") is not None else None,
         mode=mode,
@@ -202,7 +202,7 @@ def _engine_signature_payload(run: Mapping[str, JSONValue]) -> EngineSignaturePa
 
 
 def _engine_signature_hash(payload: EngineSignaturePayload) -> str:
-    payload_json = normalise_enums_for_json(payload)
+    payload_json = normalize_enums_for_json(payload)
     text = json.dumps(payload_json, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -225,18 +225,18 @@ def _collect_manifest_runs(manifest: ManifestData) -> list[Mapping[str, JSONValu
     return [coerce_mapping(run_obj) for run_obj in runs_raw]
 
 
-def _normalise_run_id_values(values: Sequence[str | RunId]) -> list[RunId]:
-    normalised: list[RunId] = []
+def _normalize_run_id_values(values: Sequence[str | RunId]) -> list[RunId]:
+    normalized: list[RunId] = []
     for value in values:
         token = str(value).strip()
         if not token:
             continue
-        normalised.append(RunId(token))
-    return normalised
+        normalized.append(RunId(token))
+    return normalized
 
 
-def _normalise_run_id_set(values: Sequence[str | RunId]) -> set[RunId]:
-    return set(_normalise_run_id_values(values))
+def _normalize_run_id_set(values: Sequence[str | RunId]) -> set[RunId]:
+    return set(_normalize_run_id_values(values))
 
 
 def _select_run_ids(manifest: ManifestData, requested: Sequence[str | RunId] | None) -> list[RunId]:
@@ -250,7 +250,7 @@ def _select_run_ids(manifest: ManifestData, requested: Sequence[str | RunId] | N
         tool = ToolName(tool_raw)
         all_ids.append(RunId(f"{tool}:{mode}"))
     if requested:
-        requested_norm = _normalise_run_id_set(requested)
+        requested_norm = _normalize_run_id_set(requested)
         return [run_id for run_id in all_ids if run_id in requested_norm]
     return all_ids
 
@@ -290,7 +290,7 @@ def build_ratchet_from_manifest(
     selected_runs = _select_run_ids(manifest, runs)
     run_lookup = _run_by_id(manifest)
 
-    severity_list = _normalise_severity_list(severities)
+    severity_list = _normalize_severity_list(severities)
     global_targets, per_run_targets = _split_targets(targets)
 
     runs_budget: dict[RunId, RatchetRunBudgetModel] = {}
@@ -443,7 +443,7 @@ def compare_manifest_to_ratchet(
     if runs is None:
         selected_runs: list[RunId] = [RunId(run_id) for run_id in ratchet.runs]
     else:
-        selected_runs = _normalise_run_id_values(runs)
+        selected_runs = _normalize_run_id_values(runs)
     reports: list[RatchetRunReport] = []
     for run_id in selected_runs:
         run_budget = ratchet.runs.get(run_id)
@@ -521,7 +521,7 @@ def refresh_signatures(
         Ratchet model with signatures updated for selected runs.
     """
     run_lookup = _run_by_id(manifest)
-    selected_run_ids: set[RunId] = set(_normalise_run_id_values(runs)) if runs else set(ratchet.runs.keys())
+    selected_run_ids: set[RunId] = set(_normalize_run_id_values(runs)) if runs else set(ratchet.runs.keys())
     refreshed_runs: dict[RunId, RatchetRunBudgetModel] = {}
     for run_id, budget in ratchet.runs.items():
         if runs and run_id not in selected_run_ids:

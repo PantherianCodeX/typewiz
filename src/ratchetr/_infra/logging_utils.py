@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Final, Literal, SupportsFloat, SupportsInt, ca
 
 from ratchetr.compat import UTC, TypedDict, Unpack, override
 from ratchetr.core.model_types import LogComponent, LogFormat, Mode, SeverityLevel
-from ratchetr.json import normalise_enums_for_json
+from ratchetr.json import normalize_enums_for_json
 
 if TYPE_CHECKING:
     from ratchetr.core.type_aliases import RunId, ToolName
@@ -105,7 +105,7 @@ class JSONLogFormatter(logging.Formatter):
                 payload[field] = getattr(record, field)
         if record.exc_info:
             payload["exc_info"] = self.formatException(record.exc_info)
-        return json.dumps(normalise_enums_for_json(payload), ensure_ascii=False)
+        return json.dumps(normalize_enums_for_json(payload), ensure_ascii=False)
 
 
 class TextLogFormatter(logging.Formatter):
@@ -232,13 +232,13 @@ class _StructuredLogKwargs(TypedDict, total=False):
     details: Mapping[str, object]
 
 
-def _normalise_mode(value: Mode | str | None) -> Mode | None:
+def _normalize_mode(value: Mode | str | None) -> Mode | None:
     if value is None:
         return None
     return value if isinstance(value, Mode) else Mode.from_str(str(value))
 
 
-def _normalise_path(value: object) -> str | None:
+def _normalize_path(value: object) -> str | None:
     if value is None:
         return None
     return os.fspath(cast("str | os.PathLike[str]", value))
@@ -291,7 +291,7 @@ def structured_extra(
     extra: StructuredLogExtra = {"component": component}
     payload_kwargs = cast("dict[str, object]", kwargs)
     _maybe_assign(extra, key="tool", kwargs=payload_kwargs, transform=str)
-    mode_value = _normalise_mode(cast("Mode | str | None", payload_kwargs.get("mode")))
+    mode_value = _normalize_mode(cast("Mode | str | None", payload_kwargs.get("mode")))
     if mode_value is not None:
         extra["mode"] = mode_value
     _maybe_assign(extra, key="duration_ms", kwargs=payload_kwargs, transform=_to_float)
@@ -304,13 +304,13 @@ def structured_extra(
         extra,
         key="manifest",
         kwargs=payload_kwargs,
-        transform=_normalise_path,
+        transform=_normalize_path,
     )
     _maybe_assign(
         extra,
         key="path",
         kwargs=payload_kwargs,
-        transform=_normalise_path,
+        transform=_normalize_path,
     )
     _maybe_assign(extra, key="run_id", kwargs=payload_kwargs, transform=str)
     _maybe_assign(extra, key="signature_matches", kwargs=payload_kwargs, transform=_to_bool)

@@ -287,7 +287,7 @@ class TestPrepareAuditInputs:
             override=None,
             default_include=["src", "tests"],
         )
-        assert len(inputs.default_include_normalised) == 2
+        assert len(inputs.default_include_normalized) == 2
 
 
 class TestRunAuditIntegration:

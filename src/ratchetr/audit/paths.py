@@ -34,7 +34,7 @@ def _as_relative_path(project_root: Path, path: Path) -> RelPath:
     return RelPath(Path(rel).as_posix())
 
 
-def normalise_paths(project_root: Path, raw_paths: Sequence[str]) -> list[RelPath]:
+def normalize_paths(project_root: Path, raw_paths: Sequence[str]) -> list[RelPath]:
     """Return unique, POSIX-style paths relative to ``project_root``.
 
     Args:
@@ -44,7 +44,7 @@ def normalise_paths(project_root: Path, raw_paths: Sequence[str]) -> list[RelPat
     Returns:
         Deduplicated list of relative paths in POSIX format.
     """
-    normalised: list[RelPath] = []
+    normalized: list[RelPath] = []
     seen: set[str] = set()
     root = project_root.resolve()
     for raw in raw_paths:
@@ -55,8 +55,8 @@ def normalise_paths(project_root: Path, raw_paths: Sequence[str]) -> list[RelPat
         relative = _as_relative_path(root, absolute)
         if relative not in seen:
             seen.add(relative)
-            normalised.append(relative)
-    return normalised
+            normalized.append(relative)
+    return normalized
 
 
 def canonicalize_scope(project_root: Path, raw_paths: Sequence[str]) -> list[RelPath]:
@@ -73,7 +73,7 @@ def canonicalize_scope(project_root: Path, raw_paths: Sequence[str]) -> list[Rel
     Returns:
         Sorted, deduplicated list of relative paths in POSIX format.
     """
-    normalized = normalise_paths(project_root, raw_paths)
+    normalized = normalize_paths(project_root, raw_paths)
     return sorted(normalized)
 
 
@@ -91,7 +91,7 @@ def global_fingerprint_paths(project_root: Path) -> list[RelPath]:
         candidate = project_root / filename
         if candidate.exists():
             extras.append(filename)
-    return normalise_paths(project_root, extras)
+    return normalize_paths(project_root, extras)
 
 
 def fingerprint_targets(
@@ -129,12 +129,12 @@ def fingerprint_targets(
     return ordered
 
 
-def normalise_override_entries(
+def normalize_override_entries(
     project_root: Path,
     override_path: Path,
     entries: Sequence[str],
 ) -> list[RelPath]:
-    """Normalise include/exclude lists when sourced from a path override.
+    """Normalize include/exclude lists when sourced from a path override.
 
     Args:
         project_root: Repository root for relative path computation.
@@ -146,7 +146,7 @@ def normalise_override_entries(
     """
     if not entries:
         entries = ["."]
-    normalised: list[RelPath] = []
+    normalized: list[RelPath] = []
     seen: set[str] = set()
     for entry in entries:
         candidate = Path(entry)
@@ -155,8 +155,8 @@ def normalise_override_entries(
         relative = _as_relative_path(project_root, candidate)
         if relative not in seen:
             seen.add(relative)
-            normalised.append(relative)
-    return normalised
+            normalized.append(relative)
+    return normalized
 
 
 def relative_override_path(project_root: Path, override_path: Path) -> RelPath:
