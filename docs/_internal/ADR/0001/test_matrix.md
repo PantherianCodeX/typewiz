@@ -14,7 +14,7 @@ Validates: `matches(pattern, candidate_rel_posix) -> bool`
 
 ### 0.2 Scope suite (pure)
 
-Validates: `in_scope(includes, excludes, candidate_rel_posix) -> bool`
+Validates: `in_scope(include, exclude, candidate_rel_posix) -> bool`
 Also validates ordered exclude evaluation and negation behavior.
 
 ### 0.3 Discovery safety suite (filesystem-backed)
@@ -301,56 +301,56 @@ Each case:
 Each case:
 
 * `id`
-* `includes`
-* `excludes`
+* `include`
+* `exclude`
 * `candidate`
 * `expected`
 
-### 2.1 Base behavior (empty includes = include-all)
+### 2.1 Base behavior (empty `include` = include-all)
 
 **S-BASE-001:**
 
-* includes: `[]`
-* excludes: `[]`
+* include: `[]`
+* exclude: `[]`
 * candidate: `src/a.py`
 * expected: `true`
 
 **S-BASE-002:**
 
-* includes: `[]`
-* excludes: [`build/`]
+* include: `[]`
+* exclude: [`build/`]
 * candidate: `src/build/out.json`
 * expected: `false`
 
-### 2.2 Whitelist mode (non-empty includes)
+### 2.2 Whitelist mode (non-empty `include`)
 
 **S-WL-001:**
 
-* includes: [`/src/**`]
-* excludes: `[]`
+* include: [`/src/**`]
+* exclude: `[]`
 * candidate: `src/a.py`
 * expected: `true`
 
 **S-WL-002:**
 
-* includes: [`/src/**`]
-* excludes: `[]`
+* include: [`/src/**`]
+* exclude: `[]`
 * candidate: `tests/test_a.py`
 * expected: `false`
 
-### 2.3 Excludes win; negated excludes override
+### 2.3 `exclude` win; negated `exclude` override
 
 **S-OVR-001:**
 
-* includes: [`/src/**`]
-* excludes: [`tests/`]
+* include: [`/src/**`]
+* exclude: [`tests/`]
 * candidate: `src/tests/test_a.py`
 * expected: `false`
 
 **S-OVR-002:**
 
-* includes: [`/src/**`]
-* excludes: [`tests/`, `!src/tests/keep.py`]
+* include: [`/src/**`]
+* exclude: [`tests/`, `!src/tests/keep.py`]
 * candidate: `src/tests/keep.py`
 * expected: `true`
 
@@ -358,22 +358,22 @@ Each case:
 
 **S-NEG-001:**
 
-* includes: `[]`
-* excludes: [`generated/`, `!generated/keep.py`]
+* include: `[]`
+* exclude: [`generated/`, `!generated/keep.py`]
 * candidate: `generated/keep.py`
 * expected: `true`
 
 **S-NEG-002:**
 
-* includes: `[]`
-* excludes: [`generated/`, `!generated/sub/keep.py`]
+* include: `[]`
+* exclude: [`generated/`, `!generated/sub/keep.py`]
 * candidate: `generated/sub/keep.py`
 * expected: `true`
 
 **S-NEG-003:**
 
-* includes: `[]`
-* excludes: [`generated/`, `!generated/keep.py`, `generated/keep.py`]
+* include: `[]`
+* exclude: [`generated/`, `!generated/keep.py`, `generated/keep.py`]
 * candidate: `generated/keep.py`
 * expected: `false` (later rule wins)
 
@@ -381,31 +381,31 @@ Each case:
 
 **S-LITDIR-001:**
 
-* includes: [`foo`]
-* excludes: [`foo/`]
+* include: [`foo`]
+* exclude: [`foo/`]
 * candidate: `foo` (file)
 * expected: `true`
 
 **S-LITDIR-002:**
 
-* includes: [`foo`]
-* excludes: [`foo/`]
+* include: [`foo`]
+* exclude: [`foo/`]
 * candidate: `src/foo/bar.py`
 * expected: `false`
 
-### 2.6 Non-recursive directory selection in includes
+### 2.6 Non-recursive directory selection in include
 
 **S-NR-001:**
 
-* includes: [`/src/*`]
-* excludes: `[]`
+* include: [`/src/*`]
+* exclude: `[]`
 * candidate: `src/a.py`
 * expected: `true`
 
 **S-NR-002:**
 
-* includes: [`/src/*`]
-* excludes: `[]`
+* include: [`/src/*`]
+* exclude: `[]`
 * candidate: `src/pkg/a.py`
 * expected: `false`
 
@@ -415,20 +415,20 @@ These are validation tests; expected outcome is a configuration error.
 
 **S-ERR-001:**
 
-* includes: [`!/src/**`]
-* excludes: `[]`
-* expected: configuration error (negation not allowed in includes)
+* include: [`!/src/**`]
+* exclude: `[]`
+* expected: configuration error (negation not allowed in `include`)
 
 **S-ERR-002:**
 
-* includes: [`!foo`]
-* excludes: `[]`
+* include: [`!foo`]
+* exclude: `[]`
 * expected: configuration error
 
 **S-ERR-003:**
 
-* includes: [`/`] or an empty/invalid pattern token
-* excludes: `[]`
+* include: [`/`] or an empty/invalid pattern token
+* exclude: `[]`
 * expected: configuration error
 
 ---
@@ -542,8 +542,8 @@ These tests validate that patterns matching zero discovered candidates produce w
 **U-PAT-001:**
 
 * discovered candidates: [`src/a.py`]
-* includes: [`/does-not-exist/**`]
-* excludes: `[]`
+* include: [`/does-not-exist/**`]
+* exclude: `[]`
 * expected eligible: `[]`
 * expected warning:
 
@@ -556,8 +556,8 @@ These tests validate that patterns matching zero discovered candidates produce w
 **U-PAT-002:**
 
 * discovered candidates: [`src/a.py`]
-* includes: `[]`
-* excludes: [`generated/`]
+* include: `[]`
+* exclude: [`generated/`]
 * expected eligible: [`src/a.py`]
 * expected warning:
 
@@ -569,8 +569,8 @@ These tests validate that patterns matching zero discovered candidates produce w
 **U-PAT-003:**
 
 * discovered candidates: [`src/a.py`]
-* includes: [`/src/**`]
-* excludes: [`build/`]
+* include: [`/src/**`]
+* exclude: [`build/`]
 * expected eligible: [`src/a.py`]
 * expected warnings:
   * `PATTERN_UNMATCHED` for `build/` only
@@ -586,8 +586,8 @@ These tests ensure stable ordering obligations are met.
 **R-ORD-001:**
 
 * discovered candidates (unsorted input): [`b/b.py`, `a/z.py`, `a/a.py`]
-* includes: `[]`
-* excludes: `[]`
+* include: `[]`
+* exclude: `[]`
 * expected eligible order: [`a/a.py`, `a/z.py`, `b/b.py`]
 
 ### 5.2 Stable diagnostics ordering
@@ -625,39 +625,39 @@ If manifest is composed of sections (e.g., engines, results, warnings), assert a
 
 ## 6) Precedence and Env Parsing Suite (unit-level)
 
-### 6.1 Replacement precedence (includes/excludes independently)
+### 6.1 Replacement precedence (`include`/`exclude` independently)
 
 **P-REP-001:**
 
-* defaults includes: `[]`
-* config includes: [`/src/**`]
-* env includes: [`/tests/**`]
-* cli includes: not provided
-* expected effective includes: [`/tests/**`] (env replaces config/defaults)
+* defaults include: `[]`
+* config include: [`/src/**`]
+* env include: [`/tests/**`]
+* cli include: not provided
+* expected effective include: [`/tests/**`] (env replaces config/defaults)
 
 **P-REP-002:**
 
-* defaults excludes: [`build/`]
-* config excludes: [`dist/`]
-* env excludes: not provided
-* cli excludes: [`generated/`]
-* expected effective excludes: [`generated/`] (cli replaces)
+* defaults exclude: [`build/`]
+* config exclude: [`dist/`]
+* env exclude: not provided
+* cli exclude: [`generated/`]
+* expected effective exclude: [`generated/`] (cli replaces)
 
 **P-REP-003:**
 
-* defaults includes: [`/src/**`]
-* config includes: [`/tests/**`]
-* env includes: `[]` (explicit empty list)
-* cli includes: not provided
-* expected effective includes: `[]` (env replaces)
+* defaults include: [`/src/**`]
+* config include: [`/tests/**`]
+* env include: `[]` (explicit empty list)
+* cli include: not provided
+* expected effective include: `[]` (env replaces)
 
 **P-REP-004:**
 
-* defaults excludes: [`build/`]
-* config excludes: [`dist/`]
-* env excludes: not provided
-* cli excludes: `[]` (explicit empty list)
-* expected effective excludes: `[]` (cli replaces)
+* defaults exclude: [`build/`]
+* config exclude: [`dist/`]
+* env exclude: not provided
+* cli exclude: `[]` (explicit empty list)
+* expected effective exclude: `[]` (cli replaces)
 
 ### 6.2 Env JSON parsing validation
 
@@ -690,9 +690,9 @@ This matrix verifies:
 * `DIR/*` non-recursive semantics
 * Literal single-segment segment matching (including directory segment inclusion)
 * Wildcard single-segment basename-only matching
-* Exclude precedence with negated excludes as override mechanism
+* Exclude precedence with negated exclude as override mechanism
 * Ordered exclude evaluation
-* Invalid negation in includes
+* Invalid negation in `include`
 * Out-of-root and symlink skip behavior with warnings and manifest logging
 * Unmatched pattern warnings
 * Stable ordering requirements

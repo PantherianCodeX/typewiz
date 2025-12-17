@@ -41,10 +41,11 @@ VERIFYTYPES_PACKAGE  ?= ratchetr
   package.build package.check package.install-test package.clean \
   check check.license-headers check.error-codes check.ignores check.ignores.report \
   clean clean.pycache clean.cache clean.caches clean.mypy clean.pyright clean.type clean.ruff clean.pylint clean.lint \
-  clean.coverage clean.pytest clean.hypothesis clean.benchmarks clean.test \
+  clean.coverage clean.pytest clean.hypothesis clean.benchmarks clean.test clean.pre-commit clean.precommit \
   clean.bandit clean.safety clean.sec clean.package clean.ratchetr clean.full \
   ci.check ci.package ci.all \
-  pre-commit pre-commit.check pre-commit.update pre-commit.install \
+  precommit precommit.check precommit.update precommit.install precommit.clean \
+  pre-commit pre-commit.check pre-commit.update pre-commit.install pre-commit.clean \
   find.% find.label.% %.find %.find.label find.help \
   help help.% %.help
 
@@ -436,7 +437,13 @@ clean.cache: ## Remove .cache directories
 	find . -type d -name .cache -prune -exec rm -rf {} +
 	@printf "=+= .cache directories removed =+=\n\n"
 
-clean.caches: clean.pycache clean.cache ## Remove all common caches
+clean.precommit: clean.pre-commit ## Remove .pre-commit cache
+clean.pre-commit:
+	@printf "=+= Cleaning pre-commit caches... =+=\n"
+	find . -type d -name .pre-commit-cache -prune -exec rm -rf {} +
+	@printf "=+= Pre-commit cache removed =+=\n\n"
+
+clean.caches: clean.pycache clean.cache clean.pre-commit ## Remove all common caches
 	@printf "  =+= All common caches removed =+=\n\n"
 
 clean.coverage: ## Remove coverage artifacts
@@ -511,6 +518,9 @@ ci.all: ci.check ci.package ## Full CI: checks + packaging
 ##@ Pre-commit
 # ----------------------------------------------------------------------
 
+precommit.clean: clean.pre-commit  ## Remove .pre-commit cache
+pre-commit.clean: clean.pre-commit
+
 pre-commit.check: ## Run all pre-commit hooks on the repo
 	@printf "=+= Running pre-commit on all files... =+=\n"
 	$(UV) pre-commit run --all-files
@@ -521,12 +531,14 @@ pre-commit.update: ## Update pre-commit hooks to latest versions
 	$(UV) pre-commit autoupdate
 	@printf "=+= Pre-commit hooks updated =+=\n\n"
 
+pre-commit.install: pre-commit.install
 pre-commit.install: ## Install pre-commit hooks using uv
 	@printf "=+= Installing pre-commit hooks... =+=\n"
 	uv run pre-commit install
 	uv run pre-commit install --hook-type pre-push
 	@printf "=+= Pre-commit hooks installed =+=\n\n"
 
+precommit: pre-commit
 pre-commit:
 	@printf "=+= Running pre-commit on all files... =+=\n"
 	uv run pre-commit run --all-files --show-diff-on-failure

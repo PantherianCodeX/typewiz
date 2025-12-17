@@ -1,7 +1,7 @@
 # Ratchetr Path Scoping Contract
 
 **Status:** Normative
-**Scope:** File discovery scoping via `includes` and `excludes` across CLI, environment, and config; pattern language; matching basis; override semantics; safety requirements; determinism requirements.
+**Scope:** File discovery scoping via `include` and `exclude` across CLI, environment, and config; pattern language; matching basis; override semantics; safety requirements; determinism requirements.
 
 ---
 
@@ -10,11 +10,11 @@
 * **Root**: The effective repository root for the run. If `--root` is provided, it is authoritative.
 * **Candidate**: A file discovered (or explicitly provided) that is eligible for scoping evaluation.
 * **Canonical path**: A candidate path represented as a root-relative, normalized, POSIX (`/`) path string.
-* **Pattern**: A string in the ratchetr pattern language used in `includes` or `excludes`.
+* **Pattern**: A string in the ratchetr pattern language used in `include` or `exclude`.
 * **Anchored pattern**: A pattern beginning with `/` that applies at the root.
 * **Floating pattern**: A pattern not beginning with `/` that may match at any segment boundary.
 * **Directory-only pattern**: A pattern ending with `/` that targets directories and their subtrees.
-* **Negated exclude**: A pattern beginning with `!` in `excludes` that re-includes candidates previously excluded.
+* **Negated `exclude`**: A pattern beginning with `!` in `exclude` that re-includes candidates previously excluded.
 
 ---
 
@@ -35,7 +35,7 @@ Precedence is: **CLI > Env > Config > Defaults**.
 
 ## 2.3 Replacement semantics
 
-For each list independently (`includes` and `excludes`), the highest-precedence source that provides a value **replaces** lower-precedence values for that list.
+For each list independently (`include` and `exclude`), the highest-precedence source that provides a value **replaces** lower-precedence values for that list.
 
 An explicitly provided empty list (e.g., `[]`) **counts as provided** and replaces lower-precedence values for that list.
 
@@ -88,7 +88,7 @@ Patterns MAY contain arbitrary characters (including Unicode). Only the followin
 * Trailing `/` — directory-only subtree targeting
 * `*`, `?`, `[ ... ]` — wildcard constructs within a single segment
 * `**` — wildcard across segments
-* Leading `!` — negation (exceptions), **excludes only**
+* Leading `!` — negation (exceptions), `exclude` **only**
 
 All other characters are literal.
 
@@ -147,7 +147,7 @@ A single-segment pattern with no glob metacharacters (`*`, `?`, `[`) is a litera
 * Anchored literal (`/foo`) matches if the first segment equals `foo`.
 * Floating literal (`foo`) matches if any segment equals `foo`.
 
-Implication: a floating literal token can match a directory segment and therefore include/exclude descendants.
+Implication: a floating literal token can match a directory segment and therefore `include`/`exclude` descendants.
 
 ### 9.2 Single-segment wildcard token
 
@@ -178,18 +178,18 @@ Floating multi-segment patterns MAY match starting at any segment boundary. For 
 
 ## 11) Negation (exceptions)
 
-### 11.1 Allowed only in excludes
+### 11.1 Allowed only in `exclude`
 
-Negation is expressed using leading `!` and is allowed only in `excludes`.
+Negation is expressed using leading `!` and is allowed only in `exclude`.
 
-Negation in `includes` MUST be rejected as a configuration error.
+Negation in `include` MUST be rejected as a configuration error.
 
 ### 11.2 Semantics
 
-Excludes are evaluated in order. When an exclude pattern matches:
+`exclude` is evaluated in order. When an `exclude` pattern matches:
 
-* A non-negated exclude sets the candidate state to excluded.
-* A negated exclude sets the candidate state to included.
+* A non-negated `exclude` sets the candidate state to excluded.
+* A negated `exclude` sets the candidate state to included.
 
 Negation is evaluated against ratchetr’s canonical candidate set and MUST NOT be constrained by Git traversal/pruning rules.
 
@@ -201,23 +201,23 @@ For each candidate file:
 
 1. Base state
 
-   * If `includes` is empty: initial state is **included**.
-   * If `includes` is non-empty: initial state is **excluded**.
+   * If `include` is empty: initial state is **included**.
+   * If `include` is non-empty: initial state is **excluded**.
 
-2. Apply includes (if any)
+2. Apply `include` (if any)
 
-   * If `includes` is non-empty, a candidate becomes included if it matches **any** include pattern.
+   * If `include` is non-empty, a candidate becomes included if it matches **any** include pattern.
 
-3. Apply excludes (ordered)
+3. Apply `exclude` (ordered)
 
-   * Evaluate `excludes` in order, updating inclusion state:
+   * Evaluate excludes in order, updating inclusion state:
 
-     * match exclude → excluded
-     * match negated exclude → included
+     * match `exclude` → excluded
+     * match negated `exclude` → included
 
 The final state determines whether the candidate is in scope.
 
-**Precedence rule:** Excludes are applied after includes; excludes therefore win by default, and negated excludes provide the explicit override mechanism.
+**Precedence rule:** `exclude` is applied after `include`; `exclude` therefore wins by default, and negated `exclude` provides the explicit override mechanism.
 
 ---
 

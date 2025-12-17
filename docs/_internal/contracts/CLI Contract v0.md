@@ -159,7 +159,7 @@ rtr audit --dashboard json --dashboard html:docs/typing/
 
 ### Include Scope
 
-Positional arguments specify directories to include in the audit:
+Positional arguments specify files and/or directories to add to `include` for the audit run:
 
 ```bash
 rtr audit src tests
@@ -181,7 +181,7 @@ Scope determination follows this precedence:
 ```toml
 # ratchetr.toml
 [audit]
-includes = ["src", "lib", "tests", "scripts/foo.py"]
+include = ["src", "lib", "tests", "scripts/foo.py"]
 ```
 
 ```bash

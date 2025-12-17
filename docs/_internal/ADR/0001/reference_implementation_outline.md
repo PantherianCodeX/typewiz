@@ -1,8 +1,8 @@
-# Updated Reference Implementation Outline: ADR-000X (POSIX-only separators, JSON-only env, replacement precedence, overwrite outputs, stable ordering)
+# Updated Reference Implementation Outline: ADR-0001 (POSIX-only separators, JSON-only env, replacement precedence, overwrite outputs, stable ordering)
 
 **Status:** Implementation blueprint
-**Derived from:** ADR-000X (Accepted, 2025-12-13)
-**Scope:** Module boundaries, public interfaces, invariants, and the minimal algorithmic commitments required to implement ADR-000X without semantic drift.
+**Derived from:** ADR-0001 (Accepted, 2025-12-13)
+**Scope:** Module boundaries, public interfaces, invariants, and the minimal algorithmic commitments required to implement ADR-0001 without semantic drift.
 
 ---
 
@@ -13,7 +13,7 @@
 Ratchetr MUST compute and own:
 
 * the canonical candidate file set (discovery)
-* the in-scope set (includes/excludes evaluation)
+* the in-scope set (`include`/`exclude` evaluation)
 * final correctness by filtering diagnostics to the in-scope set, regardless of engine invocation breadth
 
 ### 1.2 Safety
@@ -45,7 +45,7 @@ Byte-identical output is not required.
 
 ### 1.5 Precedence and input encoding
 
-* `includes` and `excludes` are resolved per-source with replacement semantics: CLI > env > config > defaults.
+* `include` and `exclude` are resolved per-source with replacement semantics: CLI > env > config > defaults.
 * Env vars are JSON list of strings only.
 
 ### 1.6 Output semantics
@@ -174,8 +174,8 @@ Warnings are persisted to the manifest in **emission order**. Implementations mu
 
 **Responsibilities:**
 
-* Compile includes/excludes into `PatternSpec` lists
-* Apply include/exclude algorithm and negation semantics
+* Compile `include`/`exclude` into `PatternSpec` lists
+* Apply `include`/`exclude` algorithm and negation semantics
 * Apply replacement-precedence resolution at the “effective patterns” boundary (or keep this in config; see 2.6)
 * Track which patterns matched at least one candidate for unmatched-pattern warnings
 
@@ -189,15 +189,15 @@ Unmatched-pattern warnings (`PATTERN_UNMATCHED`) MUST be evaluated and emitted o
 * `class ScopeConfigError(ValueError)`
 * `@dataclass(frozen=True) EffectiveScope`
 
-  * `includes: tuple[PatternSpec, ...]`
-  * `excludes: tuple[PatternSpec, ...]`
+  * `include: tuple[PatternSpec, ...]`
+  * `exclude: tuple[PatternSpec, ...]`
 * `@dataclass(frozen=True) ScopeMatchStats`
 
   * `include_hits: dict[str, int]`  # raw pattern -> match count
   * `exclude_hits: dict[str, int]`
-* `def compile_scope(includes: Sequence[str], excludes: Sequence[str]) -> EffectiveScope`
+* `def compile_scope(include: Sequence[str], exclude: Sequence[str]) -> EffectiveScope`
 
-  * MUST reject negation in includes.
+  * MUST reject negation in `include`.
 * `def in_scope(scope: EffectiveScope, rel_posix: str) -> bool`
 * `def evaluate_scope(scope: EffectiveScope, candidates: Sequence[str]) -> tuple[list[str], ScopeMatchStats]`
 
@@ -205,7 +205,7 @@ Unmatched-pattern warnings (`PATTERN_UNMATCHED`) MUST be evaluated and emitted o
 
 **Key commitments:**
 
-* Exclude wins; negated excludes are the only override.
+* `exclude` wins; negated `exclude` are the only override.
 * No Git pruning constraint: exceptions can re-include files under excluded ancestors.
 
 ---
@@ -238,7 +238,7 @@ Unmatched-pattern warnings (`PATTERN_UNMATCHED`) MUST be evaluated and emitted o
 
 **Responsibilities:**
 
-* Resolve effective includes/excludes using replacement precedence
+* Resolve effective `include`/`exclude` using replacement precedence
 * Parse env vars as JSON list only
 
 Replacement semantics MUST treat an explicitly provided empty list (`[]`) as “provided,” replacing lower-precedence values for that list.
@@ -247,15 +247,15 @@ Replacement semantics MUST treat an explicitly provided empty list (`[]`) as “
 
 * `@dataclass(frozen=True) ScopeInputs`
 
-  * `includes: list[str]`
-  * `excludes: list[str]`
-  * `source_includes: Literal["cli","env","config","defaults"]`
-  * `source_excludes: Literal["cli","env","config","defaults"]`
+  * `include: list[str]`
+  * `exclude: list[str]`
+  * `source_include: Literal["cli","env","config","defaults"]`
+  * `source_exclude: Literal["cli","env","config","defaults"]`
 * `def resolve_scope_inputs(cli, env, config, defaults) -> ScopeInputs`
 
 **Key commitments:**
 
-* Replacement semantics for each list (includes and excludes independently).
+* Replacement semantics for each list (`include` and `exclude` independently).
 * Env JSON parsing errors are fatal (config error class).
 
 ---
@@ -302,7 +302,7 @@ Replacement semantics MUST treat an explicitly provided empty list (`[]`) as “
 * `warnings: list[WarningEventModel]`
 * Optionally:
 
-  * `scope: { includes_source, excludes_source, includes, excludes }`
+  * `scope: { include_source, exclude_source, include, exclude }`
   * `scope_unmatched_patterns: ...` (or rely purely on warnings)
 
 **Key commitments:**
@@ -338,7 +338,7 @@ Replacement semantics MUST treat an explicitly provided empty list (`[]`) as “
 
 Implementation must decide what “matches nothing” means:
 
-* For includes/excludes, “unmatched” refers to matching **zero discovered candidates** in that run.
+* For `include`/`exclude`, “unmatched” refers to matching **zero discovered candidates** in that run.
 * Emit a warning per unmatched pattern (or aggregate in one warning with list; either is acceptable if documented).
 
 This requires either:
@@ -380,7 +380,7 @@ This is the recommended merge order to reduce risk:
 
 ## 5) Open questions explicitly resolved by ADR-000X (so they are not re-decided in code)
 
-* Exclude wins; negated excludes are override mechanism.
+* `exclude` wins; negated `exclude` are override mechanism.
 * Env vars are JSON list only.
 * POSIX-only separators for patterns.
 * Stable ordering is required; byte-identical not required.

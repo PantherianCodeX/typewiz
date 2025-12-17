@@ -163,7 +163,7 @@ Validate: `resolve_scope(mode, cli_paths, env_paths, config_paths, default=["."]
 
 Validate: `build_engine_plan(engine_id, mode, resolved_scope, config_selection, engine_args, root_dir, engine_env, profile_token, …) -> EnginePlan`
 
-### 2.1 EnginePlan excludes unrelated engines (corrected emphasis)
+### 2.1 EnginePlan `exclude`s unrelated engines (corrected emphasis)
 
 **EP-DIM-001 (other engines do not affect EnginePlan equivalence):**
 
@@ -278,10 +278,10 @@ Validate: `plan_engine_runs(requested_mode, plan_current, plan_target) -> [Engin
 
 ### 4.1 Explicit empty scope is a configuration error → engine deselected
 
-**CFG-ERR-EMPTY-001 (explicit empty includes deselect engine):**
+**CFG-ERR-EMPTY-001 (explicit empty `include`s deselect engine):**
 
 * engine: A
-* resolved includes from env/config is explicitly `[]`
+* resolved `include` from env/config is explicitly `[]`
 * expected:
 
   * engine marked **DESELECTED**
@@ -291,8 +291,8 @@ Validate: `plan_engine_runs(requested_mode, plan_current, plan_target) -> [Engin
 
 **CFG-ERR-EMPTY-002 (deselection is per engine; others proceed):**
 
-* engine A: explicit empty includes
-* engine B: valid includes
+* engine A: explicit empty `include`
+* engine B: valid `include`
 * expected:
 
   * A not executed, config error recorded

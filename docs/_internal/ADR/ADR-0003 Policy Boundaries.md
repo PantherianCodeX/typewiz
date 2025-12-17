@@ -12,7 +12,7 @@
 Ratchetr is a multi-command CLI that must behave deterministically across commands and across time. It resolves and applies *policy* decisions such as:
 
 * which workspace/project is being operated on (root/config selection)
-* what scope is targeted (targets/includes/excludes, base semantics)
+* what scope is targeted (`TARGET`/`include`/`exclude`, base semantics)
 * which engines run and with what effective options
 * where outputs go (manifest, dashboards, logs, cache)
 * what is emitted to stdout/stderr

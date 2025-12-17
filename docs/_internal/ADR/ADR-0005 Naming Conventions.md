@@ -62,7 +62,7 @@ Ratchetr uses the following terms as **distinct concepts**, not synonyms:
 
 ASCII mental model:
 
-```
+```text
 plugin (extension package)
   └─ provides → engine (runnable capability)
         └─ invokes → tool (external analyzer)
@@ -162,7 +162,7 @@ To avoid terminology collisions with external analyzers:
 
 Rule of thumb:
 
-```
+```text
 reportable condition → Diagnostic
 lifecycle/timeline   → Event
 ```
@@ -315,15 +315,15 @@ Canonical variables:
 **Rules:**
 
 * Internal constant names for env vars MUST use a clear suffix (e.g., `*_ENV`).
-* List-valued env vars MUST be encoded as a JSON array of strings (e.g., ["src", "tests"]), not comma-separated strings.
+* List-valued env vars MUST be encoded as a JSON array of strings (e.g., ["src", "tests"]), not comma-separated strings. Support for comma-separated should be a roadmap item.
 * The variable name should still communicate plurality/collection intent where possible, except where matching/mirroring external schema overrides.
 
 ### Configuration file names
 
 Canonical filenames:
 
-* Project config: `ratchetr.toml` or `.ratchetr.toml` (also allow `pyproject.toml` under `[tool.ratchetr]` when supported).
-* Directory overrides: `ratchetr.dir.toml` or `.ratchetrdir.toml` (located in the directory they scope).
+* Project config: `ratchetr.toml` or `.ratchetr.toml` (also allow `pyproject.toml` under `[tool.ratchetr]` when supported @ROADMAP).
+* Directory overrides: `ratchetr.dir.toml` or `.ratchetrdir.toml` (located in the user-scoped directory).
 * Default tool home directory: `.ratchetr/` (stores cache/logs/artifacts unless configured).
 
 ### Artifact filenames (defaults)

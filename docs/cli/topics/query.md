@@ -20,7 +20,7 @@ Subcommands:
 - `ratchetr query engines --manifest ...`: engine configuration applied to each run.
   - Flags: `--limit N`, `--format json|table`.
 - `ratchetr query rules --manifest ...`: most frequent rule identifiers.
-  - Flags: `--limit N`, `--includes`, `--format json|table`.
+  - Flags: `--limit N`, `--include`, `--format json|table`.
 
 Use `ratchetr help query` for the latest flag defaults. For manifest field details see `docs/ratchetr.md`, and for
 end-to-end examples see the manifests under `examples/` (for example `examples/manifest.json`).

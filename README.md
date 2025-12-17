@@ -110,14 +110,14 @@ ratchetr query readiness --manifest manifest.json --level folder --status blocke
 # Filter runs by tool/mode to see error pressure for specific engines
 ratchetr query runs --manifest manifest.json --tool pyright --mode current --format table
 
-# Inspect engine profiles (plugin args, includes/excludes) captured in the manifest
+# Inspect engine profiles (plugin args, include/exclude) captured in the manifest
 ratchetr query engines --manifest manifest.json --format table
 
 # Quick snapshot of the most frequent diagnostic rules
 ratchetr query rules --manifest manifest.json --limit 10
 
 # Include offending files per rule
-ratchetr query rules --manifest manifest.json --includes --limit 5
+ratchetr query rules --manifest manifest.json --include --limit 5
 
 # Filter readiness payloads by severity
 ratchetr query readiness --manifest manifest.json --severity warning --format table
@@ -451,7 +451,7 @@ exclude = ["legacy"]
 ```
 
 Overrides apply in addition to the root config: plugin arguments are merged and
-deduplicated, profiles cascade, and relative include/exclude paths are resolved
+deduplicated, profiles cascade, and relative `include`/`exclude` paths are resolved
 from the directory containing the override file.
 
 ### Incremental caching
@@ -476,7 +476,7 @@ fingerprint hashing across threads when large projects need faster cache
 refreshes. Leave it unset to keep the default sequential strategy.
 
 Every manifest entry also records the resolved engine options (`engineOptions`
-block) so you can trace which profile, config file, include/exclude
+block) so you can trace which profile, config file, `include`/`exclude`
 directives, and plugin arguments produced a run.
 
 ### Logging

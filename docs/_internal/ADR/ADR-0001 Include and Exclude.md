@@ -1,15 +1,15 @@
-# ADR-000X: Path Scoping, Pattern Semantics, Safety Boundaries, Determinism, and Output Path Resolution
+# ADR-0001: Path Scoping, Pattern Semantics, Safety Boundaries, Determinism, and Output Path Resolution
 
 **Status:** Accepted
 **Date:** 2025-12-13
 **Owners:** Ratchetr maintainers
-**Scope:** How ratchetr discovers and scopes files for scanning (includes/excludes), the pattern language and matching basis, safety boundaries (out-of-root, symlinks), determinism requirements, and output path resolution for `--save-as` / `--dashboard`.
+**Scope:** How ratchetr discovers and scopes files for scanning (`include`/`exclude`), the pattern language and matching basis, safety boundaries (out-of-root, symlinks), determinism requirements, and output path resolution for `--save-as` / `--dashboard`.
 
 ---
 
 ## 1. Context
 
-Ratchetr needs a predictable, cross-platform mechanism to select files for scanning. Users expect familiar, glob-like expressions for `includes` and `excludes`, while ratchetr must remain safe by construction (never scanning outside the configured root or traversing symlinks) and usable at scale (very large repos).
+Ratchetr needs a predictable, cross-platform mechanism to select files for scanning. Users expect familiar, glob-like expressions for `include` and `exclude`, while ratchetr must remain safe by construction (never scanning outside the configured root or traversing symlinks) and usable at scale (very large repos).
 
 The project also aims to minimize long-term runtime dependencies; therefore, relying on external gitignore parsers (e.g., `pathspec`) or adopting full Git ignore semantics is not preferred if a simpler, ratchetr-owned contract can meet requirements.
 
@@ -21,7 +21,7 @@ In parallel, output destinations (manifests/dashboards) must have consistent and
 
 Ratchetr will:
 
-1. Implement a **ratchetr-defined, glob-like pattern language** for `includes` and `excludes` (not full gitignore semantics, not stdlib glob semantics “as the contract”).
+1. Implement a **ratchetr-defined, glob-like pattern language** for `include` and `exclude` (not full gitignore semantics, not stdlib glob semantics “as the contract”).
 2. Match patterns against **root-relative, normalized POSIX paths** (using `/` separators). **Backslash (`\`) is not supported as a path separator in patterns** in v1.
 3. Support:
 
@@ -30,13 +30,13 @@ Ratchetr will:
    * directory-only patterns via trailing `/`
    * recursion via `**`
    * non-recursive directory selection via `DIR/*`
-   * negation (`!pattern`) **only in `excludes`** as the mechanism to override excludes
+   * negation (`!pattern`) **only in `exclude`** as the mechanism to override excludes
 4. Apply the **include/exclude algorithm** such that:
 
-   * if includes are empty, baseline is include-all
-   * if includes are non-empty, baseline is whitelist-only
-   * excludes are applied after includes, in order
-   * exclude matches win over include matches, except where overridden by **negated excludes**
+   * if `include` is empty, baseline is include-all
+   * if `include` are non-empty, baseline is whitelist-only
+   * `exclude` is applied after `include`, in order
+   * `exclude` matches win over `include` matches, except where overridden by **negated** ``exclude``
 5. Enforce safety:
 
    * **out-of-root**: skip, warn, and record in manifest
@@ -65,7 +65,7 @@ Patterns are **never** matched against absolute paths.
 
 ### 3.2 Configuration sources and precedence
 
-`includes` and `excludes` may be provided via:
+`include` and `exclude` may be provided via:
 
 1. CLI
 2. Environment variables
@@ -74,7 +74,7 @@ Patterns are **never** matched against absolute paths.
 
 **Precedence:** CLI > Env > Config > Defaults.
 
-**List replacement rule (simplicity-first):** For each of `includes` and `excludes`, the highest-precedence source that provides a value **replaces** lower-precedence values for that list.
+**List replacement rule (simplicity-first):** For each of `include` and `exclude`, the highest-precedence source that provides a value **replaces** lower-precedence values for that list.
 
 **Explicit empty lists:** An explicitly provided empty list (e.g., `[]`) **counts as provided** and therefore replaces lower-precedence values for that list.
 
@@ -96,7 +96,7 @@ No delimiter-based encoding (comma/colon/semicolon) is supported in v1.
 
 ### 3.4 Pattern language
 
-Patterns apply in both `includes` and `excludes`, with the exception that negation is allowed only in `excludes`.
+Patterns apply in both `include` and `exclude`, with the exception that negation is allowed only in `exclude`.
 
 #### 3.4.1 Metacharacters
 
@@ -106,7 +106,7 @@ Patterns may contain arbitrary characters; only the following have special meani
 * Trailing `/` → directory-only (subtree)
 * `*`, `?`, `[ ... ]` → single-segment wildcards
 * `**` → multi-segment wildcard (crosses `/`)
-* Leading `!` → negation (**excludes only**)
+* Leading `!` → negation (`exclude` **only**)
 
 All other characters are literal.
 
@@ -152,7 +152,7 @@ To support common user intent while avoiding surprising subtree matches:
 
   * anchored `/foo`: first segment is `foo`
   * floating `foo`: any segment is `foo`
-  * consequence: `foo` can match a directory segment and include descendants
+  * consequence: `foo` can match a directory segment and `include` descendants
 * **Single-segment wildcard tokens** (contain `*`, `?`, `[`) match **basenames only**:
 
   * anchored `/*.py`: root-level basenames only
@@ -172,18 +172,18 @@ Matching is **case-sensitive** at the contract level.
 
 #### 3.5.1 Baseline inclusion
 
-* If `includes` is empty: baseline is **included**.
-* If `includes` is non-empty: baseline is **excluded** unless matched by at least one include.
+* If `include` is empty: baseline is **included**.
+* If `include` is non-empty: baseline is **excluded** unless matched by at least one `include`.
 
-#### 3.5.2 Excludes and overrides
+#### 3.5.2 Exclude and overrides
 
-* Excludes are applied **after** includes, in the order provided.
-* A matching exclude sets the candidate to excluded.
-* A matching **negated exclude** (`!pattern`) sets the candidate to included.
+* `exclude` is applied **after** `include`, in the order provided.
+* A matching `exclude` sets the candidate to excluded.
+* A matching **negated `exclude`** (`!pattern`) sets the candidate to included.
 
-**Precedence rule:** Exclude wins over include by default; **negated excludes are the explicit override mechanism**.
+**Precedence rule:** `exclude` wins over include by default; **negated `exclude` are the explicit override mechanism**.
 
-**Negation constraint:** Negation is allowed **only** in `excludes`. Negation in `includes` is a configuration error.
+**Negation constraint:** Negation is allowed **only** in `exclude`. Negation in `include` is a configuration error.
 
 **Rationale:** This provides a single, explicit override mechanism while avoiding Git’s traversal/pruning constraints and avoiding a more complex precedence model.
 
@@ -248,7 +248,7 @@ Ratchetr standardizes engine input modes (plugins choose the best supported opti
 2. Stdin list
 3. Batched argv list
 4. Tool-native globs (plugin responsibility to maintain safety)
-5. Tool-root scoped via tool config/excludes
+5. Tool-root scoped via tool config/exclude
 6. Full tool-root (fallback)
 
 **Correctness invariant:** Ratchetr computes the canonical in-scope file set and filters diagnostics to it, regardless of how a tool was invoked.
@@ -314,9 +314,9 @@ Rejected because it makes configuration dependent on OS conventions; JSON list e
 
 Deferred. Supporting Windows-style `\` separators in patterns is convenient for copy/paste but introduces cross-platform ambiguity and additional escape rules. v1 remains POSIX-only for separators.
 
-### 4.5 “Explicit include overrides exclude”
+### 4.5 “Explicit `include` overrides `exclude`”
 
-Rejected. The chosen model is “exclude wins; negated excludes provide explicit exceptions,” which is simpler and maps directly to the requested override mechanism.
+Rejected. The chosen model is “`exclude` wins; negated `exclude` provides explicit exceptions,” which is simpler and maps directly to the requested override mechanism.
 
 ---
 
