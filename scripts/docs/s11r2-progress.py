@@ -734,7 +734,7 @@ def _run_demo(repo_root: Path) -> int:
             ],
             [
                 ["MAP-0001", "D2-0003", "pipeline", "ADR-0003", "#pipeline", "preserve", "drafted", "c1", ""],
-                ["MAP-0002", "PLAN-v18", "overlay A", "ADR-0003", "#overlay", "overlay", "planned", "", ""],
+                ["MAP-0002", "PLAN-v19", "overlay A", "ADR-0003", "#overlay", "overlay", "planned", "", ""],
                 ["MAP-0003", "D2-0004", "taxonomy", "ADR-0004", "#taxonomy", "preserve", "reviewed", "c2", ""],
                 ["MAP-0004", "CLI-H", "help", "docs/cli/flags.md", "#flags", "overlay", "accepted", "c3", ""],
             ],
@@ -796,8 +796,8 @@ def _run_demo(repo_root: Path) -> int:
         # Mutate and re-run
         mm = (regdir / "master_mapping_ledger.md").read_text(encoding="utf-8")
         mm = mm.replace(
-            "| MAP-0002 | PLAN-v18 | overlay A | ADR-0003 | #overlay | overlay | planned |",
-            "| MAP-0002 | PLAN-v18 | overlay A | ADR-0003 | #overlay | overlay | drafted |",
+            "| MAP-0002 | PLAN-v19 | overlay A | ADR-0003 | #overlay | overlay | planned |",
+            "| MAP-0002 | PLAN-v19 | overlay A | ADR-0003 | #overlay | overlay | drafted |",
         )
         (regdir / "master_mapping_ledger.md").write_text(mm, encoding="utf-8")
 

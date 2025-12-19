@@ -23,7 +23,7 @@
 
 ## Plan overlay and supersedence
 
-- [ ] Each applied plan-v18 delta is recorded (with evidence) in `docs/_internal/registers/plan_overlay_register.md`.
+- [ ] Each applied plan-v19 delta is recorded (with evidence) in `docs/_internal/registers/plan_overlay_register.md`.
 - [ ] If a delta supersedes prior content, `docs/_internal/registers/supersedence_ledger.md` is updated with the pointers.
 
 ## Contract surfaces and parity

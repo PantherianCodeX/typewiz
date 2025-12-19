@@ -3,8 +3,8 @@
 List the *architectural* items from the draft-2 ADR set that must be preserved (or explicitly superseded by the plan). This is not a restatement of the sources—this is the extraction list and its destinations.
 
 | Item ID | Draft-2 source (ID + anchor) | Backbone type (taxonomy/naming/boundary/object class/invariant) | Preserve posture (`verbatim`/`adapt`) | Destination owner (doc) | Destination anchor | Superseded by plan? (Y/N + ref) | Notes |
-|---|---|---|---|---|---|---|---|
-| P-0001 |  |  |  |  |  |  |  |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| P-0001 | | | | | | | |
 
 ## Guidance
 

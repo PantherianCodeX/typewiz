@@ -9,7 +9,7 @@ This script generates the **Automated roll-up (generated)** section of the execu
 
 The intent is to keep rewrite tracking **mechanical and auditable**: humans maintain the source registries;
 this script produces a consistent roll-up so the rewrite can be managed without missing items, duplicating concepts,
-or drifting from plan-v18 overlays.
+or drifting from plan-v19 overlays.
 
 ---
 
@@ -71,6 +71,7 @@ The script searches each file for the **first markdown table** containing the re
 ### Owner distribution buckets
 
 The script classifies the **Canonical owner** path into buckets:
+
 - Policy
 - ADR
 - Reference spec
@@ -113,6 +114,7 @@ python scripts/docs/build_execution_contract_progress_board.py --demo
 ```
 
 The demo:
+
 - creates a temporary copy of the registry directory,
 - writes synthetic registry tables,
 - generates the progress board,
@@ -144,14 +146,17 @@ python scripts/docs/build_execution_contract_progress_board.py \
 ## Troubleshooting
 
 ### The roll-up shows warnings like “Could not find … table”
+
 - The register file exists, but the header text drifted.
 - Fix by restoring the expected header fragments (see table above) or updating the script.
 
 ### The roll-up shows “Missing register: …”
+
 - The file does not exist at the expected path.
 - Either create the file (even if empty with headers) or remove it from the required set and treat it as optional.
 
 ### Duplicate mapping Row IDs warning
+
 - `master_mapping_ledger.md` contains duplicate `Row ID` values.
 - Resolve by assigning unique IDs; duplicates undermine auditability and merge safety.
 
@@ -160,6 +165,7 @@ python scripts/docs/build_execution_contract_progress_board.py \
 ## How to extend the roll-up safely
 
 If you add a new register and want it reflected in the generated board:
+
 1) Keep the register as a single, stable markdown table.
 2) Add a new block in `compute_metrics()` in the script.
 3) Keep the output as counts/roll-ups only (do not render full registries into the board).
@@ -171,4 +177,3 @@ If you add a new register and want it reflected in the generated board:
 
 - Run `--write` before submitting PRs that change any register tables.
 - Treat warnings in the generated roll-up as **stop-the-line** until resolved.
-
