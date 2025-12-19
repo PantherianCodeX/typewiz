@@ -464,7 +464,7 @@ clean.hypothesis: ## Remove Hypothesis caches
 
 clean.benchmarks: ## Remove pytest-benchmark caches
 	@printf "=+= Removing pytest-benchmark caches... =+=\n"
-	rm -rf .benchmarks
+	find . -type d -name .benchmarks -prune -exec rm -rf {} +
 	@printf "=+= Pytest-benchmark caches removed =+=\n\n"
 
 clean.test: clean.pytest clean.coverage clean.hypothesis clean.benchmarks ## Remove test caches and coverage artifacts

@@ -7,7 +7,7 @@
 
 ## Environment
 
-- Use a dedicated virtualenv at `.venv` for all work; CI enforces this. Create with `python -m venv .venv` and activate it before any command.
+- Use a dedicated virtualenv at `.venv` for all work; CI enforces this. Create with `uv venv .venv` and use `uv run` before any command.
 - Prefer `make` targets (see Makefile) as the single source of truth for linting, typing, tests, packaging, and CI parity.
 
 ## Code Structure
@@ -58,8 +58,8 @@
 
 ## CI/CD
 
-- GitHub Actions workflow in `.github/workflows/ci.yml` runs: lint, type checks (mypy + pyright), tests (with coverage), packaging validation, and optional ratchetr dashboards.
-- Caching: pip, virtualenv, Ruff, mypy caches are preserved across jobs; honor these paths locally.
+- GitHub Actions workflow in `.github/workflows/ci.yml` runs: lint (ruff + pylint), type checks (mypy + pyright + ruff --verifytypes), tests (with coverage), security (bandit + safetycli), packaging validation, and optional ratchetr dashboards.
+- Caching: pip, virtualenv, Ruff, mypy, pyright caches are preserved across jobs; honor these paths locally.
 - The CI matrix covers Linux/macOS/Windows and Python 3.12, with 3.13 as continue-on-error. Local runs should match CI targets via `make ci.check`.
 
 ## Make Targets (preferred)
