@@ -11,7 +11,7 @@ This is the enforcement register for concept ownership. It should remain consist
 ## Canonical ownership (seed from ADR Rewrite Plan v18 §2.2)
 
 | Concept | Canonical owner | Non-owner allowed content (max) | Links required |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Workspace vs modes; Project vs Ad-hoc | ADR-0003 | brief context only | link to ADR-0003 |
 | Source precedence; `--no-env`; disclosure of disabled sources | ADR-0003 | brief context only | link to ADR-0003 |
 | CLI boundary argv normalization (macro expansion; macro-only dedup/warnings) | ADR-0003 (impl note in `docs/_internal/cli/argv_normalization.md`) | pointers only | link to owner + impl note |

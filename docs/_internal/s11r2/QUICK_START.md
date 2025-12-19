@@ -1,7 +1,7 @@
 # QUICK_START.md — s11r2 Rewrite Governance System
 
-**Audience:** Humans and AI agents executing the ADR/documentation rewrite using the **s11r2 execution-contract workbook**.  
-**This file:** A **quickstart** to begin work safely and consistently.  
+**Audience:** Humans and AI agents executing the ADR/documentation rewrite using the **s11r2 execution-contract workbook**.
+**This file:** A **quickstart** to begin work safely and consistently.
 **See also:** `README.md` (overview), `AGENTS.md` (full operating standards), and `USAGE.md` (in-depth).
 **Date:** 2025-12-19
 
@@ -11,13 +11,13 @@
 
 ### 1.1 Open these files in this order
 
-1. `docs/_internal/s11r2-policy.md`  
-2. `docs/_internal/s11r2/WORKBOOK.md`  
-3. `docs/_internal/s11r2/registers/registry_index.md`  
-4. `docs/_internal/s11r2/registers/rewrite_status.md`
+1. `docs/_internal/policy/s11r2-policy.md`
+2. `docs/_internal/policy/s11r2/WORKBOOK.md`
+3. `docs/_internal/policy/s11r2/registers/registry_index.md`
+4. `docs/_internal/policy/s11r2/registers/rewrite_status.md`
 
 If any are missing, **stop** and record a blocker in:
-`docs/_internal/s11r2/registers/open_questions.md`.
+`docs/_internal/policy/s11r2/registers/open_questions.md`.
 
 ---
 
@@ -50,13 +50,13 @@ Before writing any normative statement, confirm ownership:
 
 Record the preservation and mapping trail **before drafting**:
 
-1. `registers/draft2_preservation_map.md`  
+1. `registers/draft2_preservation_map.md`
    - extract the relevant draft-2 invariants/objects/terms
-2. `registers/master_mapping_ledger.md`  
-   - map each extracted item to a destination owner (`path#anchor`)  
+2. `registers/master_mapping_ledger.md`
+   - map each extracted item to a destination owner (`path#anchor`)
    - include **evidence**
-3. `registers/carry_forward_matrix.md`  
-   - record disposition: **PRESERVE | RELOCATE | SUPERSEDE | DEFER**  
+3. `registers/carry_forward_matrix.md`
+   - record disposition: **PRESERVE | RELOCATE | SUPERSEDE | DEFER**
    - cite policy/plan anchors
 
 **Rule:** Unmapped items are treated as **at risk of loss**. Do not proceed.
@@ -105,15 +105,18 @@ Create/update a row in `open_questions.md` and mark impacted docs **BL** when:
 ## 4) Evidence discipline (avoid UI truncation)
 
 Registries must cite evidence via:
+
 - `path#anchor`, or
 - snapshot filename + line range, or
 - precise extraction command.
 
-**Shell-first**
+**Shell-first:**
+
 - `grep -n -- '<token>' <file>`
 - `nl -ba <file> | sed -n '<start>,<end>p'`
 
-**Python line-by-line**
+**Python line-by-line:**
+
 ```python
 for ln, txt in lines:
     print(f"{ln:04d}: {txt}")
@@ -126,7 +129,7 @@ Never use ellipses (`...`) as omission markers in normative text.
 ## 5) Quick reference: “Where do I record this?”
 
 | Task | Record in |
-|---|---|
+| --- | --- |
 | Define/change a concept | `owner_index.md` (+ `terminology_map.md` if wording/term changes) |
 | Preserve/move draft-2 content | `draft2_preservation_map.md` + `master_mapping_ledger.md` + `carry_forward_matrix.md` |
 | Apply Plan v18 delta | `plan_overlay_register.md` (+ `supersedence_ledger.md` if replacing) |
@@ -139,10 +142,9 @@ Never use ellipses (`...`) as omission markers in normative text.
 
 ## 6) Confirm README alignment (maintenance note)
 
-This Quickstart intentionally avoids duplicating overview content.  
+This Quickstart intentionally avoids duplicating overview content.
 If `README.md` is updated, keep the following division:
 
 - `README.md`: what this system is + directory layout + where to start
 - `Quickstart`: the minimal compliant loop + stop-the-line triggers
 - `AGENTS.md`: full standards and anti-drift discipline
-
