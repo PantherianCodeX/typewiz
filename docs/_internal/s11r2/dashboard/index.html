@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>s11r2 Rewrite Governance Dashboard</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 0; }
+    header { padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,.12); }
+    main { padding: 20px 24px 48px 24px; max-width: 1100px; }
+    h1 { margin: 0 0 6px 0; font-size: 20px; }
+    .meta { margin: 0; opacity: .75; font-size: 13px; }
+    .grid { display: grid; grid-template-columns: 280px 1fr; gap: 18px; }
+    .card { border: 1px solid rgba(0,0,0,.12); border-radius: 10px; padding: 12px; }
+    .nav { list-style: none; padding: 0; margin: 0; }
+    .nav li { margin: 6px 0; }
+    .nav a { text-decoration: none; }
+    .warn { color: #b00020; }
+    .ok { opacity: .8; }
+    section { margin-top: 18px; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+    th, td { border: 1px solid rgba(0,0,0,.18); padding: 6px 8px; text-align: left; font-size: 13px; }
+    th { background: rgba(0,0,0,.05); }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+  <header>
+    <h1>s11r2 Rewrite Governance Dashboard</h1>
+    <p class="meta">Generated: 2025-12-18 21:37:52 (local)</p>
+  </header>
+  <main>
+    <div class="grid">
+      <aside class="card">
+        <h2>Navigation</h2>
+        <ul class="nav"><li><a href="#owner-index">Owner index</a></li><li><a href="#ownership-distribution-by-owner-bucket">Ownership distribution (by owner bucket)</a></li><li><a href="#rewrite-status">Rewrite status</a></li><li><a href="#master-mapping-ledger">Master mapping ledger</a></li><li><a href="#mapping-type">Mapping type</a></li><li><a href="#mapped-source-ids-unique">Mapped source IDs (unique)</a></li><li><a href="#draft-2-preservation-map">Draft-2 preservation map</a></li><li><a href="#preserve-posture">Preserve posture</a></li><li><a href="#superseded-by-plan">Superseded by plan?</a></li><li><a href="#carry-forward-matrix">Carry-forward matrix</a></li><li><a href="#plan-overlay-register">Plan overlay register</a></li><li><a href="#supersedence-ledger">Supersedence ledger</a></li><li><a href="#cli-parity-deltas">CLI parity deltas</a></li><li><a href="#open-questions">Open questions</a></li><li><a href="#change-control">Change control</a></li><li><a href="#roadmap-register">Roadmap register</a></li><li><a href="#anchor-changes">Anchor changes</a></li></ul>
+        <h2 style="margin-top:14px">Warnings</h2>
+        <p class="ok">No warnings.</p>
+      </aside>
+      <div>
+        <section id="owner-index">
+  <h2>Owner index</h2>
+  <ul><li>Concepts owned (rows): **17**</li></ul>
+</section><section id="ownership-distribution-by-owner-bucket">
+  <h2>Ownership distribution (by owner bucket)</h2>
+  <table><thead><tr><th>Bucket</th><th>Count</th></tr></thead><tbody><tr><td>ADR</td><td>14</td></tr><tr><td>Reference spec</td><td>3</td></tr></tbody></table>
+</section><section id="rewrite-status">
+  <h2>Rewrite status</h2>
+  <table><thead><tr><th>Artifact status</th><th>Count</th></tr></thead><tbody><tr><td>Not started</td><td>15</td></tr></tbody></table>
+</section><section id="master-mapping-ledger">
+  <h2>Master mapping ledger</h2>
+  <table><thead><tr><th>Mapping status</th><th>Count</th></tr></thead><tbody><tr><td>(none)</td><td>0</td></tr></tbody></table>
+</section><section id="mapping-type">
+  <h2>Mapping type</h2>
+  <table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody><tr><td>(none)</td><td>0</td></tr></tbody></table>
+</section><section id="mapped-source-ids-unique">
+  <h2>Mapped source IDs (unique)</h2>
+  <ul><li>Unique Source IDs present in mapping rows: **0**</li></ul>
+</section><section id="draft-2-preservation-map">
+  <h2>Draft-2 preservation map</h2>
+  <ul><li>Preservation items (rows): **1**</li></ul>
+</section><section id="preserve-posture">
+  <h2>Preserve posture</h2>
+  <table><thead><tr><th>Posture</th><th>Count</th></tr></thead><tbody><tr><td>(none)</td><td>0</td></tr></tbody></table>
+</section><section id="superseded-by-plan">
+  <h2>Superseded by plan?</h2>
+  <table><thead><tr><th>Y/N</th><th>Count</th></tr></thead><tbody><tr><td>(none)</td><td>0</td></tr></tbody></table>
+</section><section id="carry-forward-matrix">
+  <h2>Carry-forward matrix</h2>
+  <table><thead><tr><th>Carry-forward posture</th><th>Count</th></tr></thead><tbody><tr><td>(none)</td><td>0</td></tr></tbody></table>
+</section><section id="plan-overlay-register">
+  <h2>Plan overlay register</h2>
+  <table><thead><tr><th>Overlay status</th><th>Count</th></tr></thead><tbody><tr><td>planned</td><td>1</td></tr></tbody></table>
+</section><section id="supersedence-ledger">
+  <h2>Supersedence ledger</h2>
+  <table><thead><tr><th>Supersedence status</th><th>Count</th></tr></thead><tbody><tr><td>planned</td><td>1</td></tr></tbody></table>
+</section><section id="cli-parity-deltas">
+  <h2>CLI parity deltas</h2>
+  <table><thead><tr><th>CLI delta status</th><th>Count</th></tr></thead><tbody><tr><td>planned</td><td>1</td></tr></tbody></table>
+</section><section id="open-questions">
+  <h2>Open questions</h2>
+  <table><thead><tr><th>Question status</th><th>Count</th></tr></thead><tbody><tr><td>open</td><td>1</td></tr></tbody></table>
+</section><section id="change-control">
+  <h2>Change control</h2>
+  <table><thead><tr><th>Change-control status</th><th>Count</th></tr></thead><tbody><tr><td>proposed</td><td>1</td></tr></tbody></table>
+</section><section id="roadmap-register">
+  <h2>Roadmap register</h2>
+  <table><thead><tr><th>Roadmap status</th><th>Count</th></tr></thead><tbody><tr><td>(none)</td><td>0</td></tr></tbody></table>
+</section><section id="anchor-changes">
+  <h2>Anchor changes</h2>
+  <ul><li>Anchor change rows: **0**</li></ul>
+</section>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
