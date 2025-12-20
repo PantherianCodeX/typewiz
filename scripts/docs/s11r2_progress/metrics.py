@@ -1,3 +1,17 @@
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Registry parsing and metric computation.
 
 This module intentionally keeps policy assumptions minimal:
@@ -15,14 +29,14 @@ Where we do make assumptions, they are localized and easy to adjust:
 
 from __future__ import annotations
 
+import datetime as dt
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import TYPE_CHECKING
 
-from scripts.docs.s11r2_progress.legend import StatusLegend
 from scripts.docs.s11r2_progress.md import (
+    MdTable,
     extract_links,
     find_column,
     find_table_by_headers,
@@ -31,7 +45,22 @@ from scripts.docs.s11r2_progress.md import (
     strip_md_inline,
     table_rows_as_dicts,
 )
+from scripts.docs.s11r2_progress.metrics_helpers import (
+    effective_mapping_rows,
+    master_mapping_sources_context,
+    master_mapping_table_context,
+    rewrite_status_context,
+    validate_mapping_rows,
+)
 from scripts.docs.s11r2_progress.models import Issue, IssueReport, Severity
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+
+    from scripts.docs.s11r2_progress.legend import StatusLegend
+
+
+_YYYY_MM_DD_PARTS: int = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +81,18 @@ class _StatusCell:
     row_label: str
     status_col: str
     code: str
+
+
+@dataclass(frozen=True, slots=True)
+class _StatusValidationSpec:
+    file_label: str
+    id_col: str
+    status_col: str
+    legend: StatusLegend
+    issues: list[Issue]
+    severity: Severity
+    allow_empty: bool
+    collected: list[_StatusCell]
 
 
 def _read_text(path: Path, *, issues: list[Issue], label: str, required: bool) -> str | None:
@@ -88,7 +129,7 @@ def _render_count_table(*, title_left: str, counts: Mapping[str, int], empty_mes
 
 def _guess_row_id_column(headers: Iterable[str]) -> str:
     # Prefer stable IDs when present.
-    for frag in ["id", "artifact", "concept", "file", "source", "ovl", "term", "sup"]:
+    for frag in ("id", "artifact", "concept", "file", "source", "ovl", "term", "sup"):
         c = find_column(headers, frag)
         if c is not None:
             return c
@@ -101,35 +142,35 @@ def _guess_row_id_column(headers: Iterable[str]) -> str:
 def _validate_status_column(
     *,
     rows: Iterable[Mapping[str, str]],
-    file_label: str,
-    id_col: str,
-    status_col: str,
-    legend: StatusLegend,
-    issues: list[Issue],
-    severity: Severity,
-    allow_empty: bool,
-    collected: list[_StatusCell],
+    spec: _StatusValidationSpec,
 ) -> None:
-    allowed = set(legend.codes)
+    allowed = set(spec.legend.codes)
 
-    for idx, r in enumerate(rows, start=1):
-        row_id_raw = strip_md_inline(r.get(id_col, "") or "").strip()
-        row_id = row_id_raw or (f"row {idx}" if id_col != "(row)" else f"row {idx}")
+    for idx, row in enumerate(rows, start=1):
+        row_id_raw = strip_md_inline(row.get(spec.id_col, "") or "").strip()
+        row_id = row_id_raw or f"row {idx}"
 
-        raw_status = r.get(status_col, "") or ""
-        code = _normalize_status(raw_status, legend=legend)
+        raw_status = row.get(spec.status_col, "") or ""
+        code = _normalize_status(raw_status, legend=spec.legend)
 
         if not code:
-            if allow_empty:
+            if spec.allow_empty:
                 continue
-            issues.append(Issue(severity, f"{file_label}: {row_id}: empty `{status_col}`"))
+            spec.issues.append(Issue(spec.severity, f"{spec.file_label}: {row_id}: empty `{spec.status_col}`"))
             continue
 
         if code not in allowed:
-            issues.append(Issue(severity, f"{file_label}: {row_id}: invalid status code {code!r} in `{status_col}`"))
+            spec.issues.append(
+                Issue(
+                    spec.severity,
+                    f"{spec.file_label}: {row_id}: invalid status code {code!r} in `{spec.status_col}`",
+                )
+            )
             continue
 
-        collected.append(_StatusCell(file_label=file_label, row_label=row_id, status_col=status_col, code=code))
+        spec.collected.append(
+            _StatusCell(file_label=spec.file_label, row_label=row_id, status_col=spec.status_col, code=code)
+        )
 
 
 def _status_columns(headers: Iterable[str]) -> list[str]:
@@ -173,14 +214,16 @@ def _scan_registry_status_tables(
                 collected_cells: list[_StatusCell] = []
                 _validate_status_column(
                     rows=rows,
-                    file_label=file_label,
-                    id_col=id_col,
-                    status_col=status_col,
-                    legend=legend,
-                    issues=issues,
-                    severity=Severity.ERROR,
-                    allow_empty=False,
-                    collected=collected_cells,
+                    spec=_StatusValidationSpec(
+                        file_label=file_label,
+                        id_col=id_col,
+                        status_col=status_col,
+                        legend=legend,
+                        issues=issues,
+                        severity=Severity.ERROR,
+                        allow_empty=False,
+                        collected=collected_cells,
+                    ),
                 )
 
                 for c in collected_cells:
@@ -208,8 +251,7 @@ def _render_per_registry_distribution(
         label = p.relative_to(registers_dir).as_posix() if p.is_relative_to(registers_dir) else p.as_posix()
         total = sum(c.values())
         row: list[str] = [f"`{label}`", str(total)]
-        for code in codes:
-            row.append(str(c.get(code, 0)))
+        row.extend(str(c.get(code, 0)) for code in codes)
         rows.append(row)
 
     right_align = set(range(1, len(headers)))
@@ -224,9 +266,10 @@ def _render_overall_distribution(*, overall: Counter[str]) -> str:
     )
 
 
-def _discover_registry_md_paths(*, registry_index: Path, registers_dir: Path, issues: list[Issue]) -> tuple[set[Path], set[Path]]:
+def _discover_registry_md_paths(
+    *, registry_index: Path, registers_dir: Path, issues: list[Issue]
+) -> tuple[set[Path], set[Path]]:
     """Return (indexed_md_under_registers, present_md_under_registers)."""
-
     index_txt = _read_text(registry_index, issues=issues, label="registry_index.md", required=True)
     if index_txt is None:
         return set(), set()
@@ -278,7 +321,7 @@ def _render_top_blockers(*, blockers: list[_StatusCell]) -> str:
 def _render_outstanding_table(
     *,
     title: str,
-    rows: list[Mapping[str, str]],
+    rows: Iterable[Mapping[str, str]],
     columns: list[str],
     legend: StatusLegend,
     status_col: str,
@@ -299,18 +342,174 @@ def _render_outstanding_table(
     return MetricBlock(title=title, body_md=body)
 
 
-def _parse_yyyy_mm_dd(raw: str) -> date | None:
+def _rewrite_staleness_block(
+    *,
+    rows: Sequence[Mapping[str, str]],
+    table: MdTable,
+    legend: StatusLegend,
+    status_col: str,
+    done_code: str | None,
+    issues: list[Issue],
+) -> MetricBlock:
+    last_touch_col = find_column(table.header, "last") or "Last touch (YYYY-MM-DD)"
+    active_codes = {
+        legend.code_for_label_prefix("in progress"),
+        legend.code_for_label_prefix("review"),
+        legend.code_for_label_prefix("blocked"),
+    }
+    active_codes = {c for c in active_codes if c is not None}
+
+    stale_rows: list[tuple[int, list[str]]] = []
+    today = dt.datetime.now(dt.timezone.utc).date()
+    for row in rows:
+        code = _normalize_status(row.get(status_col, ""), legend=legend)
+        if done_code is not None and code == done_code:
+            continue
+
+        last_raw = strip_md_inline(row.get(last_touch_col, "") or "").strip()
+        last = _parse_yyyy_mm_dd(last_raw)
+
+        if code in active_codes and not last_raw:
+            artifact = strip_md_inline(row.get(find_column(table.header, "artifact") or "Artifact", "") or "").strip()
+            issues.append(
+                Issue(
+                    Severity.WARN,
+                    f"rewrite_status.md: {artifact or '(row)'}: missing Last touch for active status {code!r}",
+                )
+            )
+
+        if last is None:
+            continue
+
+        age = (today - last).days
+        artifact = strip_md_inline(row.get(find_column(table.header, "artifact") or "Artifact", "") or "").strip()
+        next_action = strip_md_inline(row.get(find_column(table.header, "next") or "Next action", "") or "").strip()
+        stale_rows.append((age, [artifact, code or "", last.isoformat(), str(age), next_action]))
+
+    stale_rows.sort(key=lambda x: (-x[0], x[1][0]))
+    if stale_rows:
+        stale_table = render_md_table(
+            ["Artifact", "Status", "Last touch", "Age (days)", "Next action"],
+            [row for _age, row in stale_rows[:15]],
+            right_align={3},
+        )
+    else:
+        stale_table = "_No dated outstanding items found._"
+
+    return MetricBlock(title="Rewrite status: staleness (dated outstanding)", body_md=stale_table)
+
+
+def _parse_yyyy_mm_dd(raw: str) -> dt.date | None:
     s = raw.strip()
     if not s:
         return None
     try:
         parts = s.split("-")
-        if len(parts) != 3:
+        if len(parts) != _YYYY_MM_DD_PARTS:
             return None
         y, m, d = (int(parts[0]), int(parts[1]), int(parts[2]))
-        return date(y, m, d)
+        return dt.date(y, m, d)
     except ValueError:
         return None
+
+
+def _table_counts(
+    path: Path,
+    header_frags: list[str],
+    *,
+    legend: StatusLegend,
+    done_code: str | None,
+) -> tuple[int, int, int]:
+    try:
+        txt = path.read_text(encoding="utf-8")
+    except OSError:
+        return (0, 0, 0)
+
+    table = find_table_by_headers(txt, header_frags)
+    if table is None:
+        return (0, 0, 0)
+
+    rows = table_rows_as_dicts(table)
+    status_col = find_column(table.header, "status") or "Status"
+
+    total = 0
+    done = 0
+    for row in rows:
+        code = _normalize_status(row.get(status_col, ""), legend=legend)
+        if not code:
+            continue
+        total += 1
+        if done_code is not None and code == done_code:
+            done += 1
+    return (total, done, max(total - done, 0))
+
+
+def _count_open_questions_blocking(
+    *,
+    registers_dir: Path,
+    legend: StatusLegend,
+    done_code: str | None,
+) -> int:
+    try:
+        oq_txt = (registers_dir / "open_questions.md").read_text(encoding="utf-8")
+    except OSError:
+        return 0
+
+    oq_t = find_table_by_headers(oq_txt, ["q id", "status"])
+    if oq_t is None:
+        return 0
+
+    oq_rows = table_rows_as_dicts(oq_t)
+    oq_status_col = find_column(oq_t.header, "status") or "Status"
+    blocking_col = find_column(oq_t.header, "blocking") or "Blocking? (yes/no)"
+    blocking_yes = 0
+    for row in oq_rows:
+        code = _normalize_status(row.get(oq_status_col, ""), legend=legend)
+        if done_code is not None and code == done_code:
+            continue
+        v = strip_md_inline(row.get(blocking_col, "") or "").strip().lower()
+        if v == "yes":
+            blocking_yes += 1
+    return blocking_yes
+
+
+def _draft2_mapping_coverage(*, registers_dir: Path) -> tuple[int, int]:
+    try:
+        mm_txt = (registers_dir / "master_mapping_ledger.md").read_text(encoding="utf-8")
+    except OSError:
+        return (0, 0)
+
+    src_t = find_table_by_headers(mm_txt, ["source id", "file", "status"])
+    map_t = (
+        find_table_by_headers(mm_txt, ["row id", "source id", "destination", "status"])
+        or find_table_by_headers(mm_txt, ["map id", "source id", "target", "status"])
+        or find_table_by_headers(mm_txt, ["row id", "source id", "target", "status"])
+    )
+
+    d2_ids: list[str] = []
+    if src_t is not None:
+        src_rows = table_rows_as_dicts(src_t)
+        sid_col = find_column(src_t.header, "source id") or "Source ID"
+        d2_ids = [strip_md_inline(r.get(sid_col, "") or "").strip() for r in src_rows]
+        d2_ids = [sid for sid in d2_ids if sid.startswith("D2-")]
+
+    if map_t is None or not d2_ids:
+        return (0, len(d2_ids))
+
+    map_rows = table_rows_as_dicts(map_t)
+    src_col = find_column(map_t.header, "source id") or "Source ID"
+    dest_col = find_column(map_t.header, "destination") or find_column(map_t.header, "target") or "Destination doc"
+
+    mapped: set[str] = set()
+    for row in map_rows:
+        sid = strip_md_inline(row.get(src_col, "") or "").strip()
+        dest = strip_md_inline(row.get(dest_col, "") or "").strip()
+        if not sid and not dest:
+            continue
+        if sid:
+            mapped.add(sid)
+
+    return (sum(1 for sid in d2_ids if sid in mapped), len(d2_ids))
 
 
 def _metrics_operational_snapshot(
@@ -327,7 +526,6 @@ def _metrics_operational_snapshot(
 
     Best-effort by design: failures here should not block progress generation.
     """
-
     done_code = legend.code_for_label_prefix("done") or ("DN" if "DN" in legend.codes else None)
     blocked_code = legend.code_for_label_prefix("blocked")
 
@@ -337,98 +535,20 @@ def _metrics_operational_snapshot(
 
     blocked_rows = overall.get(blocked_code, 0) if blocked_code is not None else 0
 
-    def _table_counts(path: Path, header_frags: list[str]) -> tuple[int, int, int]:
-        try:
-            txt = path.read_text(encoding="utf-8")
-        except OSError:
-            return (0, 0, 0)
-
-        t = find_table_by_headers(txt, header_frags)
-        if t is None:
-            return (0, 0, 0)
-
-        rows = table_rows_as_dicts(t)
-        status_col = find_column(t.header, "status") or "Status"
-
-        total = 0
-        done = 0
-        for r in rows:
-            code = _normalize_status(r.get(status_col, ""), legend=legend)
-            if not code:
-                continue
-            total += 1
-            if done_code is not None and code == done_code:
-                done += 1
-        return (total, done, max(total - done, 0))
-
-    rewrite_total, rewrite_done, rewrite_out = _table_counts(registers_dir / "rewrite_status.md", ["artifact", "status"])
-    oq_total, oq_done, oq_out = _table_counts(registers_dir / "open_questions.md", ["q id", "status"])
-
-    # Open questions: count outstanding blocking=yes
-    blocking_yes = 0
-    try:
-        oq_txt = (registers_dir / "open_questions.md").read_text(encoding="utf-8")
-    except OSError:
-        oq_txt = ""
-
-    if oq_txt:
-        oq_t = find_table_by_headers(oq_txt, ["q id", "status"])
-        if oq_t is not None:
-            oq_rows = table_rows_as_dicts(oq_t)
-            oq_status_col = find_column(oq_t.header, "status") or "Status"
-            blocking_col = find_column(oq_t.header, "blocking") or "Blocking? (yes/no)"
-            for r in oq_rows:
-                code = _normalize_status(r.get(oq_status_col, ""), legend=legend)
-                if done_code is not None and code == done_code:
-                    continue
-                v = strip_md_inline(r.get(blocking_col, "") or "").strip().lower()
-                if v == "yes":
-                    blocking_yes += 1
-
-    # Draft-2 mapping coverage (best-effort)
-    d2_sources_total = 0
-    d2_sources_with_mapping = 0
-
-    try:
-        mm_txt = (registers_dir / "master_mapping_ledger.md").read_text(encoding="utf-8")
-    except OSError:
-        mm_txt = ""
-
-    if mm_txt:
-        src_t = find_table_by_headers(mm_txt, ["source id", "file", "status"])
-        map_t = (
-            find_table_by_headers(mm_txt, ["row id", "source id", "destination", "status"])
-            or find_table_by_headers(mm_txt, ["map id", "source id", "target", "status"])
-            or find_table_by_headers(mm_txt, ["row id", "source id", "target", "status"])
-        )
-
-        d2_ids: list[str] = []
-        if src_t is not None:
-            src_rows = table_rows_as_dicts(src_t)
-            sid_col = find_column(src_t.header, "source id") or "Source ID"
-            d2_ids = [strip_md_inline(r.get(sid_col, "") or "").strip() for r in src_rows]
-            d2_ids = [sid for sid in d2_ids if sid.startswith("D2-")]
-            d2_sources_total = len(d2_ids)
-
-        if map_t is not None and d2_ids:
-            map_rows = table_rows_as_dicts(map_t)
-            src_col = find_column(map_t.header, "source id") or "Source ID"
-            dest_col = (
-                find_column(map_t.header, "destination")
-                or find_column(map_t.header, "target")
-                or "Destination doc"
-            )
-
-            mapped: set[str] = set()
-            for r in map_rows:
-                sid = strip_md_inline(r.get(src_col, "") or "").strip()
-                dest = strip_md_inline(r.get(dest_col, "") or "").strip()
-                if not sid and not dest:
-                    continue
-                if sid:
-                    mapped.add(sid)
-
-            d2_sources_with_mapping = sum(1 for sid in d2_ids if sid in mapped)
+    rewrite_counts = _table_counts(
+        registers_dir / "rewrite_status.md",
+        ["artifact", "status"],
+        legend=legend,
+        done_code=done_code,
+    )
+    oq_counts = _table_counts(
+        registers_dir / "open_questions.md",
+        ["q id", "status"],
+        legend=legend,
+        done_code=done_code,
+    )
+    blocking_yes = _count_open_questions_blocking(registers_dir=registers_dir, legend=legend, done_code=done_code)
+    d2_sources_with_mapping, d2_sources_total = _draft2_mapping_coverage(registers_dir=registers_dir)
 
     headers = ["Metric", "Value"]
     rows = [
@@ -439,13 +559,39 @@ def _metrics_operational_snapshot(
         ["Status-bearing rows", str(total_status_rows)],
         ["Done rows", f"{done_rows} ({pct_done:.1f}%)"],
         ["Blocked rows", str(blocked_rows)],
-        ["Rewrite artifacts (total / done / outstanding)", f"{rewrite_total} / {rewrite_done} / {rewrite_out}"],
-        ["Open questions (total / done / outstanding)", f"{oq_total} / {oq_done} / {oq_out}"],
+        [
+            "Rewrite artifacts (total / done / outstanding)",
+            f"{rewrite_counts[0]} / {rewrite_counts[1]} / {rewrite_counts[2]}",
+        ],
+        ["Open questions (total / done / outstanding)", f"{oq_counts[0]} / {oq_counts[1]} / {oq_counts[2]}"],
         ["Open questions blocking=yes (outstanding)", str(blocking_yes)],
         ["Draft-2 sources with mapping rows", f"{d2_sources_with_mapping} / {d2_sources_total}"],
     ]
 
     return MetricBlock(title="Operational snapshot", body_md=render_md_table(headers, rows, right_align={1}))
+
+
+def _summary_block(*, overall: Counter[str], legend: StatusLegend) -> MetricBlock:
+    """Render a summary block with totals and distribution.
+
+    Returns:
+        Summary metric block.
+    """
+    done_code = legend.code_for_label_prefix("done") or ("DN" if "DN" in legend.codes else None)
+    done_count = overall.get(done_code, 0) if done_code is not None else 0
+    total_count = sum(overall.values())
+    pct_done = (done_count / total_count * 100.0) if total_count else 0.0
+
+    summary_lines: list[str] = [
+        f"- Status-bearing rows: {total_count}",
+    ]
+    if done_code is not None:
+        summary_lines.append(f"- Done ({done_code}): {done_count} ({pct_done:.1f}%)")
+
+    return MetricBlock(
+        title="Summary",
+        body_md="\n".join(summary_lines) + "\n\n" + _render_overall_distribution(overall=overall),
+    )
 
 
 def _metrics_for_rewrite_status(*, registers_dir: Path, legend: StatusLegend, issues: list[Issue]) -> list[MetricBlock]:
@@ -454,94 +600,51 @@ def _metrics_for_rewrite_status(*, registers_dir: Path, legend: StatusLegend, is
     if txt is None:
         return []
 
-    t = find_table_by_headers(txt, ["artifact", "status"])
-    if t is None:
-        issues.append(Issue(Severity.ERROR, "rewrite_status.md: expected a table with Artifact and Status columns"))
+    context = rewrite_status_context(txt=txt, legend=legend, issues=issues)
+    if context is None:
         return []
 
-    rows = table_rows_as_dicts(t)
-    status_col = find_column(t.header, "status") or "Status"
-
-    # Distribution
-    counts = _count_by_status(rows, status_col, legend=legend)
+    counts = _count_by_status(context.rows, context.status_col, legend=legend)
     dist = MetricBlock(
         title="Rewrite status: distribution",
         body_md=_render_count_table(title_left="Status", counts=counts),
     )
 
-    done_code = legend.code_for_label_prefix("done")
-
-    # Outstanding table
     columns = [
-        find_column(t.header, "artifact") or "Artifact",
-        status_col,
-        find_column(t.header, "owner") or "Owner",
-        find_column(t.header, "next") or "Next action",
+        context.artifact_col,
+        context.status_col,
+        context.owner_col,
+        context.next_col,
     ]
     outstanding = _render_outstanding_table(
         title="Rewrite status: outstanding",
-        rows=rows,
+        rows=context.rows,
         columns=columns,
         legend=legend,
-        status_col=status_col,
-        done_code=done_code,
+        status_col=context.status_col,
+        done_code=context.done_code,
         limit=30,
     )
 
     # Next actions: compact table with the most actionable columns.
-    next_cols = [
-        find_column(t.header, "artifact") or "Artifact",
-        status_col,
-        find_column(t.header, "next") or "Next action",
-    ]
+    next_cols = [context.artifact_col, context.status_col, context.next_col]
     next_actions = _render_outstanding_table(
         title="Rewrite status: next actions",
-        rows=rows,
+        rows=context.rows,
         columns=next_cols,
         legend=legend,
-        status_col=status_col,
-        done_code=done_code,
+        status_col=context.status_col,
+        done_code=context.done_code,
         limit=30,
     )
-
-    # Staleness + hygiene: warn if Last touch missing for active statuses.
-    last_touch_col = find_column(t.header, "last") or "Last touch (YYYY-MM-DD)"
-    active_codes = {legend.code_for_label_prefix("in progress"), legend.code_for_label_prefix("review"), legend.code_for_label_prefix("blocked")}
-    active_codes = {c for c in active_codes if c is not None}
-
-    stale_rows: list[tuple[int, list[str]]] = []
-    today = date.today()
-    for r in rows:
-        code = _normalize_status(r.get(status_col, ""), legend=legend)
-        if done_code is not None and code == done_code:
-            continue
-
-        last_raw = strip_md_inline(r.get(last_touch_col, "") or "").strip()
-        last = _parse_yyyy_mm_dd(last_raw)
-
-        if code in active_codes and not last_raw:
-            artifact = strip_md_inline(r.get(find_column(t.header, "artifact") or "Artifact", "") or "").strip()
-            issues.append(Issue(Severity.WARN, f"rewrite_status.md: {artifact or '(row)'}: missing Last touch for active status {code!r}"))
-
-        if last is None:
-            continue
-
-        age = (today - last).days
-        artifact = strip_md_inline(r.get(find_column(t.header, "artifact") or "Artifact", "") or "").strip()
-        next_action = strip_md_inline(r.get(find_column(t.header, "next") or "Next action", "") or "").strip()
-        stale_rows.append((age, [artifact, code or "", last.isoformat(), str(age), next_action]))
-
-    stale_rows.sort(key=lambda x: (-x[0], x[1][0]))
-    if stale_rows:
-        stale_table = render_md_table(
-            ["Artifact", "Status", "Last touch", "Age (days)", "Next action"],
-            [row for _age, row in stale_rows[:15]],
-            right_align={3},
-        )
-    else:
-        stale_table = "_No dated outstanding items found._"
-
-    staleness = MetricBlock(title="Rewrite status: staleness (dated outstanding)", body_md=stale_table)
+    staleness = _rewrite_staleness_block(
+        rows=context.rows,
+        table=context.table,
+        legend=legend,
+        status_col=context.status_col,
+        done_code=context.done_code,
+        issues=issues,
+    )
 
     return [dist, outstanding, next_actions, staleness]
 
@@ -594,17 +697,11 @@ def _metrics_for_master_mapping(*, registers_dir: Path, legend: StatusLegend, is
 
     blocks: list[MetricBlock] = []
 
-    sources_t = find_table_by_headers(txt, ["source id", "file", "status"])
-    if sources_t is None:
-        issues.append(Issue(Severity.ERROR, "master_mapping_ledger.md: expected a table with Source ID / File / Status"))
+    source_ctx = master_mapping_sources_context(txt=txt, issues=issues)
+    if source_ctx is None:
         return []
 
-    src_rows = table_rows_as_dicts(sources_t)
-    src_id_col = find_column(sources_t.header, "source id") or "Source ID"
-    src_file_col = find_column(sources_t.header, "file") or "File"
-    src_status_col = find_column(sources_t.header, "status") or "Status"
-
-    src_counts = _count_by_status(src_rows, src_status_col, legend=legend)
+    src_counts = _count_by_status(source_ctx.rows, source_ctx.status_col, legend=legend)
     blocks.append(
         MetricBlock(
             title="Draft-2 sources: status distribution",
@@ -612,73 +709,35 @@ def _metrics_for_master_mapping(*, registers_dir: Path, legend: StatusLegend, is
         )
     )
 
-    known_sources = {
-        strip_md_inline(r.get(src_id_col, "") or "").strip()
-        for r in src_rows
-        if (r.get(src_id_col, "") or "").strip()
-    }
-
-    mapping_t: object | None = None
-    for header_frags in (
-        ["map id", "source id", "target", "status"],
-        ["row id", "source id", "destination", "status"],
-        ["row id", "source id", "target", "status"],
-    ):
-        mapping_t = find_table_by_headers(txt, header_frags)
-        if mapping_t is not None:
-            break
-
-    if mapping_t is None:
-        issues.append(
-            Issue(
-                Severity.WARN,
-                "master_mapping_ledger.md: mapping table not found (expected headers similar to: "
-                "MAP ID / Source ID / Target / Status or Row ID / Source ID / Destination doc / Status)",
-            )
-        )
+    mapping_ctx = master_mapping_table_context(txt=txt, issues=issues)
+    if mapping_ctx is None:
         return blocks
 
-    map_rows = table_rows_as_dicts(mapping_t)
-    map_status_col = find_column(mapping_t.header, "status") or "Status"
-    map_src_col = find_column(mapping_t.header, "source id") or "Source ID"
-    map_dest_col = find_column(mapping_t.header, "destination") or find_column(mapping_t.header, "target") or "Destination doc"
-
     # Ignore placeholder mapping rows where Source ID and destination are both empty.
-    effective_map_rows: list[Mapping[str, str]] = []
-    placeholder = 0
-    for r in map_rows:
-        sid = strip_md_inline(r.get(map_src_col, "") or "").strip()
-        dest = strip_md_inline(r.get(map_dest_col, "") or "").strip()
-        if not sid and not dest:
-            placeholder += 1
-            continue
-        effective_map_rows.append(r)
+    effective_map_rows, placeholder = effective_mapping_rows(
+        rows=mapping_ctx.rows,
+        source_col=mapping_ctx.source_col,
+        dest_col=mapping_ctx.dest_col,
+    )
 
     if placeholder:
         issues.append(
             Issue(
                 Severity.INFO,
-                f"master_mapping_ledger.md: ignored {placeholder} placeholder mapping row(s) (empty Source ID and Destination doc)",
+                f"master_mapping_ledger.md: ignored {placeholder} placeholder "
+                f"mapping row(s) (empty Source ID and Destination doc)",
             )
         )
 
-    # Validate mapping references (best-effort)
-    referenced_sources: set[str] = set()
-    for r in effective_map_rows:
-        sid = strip_md_inline(r.get(map_src_col, "") or "").strip()
-        dest = strip_md_inline(r.get(map_dest_col, "") or "").strip()
-        if sid:
-            referenced_sources.add(sid)
-        if not sid:
-            issues.append(Issue(Severity.WARN, "master_mapping_ledger.md: mapping row missing Source ID"))
-        if not dest:
-            issues.append(Issue(Severity.WARN, "master_mapping_ledger.md: mapping row missing Destination doc"))
+    per_source_map_rows = validate_mapping_rows(
+        rows=effective_map_rows,
+        source_col=mapping_ctx.source_col,
+        dest_col=mapping_ctx.dest_col,
+        known_sources=source_ctx.known_sources,
+        issues=issues,
+    )
 
-    unknown_refs = sorted(referenced_sources - known_sources)
-    for sid in unknown_refs:
-        issues.append(Issue(Severity.ERROR, f"master_mapping_ledger.md: mapping references unknown Source ID: {sid}"))
-
-    map_counts = _count_by_status(effective_map_rows, map_status_col, legend=legend)
+    map_counts = _count_by_status(effective_map_rows, mapping_ctx.status_col, legend=legend)
     blocks.append(
         MetricBlock(
             title="Draft-2 mapping rows: status distribution",
@@ -691,26 +750,18 @@ def _metrics_for_master_mapping(*, registers_dir: Path, legend: StatusLegend, is
     )
 
     # Per-source mapping coverage.
-    per_source_map_rows: Counter[str] = Counter()
-    for r in effective_map_rows:
-        sid = strip_md_inline(r.get(map_src_col, "") or "").strip()
-        if sid:
-            per_source_map_rows[sid] += 1
-
     inv_headers = ["Source ID", "File", "Status", "Mapping rows"]
     inv_rows: list[list[str]] = []
-    for r in src_rows:
-        sid = strip_md_inline(r.get(src_id_col, "") or "").strip()
+    for r in source_ctx.rows:
+        sid = strip_md_inline(r.get(source_ctx.id_col, "") or "").strip()
         if not sid:
             continue
-        inv_rows.append(
-            [
-                sid,
-                (r.get(src_file_col, "") or "").strip(),
-                _normalize_status(r.get(src_status_col, ""), legend=legend) or "",
-                str(per_source_map_rows.get(sid, 0)),
-            ]
-        )
+        inv_rows.append([
+            sid,
+            (r.get(source_ctx.file_col, "") or "").strip(),
+            _normalize_status(r.get(source_ctx.status_col, ""), legend=legend) or "",
+            str(per_source_map_rows.get(sid, 0)),
+        ])
 
     blocks.append(
         MetricBlock(
@@ -721,7 +772,7 @@ def _metrics_for_master_mapping(*, registers_dir: Path, legend: StatusLegend, is
 
     # If we have any mapping, highlight which sources still have none.
     if effective_map_rows:
-        missing = sorted(s for s in known_sources if per_source_map_rows.get(s, 0) == 0)
+        missing = sorted(s for s in source_ctx.known_sources if not per_source_map_rows.get(s, 0))
         if missing:
             blocks.append(
                 MetricBlock(
@@ -730,12 +781,14 @@ def _metrics_for_master_mapping(*, registers_dir: Path, legend: StatusLegend, is
                 )
             )
     else:
-        d2_sources = sorted(s for s in known_sources if s.startswith("D2-"))
+        d2_sources = sorted(s for s in source_ctx.known_sources if s.startswith("D2-"))
         if d2_sources:
             blocks.append(
                 MetricBlock(
                     title="Draft-2 mapping coverage",
-                    body_md=f"- Effective mapping rows: 0\n- Draft-2 sources: {len(d2_sources)}\n- Draft-2 sources with mapping rows: 0",
+                    body_md=f"- Effective mapping rows: 0\n"
+                    f"- Draft-2 sources: {len(d2_sources)}\n"
+                    "- Draft-2 sources with mapping rows: 0",
                 )
             )
 
@@ -748,9 +801,21 @@ def compute_metrics(
     registry_index: Path,
     legend: StatusLegend,
 ) -> Metrics:
+    """Compute metrics and issue reports for s11r2 registries.
+
+    Args:
+        registers_dir: Directory containing registry markdown files.
+        registry_index: Path to registry_index.md.
+        legend: Status legend for validation.
+
+    Returns:
+        Aggregated metrics and issue report.
+    """
     issues: list[Issue] = []
 
-    indexed_md, present_md = _discover_registry_md_paths(registry_index=registry_index, registers_dir=registers_dir, issues=issues)
+    indexed_md, present_md = _discover_registry_md_paths(
+        registry_index=registry_index, registers_dir=registers_dir, issues=issues
+    )
 
     overall, per_file, cells = _scan_registry_status_tables(
         registry_md_paths=present_md,
@@ -761,7 +826,7 @@ def compute_metrics(
 
     blocks: list[MetricBlock] = []
 
-    blocks.append(
+    blocks.extend([
         _metrics_operational_snapshot(
             registers_dir=registers_dir,
             legend=legend,
@@ -770,33 +835,17 @@ def compute_metrics(
             registries_with_status_columns=len(per_file),
             registries_with_status_rows=sum(1 for c in per_file.values() if sum(c.values()) > 0),
             overall=overall,
-        )
-    )
-
-    # Summary block (list + distribution)
-    done_code = legend.code_for_label_prefix("done") or ("DN" if "DN" in legend.codes else None)
-    done_count = overall.get(done_code, 0) if done_code is not None else 0
-    total_count = sum(overall.values())
-    pct_done = (done_count / total_count * 100.0) if total_count else 0.0
-
-    summary_lines: list[str] = [
-        f"- Status-bearing rows: {total_count}",
-    ]
-    if done_code is not None:
-        summary_lines.append(f"- Done ({done_code}): {done_count} ({pct_done:.1f}%)")
-
-    blocks.append(
-        MetricBlock(
-            title="Summary",
-            body_md="\n".join(summary_lines) + "\n\n" + _render_overall_distribution(overall=overall),
-        )
-    )
+        ),
+        _summary_block(overall=overall, legend=legend),
+    ])
 
     if per_file:
         blocks.append(
             MetricBlock(
                 title="Per-registry status distribution",
-                body_md=_render_per_registry_distribution(per_file=per_file, legend=legend, registers_dir=registers_dir),
+                body_md=_render_per_registry_distribution(
+                    per_file=per_file, legend=legend, registers_dir=registers_dir
+                ),
             )
         )
 

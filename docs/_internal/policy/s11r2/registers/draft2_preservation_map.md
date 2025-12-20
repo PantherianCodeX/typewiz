@@ -5,7 +5,6 @@ List the *architectural* items from the draft-2 ADR set that must be preserved (
 | Item ID | Draft-2 source (ID + anchor) | Backbone type (taxonomy/naming/boundary/object class/invariant) | Preserve posture (`verbatim`/`adapt`) | Destination owner (doc) | Destination anchor | Superseded by plan? (Y/N + ref) | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 
-
 ## Guidance
 
 - Prefer `verbatim` for definitional architecture (taxonomy, naming rules) unless the plan explicitly changes it.

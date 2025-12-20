@@ -6,4 +6,3 @@ If an item is here, work is blocked until it is resolved or explicitly deferred 
 
 | Q ID | Question / ambiguity | Affected concepts | Blocked targets | Owner | Proposed resolution | Status | Date opened |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-

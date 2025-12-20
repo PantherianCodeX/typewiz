@@ -1,3 +1,17 @@
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Generated-block helpers for s11r2 progress artifacts.
 
 We standardize on a single generated-block label for all s11r2 progress outputs.
@@ -18,7 +32,6 @@ from typing import Final
 
 from scripts.docs._generated_blocks import GeneratedBlock, GeneratedBlockError, replace_generated_block
 
-
 PROGRESS_BLOCK_LABEL: Final[str] = "s11r2-progress"
 PROGRESS_BLOCK: Final[GeneratedBlock] = GeneratedBlock(label=PROGRESS_BLOCK_LABEL)
 
@@ -36,17 +49,14 @@ def replace_progress_block(*, content: str, replacement_body: str) -> str:
     Returns:
         Updated file content.
 
-    Raises:
-        GeneratedBlockError: if markers are malformed or ambiguous.
     """
-
     return replace_generated_block(content=content, block=PROGRESS_BLOCK, replacement=replacement_body)
 
 
 __all__ = [
     "BEGIN_MARKER",
     "END_MARKER",
-    "GeneratedBlockError",
     "PROGRESS_BLOCK_LABEL",
+    "GeneratedBlockError",
     "replace_progress_block",
 ]

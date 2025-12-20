@@ -29,7 +29,7 @@ options:
   --config CONFIG       Optional ratchetr.toml path (default: search from cwd). (default: None)
   --root ROOT           Repository root override. (default: None)
   --ratchetr-dir RATCHETR_DIR
-                        Tool home directory override (default: <root>/.ratchetr). (default: None)
+                        Tool home directory override (default: `<root>`/.ratchetr). (default: None)
   --manifest MANIFEST   Manifest path override. (default: None)
   --cache-dir CACHE_DIR
                         Cache directory override. (default: None)
@@ -69,7 +69,7 @@ options:
   --config CONFIG       Optional ratchetr.toml path (default: search from cwd). (default: None)
   --root ROOT           Repository root override. (default: None)
   --ratchetr-dir RATCHETR_DIR
-                        Tool home directory override (default: <root>/.ratchetr). (default: None)
+                        Tool home directory override (default: `<root>`/.ratchetr). (default: None)
   --manifest MANIFEST   Manifest path override. (default: None)
   --cache-dir CACHE_DIR
                         Cache directory override. (default: None)
@@ -140,7 +140,7 @@ options:
   --config CONFIG       Optional ratchetr.toml path (default: search from cwd). (default: None)
   --root ROOT           Repository root override. (default: None)
   --ratchetr-dir RATCHETR_DIR
-                        Tool home directory override (default: <root>/.ratchetr). (default: None)
+                        Tool home directory override (default: `<root>`/.ratchetr). (default: None)
   --manifest MANIFEST   Manifest path override. (default: None)
   --cache-dir CACHE_DIR
                         Cache directory override. (default: None)
@@ -174,7 +174,7 @@ options:
   --config CONFIG       Optional ratchetr.toml path (default: search from cwd). (default: None)
   --root ROOT           Repository root override. (default: None)
   --ratchetr-dir RATCHETR_DIR
-                        Tool home directory override (default: <root>/.ratchetr). (default: None)
+                        Tool home directory override (default: `<root>`/.ratchetr). (default: None)
   --manifest MANIFEST   Manifest path override. (default: None)
   --cache-dir CACHE_DIR
                         Cache directory override. (default: None)
@@ -208,7 +208,7 @@ options:
   --config CONFIG       Optional ratchetr.toml path (default: search from cwd). (default: None)
   --root ROOT           Repository root override. (default: None)
   --ratchetr-dir RATCHETR_DIR
-                        Tool home directory override (default: <root>/.ratchetr). (default: None)
+                        Tool home directory override (default: `<root>`/.ratchetr). (default: None)
   --manifest MANIFEST   Manifest path override. (default: None)
   --cache-dir CACHE_DIR
                         Cache directory override. (default: None)
@@ -236,7 +236,7 @@ options:
   --config CONFIG       Optional ratchetr.toml path (default: search from cwd). (default: None)
   --root ROOT           Repository root override. (default: None)
   --ratchetr-dir RATCHETR_DIR
-                        Tool home directory override (default: <root>/.ratchetr). (default: None)
+                        Tool home directory override (default: `<root>`/.ratchetr). (default: None)
   --manifest MANIFEST   Manifest path override. (default: None)
   --cache-dir CACHE_DIR
                         Cache directory override. (default: None)
@@ -267,7 +267,7 @@ options:
   --config CONFIG       Optional ratchetr.toml path (default: search from cwd). (default: None)
   --root ROOT           Repository root override. (default: None)
   --ratchetr-dir RATCHETR_DIR
-                        Tool home directory override (default: <root>/.ratchetr). (default: None)
+                        Tool home directory override (default: `<root>`/.ratchetr). (default: None)
   --manifest MANIFEST   Manifest path override. (default: None)
   --cache-dir CACHE_DIR
                         Cache directory override. (default: None)
@@ -296,7 +296,7 @@ options:
   --config CONFIG       Optional ratchetr.toml path (default: search from cwd). (default: None)
   --root ROOT           Repository root override. (default: None)
   --ratchetr-dir RATCHETR_DIR
-                        Tool home directory override (default: <root>/.ratchetr). (default: None)
+                        Tool home directory override (default: `<root>`/.ratchetr). (default: None)
   --manifest MANIFEST   Manifest path override. (default: None)
   --cache-dir CACHE_DIR
                         Cache directory override. (default: None)
@@ -321,7 +321,7 @@ options:
   --config CONFIG       Optional ratchetr.toml path (default: search from cwd). (default: None)
   --root ROOT           Repository root override. (default: None)
   --ratchetr-dir RATCHETR_DIR
-                        Tool home directory override (default: <root>/.ratchetr). (default: None)
+                        Tool home directory override (default: `<root>`/.ratchetr). (default: None)
   --manifest MANIFEST   Manifest path override. (default: None)
   --cache-dir CACHE_DIR
                         Cache directory override. (default: None)
@@ -352,7 +352,7 @@ options:
   --config CONFIG       Optional ratchetr.toml path (default: search from cwd). (default: None)
   --root ROOT           Repository root override. (default: None)
   --ratchetr-dir RATCHETR_DIR
-                        Tool home directory override (default: <root>/.ratchetr). (default: None)
+                        Tool home directory override (default: `<root>`/.ratchetr). (default: None)
   --manifest MANIFEST   Manifest path override. (default: None)
   --cache-dir CACHE_DIR
                         Cache directory override. (default: None)
@@ -379,7 +379,7 @@ options:
   --config CONFIG       Optional ratchetr.toml path (default: search from cwd). (default: None)
   --root ROOT           Repository root override. (default: None)
   --ratchetr-dir RATCHETR_DIR
-                        Tool home directory override (default: <root>/.ratchetr). (default: None)
+                        Tool home directory override (default: `<root>`/.ratchetr). (default: None)
   --manifest MANIFEST   Manifest path override. (default: None)
   --cache-dir CACHE_DIR
                         Cache directory override. (default: None)

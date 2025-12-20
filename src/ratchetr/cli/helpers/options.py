@@ -82,7 +82,8 @@ class _StdoutOptionAction(argparse.Action):
         setattr(namespace, _OUT_EXPLICIT_ATTR, True)
 
 
-class StdoutFormat(StrEnum):
+# ignore JUSTIFIED: StrEnum is Enum+str and pylint overcounts base classes.
+class StdoutFormat(StrEnum):  # pylint: disable=too-many-ancestors
     """Supported stdout rendering formats.
 
     Values correspond to user-facing CLI tokens accepted by `--out`.

@@ -35,4 +35,3 @@ This ledger is the primary evidence that nothing was lost and that no new conten
 
 | Row ID | Source ID | Source anchor (heading / location) | Destination doc | Destination anchor | Type (`preserve`/`overlay`) | Status | Evidence (link/commit/PR) | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-

@@ -182,7 +182,8 @@ class ManifestDiscoveryResult:
         return self.manifest_path is not None and self.error is None
 
 
-class OutputFormat(StrEnum):
+# ignore JUSTIFIED: StrEnum is Enum+str and pylint overcounts base classes.
+class OutputFormat(StrEnum):  # pylint: disable=too-many-ancestors
     """Supported output formats for save-style flags."""
 
     JSON = "json"

@@ -6,4 +6,3 @@ Record terminology decisions and required migrations. This is the enforcement su
 
 | TERM ID | Old term / alias | New canonical term | Scope (docs/artifacts/CLI) | Owner (ADR/spec) | Migration rule (one line) | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-

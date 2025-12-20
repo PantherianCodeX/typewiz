@@ -1,3 +1,17 @@
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """CLI entrypoint for the s11r2 progress generator.
 
 This command:
@@ -38,14 +52,35 @@ from scripts.docs.s11r2_progress.render import compose_progress_board_output
 
 
 def _parse_fail_on(value: str) -> FailOn:
+    """Parse a fail-on CLI argument into a FailOn enum.
+
+    Args:
+        value: Raw CLI value.
+
+    Returns:
+        Parsed FailOn enum.
+
+    Raises:
+        argparse.ArgumentTypeError: If the value is not a valid FailOn member.
+    """
     v = value.strip().upper()
     try:
         return FailOn(v)
+    # ignore JUSTIFIED: Defensive guard for argparse enum parsing.
     except ValueError as exc:  # pragma: no cover
-        raise argparse.ArgumentTypeError(f"Invalid fail-on value: {value!r}") from exc
+        msg = f"Invalid fail-on value: {value!r}"
+        raise argparse.ArgumentTypeError(msg) from exc
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
+    """Parse CLI arguments for s11r2 progress generation.
+
+    Args:
+        argv: CLI arguments (excluding the executable).
+
+    Returns:
+        Parsed argparse namespace.
+    """
     parser = argparse.ArgumentParser(prog="s11r2-progress", description="Generate s11r2 progress artifacts")
     parser.add_argument(
         "--write",
@@ -81,20 +116,32 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 
 def _repo_root() -> Path:
+    """Return the repository root directory."""
     # scripts/docs/s11r2_progress/cli.py -> repo root
     return Path(__file__).resolve().parents[3]
 
 
 def _href(from_dir: Path, to_path: Path) -> str:
+    """Return a POSIX relative href from from_dir to to_path."""
     rel = Path(os.path.relpath(to_path, start=from_dir))
     return rel.as_posix()
 
 
 def _format_issue(issue: Issue) -> str:
+    """Format an issue for stderr output.
+
+    Returns:
+        Formatted issue string.
+    """
     return f"{issue.severity}: {issue.message}"
 
 
 def _merge_reports(*reports: IssueReport) -> IssueReport:
+    """Merge multiple issue reports into one.
+
+    Returns:
+        Combined issue report.
+    """
     merged: list[Issue] = []
     for r in reports:
         merged.extend(r.issues)
@@ -102,8 +149,11 @@ def _merge_reports(*reports: IssueReport) -> IssueReport:
 
 
 def _stabilize_markdown_timestamp(existing: str, new: str) -> str:
-    """Keep the existing `_Generated:` line if only the timestamp changed."""
+    """Keep the existing `_Generated:` line if only the timestamp changed.
 
+    Returns:
+        Stabilized markdown content.
+    """
     ts_re = re.compile(r"^_Generated:\s+.*_$", flags=re.MULTILINE)
 
     existing_norm = ts_re.sub("_Generated: __STAMP__", existing)
@@ -120,8 +170,11 @@ def _stabilize_markdown_timestamp(existing: str, new: str) -> str:
 
 
 def _stabilize_html_timestamp(existing: str, new: str) -> str:
-    """Keep the existing generated timestamp if only the timestamp changed."""
+    """Keep the existing generated timestamp if only the timestamp changed.
 
+    Returns:
+        Stabilized HTML content.
+    """
     patterns = (
         re.compile(r'(<p class="sub">Generated:\s*)(.*?)(</p>)', flags=re.DOTALL),
         re.compile(r'(<div class="foot">\s*Generated at:\s*)(.*?)(\s*</div>)', flags=re.DOTALL),
@@ -146,7 +199,6 @@ def _stabilize_html_timestamp(existing: str, new: str) -> str:
 
 def _is_up_to_date(path: Path, content: str, *, kind: str) -> bool:
     """Return True if the on-disk content matches content after timestamp stabilization."""
-
     if not path.exists():
         return False
 
@@ -155,6 +207,7 @@ def _is_up_to_date(path: Path, content: str, *, kind: str) -> bool:
         stabilized = _stabilize_markdown_timestamp(existing=existing, new=content)
     elif kind == "html":
         stabilized = _stabilize_html_timestamp(existing=existing, new=content)
+    # ignore JUSTIFIED: Defensive guard for unknown content kinds.
     else:  # pragma: no cover
         stabilized = content
 
@@ -163,7 +216,6 @@ def _is_up_to_date(path: Path, content: str, *, kind: str) -> bool:
 
 def _write_text_stable(path: Path, content: str, *, kind: str) -> None:
     """Write content, attempting to keep timestamps stable if only metadata changed."""
-
     if path.exists():
         existing = path.read_text(encoding="utf-8")
         if kind == "md":
@@ -187,6 +239,14 @@ def _guard_inputs_exist(paths: S11R2Paths) -> IssueReport:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Entry point for the s11r2 progress generator.
+
+    Args:
+        argv: CLI arguments (excluding the executable), or None for sys.argv.
+
+    Returns:
+        Exit code (0 for success).
+    """
     args = parse_args(sys.argv[1:] if argv is None else argv)
 
     repo_root = _repo_root()

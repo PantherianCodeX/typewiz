@@ -35,7 +35,8 @@ pytestmark = pytest.mark.property
 def _relative_paths() -> st.SearchStrategy[Path]:
     alphabet = tuple("abcdefghijklmnopqrstuvwxyz0123456789")
     segment = (
-        st.lists(st.sampled_from(alphabet), min_size=1, max_size=6)
+        st
+        .lists(st.sampled_from(alphabet), min_size=1, max_size=6)
         .map("".join)
         .filter(lambda value: value not in {".", ".."})
     )

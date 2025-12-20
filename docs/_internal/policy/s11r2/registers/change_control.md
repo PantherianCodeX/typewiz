@@ -6,4 +6,3 @@ Use this register for any deviation from the plan or this policy, including defe
 
 | CC ID | Change type (exception/deferral/override) | Description | Affected docs | Justification (policy/plan cite) | Approver | Date | Sunset / review date | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-

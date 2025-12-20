@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Copyright 2025 CrownOps Engineering
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,11 +33,11 @@ This module is intentionally small (stdlib-only) and strongly typed.
 from __future__ import annotations
 
 import dataclasses
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from pathlib import Path
 
 
 @dataclasses.dataclass(frozen=True)
@@ -48,9 +47,19 @@ class GeneratedBlock:
     label: str
 
     def begin_marker(self) -> str:
+        """Return the BEGIN marker string for this block.
+
+        Returns:
+            BEGIN marker string.
+        """
         return f"<!-- GENERATED:BEGIN {self.label} -->"
 
     def end_marker(self) -> str:
+        """Return the END marker string for this block.
+
+        Returns:
+            END marker string.
+        """
         return f"<!-- GENERATED:END {self.label} -->"
 
 
@@ -74,7 +83,6 @@ def replace_generated_block(*, content: str, block: GeneratedBlock, replacement:
     Raises:
         GeneratedBlockError: if markers are malformed or ambiguous.
     """
-
     begin = block.begin_marker()
     end = block.end_marker()
 
@@ -92,18 +100,20 @@ def replace_generated_block(*, content: str, block: GeneratedBlock, replacement:
         return f"{prefix}{begin}\n\n{body}{end}\n"
 
     if begin_idx == -1 or end_idx == -1:
-        raise GeneratedBlockError(
-            "Generated-block markers are incomplete: both BEGIN and END markers are required."
-        )
+        msg = "Generated-block markers are incomplete: both BEGIN and END markers are required."
+        raise GeneratedBlockError(msg)
 
     if end_idx < begin_idx:
-        raise GeneratedBlockError("Generated-block END marker occurs before BEGIN marker.")
+        msg = "Generated-block END marker occurs before BEGIN marker."
+        raise GeneratedBlockError(msg)
 
     # Ensure uniqueness.
     if content.find(begin, begin_idx + len(begin)) != -1:
-        raise GeneratedBlockError("Multiple BEGIN markers found for the same block label.")
+        msg = "Multiple BEGIN markers found for the same block label."
+        raise GeneratedBlockError(msg)
     if content.find(end, end_idx + len(end)) != -1:
-        raise GeneratedBlockError("Multiple END markers found for the same block label.")
+        msg = "Multiple END markers found for the same block label."
+        raise GeneratedBlockError(msg)
 
     pre = content[:begin_idx].rstrip("\n") + "\n"
     post = content[end_idx + len(end) :]
@@ -111,10 +121,7 @@ def replace_generated_block(*, content: str, block: GeneratedBlock, replacement:
         post = "\n" + post
 
     body = replacement.rstrip("\n")
-    if body:
-        body = "\n\n" + body + "\n\n"
-    else:
-        body = "\n\n"
+    body = "\n\n" + body + "\n\n" if body else "\n\n"
 
     return f"{pre}{begin}{body}{end}{post}".rstrip("\n") + "\n"
 
@@ -122,9 +129,14 @@ def replace_generated_block(*, content: str, block: GeneratedBlock, replacement:
 def update_file_generated_block(*, path: Path, block: GeneratedBlock, replacement: str) -> bool:
     """Update a generated block in *path*.
 
-    Returns True if the file changed, else False.
-    """
+    Returns:
+        True if the file changed, else False.
 
+    Args:
+        path: File to update.
+        block: Generated block definition.
+        replacement: Replacement content (no markers).
+    """
     prior = path.read_text(encoding="utf-8") if path.exists() else ""
     updated = replace_generated_block(content=prior, block=block, replacement=replacement)
     if updated == prior:
@@ -135,9 +147,16 @@ def update_file_generated_block(*, path: Path, block: GeneratedBlock, replacemen
 
 
 def require_paths_exist(paths: Iterable[Path]) -> None:
-    """Fail fast if any path does not exist."""
+    """Fail fast if any path does not exist.
 
+    Args:
+        paths: Paths that must exist.
+
+    Raises:
+        FileNotFoundError: if any required path does not exist.
+    """
     missing = [str(p) for p in paths if not p.exists()]
     if missing:
         joined = "\n".join(f"- {m}" for m in missing)
-        raise FileNotFoundError(f"Required paths are missing:\n{joined}")
+        msg = f"Required paths are missing:\n{joined}"
+        raise FileNotFoundError(msg)

@@ -4,4 +4,3 @@ This matrix records whether extracted draft-2 items were carried forward verbati
 
 | CF ID | Preservation item (P-####) | Source anchor | Destination doc + anchor | Posture (`verbatim`/`adapt`) | Rationale (if adapt) | Reviewed by | Date |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-

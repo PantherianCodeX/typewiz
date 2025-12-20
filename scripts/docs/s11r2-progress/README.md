@@ -43,18 +43,25 @@ python scripts/docs/s11r2-progress.py --write --write-html
 Common modes:
 
 - Write both markdown + HTML outputs:
+
   ```bash
   python scripts/docs/s11r2-progress.py --write --write-html
   ```
+
 - Only write markdown:
+
   ```bash
   python scripts/docs/s11r2-progress.py --write
   ```
+
 - Only write HTML:
+
   ```bash
   python scripts/docs/s11r2-progress.py --write-html
   ```
+
 - Validate that generated outputs are up-to-date (CI-friendly):
+
   ```bash
   python scripts/docs/s11r2-progress.py --check --fail-on WARN
   ```

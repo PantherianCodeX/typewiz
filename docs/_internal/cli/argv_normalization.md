@@ -5,6 +5,7 @@
 **Status:** Stub created in Phase 0. This document is implementation guidance for the CLI boundary only; it is not a user-facing contract.
 
 **Normative sources:**
+
 - `docs/_internal/ADR Rewrite Plan v19.md` §5.7 (macro expansion requirements)
 - `docs/cli/contract.md` (user-visible CLI contract; created in later phases)
 

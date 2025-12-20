@@ -1,3 +1,17 @@
+# Copyright 2025 CrownOps Engineering
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Filesystem path discovery for s11r2 progress generation.
 
 This module discovers the s11r2 governance register layout by reading the
@@ -21,8 +35,8 @@ These tags make discovery resilient to future link-text edits.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.docs.s11r2_progress.md import extract_links
@@ -42,9 +56,7 @@ class S11R2Paths:
     generated_dashboard: Path
 
 
-_TAG_RE = re.compile(
-    r"\[[^\]]+\]\((?P<target>[^)]+)\)\s*<!--\s*s11r2-(?P<kind>input|output):(?P<key>[\w-]+)\s*-->"
-)
+_TAG_RE = re.compile(r"\[[^\]]+\]\((?P<target>[^)]+)\)\s*<!--\s*s11r2-(?P<kind>input|output):(?P<key>[\w-]+)\s*-->")
 
 _REQUIRED_INPUT_TAGS: tuple[tuple[str, str], ...] = (("input", "status_legend"),)
 _REQUIRED_OUTPUT_TAGS: tuple[tuple[str, str], ...] = (("output", "progress_board"), ("output", "dashboard"))
@@ -59,13 +71,23 @@ def _find_registry_index(repo_root: Path) -> Path:
     matches = [m for m in matches if m.as_posix().endswith("/policy/s11r2/registers/registry_index.md")]
 
     if not matches:
-        raise FileNotFoundError("Could not locate docs/_internal/policy/s11r2/registers/registry_index.md")
+        msg = "Could not locate docs/_internal/policy/s11r2/registers/registry_index.md"
+        raise FileNotFoundError(msg)
     if len(matches) > 1:
-        raise FileNotFoundError(f"Ambiguous registry_index.md matches: {[m.as_posix() for m in matches]}")
+        msg = f"Ambiguous registry_index.md matches: {[m.as_posix() for m in matches]}"
+        raise FileNotFoundError(msg)
     return matches[0]
 
 
 def _extract_tagged_targets(index_md: str) -> dict[tuple[str, str], str]:
+    """Extract tagged link targets from the registry index content.
+
+    Args:
+        index_md: Markdown content of registry_index.md.
+
+    Returns:
+        Mapping of (kind, key) tags to link targets.
+    """
     out: dict[tuple[str, str], str] = {}
     for m in _TAG_RE.finditer(index_md):
         key = (m.group("kind"), m.group("key"))
@@ -74,6 +96,14 @@ def _extract_tagged_targets(index_md: str) -> dict[tuple[str, str], str]:
 
 
 def discover_paths(repo_root: Path) -> tuple[S11R2Paths, IssueReport]:
+    """Discover s11r2 registry paths from the repository root.
+
+    Args:
+        repo_root: Repository root directory.
+
+    Returns:
+        Resolved s11r2 paths and an issue report.
+    """
     issues: list[Issue] = []
 
     root = repo_root.resolve()
@@ -102,7 +132,9 @@ def discover_paths(repo_root: Path) -> tuple[S11R2Paths, IssueReport]:
         return (registers_dir / Path(target)).resolve()
 
     status_legend = _resolve(
-        _target_from_tag(kind="input", key="status_legend", fallback_link_text="Status legend", fallback_target="STATUS_LEGEND.md")
+        _target_from_tag(
+            kind="input", key="status_legend", fallback_link_text="Status legend", fallback_target="STATUS_LEGEND.md"
+        )
     )
     generated_pb = _resolve(
         _target_from_tag(
@@ -132,15 +164,12 @@ def discover_paths(repo_root: Path) -> tuple[S11R2Paths, IssueReport]:
         (generated_pb, "Progress board"),
         (generated_dash, "Dashboard"),
     ):
-        try:
-            out_path.relative_to(progress_dir)
-        except ValueError:
-            issues.append(
-                Issue(
-                    Severity.ERROR,
-                    f"registry_index.md: output for {label} must be under `{progress_dir.as_posix()}` (got `{out_path.as_posix()}`)",
-                )
+        if not out_path.is_relative_to(progress_dir):
+            msg = (
+                f"registry_index.md: output for {label} must be under `{progress_dir.as_posix()}` "
+                f"(got `{out_path.as_posix()}`)"
             )
+            issues.append(Issue(Severity.ERROR, msg))
 
     paths = S11R2Paths(
         repo_root=root,

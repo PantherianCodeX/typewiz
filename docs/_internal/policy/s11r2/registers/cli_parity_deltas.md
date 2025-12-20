@@ -6,4 +6,3 @@ Track deltas between CLI help snapshots / existing CLI behavior and the rewritte
 
 | CLI ID | Source snapshot (file + anchor) | Observed behavior / text | Target doc + anchor | Delta type (rename/add/remove/clarify) | Plan anchor (if any) | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-

@@ -92,7 +92,7 @@ lint.markdown: ## Run pymarkdownlnt on markdown files
 
 lint.pylint: ## Run Pylint code quality checks
 	@printf "=+= Running Pylint... =+=\n"
-	$(UV) pylint src/ratchetr --output-format=colorized
+	$(UV) pylint . --output-format=colorized
 	@printf "=+= Pylint run completed =+=\n\n"
 
 lint.pylint.report: ## Run Pylint and write JSON report

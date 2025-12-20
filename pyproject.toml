@@ -157,7 +157,7 @@ disable_error_code = [
 
 [tool.pyright]
 include = ["src", "tests", "scripts/docs"]
-extraPaths = ["src"]
+extraPaths = [".", "src"]
 exclude = [
     "**/__pycache__",
     "**/.pytest_cache",
@@ -185,7 +185,7 @@ reportUnreachable = "error"
 
 [[tool.pyright.executionEnvironments]]
 root = "scripts"
-extraPaths = ["src"]
+extraPaths = [".", "src"]
 reportPrivateUsage = false
 
 [[tool.pyright.executionEnvironments]]
@@ -339,6 +339,7 @@ ignore-patterns = [
     "^tests$",         # Tests have separate rules
     "test_.*\\.py$",
     ".*_test\\.py$",
+    "^typings$",
 ]
 
 # Extensions provide advanced checks not in core Pylint
