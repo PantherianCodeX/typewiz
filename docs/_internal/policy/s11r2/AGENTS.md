@@ -220,15 +220,21 @@ A doc cannot be “Done/Approved” unless:
 
 ## 7. Local verification (Phase 0)
 
-For Phase 0 work, use:
+For docs-only changes (no script modifications), run:
 
-- `make lint`
+- `make lint.fix`
+- `make lint.ruff`
+- `make lint.markdown`
 - `python scripts/docs/check_link_hygiene.py --verbose`
 
-Only when scripts are modified, also use:
+If any scripts are modified, run:
 
+- `make check`
+- `make lint.fix`
+- `make lint`
 - `make type`
 - `make test`
+- `python scripts/docs/check_link_hygiene.py --verbose`
 
 Coverage gating (`make test.cov`) is deferred until the upcoming refactor completes and new tests are added.
 

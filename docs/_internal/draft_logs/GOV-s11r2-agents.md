@@ -53,3 +53,21 @@
 - **Mapping:** N/A (no MAP/P/CF entries yet).
 - **Supersedence:** N/A.
 - **Notes / risks:** None.
+
+## 2025-12-20 — Update verification requirements
+
+- **Change:** Split verification guidance for docs-only vs script-modifying changes.
+- **Preservation:** N/A (governance guidance update).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.
+
+## 2025-12-20 — Add link hygiene to docs-only checks
+
+- **Change:** Added link hygiene check to docs-only verification list.
+- **Preservation:** N/A (governance guidance update).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.
