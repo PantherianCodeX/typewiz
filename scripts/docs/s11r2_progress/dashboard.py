@@ -69,8 +69,8 @@ def _anchor_id(title: str) -> str:
 def _render_inline(text: str) -> str:
     """Render a small inline subset.
 
-    We support inline code and plain text. This intentionally does *not* attempt
-    full Markdown semantics.
+    We support inline code, emphasis, and plain text. This intentionally does
+    *not* attempt full Markdown semantics.
 
     Args:
         text: Inline markdown text.
@@ -78,7 +78,16 @@ def _render_inline(text: str) -> str:
     Returns:
         HTML-safe inline string.
     """
-    return re.sub(r"`([^`]+)`", lambda m: f"<code>{html.escape(m.group(1))}</code>", html.escape(text))
+    parts = text.split("`")
+    out: list[str] = []
+    for idx, part in enumerate(parts):
+        if idx % 2 == 1:
+            out.append(f"<code>{html.escape(part)}</code>")
+            continue
+        escaped = html.escape(part)
+        escaped = re.sub(r"\*([^*]+)\*", r"<em>\1</em>", escaped)
+        out.append(escaped)
+    return "".join(out)
 
 
 def _parse_md_table(lines: list[str]) -> str:
@@ -429,12 +438,16 @@ def render_dashboard(
         "header{padding:18px 22px;border-bottom:1px solid #1b2330;background:#0f131a}",
         "header h1{margin:0;font-size:18px}",
         ".sub{margin:6px 0 0 0;color:#b6c2d1;font-size:13px}",
-        "main{padding:18px 22px;max-width:1200px;margin:0 auto}",
+        "main{padding:18px 22px}",
+        ".layout{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:260px 1fr;gap:16px}",
         ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}",
+        ".sidebar-card{position:sticky;top:16px;align-self:start}",
         (
             ".card{background:#101723;border:1px solid #1b2330;border-radius:12px;"
             "padding:14px 14px 10px 14px;box-shadow:0 2px 12px rgba(0,0,0,.25)}"
         ),
+        ".sidebar-card h2{margin:0 0 8px 0;font-size:16px}",
+        ".sidebar-card h3{margin:12px 0 6px 0;font-size:13px}",
         ".card h2{margin:0 0 10px 0;font-size:16px}",
         ".card h3{margin:12px 0 8px 0;font-size:14px}",
         ".nav{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}",
@@ -452,20 +465,30 @@ def render_dashboard(
         ".sev.ERROR{border-color:#ff4d4f;color:#ffb3b3}",
         ".sev.WARN{border-color:#fadb14;color:#fff5a3}",
         ".sev.INFO{border-color:#40a9ff;color:#bfe3ff}",
+        "@media (max-width: 980px){.layout{grid-template-columns:1fr}.sidebar-card{position:static}}",
         "</style>",
         "</head>",
         "<body>",
         "<header>",
         "<h1>s11r2 progress dashboard</h1>",
         f'<p class="sub">Generated: {html.escape(now_utc.isoformat(timespec="seconds"))}</p>',
-        f"<nav>{nav_links}</nav>",
-        f"<div>{toc}</div>",
         "</header>",
         "<main>",
+        '<div class="layout">',
+        '<aside class="card sidebar-card">',
+        "<h2>Index</h2>",
+        "<h3>Links</h3>",
+        nav_links,
+        "<h3>Sections</h3>",
+        toc,
+        "</aside>",
+        "<section>",
         '<div class="grid">',
         _render_validation_card(report),
         _render_legend_card(legend),
         *metric_cards,
+        "</div>",
+        "</section>",
         "</div>",
         "</main>",
         "</body>",

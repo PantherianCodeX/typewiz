@@ -156,8 +156,8 @@ def _stabilize_markdown_timestamp(existing: str, new: str) -> str:
     """
     ts_re = re.compile(r"^_Generated:\s+.*_$", flags=re.MULTILINE)
 
-    existing_norm = ts_re.sub("_Generated: __STAMP__", existing)
-    new_norm = ts_re.sub("_Generated: __STAMP__", new)
+    existing_norm = ts_re.sub("*Generated: __STAMP_*", existing)
+    new_norm = ts_re.sub("*Generated: __STAMP_*", new)
 
     if existing_norm != new_norm:
         return new

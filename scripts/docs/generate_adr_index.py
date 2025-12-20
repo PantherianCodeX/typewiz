@@ -255,6 +255,12 @@ def render_index_table(docs: Iterable[AdrDoc]) -> str:
     ])
 
     any_rows = False
+
+    def _cell(value: str) -> str:
+        if value:
+            return f" {value} "
+        return " "
+
     for d in docs:
         any_rows = True
         adr = f"{d.adr_id:0{_ADR_ID_WIDTH}d}" if d.adr_id is not None else "—"
@@ -262,7 +268,7 @@ def render_index_table(docs: Iterable[AdrDoc]) -> str:
         date = d.date or ""
         link = f"[{d.rel_path.as_posix()}]({d.rel_path.as_posix()})"
         title = d.title.replace("|", "\\|")
-        lines.append(f"| {adr} | {d.kind} | {title} | {status} | {date} | {link} |")
+        lines.append(f"| {adr} | {d.kind} | {title} |{_cell(status)}|{_cell(date)}| {link} |")
 
     if not any_rows:
         lines.append("| — | (none) | (no ADR files found) |  |  |  |")

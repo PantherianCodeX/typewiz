@@ -2,7 +2,7 @@
 
 ## Generated
 
-Timestamp: 2025-12-20T03:30:37+00:00
+Timestamp: 2025-12-20T04:15:53+00:00
 
 This file is generated from the canonical s11r2 registries. Edit source registries under `../registers/`, then regenerate progress outputs.
 
@@ -83,15 +83,15 @@ Run from repo root:
 
 #### Top blocked rows
 
-_No blocked rows found._
+*No blocked rows found.*
 
 #### Open questions: distribution
 
-_No rows found._
+*No rows found.*
 
 #### Open questions: outstanding
 
-_No outstanding items._
+*No outstanding items.*
 
 #### Rewrite status: distribution
 
@@ -134,7 +134,7 @@ _No outstanding items._
 
 #### Rewrite status: staleness (dated outstanding)
 
-_No dated outstanding items found._
+*No dated outstanding items found.*
 
 #### Draft-2 sources: status distribution
 
@@ -144,7 +144,7 @@ _No dated outstanding items found._
 
 #### Draft-2 mapping rows: status distribution
 
-_No effective mapping rows found._
+*No effective mapping rows found.*
 
 #### Draft-2 sources: inventory
 
@@ -164,5 +164,5 @@ _No effective mapping rows found._
 
 #### Registry coverage
 
-_No unindexed registry markdown files found._
+*No unindexed registry markdown files found.*
 <!-- GENERATED:END s11r2-progress -->

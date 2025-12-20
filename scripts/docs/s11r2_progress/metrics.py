@@ -119,7 +119,7 @@ def _count_by_status(rows: Iterable[Mapping[str, str]], status_col: str, *, lege
     return c
 
 
-def _render_count_table(*, title_left: str, counts: Mapping[str, int], empty_message: str = "_No rows found._") -> str:
+def _render_count_table(*, title_left: str, counts: Mapping[str, int], empty_message: str = "*No rows found.*") -> str:
     if not counts:
         return empty_message
 
@@ -262,7 +262,7 @@ def _render_overall_distribution(*, overall: Counter[str]) -> str:
     return _render_count_table(
         title_left="Status",
         counts=overall,
-        empty_message="_No status-bearing rows found._",
+        empty_message="*No status-bearing rows found.*",
     )
 
 
@@ -311,7 +311,7 @@ def _top_rows_with_code(
 
 def _render_top_blockers(*, blockers: list[_StatusCell]) -> str:
     if not blockers:
-        return "_No blocked rows found._"
+        return "*No blocked rows found.*"
 
     headers = ["Registry", "Row", "Status column"]
     rows = [(f"`{b.file_label}`", b.row_label, b.status_col) for b in blockers]
@@ -338,7 +338,7 @@ def _render_outstanding_table(
             continue
         out_rows.append([strip_md_inline(r.get(c, "") or "").strip() for c in columns])
 
-    body = "_No outstanding items._" if not out_rows else render_md_table(columns, out_rows[:limit])
+    body = "*No outstanding items.*" if not out_rows else render_md_table(columns, out_rows[:limit])
     return MetricBlock(title=title, body_md=body)
 
 
@@ -394,7 +394,7 @@ def _rewrite_staleness_block(
             right_align={3},
         )
     else:
-        stale_table = "_No dated outstanding items found._"
+        stale_table = "*No dated outstanding items found.*"
 
     return MetricBlock(title="Rewrite status: staleness (dated outstanding)", body_md=stale_table)
 
@@ -744,7 +744,7 @@ def _metrics_for_master_mapping(*, registers_dir: Path, legend: StatusLegend, is
             body_md=_render_count_table(
                 title_left="Status",
                 counts=map_counts,
-                empty_message="_No effective mapping rows found._",
+                empty_message="*No effective mapping rows found.*",
             ),
         )
     )
@@ -864,7 +864,7 @@ def compute_metrics(
     if unindexed_present:
         body = "\n".join(["- `" + p.relative_to(registers_dir).as_posix() + "`" for p in unindexed_present])
     else:
-        body = "_No unindexed registry markdown files found._"
+        body = "*No unindexed registry markdown files found.*"
 
     blocks.append(MetricBlock(title="Registry coverage", body_md=body))
 

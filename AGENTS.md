@@ -7,8 +7,9 @@
 
 ## Environment
 
-- Use a dedicated virtualenv at `.venv` for all work; CI enforces this. Create with `uv venv .venv` and use `uv run` before any command.
+- Use a `uv run` before all commands, or if necessary source the virtualenv at `.venv` - this applies to all work.
 - Prefer `make` targets (see Makefile) as the single source of truth for linting, typing, tests, packaging, and CI parity.
+- **IF** the venv does not exist, create it with `uv venv .venv`.
 
 ## Code Structure
 
@@ -70,6 +71,7 @@
 - `make test.cov` — tests with coverage ≥95%.
 - `make ratchetr.dashboard` — build typing dashboards. `make ratchetr.clean` clears cache.
 - `make check.error-codes` — ensure exception code registry matches docs.
+- `make check.ignores` — ensure every ignore has a justification in the line above it.
 
 ## Error Handling & Codes
 
@@ -83,31 +85,41 @@
 
 ## Dependencies & Security
 
-- Keep runtime deps minimal and typed. Pin with compatible upper bounds as in `requirements*.txt`. Do not vendor dependencies.
-- No secrets in code or tests. Use environment variables for keys (e.g., `RATCHETR_LICENSE_KEY`).
+- Keep runtime deps in `pyproject.toml` minimal and typed. Pin with compatible upper bounds. Do not vendor dependencies.
+- No secrets in code or tests.
 
 ## Contribution Workflow
 
 - Install pre-commit (`make ci.precommit.install`) and ensure hooks pass locally. Small, focused PRs with thorough tests and type-safety are required.
-- Do not bypass typing/lint/test gates. If a temporary `# type: ignore` is unavoidable, justify it inline and add a follow-up issue.
+- Do not bypass typing/lint/test gates. If a temporary `# type: ignore` is unavoidable, justify it on the line above and add a follow-up issue.
 - Keep automated checks in sync with the following special requirements:
+
+### User changes (do not revert)
+
+- Treat any user-made changes as intentional, even if they are unexpected.
+- Log unexpected changes and continue working unless they block your task or create a direct conflict.
+- Only stop for directions when a user change directly prevents progress or introduces a clear error for the current task.
+- Never revert or discard user changes unless explicitly directed. Never.
 
 ### Code Changes
 
 Always execute the following at the end of a code change **completion**:
-Run `mypy`, `pyright`, `ruff`, and `pytest` and clear all errors without taking shortcuts.
+Run `mypy`, `pyright`, `ruff`, `pylint`, `pymarkdown`, `pytest` and `internal_checks` using "make" commands and clear all errors without taking shortcuts.****
 Git commit once all are passing - no consent required - this must be completed to end the cycle.
 
 ### GIT Commit
 
-Git commit should only be executed after all typing/linting/testing has passed.
+Git commit should only be executed after all typing/linting/checks/testing has passed.
 If the commit contains code from beyond your scope, only commit your scope by default.
-**IF DIRECTED TO COMMIT ALL** then investigate all changes on the repo and always git commit with a detailed, multi-line message that summarizes all code changes and when applicable the impacts or outcomes.
+**IF DIRECTED TO COMMIT ALL CHANGES:** Investigate all changes on the repo and always git commit with a detailed, multi-line message that summarizes all code changes and when applicable the impacts or outcomes.
 
 ### Quick Start
 
-- `python -m venv .venv && source .venv/bin/activate` (Windows: `.venv\Scripts\activate`)
-- `pip install -r requirements-dev.txt`
-- `make ci.check`
+- `uv venv` **ONLY IF** the environment has not been created.
+- `uv pip install -e .["DEV"]`
+- `make check`
+- `make lint`
+- `make type`
+- `make test.cov`
 
-Non-negotiables: strict typing (mypy/pyright), Ruff lint/format, ≥95% coverage, `.venv` usage, Make targets, Pydantic for internal schemas, JSON Schema for external, separation of orchestration from helpers. If uncertain, prefer smaller, well-typed components with tests.
+Non-negotiables: strict typing (mypy/pyright), Ruff lint/format, ≥95% coverage, `uv run` usage, Make targets, Pydantic for internal schemas, JSON Schema for external, separation of orchestration from helpers. If uncertain, prefer smaller, well-typed components with tests.

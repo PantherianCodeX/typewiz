@@ -10,9 +10,13 @@ a{color:#9dd0ff;text-decoration:none}a:hover{text-decoration:underline}
 header{padding:18px 22px;border-bottom:1px solid #1b2330;background:#0f131a}
 header h1{margin:0;font-size:18px}
 .sub{margin:6px 0 0 0;color:#b6c2d1;font-size:13px}
-main{padding:18px 22px;max-width:1200px;margin:0 auto}
+main{padding:18px 22px}
+.layout{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:260px 1fr;gap:16px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.sidebar-card{position:sticky;top:16px;align-self:start}
 .card{background:#101723;border:1px solid #1b2330;border-radius:12px;padding:14px 14px 10px 14px;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.sidebar-card h2{margin:0 0 8px 0;font-size:16px}
+.sidebar-card h3{margin:12px 0 6px 0;font-size:13px}
 .card h2{margin:0 0 10px 0;font-size:16px}
 .card h3{margin:12px 0 8px 0;font-size:14px}
 .nav{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}
@@ -27,16 +31,24 @@ main{padding:18px 22px;max-width:1200px;margin:0 auto}
 .sev.ERROR{border-color:#ff4d4f;color:#ffb3b3}
 .sev.WARN{border-color:#fadb14;color:#fff5a3}
 .sev.INFO{border-color:#40a9ff;color:#bfe3ff}
+@media (max-width: 980px){.layout{grid-template-columns:1fr}.sidebar-card{position:static}}
 </style>
 </head>
 <body>
 <header>
 <h1>s11r2 progress dashboard</h1>
-<p class="sub">Generated: 2025-12-20T00:59:28+00:00</p>
-<nav><ul class="nav"><li><a href="../../registers/registry_index.md">Registry index</a></li><li><a href="../progress_board.md">Progress board (Markdown)</a></li><li><a href="../../registers/STATUS_LEGEND.md">Status legend</a></li></ul></nav>
-<div><ul class="toc"><li><a href="#validation">Validation findings</a></li><li><a href="#status-legend">Status legend</a></li><li><a href="#operational-snapshot">Operational snapshot</a></li><li><a href="#summary">Summary</a></li><li><a href="#per-registry-status-distribution">Per-registry status distribution</a></li><li><a href="#top-blocked-rows">Top blocked rows</a></li><li><a href="#open-questions-distribution">Open questions: distribution</a></li><li><a href="#open-questions-outstanding">Open questions: outstanding</a></li><li><a href="#rewrite-status-distribution">Rewrite status: distribution</a></li><li><a href="#rewrite-status-outstanding">Rewrite status: outstanding</a></li><li><a href="#rewrite-status-next-actions">Rewrite status: next actions</a></li><li><a href="#rewrite-status-staleness-dated-outstanding">Rewrite status: staleness (dated outstanding)</a></li><li><a href="#draft-2-sources-status-distribution">Draft-2 sources: status distribution</a></li><li><a href="#draft-2-mapping-rows-status-distribution">Draft-2 mapping rows: status distribution</a></li><li><a href="#draft-2-sources-inventory">Draft-2 sources: inventory</a></li><li><a href="#draft-2-mapping-coverage">Draft-2 mapping coverage</a></li><li><a href="#registry-coverage">Registry coverage</a></li></ul></div>
+<p class="sub">Generated: 2025-12-20T04:07:11+00:00</p>
 </header>
 <main>
+<div class="layout">
+<aside class="card sidebar-card">
+<h2>Index</h2>
+<h3>Links</h3>
+<ul class="nav"><li><a href="../../registers/registry_index.md">Registry index</a></li><li><a href="../progress_board.md">Progress board (Markdown)</a></li><li><a href="../../registers/STATUS_LEGEND.md">Status legend</a></li></ul>
+<h3>Sections</h3>
+<ul class="toc"><li><a href="#validation">Validation findings</a></li><li><a href="#status-legend">Status legend</a></li><li><a href="#operational-snapshot">Operational snapshot</a></li><li><a href="#summary">Summary</a></li><li><a href="#per-registry-status-distribution">Per-registry status distribution</a></li><li><a href="#top-blocked-rows">Top blocked rows</a></li><li><a href="#open-questions-distribution">Open questions: distribution</a></li><li><a href="#open-questions-outstanding">Open questions: outstanding</a></li><li><a href="#rewrite-status-distribution">Rewrite status: distribution</a></li><li><a href="#rewrite-status-outstanding">Rewrite status: outstanding</a></li><li><a href="#rewrite-status-next-actions">Rewrite status: next actions</a></li><li><a href="#rewrite-status-staleness-dated-outstanding">Rewrite status: staleness (dated outstanding)</a></li><li><a href="#draft-2-sources-status-distribution">Draft-2 sources: status distribution</a></li><li><a href="#draft-2-mapping-rows-status-distribution">Draft-2 mapping rows: status distribution</a></li><li><a href="#draft-2-sources-inventory">Draft-2 sources: inventory</a></li><li><a href="#draft-2-mapping-coverage">Draft-2 mapping coverage</a></li><li><a href="#registry-coverage">Registry coverage</a></li></ul>
+</aside>
+<section>
 <div class="grid">
 <div class="card" id="validation">
 <h2>Validation findings</h2>
@@ -109,15 +121,15 @@ main{padding:18px 22px;max-width:1200px;margin:0 auto}
 </div>
 <div class="card" id="top-blocked-rows">
 <h2>Top blocked rows</h2>
-<div class="mdblock"><p>_No blocked rows found._</p></div>
+<div class="mdblock"><p><em>No blocked rows found.</em></p></div>
 </div>
 <div class="card" id="open-questions-distribution">
 <h2>Open questions: distribution</h2>
-<div class="mdblock"><p>_No rows found._</p></div>
+<div class="mdblock"><p><em>No rows found.</em></p></div>
 </div>
 <div class="card" id="open-questions-outstanding">
 <h2>Open questions: outstanding</h2>
-<div class="mdblock"><p>_No outstanding items._</p></div>
+<div class="mdblock"><p><em>No outstanding items.</em></p></div>
 </div>
 <div class="card" id="rewrite-status-distribution">
 <h2>Rewrite status: distribution</h2>
@@ -166,7 +178,7 @@ main{padding:18px 22px;max-width:1200px;margin:0 auto}
 </div>
 <div class="card" id="rewrite-status-staleness-dated-outstanding">
 <h2>Rewrite status: staleness (dated outstanding)</h2>
-<div class="mdblock"><p>_No dated outstanding items found._</p></div>
+<div class="mdblock"><p><em>No dated outstanding items found.</em></p></div>
 </div>
 <div class="card" id="draft-2-sources-status-distribution">
 <h2>Draft-2 sources: status distribution</h2>
@@ -178,7 +190,7 @@ main{padding:18px 22px;max-width:1200px;margin:0 auto}
 </div>
 <div class="card" id="draft-2-mapping-rows-status-distribution">
 <h2>Draft-2 mapping rows: status distribution</h2>
-<div class="mdblock"><p>_No effective mapping rows found._</p></div>
+<div class="mdblock"><p><em>No effective mapping rows found.</em></p></div>
 </div>
 <div class="card" id="draft-2-sources-inventory">
 <h2>Draft-2 sources: inventory</h2>
@@ -202,8 +214,10 @@ main{padding:18px 22px;max-width:1200px;margin:0 auto}
 </div>
 <div class="card" id="registry-coverage">
 <h2>Registry coverage</h2>
-<div class="mdblock"><p>_No unindexed registry markdown files found._</p></div>
+<div class="mdblock"><p><em>No unindexed registry markdown files found.</em></p></div>
 </div>
+</div>
+</section>
 </div>
 </main>
 </body>

@@ -57,3 +57,14 @@ Outline a migration posture:
 - feature flag / policy activation window
 - “strict by default” parsing to avoid accidental scope changes
 - run-summary disclosures when Windows semantics are enabled
+
+## Draft log
+
+## 2025-12-20 — Phase 0 scaffolding
+
+- **Change:** Added Phase 0 roadmap stub for Windows path support (non-normative).
+- **Preservation:** N/A (Phase 0 scaffolding; no draft-2 items mapped).
+- **Overlay:** N/A (no Plan v19 overlays applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.

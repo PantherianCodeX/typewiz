@@ -39,6 +39,14 @@ for ln, txt in lines:
 
 Never use ellipses (`...`) as omission markers in normative text.
 
+### 0.2 Generated progress outputs
+
+If you are working on the progress board or dashboard:
+
+- Do not edit files under `docs/_internal/policy/s11r2/progress/` by hand.
+- Read `docs/_internal/policy/s11r2/registers/registry_index.md` to confirm input/output paths.
+- Use `python scripts/docs/s11r2-progress.py --write --write-html` (with `PYTHONPATH=.`) to regenerate outputs.
+
 ---
 
 ## 1. Authority, scope, and “stop-the-line”
@@ -209,7 +217,22 @@ A doc cannot be “Done/Approved” unless:
 
 ---
 
-## 7. Quality bars for any scripts/tooling you add
+## 7. Local verification (Phase 0)
+
+For Phase 0 work, use:
+
+- `make lint`
+
+Only when scripts are modified, also use:
+
+- `make type`
+- `make test`
+
+Coverage gating (`make test.cov`) is deferred until the upcoming refactor completes and new tests are added.
+
+---
+
+## 8. Quality bars for any scripts/tooling you add
 
 This rewrite is document-focused, but minimal doc-control tooling may exist. If you must modify or introduce a helper script:
 
@@ -223,7 +246,7 @@ If you are not certain the script is necessary, record an Open Question rather t
 
 ---
 
-## 8. Common failure modes (avoid these)
+## 9. Common failure modes (avoid these)
 
 - Writing an ADR that reads like a spec (bloat).
 - Creating a second mapping table “just for convenience” (duplicate truth).
@@ -234,7 +257,7 @@ If you are not certain the script is necessary, record an Open Question rather t
 
 ---
 
-## 9. Quickstart: one compliant work cycle (example)
+## 10. Quickstart: one compliant work cycle (example)
 
 1. Set target: ADR-0003 rewrite.
 2. Update `rewrite_status.md` → ADR-0003 = In progress, next action “extract draft-2 boundaries invariants”.
@@ -251,10 +274,23 @@ If you are not certain the script is necessary, record an Open Question rather t
 
 ---
 
-## 10. Where to ask for decisions
+## 11. Where to ask for decisions
 
 If you need a decision that is not already resolved by the plan/policy:
 
 - Record it as a blocking entry in `registers/open_questions.md`
 - Include at least two options and the affected artifacts
 - Do not proceed until it is resolved and recorded
+
+---
+
+## Draft log
+
+### 2025-12-20 — Phase 0 verification updates
+
+- **Change:** Added Phase 0 local verification guidance and progress-output regeneration context.
+- **Preservation:** N/A (Phase 0 governance update; no draft-2 items mapped).
+- **Overlay:** N/A (no Plan v19 overlays applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** Coverage gating deferred until refactor completes.
