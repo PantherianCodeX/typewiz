@@ -15,7 +15,12 @@ This file is the canonical list of rewrite-governance registries. Do not create 
 - [Terminology map](terminology_map.md) — renames and enforcement notes
 - [Open questions](open_questions.md) — blockers/ambiguities (stop-the-line)
 - [Change control](change_control.md) — approved exceptions/overrides
-- [Progress board](progress_board.md) — roll-up view (phase/doc/next action)
+- [Status legend](STATUS_LEGEND.md) <!-- s11r2-input:status_legend --> — canonical status codes (for governance tables)
+
+## Generated outputs (do not edit)
+
+- [Progress board](../progress/progress_board.md) <!-- s11r2-output:progress_board --> — roll-up metrics and monitoring view
+- [Dashboard](../progress/dashboard/index.html) <!-- s11r2-output:dashboard --> — static HTML view of the same metrics
 
 ## Optional registries (as needed)
 
@@ -24,8 +29,22 @@ This file is the canonical list of rewrite-governance registries. Do not create 
 
 ## Automation
 
-- Progress-board roll-up is generated/updated by:
-  - `scripts/docs/build_execution_contract_progress_board.py`
-  - Run: `python scripts/docs/build_execution_contract_progress_board.py --write`
+Progress outputs are generated/updated by:
 
-**Rule:** Do not hand-edit content between `<!-- GENERATED:BEGIN -->` and `<!-- GENERATED:END -->` in `progress_board.md`.
+- `scripts/docs/s11r2-progress.py`
+
+The generator reads:
+
+- `STATUS_LEGEND.md` for allowed governance status codes
+- this `registry_index.md` file for input/output paths (links above)
+
+Run from repo root:
+
+- `python scripts/docs/s11r2-progress.py --write` (write progress board)
+- `python scripts/docs/s11r2-progress.py --write-html` (write dashboard)
+- `python scripts/docs/s11r2-progress.py --write --write-html` (write both)
+
+Rules:
+
+- Do not hand-edit files under `../progress/`.
+- Edit registries under this directory, then regenerate outputs.

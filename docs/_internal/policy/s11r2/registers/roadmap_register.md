@@ -7,6 +7,7 @@
 - Use this only for items that must remain visible but are not ready for normative promotion.
 - Each row must specify a **promotion trigger**.
 
+**Status codes:** see `STATUS_LEGEND.md`.
+
 | ID | Item | Source (draft-2/plan/issue) | Target roadmap doc | Promotion trigger | Non-foreclosure constraint | Status | Notes |
-| ---: | --- | --- | --- | --- | --- | --- | --- |
-| | | | | | | | |
+| --- | --- | --- | --- | --- | --- | --- | --- |

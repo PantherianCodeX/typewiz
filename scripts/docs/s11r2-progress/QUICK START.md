@@ -1,36 +1,27 @@
-# QUICK_START.md — s11r2 Rewrite Governance System: s11r2 Progress
+# Quick Start: s11r2 progress outputs
 
-This folder contains small, deterministic helpers that generate audit-friendly roll-ups
-for the documentation rewrite.
-
-## Execution-contract progress board
-
-Generates the **automated roll-up** section in:
-
-- `docs/_internal/policy/execution-contract/registers/progress_board.md`
-
-from the markdown-table registries in:
-
-- `docs/_internal/policy/execution-contract/registers/`
-
-### Run
-From repo root:
+From the repo root:
 
 ```bash
-python scripts/docs/build_execution_contract_progress_board.py --write
+python scripts/docs/s11r2-progress.py --write --write-html
 ```
 
-Preview output without writing:
+This will:
+
+- Read `docs/_internal/policy/s11r2/registers/registry_index.md`
+- Validate governance tables using status codes from `STATUS_LEGEND.md`
+- Write the generated outputs to the paths declared in the registry index (by default under `docs/_internal/policy/s11r2/progress/`)
+
+If you only want one output:
+
+- Markdown only: `python scripts/docs/s11r2-progress.py --write`
+- HTML only: `python scripts/docs/s11r2-progress.py --write-html`
+
+## CI / gating mode
 
 ```bash
-python scripts/docs/build_execution_contract_progress_board.py --print
+python scripts/docs/s11r2-progress.py --check --fail-on WARN
 ```
 
-### Demo self-test
-
-```bash
-python scripts/docs/build_execution_contract_progress_board.py --demo
-```
-
-The demo runs on a temporary copy and verifies that changing input tables changes the
-roll-up, to reduce the chance of “silent stale dashboards”.
+- Fails if the generated outputs are missing or out of date.
+- Fails if any issues at or above the configured threshold are detected.

@@ -164,7 +164,7 @@ Do not rely on rendered views for long files. Do not use ellipses as omission ma
 | Hitting ambiguity/conflict | `open_questions.md`, then mark docs BL in `rewrite_status.md` |
 | Making an exception/amendment | `change_control.md` |
 | Changing anchors | `anchor_changes.md` |
-| Updating progress | `rewrite_status.md` (+ optional `progress_board.md` if used) |
+| Updating progress | `rewrite_status.md` (then regenerate progress outputs) |
 
 ---
 

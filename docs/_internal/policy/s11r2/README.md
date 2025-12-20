@@ -1,7 +1,7 @@
 # README.md — s11r2 Rewrite Governance System: Execution-Contract Workbook
 
 **Audience:** Humans and AI agents executing the ADR/documentation rewrite using the **s11r2 execution-contract workbook**.
-**Goal:** Provide an overview of the system to suppoort a successful rewrite with **no loss**, **no drift**, and **MADR-sized ADRs**, while applying **ADR Rewrite Plan v19** deltas consistently.
+**Goal:** Provide an overview of the system to support a successful rewrite with **no loss**, **no drift**, and **MADR-sized ADRs**, while applying **ADR Rewrite Plan v19** deltas consistently.
 **See also:** `README.md` (overview), `AGENTS.md` (full operating standards), and `QUICK_START.md` (guided workflow).
 **Date:** 2025-12-19
 
@@ -40,6 +40,6 @@ This folder is the *operational* support package for `docs/_internal/policy/s11r
 
 ## Recommended (low-friction) additions
 
-- **Coherence checklist:** `docs/adr/coherence_checklist.md` (run before setting Ready for review)
+- **Coherence checklist:** `docs/_internal/adr/COHERENCE_CHECKLIST.md` (run before setting Ready for review)
 - **Navigation:** `external_contract_links.md` (canonical pointers; no normative restatement)
 - **As-needed registries:** `registers/roadmap_register.md`, `registers/anchor_changes.md`

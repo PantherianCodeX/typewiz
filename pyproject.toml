@@ -104,7 +104,7 @@ ratchetr = ["py.typed", "**/*.pyi"]
 [tool.mypy]
 python_version = "3.10"
 mypy_path = ["src", "typings"]
-files = ["src/ratchetr", "tests"]
+files = ["src/ratchetr", "tests", "scripts/docs"]
 
 # Core strictness (strict already enables many checks)
 strict = true
@@ -156,7 +156,7 @@ disable_error_code = [
 # -------------------------------------
 
 [tool.pyright]
-include = ["src", "tests"]
+include = ["src", "tests", "scripts/docs"]
 extraPaths = ["src"]
 exclude = [
     "**/__pycache__",
@@ -256,8 +256,10 @@ unfixable = []
 # Bad examples don't get scanned and examples don't need an init
 "examples/bad_typing/**/*.py" = ["ALL"]
 "examples/**/*.py" = ["INP001"]
-# Scripts: Utility scripts have different standards
-"scripts/**/*.py" = ["T201", "INP001"]
+# Scripts: Utility scripts at repo root have different standards.
+# Note: scripts under scripts/docs are treated as first-class, strongly-typed code
+# and must not rely on script-level ignores.
+"scripts/*.py" = ["T201", "INP001"]
 "tests/**/*.py" = [
     "S101",      # assert statements are fundamental to pytest
     "SLF001",    # Testing internals requires private member access

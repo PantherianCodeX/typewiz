@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s11r2 progress dashboard</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;margin:0;background:#0b0d10;color:#e7e7e7;}
+a{color:#9dd0ff;text-decoration:none}a:hover{text-decoration:underline}
+header{padding:18px 22px;border-bottom:1px solid #1b2330;background:#0f131a}
+header h1{margin:0;font-size:18px}
+.sub{margin:6px 0 0 0;color:#b6c2d1;font-size:13px}
+main{padding:18px 22px;max-width:1200px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.card{background:#101723;border:1px solid #1b2330;border-radius:12px;padding:14px 14px 10px 14px;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.card h2{margin:0 0 10px 0;font-size:16px}
+.card h3{margin:12px 0 8px 0;font-size:14px}
+.nav{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}
+.toc{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}
+.mdblock table{border-collapse:collapse;width:100%;margin:10px 0}
+.mdblock th,.mdblock td{border:1px solid #1b2330;padding:6px 8px;vertical-align:top;font-size:13px}
+.mdblock th{background:#0f131a}
+.mdblock pre{background:#0f131a;border:1px solid #1b2330;border-radius:10px;padding:10px;overflow:auto}
+.mdblock code{background:#0f131a;border:1px solid #1b2330;border-radius:6px;padding:1px 5px}
+.issues{padding-left:18px;font-size:13px}
+.sev{display:inline-block;font-size:11px;letter-spacing:.02em;padding:2px 6px;border-radius:999px;margin-right:6px;border:1px solid #1b2330;background:#0f131a}
+.sev.ERROR{border-color:#ff4d4f;color:#ffb3b3}
+.sev.WARN{border-color:#fadb14;color:#fff5a3}
+.sev.INFO{border-color:#40a9ff;color:#bfe3ff}
+</style>
+</head>
+<body>
+<header>
+<h1>s11r2 progress dashboard</h1>
+<p class="sub">Generated: 2025-12-20T00:59:28+00:00</p>
+<nav><ul class="nav"><li><a href="../../registers/registry_index.md">Registry index</a></li><li><a href="../progress_board.md">Progress board (Markdown)</a></li><li><a href="../../registers/STATUS_LEGEND.md">Status legend</a></li></ul></nav>
+<div><ul class="toc"><li><a href="#validation">Validation findings</a></li><li><a href="#status-legend">Status legend</a></li><li><a href="#operational-snapshot">Operational snapshot</a></li><li><a href="#summary">Summary</a></li><li><a href="#per-registry-status-distribution">Per-registry status distribution</a></li><li><a href="#top-blocked-rows">Top blocked rows</a></li><li><a href="#open-questions-distribution">Open questions: distribution</a></li><li><a href="#open-questions-outstanding">Open questions: outstanding</a></li><li><a href="#rewrite-status-distribution">Rewrite status: distribution</a></li><li><a href="#rewrite-status-outstanding">Rewrite status: outstanding</a></li><li><a href="#rewrite-status-next-actions">Rewrite status: next actions</a></li><li><a href="#rewrite-status-staleness-dated-outstanding">Rewrite status: staleness (dated outstanding)</a></li><li><a href="#draft-2-sources-status-distribution">Draft-2 sources: status distribution</a></li><li><a href="#draft-2-mapping-rows-status-distribution">Draft-2 mapping rows: status distribution</a></li><li><a href="#draft-2-sources-inventory">Draft-2 sources: inventory</a></li><li><a href="#draft-2-mapping-coverage">Draft-2 mapping coverage</a></li><li><a href="#registry-coverage">Registry coverage</a></li></ul></div>
+</header>
+<main>
+<div class="grid">
+<div class="card" id="validation">
+<h2>Validation findings</h2>
+<p>Errors: <strong>0</strong> · Warnings: <strong>0</strong> · Info: <strong>0</strong></p>
+<h3>Errors</h3>
+<p><em>None.</em></p>
+<h3>Warnings</h3>
+<p><em>None.</em></p>
+<h3>Info</h3>
+<p><em>None.</em></p>
+</div>
+<div class="card" id="status-legend">
+<h2>Status legend</h2>
+<table>
+<thead><tr><th>Code</th><th>Label</th><th>Meaning</th></tr></thead>
+<tbody><tr><td><code>NS</code></td><td>Not Started</td><td>Question logged, but no real investigation begun.</td></tr>
+<tr><td><code>IP</code></td><td>In Progress</td><td>Actively investigating; sources are being consulted and options refined.</td></tr>
+<tr><td><code>RV</code></td><td>In Review</td><td>Proposed resolution exists and is awaiting maintainer decision / review gate.</td></tr>
+<tr><td><code>DN</code></td><td>Done</td><td>Decision made and recorded (with a stable reference), and work is unblocked.</td></tr>
+<tr><td><code>BL</code></td><td>Blocked</td><td>Work cannot proceed (or must not proceed) until this is resolved.</td></tr></tbody>
+</table>
+</div>
+<div class="card" id="operational-snapshot">
+<h2>Operational snapshot</h2>
+<div class="mdblock"><table>
+<thead><tr><th>Metric</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Indexed registries (markdown)</td><td>14</td></tr>
+<tr><td>Registries present on disk (markdown)</td><td>14</td></tr>
+<tr><td>Registries with status columns</td><td>9</td></tr>
+<tr><td>Registries with status-bearing rows</td><td>2</td></tr>
+<tr><td>Status-bearing rows</td><td>29</td></tr>
+<tr><td>Done rows</td><td>12 (41.4%)</td></tr>
+<tr><td>Blocked rows</td><td>0</td></tr>
+<tr><td>Rewrite artifacts (total / done / outstanding)</td><td>23 / 12 / 11</td></tr>
+<tr><td>Open questions (total / done / outstanding)</td><td>0 / 0 / 0</td></tr>
+<tr><td>Open questions blocking=yes (outstanding)</td><td>0</td></tr>
+<tr><td>Draft-2 sources with mapping rows</td><td>0 / 5</td></tr>
+</tbody></table></div>
+</div>
+<div class="card" id="summary">
+<h2>Summary</h2>
+<div class="mdblock"><ul>
+<li>Status-bearing rows: 29</li>
+<li>Done (DN): 12 (41.4%)</li>
+</ul>
+
+<table>
+<thead><tr><th>Status</th><th>Count</th></tr></thead>
+<tbody>
+<tr><td>NS</td><td>17</td></tr>
+<tr><td>DN</td><td>12</td></tr>
+</tbody></table></div>
+</div>
+<div class="card" id="per-registry-status-distribution">
+<h2>Per-registry status distribution</h2>
+<div class="mdblock"><table>
+<thead><tr><th>Registry</th><th>Total</th><th>NS</th><th>IP</th><th>RV</th><th>DN</th><th>BL</th></tr></thead>
+<tbody>
+<tr><td><code>change_control.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><code>cli_parity_deltas.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><code>master_mapping_ledger.md</code></td><td>6</td><td>6</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><code>open_questions.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><code>plan_overlay_register.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><code>rewrite_status.md</code></td><td>23</td><td>11</td><td>0</td><td>0</td><td>12</td><td>0</td></tr>
+<tr><td><code>roadmap_register.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><code>supersedence_ledger.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><code>terminology_map.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+</tbody></table></div>
+</div>
+<div class="card" id="top-blocked-rows">
+<h2>Top blocked rows</h2>
+<div class="mdblock"><p>_No blocked rows found._</p></div>
+</div>
+<div class="card" id="open-questions-distribution">
+<h2>Open questions: distribution</h2>
+<div class="mdblock"><p>_No rows found._</p></div>
+</div>
+<div class="card" id="open-questions-outstanding">
+<h2>Open questions: outstanding</h2>
+<div class="mdblock"><p>_No outstanding items._</p></div>
+</div>
+<div class="card" id="rewrite-status-distribution">
+<h2>Rewrite status: distribution</h2>
+<div class="mdblock"><table>
+<thead><tr><th>Status</th><th>Count</th></tr></thead>
+<tbody>
+<tr><td>DN</td><td>12</td></tr>
+<tr><td>NS</td><td>11</td></tr>
+</tbody></table></div>
+</div>
+<div class="card" id="rewrite-status-outstanding">
+<h2>Rewrite status: outstanding</h2>
+<div class="mdblock"><table>
+<thead><tr><th>Artifact</th><th>Status</th><th>Owner</th><th>Next action</th></tr></thead>
+<tbody>
+<tr><td>ADR-0001 (active rewrite)</td><td>NS</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0002 (active rewrite)</td><td>NS</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0003 (active rewrite)</td><td>NS</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0004 (active rewrite)</td><td>NS</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0005 (active rewrite)</td><td>NS</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0006 (active rewrite)</td><td>NS</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0007 (active rewrite)</td><td>NS</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0008 (active rewrite)</td><td>NS</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0009 (active rewrite)</td><td>NS</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>Reference specs (folder)</td><td>NS</td><td></td><td>Create minimum set per plan</td></tr>
+<tr><td>CLI contract docs (folder)</td><td>NS</td><td></td><td>Create contract + inventories per plan</td></tr>
+</tbody></table></div>
+</div>
+<div class="card" id="rewrite-status-next-actions">
+<h2>Rewrite status: next actions</h2>
+<div class="mdblock"><table>
+<thead><tr><th>Artifact</th><th>Status</th><th>Next action</th></tr></thead>
+<tbody>
+<tr><td>ADR-0001 (active rewrite)</td><td>NS</td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0002 (active rewrite)</td><td>NS</td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0003 (active rewrite)</td><td>NS</td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0004 (active rewrite)</td><td>NS</td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0005 (active rewrite)</td><td>NS</td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0006 (active rewrite)</td><td>NS</td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0007 (active rewrite)</td><td>NS</td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0008 (active rewrite)</td><td>NS</td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0009 (active rewrite)</td><td>NS</td><td>Draft-2 extraction + mapping gate</td></tr>
+<tr><td>Reference specs (folder)</td><td>NS</td><td>Create minimum set per plan</td></tr>
+<tr><td>CLI contract docs (folder)</td><td>NS</td><td>Create contract + inventories per plan</td></tr>
+</tbody></table></div>
+</div>
+<div class="card" id="rewrite-status-staleness-dated-outstanding">
+<h2>Rewrite status: staleness (dated outstanding)</h2>
+<div class="mdblock"><p>_No dated outstanding items found._</p></div>
+</div>
+<div class="card" id="draft-2-sources-status-distribution">
+<h2>Draft-2 sources: status distribution</h2>
+<div class="mdblock"><table>
+<thead><tr><th>Status</th><th>Count</th></tr></thead>
+<tbody>
+<tr><td>NS</td><td>5</td></tr>
+</tbody></table></div>
+</div>
+<div class="card" id="draft-2-mapping-rows-status-distribution">
+<h2>Draft-2 mapping rows: status distribution</h2>
+<div class="mdblock"><p>_No effective mapping rows found._</p></div>
+</div>
+<div class="card" id="draft-2-sources-inventory">
+<h2>Draft-2 sources: inventory</h2>
+<div class="mdblock"><table>
+<thead><tr><th>Source ID</th><th>File</th><th>Status</th><th>Mapping rows</th></tr></thead>
+<tbody>
+<tr><td>D2-0001</td><td><code>ADR-0001 Include and Exclude-draft-2.md</code></td><td>NS</td><td>0</td></tr>
+<tr><td>D2-0002</td><td><code>ADR-0002 Plugin Engines-draft-2.md</code></td><td>NS</td><td>0</td></tr>
+<tr><td>D2-0003</td><td><code>ADR-0003 Policy Boundaries-draft-2.md</code></td><td>NS</td><td>0</td></tr>
+<tr><td>D2-0004</td><td><code>ADR-0004 Taxonomy-draft-2.md</code></td><td>NS</td><td>0</td></tr>
+<tr><td>D2-0005</td><td><code>ADR-0005 Naming Conventions-draft-2.md</code></td><td>NS</td><td>0</td></tr>
+</tbody></table></div>
+</div>
+<div class="card" id="draft-2-mapping-coverage">
+<h2>Draft-2 mapping coverage</h2>
+<div class="mdblock"><ul>
+<li>Effective mapping rows: 0</li>
+<li>Draft-2 sources: 5</li>
+<li>Draft-2 sources with mapping rows: 0</li>
+</ul></div>
+</div>
+<div class="card" id="registry-coverage">
+<h2>Registry coverage</h2>
+<div class="mdblock"><p>_No unindexed registry markdown files found._</p></div>
+</div>
+</div>
+</main>
+</body>
+</html>

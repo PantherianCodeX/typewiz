@@ -19,7 +19,7 @@ You must understand the system **before drafting**. The minimum required reading
 6. Draft-2 ADR inputs (as needed for the doc you are touching)
 
 If any of these files are missing in your working tree, **stop** and record a blocker in:
-`docs/_internal/policy/s11r2/open_questions.md`.
+`docs/_internal/policy/s11r2/registers/open_questions.md`.
 
 ### 0.1 Precision-safe extraction (avoid UI truncation)
 
@@ -194,7 +194,8 @@ Registry rows must include evidence as:
 ### 6.1 Progress is tracked in registries
 
 - The canonical progress tracker is `registers/rewrite_status.md`.
-- `registers/progress_board.md` is a roll-up view; keep it consistent with `rewrite_status.md`.
+- Progress outputs are generated from the registries (do not hand-edit files under `progress/`).
+- Regenerate after registry edits: `python scripts/docs/s11r2-progress.py --write --write-html`.
 
 ### 6.2 Completion gates (minimum)
 
