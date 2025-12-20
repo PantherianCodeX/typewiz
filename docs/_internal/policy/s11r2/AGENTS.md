@@ -223,6 +223,7 @@ A doc cannot be “Done/Approved” unless:
 For Phase 0 work, use:
 
 - `make lint`
+- `python scripts/docs/check_link_hygiene.py --verbose`
 
 Only when scripts are modified, also use:
 
@@ -335,6 +336,15 @@ If you need a decision that is not already resolved by the plan/policy:
 ### 2025-12-19 — Add HTML auto-refresh interval
 
 - **Change:** Documented the `--html-interval` default (30s) for the HTML dashboard auto-refresh.
+- **Preservation:** N/A (governance guidance update).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.
+
+### 2025-12-20 — Add link hygiene verification
+
+- **Change:** Added link hygiene check to local verification requirements.
 - **Preservation:** N/A (governance guidance update).
 - **Overlay:** N/A (no Plan v19 deltas applied).
 - **Mapping:** N/A (no MAP/P/CF entries yet).

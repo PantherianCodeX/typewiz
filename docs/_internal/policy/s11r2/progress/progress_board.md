@@ -2,7 +2,7 @@
 
 ## Generated
 
-Timestamp: 2025-12-20T08:19:52+00:00
+Timestamp: 2025-12-20T08:34:34+00:00
 
 This file is generated from the canonical s11r2 registries. Edit source registries under `../registers/`, then regenerate progress outputs.
 
@@ -49,8 +49,8 @@ Run from repo root:
 |Registries present on disk (markdown)|14|
 |Registries with status columns|9|
 |Registries with status-bearing rows|3|
-|Status-bearing rows|38|
-|Done rows|16 (42.1%)|
+|Status-bearing rows|39|
+|Done rows|17 (43.6%)|
 |Blocked rows|0|
 |Rewrite artifacts (total / done / outstanding)|23 / 12 / 11|
 |Open questions (total / done / outstanding)|0 / 0 / 0|
@@ -59,12 +59,12 @@ Run from repo root:
 
 #### Summary
 
-- Status-bearing rows: 38
-- Done (DN): 16 (42.1%)
+- Status-bearing rows: 39
+- Done (DN): 17 (43.6%)
 
 |Status|Count|
 |---|---:|
-|DN|16|
+|DN|17|
 |IP|11|
 |NS|11|
 
@@ -72,7 +72,7 @@ Run from repo root:
 
 |Registry|Total|NS|IP|RV|DN|BL|
 |---|---:|---:|---:|---:|---:|---:|
-|`change_control.md`|4|0|0|0|4|0|
+|`change_control.md`|5|0|0|0|5|0|
 |`cli_parity_deltas.md`|0|0|0|0|0|0|
 |`master_mapping_ledger.md`|11|11|0|0|0|0|
 |`open_questions.md`|0|0|0|0|0|0|

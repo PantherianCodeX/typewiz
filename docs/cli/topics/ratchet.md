@@ -30,3 +30,14 @@ Budget and display controls:
 
 Use `ratchetr help ratchet` and `docs/ratchetr.md` for more details on ratchet configuration, and see
 `examples/README.md` plus `examples/ratchetr.sample.toml` for end-to-end audit and ratchet workflows.
+
+## Draft log
+
+### 2025-12-19 — Phase 1 stub scaffold
+
+- **Change:** Created Phase 1 stub with required header block and section scaffolding.
+- **Preservation:** N/A (Phase 1 stub; no draft-2 items mapped).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.

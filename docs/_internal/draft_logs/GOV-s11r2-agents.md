@@ -35,3 +35,12 @@
 - **Mapping:** N/A (no MAP/P/CF entries yet).
 - **Supersedence:** N/A.
 - **Notes / risks:** Coverage gating deferred until refactor completes.
+
+## 2025-12-20 — Add link hygiene verification
+
+- **Change:** Added link hygiene check to local verification requirements.
+- **Preservation:** N/A (governance guidance update).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.

@@ -20,3 +20,14 @@ engine in `examples/plugins/simple_engine.py` for a minimal implementation.
 
 Use `ratchetr help overview` and `docs/ratchetr.md` for a deeper architecture overview, and
 `examples/ratchetr.sample.toml` for a configuration template showing multiple engines.
+
+## Draft log
+
+### 2025-12-19 — Phase 1 stub scaffold
+
+- **Change:** Created Phase 1 stub with required header block and section scaffolding.
+- **Preservation:** N/A (Phase 1 stub; no draft-2 items mapped).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.
