@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import pathlib
 import shutil
 
 
@@ -27,10 +26,8 @@ def main() -> int:
         `0`once ``build/``, ``dist/``, and `*.egg-info`directories have
         been removed.
     """
-    for name in ("build", "dist"):
+    for name in ("build", "dist", "src/ratchetr.egg-info"):
         shutil.rmtree(name, ignore_errors=True)
-    for egg in pathlib.Path().glob("*.egg-info"):
-        shutil.rmtree(egg, ignore_errors=True)
     return 0
 
 

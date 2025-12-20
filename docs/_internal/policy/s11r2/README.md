@@ -12,7 +12,7 @@ This folder is the *operational* support package for `docs/_internal/policy/s11r
 
 ## Canonical locations
 
-- Policy: `docs/_internal/s11r2-policy.md`
+- Policy: `docs/_internal/policy/s11r2-policy.md`
 - Workbook: `docs/_internal/policy/s11r2/WORKBOOK.md` (Checklists to make tracking easy)
 - Registries: `docs/_internal/policy/s11r2/registers/`
 - Draft-log mirrors: `docs/_internal/draft_logs/`

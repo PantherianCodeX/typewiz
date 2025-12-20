@@ -17,5 +17,5 @@
 
 ## Governance
 
-- Execution contract policy: `docs/_internal/s11r2-policy.md`
+- Execution contract policy: `docs/_internal/policy/s11r2-policy.md`
 - Registry index: `docs/_internal/policy/s11r2/registers/registry_index.md`

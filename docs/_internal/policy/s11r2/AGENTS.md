@@ -1,7 +1,7 @@
 # AGENTS.md — s11r2 Rewrite Governance System
 
 **Audience:** AI agents contributing to the ADR + documentation rewrite under the **s11r2 execution-contract workbook**.
-**Primary purpose:** Ensure the rewrite succeeds **without loss, drift, duplication, or bloat**, while cleanly applying **ADR Rewrite Plan v18** deltas on top of preserved draft-2 architecture.
+**Primary purpose:** Ensure the rewrite succeeds **without loss, drift, duplication, or bloat**, while cleanly applying **ADR Rewrite Plan v19** deltas on top of preserved draft-2 architecture.
 **See also:** `README.md` (overview), `QUICK_START.md` (guided workflow), and `USAGE.md` (in-depth).
 **Date:** 2025-12-19
 
@@ -11,11 +11,11 @@
 
 You must understand the system **before drafting**. The minimum required reading order is:
 
-1. `docs/_internal/s11r2-policy.md` (rewrite governance policy; not the full product spec)
+1. `docs/_internal/policy/s11r2-policy.md` (rewrite governance policy; not the full product spec)
 2. `docs/_internal/policy/s11r2/README.md` (how the workbook/registries are used)
 3. `docs/_internal/policy/s11r2/registers/registry_index.md` (canonical registry list)
 4. `docs/_internal/policy/s11r2/WORKBOOK.md` (the operational loop)
-5. `ADR Rewrite Plan v18.md` (execution plan and authoritative rewrite deltas)
+5. `ADR Rewrite Plan v19.md` (execution plan and authoritative rewrite deltas)
 6. Draft-2 ADR inputs (as needed for the doc you are touching)
 
 If any of these files are missing in your working tree, **stop** and record a blocker in:
@@ -45,8 +45,8 @@ Never use ellipses (`...`) as omission markers in normative text.
 
 ### 1.1 Authority order (do not invert)
 
-1. `docs/_internal/s11r2-policy.md` (governance for the rewrite)
-2. `ADR Rewrite Plan v18.md` (execution plan + resolved deltas)
+1. `docs/_internal/policy/s11r2-policy.md` (governance for the rewrite)
+2. `ADR Rewrite Plan v19.md` (execution plan + resolved deltas)
 3. Draft-2 ADR set (preservation inputs, unless explicitly superseded)
 
 ### 1.2 Hard scope constraints (non-negotiable)
@@ -72,7 +72,7 @@ Stop drafting and create/update an entry in `registers/open_questions.md` when a
 
 ### 2.1 Canonical locations (s11r2)
 
-- Governance policy: `docs/_internal/s11r2-policy.md`
+- Governance policy: `docs/_internal/policy/s11r2-policy.md`
 - Workbook: `docs/_internal/policy/s11r2/WORKBOOK.md`
 - Registries (canonical): `docs/_internal/policy/s11r2/registers/`
 - Draft-log mirrors: `docs/_internal/draft_logs/`
@@ -87,7 +87,7 @@ Use `registers/registry_index.md` as the canonical list. You will most commonly 
 - `master_mapping_ledger.md` — source→destination mapping (section/concept level) with evidence
 - `draft2_preservation_map.md` — extracted draft-2 backbone items + destinations
 - `carry_forward_matrix.md` — verbatim vs adapted carry-forward decisions + rationale
-- `plan_overlay_register.md` — applied Plan v18 deltas + verification evidence
+- `plan_overlay_register.md` — applied Plan v19 deltas + verification evidence
 - `supersedence_ledger.md` — superseded content and pointers/replacements
 - `cli_parity_deltas.md` — help snapshot vs contract deltas (tracking only; help is not policy)
 - `terminology_map.md` — vocabulary decisions/renames and enforcement notes
@@ -119,7 +119,7 @@ If you cannot map it, it is considered **lost** until mapped. Do not proceed.
 
 ### 3.3 Overlay gate (while drafting)
 
-For each applied Plan v18 delta:
+For each applied Plan v19 delta:
 
 1. Record it in `registers/plan_overlay_register.md` (source anchor → targets → evidence)
 2. If it supersedes older content, update `registers/supersedence_ledger.md`

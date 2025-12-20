@@ -21,7 +21,7 @@ small, deterministic, and audit-friendly.
 What it does
 ------------
 - Parses the markdown-table registries in
-  `docs/_internal/s11r2/registers/`.
+  `docs/_internal/policy/s11r2/registers/`.
 - Computes roll-ups (counts by status, coverage checks, warnings).
 - Updates `progress_board.md` by replacing the content between:
 
@@ -86,7 +86,7 @@ if TYPE_CHECKING:
 GENERATED_BEGIN = "<!-- GENERATED:BEGIN -->"
 GENERATED_END = "<!-- GENERATED:END -->"
 
-DEFAULT_HTML_OUT = "docs/_internal/s11r2/dashboard/index.html"
+DEFAULT_HTML_OUT = "docs/_internal/policy/s11r2/dashboard/index.html"
 DEFAULT_DASHBOARD_TITLE = "s11r2 Rewrite Governance Dashboard"
 
 
@@ -694,7 +694,7 @@ def _run_demo(repo_root: Path) -> int:
         dst = Path(td) / "repo"
         shutil.copytree(repo_root, dst, dirs_exist_ok=True)
 
-        regdir = dst / "docs/_internal/s11r2/registers"
+        regdir = dst / "docs/_internal/policy/s11r2/registers"
         board = regdir / "progress_board.md"
         regdir.mkdir(parents=True, exist_ok=True)
         _ensure_progress_board_exists(board)
@@ -840,12 +840,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--repo-root", default=".", help="Path to repository root (default: .)")
     ap.add_argument(
         "--register-dir",
-        default="docs/_internal/s11r2/registers",
+        default="docs/_internal/policy/s11r2/registers",
         help="Registry directory relative to repo root.",
     )
     ap.add_argument(
         "--progress-board",
-        default="docs/_internal/s11r2/registers/progress_board.md",
+        default="docs/_internal/policy/s11r2/registers/progress_board.md",
         help="Progress board markdown path relative to repo root.",
     )
     ap.add_argument(

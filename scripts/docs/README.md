@@ -7,13 +7,14 @@ for the documentation rewrite.
 
 Generates the **automated roll-up** section in:
 
-- `docs/_internal/s11r2/registers/progress_board.md`
+- `docs/_internal/policy/s11r2/registers/progress_board.md`
 
 from the markdown-table registries in:
 
-- `docs/_internal/s11r2/registers/`
+- `docs/_internal/policy/s11r2/registers/`
 
 ### Run
+
 From repo root:
 
 ```bash
