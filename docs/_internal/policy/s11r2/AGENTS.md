@@ -46,7 +46,7 @@ If you are working on the progress board or dashboard:
 - Do not edit files under `docs/_internal/policy/s11r2/progress/` by hand.
 - Read `docs/_internal/policy/s11r2/registers/registry_index.md` to confirm input/output paths.
 - Use `python scripts/docs/s11r2-progress.py --write --write-html` (with `PYTHONPATH=.`) to regenerate outputs.
-- Use `python scripts/docs/s11r2-progress.py --auto-update --update-interval 10` for long-running auto-updates (dashboard-only by default).
+- Use `python scripts/docs/s11r2-progress.py --auto-update --update-interval 10` for long-running auto-updates (dashboard-only by default; HTML auto-refresh defaults to 30s, override via `--html-interval`).
 
 ---
 
@@ -331,3 +331,12 @@ If you need a decision that is not already resolved by the plan/policy:
 - **Mapping:** N/A (no MAP/P/CF entries yet).
 - **Supersedence:** N/A.
 - **Notes / risks:** Coverage gating deferred until refactor completes.
+
+### 2025-12-19 — Add HTML auto-refresh interval
+
+- **Change:** Documented the `--html-interval` default (30s) for the HTML dashboard auto-refresh.
+- **Preservation:** N/A (governance guidance update).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.

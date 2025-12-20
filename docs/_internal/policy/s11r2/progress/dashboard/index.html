@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="10.0">
 <title>s11r2 progress dashboard</title>
 <style>
 body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;margin:0;background:#0b0d10;color:#e7e7e7;}
@@ -12,8 +13,9 @@ header h1{margin:0;font-size:18px}
 .sub{margin:6px 0 0 0;color:#b6c2d1;font-size:13px}
 main{padding:18px 22px}
 .layout{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:260px 1fr;gap:16px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;grid-auto-flow:dense}
 .sidebar-card{position:sticky;top:16px;align-self:start}
+.card.wide{grid-column:1/-1}
 .card{background:#101723;border:1px solid #1b2330;border-radius:12px;padding:14px 14px 10px 14px;box-shadow:0 2px 12px rgba(0,0,0,.25)}
 .sidebar-card h2{margin:0 0 8px 0;font-size:16px}
 .sidebar-card h3{margin:12px 0 6px 0;font-size:13px}
@@ -37,7 +39,7 @@ main{padding:18px 22px}
 <body>
 <header>
 <h1>s11r2 progress dashboard</h1>
-<p class="sub">Generated: 2025-12-20T07:37:01+00:00</p>
+<p class="sub">Generated: 2025-12-20T08:20:49+00:00</p>
 </header>
 <main>
 <div class="layout">
@@ -46,7 +48,7 @@ main{padding:18px 22px}
 <h3>Links</h3>
 <ul class="nav"><li><a href="../../registers/registry_index.md">Registry index</a></li><li><a href="../progress_board.md">Progress board (Markdown)</a></li><li><a href="../../registers/STATUS_LEGEND.md">Status legend</a></li></ul>
 <h3>Sections</h3>
-<ul class="toc"><li><a href="#validation">Validation findings</a></li><li><a href="#status-legend">Status legend</a></li><li><a href="#operational-snapshot">Operational snapshot</a></li><li><a href="#summary">Summary</a></li><li><a href="#per-registry-status-distribution">Per-registry status distribution</a></li><li><a href="#top-blocked-rows">Top blocked rows</a></li><li><a href="#open-questions-distribution">Open questions: distribution</a></li><li><a href="#open-questions-outstanding">Open questions: outstanding</a></li><li><a href="#rewrite-status-distribution">Rewrite status: distribution</a></li><li><a href="#rewrite-status-outstanding">Rewrite status: outstanding</a></li><li><a href="#rewrite-status-next-actions">Rewrite status: next actions</a></li><li><a href="#rewrite-status-staleness-dated-outstanding">Rewrite status: staleness (dated outstanding)</a></li><li><a href="#sources-status-distribution">Sources: status distribution</a></li><li><a href="#mapping-rows-status-distribution">Mapping rows: status distribution</a></li><li><a href="#sources-inventory">Sources: inventory</a></li><li><a href="#mapping-coverage">Mapping coverage</a></li><li><a href="#registry-coverage">Registry coverage</a></li></ul>
+<ul class="toc"><li><a href="#validation">Validation findings</a></li><li><a href="#summary">Summary</a></li><li><a href="#operational-snapshot">Operational snapshot</a></li><li><a href="#per-registry-status-distribution">Per-registry status distribution</a></li><li><a href="#open-questions-outstanding">Open questions: outstanding</a></li><li><a href="#rewrite-status-outstanding">Rewrite status: outstanding</a></li><li><a href="#rewrite-status-next-actions">Rewrite status: next actions</a></li><li><a href="#top-blocked-rows">Top blocked rows</a></li><li><a href="#open-questions-distribution">Open questions: distribution</a></li><li><a href="#rewrite-status-distribution">Rewrite status: distribution</a></li><li><a href="#rewrite-status-staleness-dated-outstanding">Rewrite status: staleness (dated outstanding)</a></li><li><a href="#sources-status-distribution">Sources: status distribution</a></li><li><a href="#mapping-rows-status-distribution">Mapping rows: status distribution</a></li><li><a href="#sources-inventory">Sources: inventory</a></li><li><a href="#mapping-coverage">Mapping coverage</a></li><li><a href="#registry-coverage">Registry coverage</a></li></ul>
 </aside>
 <section>
 <div class="grid">
@@ -60,16 +62,20 @@ main{padding:18px 22px}
 <h3>Info</h3>
 <p><em>None.</em></p>
 </div>
-<div class="card" id="status-legend">
-<h2>Status legend</h2>
+<div class="card" id="summary">
+<h2>Summary</h2>
+<div class="mdblock"><ul>
+<li>Status-bearing rows: 38</li>
+<li>Done (DN): 16 (42.1%)</li>
+</ul>
+
 <table>
-<thead><tr><th>Code</th><th>Label</th><th>Meaning</th></tr></thead>
-<tbody><tr><td><code>NS</code></td><td>Not Started</td><td>Question logged, but no real investigation begun.</td></tr>
-<tr><td><code>IP</code></td><td>In Progress</td><td>Actively investigating; sources are being consulted and options refined.</td></tr>
-<tr><td><code>RV</code></td><td>In Review</td><td>Proposed resolution exists and is awaiting maintainer decision / review gate.</td></tr>
-<tr><td><code>DN</code></td><td>Done</td><td>Decision made and recorded (with a stable reference), and work is unblocked.</td></tr>
-<tr><td><code>BL</code></td><td>Blocked</td><td>Work cannot proceed (or must not proceed) until this is resolved.</td></tr></tbody>
-</table>
+<thead><tr><th>Status</th><th>Count</th></tr></thead>
+<tbody>
+<tr><td>DN</td><td>16</td></tr>
+<tr><td>IP</td><td>11</td></tr>
+<tr><td>NS</td><td>11</td></tr>
+</tbody></table></div>
 </div>
 <div class="card" id="operational-snapshot">
 <h2>Operational snapshot</h2>
@@ -80,8 +86,8 @@ main{padding:18px 22px}
 <tr><td>Registries present on disk (markdown)</td><td>14</td></tr>
 <tr><td>Registries with status columns</td><td>9</td></tr>
 <tr><td>Registries with status-bearing rows</td><td>3</td></tr>
-<tr><td>Status-bearing rows</td><td>36</td></tr>
-<tr><td>Done rows</td><td>14 (38.9%)</td></tr>
+<tr><td>Status-bearing rows</td><td>38</td></tr>
+<tr><td>Done rows</td><td>16 (42.1%)</td></tr>
 <tr><td>Blocked rows</td><td>0</td></tr>
 <tr><td>Rewrite artifacts (total / done / outstanding)</td><td>23 / 12 / 11</td></tr>
 <tr><td>Open questions (total / done / outstanding)</td><td>0 / 0 / 0</td></tr>
@@ -89,59 +95,27 @@ main{padding:18px 22px}
 <tr><td>Draft-2 sources with mapping rows</td><td>0 / 5</td></tr>
 </tbody></table></div>
 </div>
-<div class="card" id="summary">
-<h2>Summary</h2>
-<div class="mdblock"><ul>
-<li>Status-bearing rows: 36</li>
-<li>Done (DN): 14 (38.9%)</li>
-</ul>
-
-<table>
-<thead><tr><th>Status</th><th>Count</th></tr></thead>
-<tbody>
-<tr><td>DN</td><td>14</td></tr>
-<tr><td>IP</td><td>11</td></tr>
-<tr><td>NS</td><td>11</td></tr>
-</tbody></table></div>
-</div>
-<div class="card" id="per-registry-status-distribution">
+<div class="card wide" id="per-registry-status-distribution">
 <h2>Per-registry status distribution</h2>
 <div class="mdblock"><table>
 <thead><tr><th>Registry</th><th>Total</th><th>NS</th><th>IP</th><th>RV</th><th>DN</th><th>BL</th></tr></thead>
 <tbody>
-<tr><td><code>change_control.md</code></td><td>2</td><td>0</td><td>0</td><td>0</td><td>2</td><td>0</td></tr>
-<tr><td><code>cli_parity_deltas.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-<tr><td><code>master_mapping_ledger.md</code></td><td>11</td><td>11</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-<tr><td><code>open_questions.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-<tr><td><code>plan_overlay_register.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-<tr><td><code>rewrite_status.md</code></td><td>23</td><td>0</td><td>11</td><td>0</td><td>12</td><td>0</td></tr>
-<tr><td><code>roadmap_register.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-<tr><td><code>supersedence_ledger.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-<tr><td><code>terminology_map.md</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><a href="../../registers/change_control.md"><code>change_control.md</code></a></td><td>4</td><td>0</td><td>0</td><td>0</td><td>4</td><td>0</td></tr>
+<tr><td><a href="../../registers/cli_parity_deltas.md"><code>cli_parity_deltas.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><a href="../../registers/master_mapping_ledger.md"><code>master_mapping_ledger.md</code></a></td><td>11</td><td>11</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><a href="../../registers/open_questions.md"><code>open_questions.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><a href="../../registers/plan_overlay_register.md"><code>plan_overlay_register.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><a href="../../registers/rewrite_status.md"><code>rewrite_status.md</code></a></td><td>23</td><td>0</td><td>11</td><td>0</td><td>12</td><td>0</td></tr>
+<tr><td><a href="../../registers/roadmap_register.md"><code>roadmap_register.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><a href="../../registers/supersedence_ledger.md"><code>supersedence_ledger.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><a href="../../registers/terminology_map.md"><code>terminology_map.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
 </tbody></table></div>
 </div>
-<div class="card" id="top-blocked-rows">
-<h2>Top blocked rows</h2>
-<div class="mdblock"><p><em>No blocked rows found.</em></p></div>
-</div>
-<div class="card" id="open-questions-distribution">
-<h2>Open questions: distribution</h2>
-<div class="mdblock"><p><em>No rows found.</em></p></div>
-</div>
-<div class="card" id="open-questions-outstanding">
+<div class="card wide" id="open-questions-outstanding">
 <h2>Open questions: outstanding</h2>
 <div class="mdblock"><p><em>No outstanding items.</em></p></div>
 </div>
-<div class="card" id="rewrite-status-distribution">
-<h2>Rewrite status: distribution</h2>
-<div class="mdblock"><table>
-<thead><tr><th>Status</th><th>Count</th></tr></thead>
-<tbody>
-<tr><td>DN</td><td>12</td></tr>
-<tr><td>IP</td><td>11</td></tr>
-</tbody></table></div>
-</div>
-<div class="card" id="rewrite-status-outstanding">
+<div class="card wide" id="rewrite-status-outstanding">
 <h2>Rewrite status: outstanding</h2>
 <div class="mdblock"><table>
 <thead><tr><th>Artifact</th><th>Status</th><th>Owner</th><th>Next action</th></tr></thead>
@@ -177,7 +151,24 @@ main{padding:18px 22px}
 <tr><td>CLI contract docs (folder)</td><td>IP</td><td>Populate Phase 3-6 content</td></tr>
 </tbody></table></div>
 </div>
-<div class="card" id="rewrite-status-staleness-dated-outstanding">
+<div class="card" id="top-blocked-rows">
+<h2>Top blocked rows</h2>
+<div class="mdblock"><p><em>No blocked rows found.</em></p></div>
+</div>
+<div class="card" id="open-questions-distribution">
+<h2>Open questions: distribution</h2>
+<div class="mdblock"><p><em>No rows found.</em></p></div>
+</div>
+<div class="card" id="rewrite-status-distribution">
+<h2>Rewrite status: distribution</h2>
+<div class="mdblock"><table>
+<thead><tr><th>Status</th><th>Count</th></tr></thead>
+<tbody>
+<tr><td>DN</td><td>12</td></tr>
+<tr><td>IP</td><td>11</td></tr>
+</tbody></table></div>
+</div>
+<div class="card wide" id="rewrite-status-staleness-dated-outstanding">
 <h2>Rewrite status: staleness (dated outstanding)</h2>
 <div class="mdblock"><table>
 <thead><tr><th>Artifact</th><th>Status</th><th>Last touch</th><th>Age (days)</th><th>Next action</th></tr></thead>
@@ -207,22 +198,22 @@ main{padding:18px 22px}
 <h2>Mapping rows: status distribution</h2>
 <div class="mdblock"><p><em>No effective mapping rows found.</em></p></div>
 </div>
-<div class="card" id="sources-inventory">
+<div class="card wide" id="sources-inventory">
 <h2>Sources: inventory</h2>
 <div class="mdblock"><table>
 <thead><tr><th>Source ID</th><th>File</th><th>Status</th><th>Mapping rows</th></tr></thead>
 <tbody>
-<tr><td>D2-0001</td><td><code>ADR-0001 Include and Exclude-draft-2.md</code></td><td>NS</td><td>0</td></tr>
-<tr><td>D2-0002</td><td><code>ADR-0002 Plugin Engines-draft-2.md</code></td><td>NS</td><td>0</td></tr>
-<tr><td>D2-0003</td><td><code>ADR-0003 Policy Boundaries-draft-2.md</code></td><td>NS</td><td>0</td></tr>
-<tr><td>D2-0004</td><td><code>ADR-0004 Taxonomy-draft-2.md</code></td><td>NS</td><td>0</td></tr>
-<tr><td>D2-0005</td><td><code>ADR-0005 Naming Conventions-draft-2.md</code></td><td>NS</td><td>0</td></tr>
-<tr><td>PLAN-v19</td><td><code>ADR Rewrite Plan v19.md</code></td><td>NS</td><td>0</td></tr>
-<tr><td>SUP-0001</td><td><code>0001/path_scoping_contract.md</code></td><td>NS</td><td>0</td></tr>
-<tr><td>SUP-0002</td><td><code>0001/reference_implementation_outline.md</code></td><td>NS</td><td>0</td></tr>
-<tr><td>SUP-0003</td><td><code>0001/test_matrix.md</code></td><td>NS</td><td>0</td></tr>
-<tr><td>SUP-0004</td><td><code>0002/execution outline.md</code></td><td>NS</td><td>0</td></tr>
-<tr><td>SUP-0005</td><td><code>0002/test matrix.md</code></td><td>NS</td><td>0</td></tr>
+<tr><td>D2-0001</td><td><a href="../../../../adr/ADR-0001 Include and Exclude-draft-2.md"><code>ADR-0001 Include and Exclude-draft-2.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>D2-0002</td><td><a href="../../../../adr/ADR-0002 Plugin Engines-draft-2.md"><code>ADR-0002 Plugin Engines-draft-2.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>D2-0003</td><td><a href="../../../../adr/ADR-0003 Policy Boundaries-draft-2.md"><code>ADR-0003 Policy Boundaries-draft-2.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>D2-0004</td><td><a href="../../../../adr/ADR-0004 Taxonomy-draft-2.md"><code>ADR-0004 Taxonomy-draft-2.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>D2-0005</td><td><a href="../../../../adr/ADR-0005 Naming Conventions-draft-2.md"><code>ADR-0005 Naming Conventions-draft-2.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>PLAN-v19</td><td><a href="../../../../ADR Rewrite Plan v19.md"><code>ADR Rewrite Plan v19.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>SUP-0001</td><td><a href="../../../../adr/0001/path_scoping_contract.md"><code>0001/path_scoping_contract.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>SUP-0002</td><td><a href="../../../../adr/0001/reference_implementation_outline.md"><code>0001/reference_implementation_outline.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>SUP-0003</td><td><a href="../../../../adr/0001/test_matrix.md"><code>0001/test_matrix.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>SUP-0004</td><td><a href="../../../../adr/0002/execution outline.md"><code>0002/execution outline.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>SUP-0005</td><td><a href="../../../../adr/0002/test matrix.md"><code>0002/test matrix.md</code></a></td><td>NS</td><td>0</td></tr>
 </tbody></table></div>
 </div>
 <div class="card" id="mapping-coverage">
@@ -233,7 +224,7 @@ main{padding:18px 22px}
 <li>Sources with mapping rows: 0</li>
 </ul></div>
 </div>
-<div class="card" id="registry-coverage">
+<div class="card wide" id="registry-coverage">
 <h2>Registry coverage</h2>
 <div class="mdblock"><p><em>No unindexed registry markdown files found.</em></p></div>
 </div>

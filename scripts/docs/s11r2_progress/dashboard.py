@@ -36,8 +36,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from scripts.docs.s11r2_progress.legend import StatusLegend
-    from scripts.docs.s11r2_progress.metrics import Metrics
+    from collections.abc import Sequence
+
+    from scripts.docs.s11r2_progress.metrics import MetricBlock, Metrics
     from scripts.docs.s11r2_progress.models import Issue, IssueReport
 
 
@@ -46,6 +47,51 @@ class DashboardLinks:
     registry_index_href: str
     progress_board_href: str
     status_legend_href: str
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardRenderOptions:
+    now: dt.datetime | None = None
+    html_refresh_interval: float | None = None
+    dashboard_dir: Path | None = None
+    repo_root: Path | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _LinkContext:
+    repo_root: Path
+    dashboard_dir: Path
+    paths_by_name: dict[str, list[Path]]
+    paths_by_rel: dict[str, Path]
+
+
+_PRIORITY_TITLES: tuple[str, ...] = (
+    "Summary",
+    "Operational snapshot",
+    "Per-registry status distribution",
+    "Open questions: outstanding",
+    "Rewrite status: outstanding",
+    "Rewrite status: next actions",
+    "Top blocked rows",
+    "Open questions: distribution",
+    "Rewrite status: distribution",
+    "Rewrite status: staleness (dated outstanding)",
+    "Sources: status distribution",
+    "Mapping rows: status distribution",
+    "Sources: inventory",
+    "Sources with zero mapping rows",
+    "Mapping coverage",
+    "Registry coverage",
+)
+
+_WIDE_TITLES: set[str] = {
+    "Per-registry status distribution",
+    "Open questions: outstanding",
+    "Rewrite status: outstanding",
+    "Rewrite status: staleness (dated outstanding)",
+    "Sources: inventory",
+    "Registry coverage",
+}
 
 
 _TABLE_ROW_RE = re.compile(r"^\|.*\|\s*$")
@@ -68,7 +114,84 @@ def _anchor_id(title: str) -> str:
     return slug or "section"
 
 
-def _render_inline(text: str) -> str:
+def _build_link_context(repo_root: Path, dashboard_dir: Path) -> _LinkContext:
+    paths_by_name: dict[str, list[Path]] = {}
+    paths_by_rel: dict[str, Path] = {}
+    for path in repo_root.rglob("*"):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(repo_root).as_posix()
+        paths_by_rel[rel] = path
+        paths_by_name.setdefault(path.name, []).append(path)
+    return _LinkContext(
+        repo_root=repo_root,
+        dashboard_dir=dashboard_dir,
+        paths_by_name=paths_by_name,
+        paths_by_rel=paths_by_rel,
+    )
+
+
+_FILE_REF_RE = re.compile(r"[A-Za-z0-9_./-]+\.[A-Za-z0-9_]+")
+
+
+def _linkify_file_refs(text: str, *, context: _LinkContext | None) -> str:
+    """Auto-link file references in plain text.
+
+    Args:
+        text: Raw text segment to scan.
+        context: Optional link resolution context.
+
+    Returns:
+        HTML string with file references linked when resolvable.
+    """
+    if context is None or not text:
+        return html.escape(text)
+    out: list[str] = []
+    last = 0
+    for match in _FILE_REF_RE.finditer(text):
+        out.append(html.escape(text[last : match.start()]))
+        token = match.group(0)
+        href = _resolve_file_href(token, context=context)
+        if href is None:
+            out.append(html.escape(token))
+        else:
+            out.append(f'<a href="{html.escape(href)}">{html.escape(token)}</a>')
+        last = match.end()
+    out.append(html.escape(text[last:]))
+    return "".join(out)
+
+
+def _resolve_file_href(text: str, *, context: _LinkContext) -> str | None:
+    raw = text.strip()
+    if not raw:
+        return None
+    candidate: Path | None = None
+    if "/" in raw or "\\" in raw:
+        norm = raw.replace("\\", "/")
+        candidate = context.paths_by_rel.get(norm)
+        if candidate is None:
+            matches = [p for rel, p in context.paths_by_rel.items() if rel.endswith(f"/{norm}")]
+            if len(matches) == 1:
+                candidate = matches[0]
+    else:
+        matches = context.paths_by_name.get(raw, [])
+        if len(matches) == 1:
+            candidate = matches[0]
+    if candidate is None:
+        return None
+    return Path(os.path.relpath(candidate, start=context.dashboard_dir)).as_posix()
+
+
+def _render_code_span(text: str, *, context: _LinkContext | None) -> str:
+    if context is None:
+        return f"<code>{html.escape(text)}</code>"
+    href = _resolve_file_href(text, context=context)
+    if href is None:
+        return f"<code>{html.escape(text)}</code>"
+    return f'<a href="{html.escape(href)}"><code>{html.escape(text)}</code></a>'
+
+
+def _render_inline(text: str, *, context: _LinkContext | None) -> str:
     """Render a small inline subset.
 
     We support inline code, emphasis, and plain text. This intentionally does
@@ -76,6 +199,7 @@ def _render_inline(text: str) -> str:
 
     Args:
         text: Inline markdown text.
+        context: Optional link resolution context.
 
     Returns:
         HTML-safe inline string.
@@ -84,15 +208,46 @@ def _render_inline(text: str) -> str:
     out: list[str] = []
     for idx, part in enumerate(parts):
         if idx % 2 == 1:
-            out.append(f"<code>{html.escape(part)}</code>")
+            out.append(_render_code_span(part, context=context))
             continue
-        escaped = html.escape(part)
+        escaped = _linkify_file_refs(part, context=context)
         escaped = re.sub(r"\*([^*]+)\*", r"<em>\1</em>", escaped)
         out.append(escaped)
     return "".join(out)
 
 
-def _parse_md_table(lines: list[str]) -> str:
+def _order_metric_blocks(blocks: Sequence[MetricBlock]) -> list[MetricBlock]:
+    priority_map = {title: idx for idx, title in enumerate(_PRIORITY_TITLES)}
+    ordered = sorted(
+        enumerate(blocks),
+        key=lambda pair: (priority_map.get(pair[1].title, len(_PRIORITY_TITLES)), pair[0]),
+    )
+    return [block for _idx, block in ordered]
+
+
+def _render_metric_cards(
+    blocks: Sequence[MetricBlock],
+    *,
+    toc_items: list[str],
+    link_context: _LinkContext | None,
+) -> list[str]:
+    cards: list[str] = []
+    for block in blocks:
+        aid = _anchor_id(block.title)
+        toc_items.append(f'<li><a href="#{aid}">{html.escape(block.title)}</a></li>')
+        card_class = "card wide" if block.title in _WIDE_TITLES else "card"
+        cards.append(
+            "\n".join([
+                f'<div class="{card_class}" id="{aid}">',
+                f"<h2>{html.escape(block.title)}</h2>",
+                f'<div class="mdblock">{_render_md_block(block.body_md, context=link_context)}</div>',
+                "</div>",
+            ])
+        )
+    return cards
+
+
+def _parse_md_table(lines: list[str], *, context: _LinkContext | None) -> str:
     """Parse a best-effort GFM table and render as HTML.
 
     If the captured block is not a valid table, the caller should render it as
@@ -100,6 +255,7 @@ def _parse_md_table(lines: list[str]) -> str:
 
     Args:
         lines: Markdown table lines.
+        context: Optional link resolution context.
 
     Returns:
         HTML table string.
@@ -127,10 +283,14 @@ def _parse_md_table(lines: list[str]) -> str:
     out: list[str] = []
     out.extend([
         "<table>",
-        "<thead><tr>" + "".join(f"<th>{_render_inline(c)}</th>" for c in header_cells) + "</tr></thead>",
+        "<thead><tr>"
+        + "".join(f"<th>{_render_inline(c, context=context)}</th>" for c in header_cells)
+        + "</tr></thead>",
         "<tbody>",
     ])
-    out.extend("<tr>" + "".join(f"<td>{_render_inline(c)}</td>" for c in row) + "</tr>" for row in norm_rows)
+    out.extend(
+        "<tr>" + "".join(f"<td>{_render_inline(c, context=context)}</td>" for c in row) + "</tr>" for row in norm_rows
+    )
     out.append("</tbody></table>")
     return "\n".join(out)
 
@@ -144,6 +304,7 @@ class _RenderState:
     table_lines: list[str]
     in_list: bool
     list_items: list[str]
+    context: _LinkContext | None
 
 
 def _flush_code(state: _RenderState) -> None:
@@ -163,9 +324,13 @@ def _flush_table(state: _RenderState) -> None:
         return
 
     try:
-        state.out.append(_parse_md_table(state.table_lines))
+        state.out.append(_parse_md_table(state.table_lines, context=state.context))
     except ValueError:
-        state.out.extend(f"<p>{_render_inline(line_text)}</p>" for line_text in state.table_lines if line_text.strip())
+        state.out.extend(
+            f"<p>{_render_inline(line_text, context=state.context)}</p>"
+            for line_text in state.table_lines
+            if line_text.strip()
+        )
 
     state.in_table = False
     state.table_lines = []
@@ -175,7 +340,7 @@ def _flush_list(state: _RenderState) -> None:
     if not state.in_list:
         return
     state.out.append("<ul>")
-    state.out.extend(f"<li>{_render_inline(item)}</li>" for item in state.list_items)
+    state.out.extend(f"<li>{_render_inline(item, context=state.context)}</li>" for item in state.list_items)
     state.out.append("</ul>")
     state.in_list = False
     state.list_items = []
@@ -230,7 +395,7 @@ def _handle_heading(line: str, state: _RenderState) -> bool:
             _flush_list(state)
             level = 5 - idx
             tag = f"h{level}"
-            state.out.append(f"<{tag}>{_render_inline(line[len(prefix) :])}</{tag}>")
+            state.out.append(f"<{tag}>{_render_inline(line[len(prefix) :], context=state.context)}</{tag}>")
             return True
     return False
 
@@ -247,7 +412,7 @@ def _handle_list_item(line: str, state: _RenderState) -> bool:
 
 def _handle_paragraph(line: str, state: _RenderState) -> None:
     _flush_list(state)
-    state.out.append(f"<p>{_render_inline(line)}</p>")
+    state.out.append(f"<p>{_render_inline(line, context=state.context)}</p>")
 
 
 def _clean_lines(out: list[str]) -> list[str]:
@@ -259,11 +424,12 @@ def _clean_lines(out: list[str]) -> list[str]:
     return cleaned
 
 
-def _render_md_block(md: str) -> str:
+def _render_md_block(md: str, *, context: _LinkContext | None) -> str:
     """Render a small Markdown subset into HTML.
 
     Args:
         md: Markdown text to render.
+        context: Optional link resolution context.
 
     Returns:
         HTML string representing the Markdown block.
@@ -276,6 +442,7 @@ def _render_md_block(md: str) -> str:
         table_lines=[],
         in_list=False,
         list_items=[],
+        context=context,
     )
 
     for raw in md.splitlines():
@@ -399,76 +566,32 @@ def _render_validation_card(report: IssueReport, *, dashboard_dir: Path, repo_ro
     ])
 
 
-def _render_legend_card(legend: StatusLegend) -> str:
-    """Render the status legend HTML card.
-
-    Args:
-        legend: Status legend to render.
-
-    Returns:
-        HTML string for the legend card.
-    """
-    row_lines: list[str] = []
-    for code in legend.codes:
-        label = html.escape(legend.label_for(code))
-        meaning = html.escape(legend.meaning_for(code))
-        row_lines.append(f"<tr><td><code>{html.escape(code)}</code></td><td>{label}</td><td>{meaning}</td></tr>")
-    rows = "\n".join(row_lines)
-    return "\n".join([
-        '<div class="card" id="status-legend">',
-        "<h2>Status legend</h2>",
-        "<table>",
-        "<thead><tr><th>Code</th><th>Label</th><th>Meaning</th></tr></thead>",
-        f"<tbody>{rows}</tbody>",
-        "</table>",
-        "</div>",
-    ])
-
-
 def render_dashboard(
     *,
-    legend: StatusLegend,
     metrics: Metrics,
     report: IssueReport,
     links: DashboardLinks,
-    now: dt.datetime | None = None,
-    dashboard_dir: Path | None = None,
-    repo_root: Path | None = None,
+    options: DashboardRenderOptions | None = None,
 ) -> str:
     """Render the full HTML dashboard.
 
     Args:
-        legend: Status legend to render.
         metrics: Computed metrics payload.
         report: Aggregated issue report.
         links: Related artifact links.
-        now: Optional timestamp override.
-        dashboard_dir: Directory containing the dashboard output.
-        repo_root: Repository root for relative issue display.
+        options: Optional rendering options.
 
     Returns:
         HTML document as a string.
     """
-    now_utc = (now or dt.datetime.now(dt.timezone.utc)).astimezone(dt.timezone.utc)
-    dash_dir = dashboard_dir or Path()
+    render_options = options or DashboardRenderOptions()
+    now_utc = (render_options.now or dt.datetime.now(dt.timezone.utc)).astimezone(dt.timezone.utc)
+    dash_dir = render_options.dashboard_dir or Path()
+    link_context = _build_link_context(render_options.repo_root, dash_dir) if render_options.repo_root else None
 
-    toc_items: list[str] = [
-        '<li><a href="#validation">Validation findings</a></li>',
-        '<li><a href="#status-legend">Status legend</a></li>',
-    ]
-
-    metric_cards: list[str] = []
-    for block in metrics.blocks:
-        aid = _anchor_id(block.title)
-        toc_items.append(f'<li><a href="#{aid}">{html.escape(block.title)}</a></li>')
-        metric_cards.append(
-            "\n".join([
-                f'<div class="card" id="{aid}">',
-                f"<h2>{html.escape(block.title)}</h2>",
-                f'<div class="mdblock">{_render_md_block(block.body_md)}</div>',
-                "</div>",
-            ])
-        )
+    toc_items: list[str] = ['<li><a href="#validation">Validation findings</a></li>']
+    ordered_blocks = _order_metric_blocks(metrics.blocks)
+    metric_cards = _render_metric_cards(ordered_blocks, toc_items=toc_items, link_context=link_context)
 
     nav_links = (
         '<ul class="nav">'
@@ -480,84 +603,92 @@ def render_dashboard(
 
     toc = '<ul class="toc">' + "".join(toc_items) + "</ul>"
 
-    return (
-        "\n".join([
-            "<!doctype html>",
-            '<html lang="en">',
-            "<head>",
-            '<meta charset="utf-8">',
-            '<meta name="viewport" content="width=device-width, initial-scale=1">',
-            "<title>s11r2 progress dashboard</title>",
-            "<style>",
-            (
-                "body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"
-                "Cantarell,Noto Sans,sans-serif;margin:0;background:#0b0d10;color:#e7e7e7;}"
-            ),
-            "a{color:#9dd0ff;text-decoration:none}a:hover{text-decoration:underline}",
-            "header{padding:18px 22px;border-bottom:1px solid #1b2330;background:#0f131a}",
-            "header h1{margin:0;font-size:18px}",
-            ".sub{margin:6px 0 0 0;color:#b6c2d1;font-size:13px}",
-            "main{padding:18px 22px}",
-            ".layout{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:260px 1fr;gap:16px}",
-            ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}",
-            ".sidebar-card{position:sticky;top:16px;align-self:start}",
-            (
-                ".card{background:#101723;border:1px solid #1b2330;border-radius:12px;"
-                "padding:14px 14px 10px 14px;box-shadow:0 2px 12px rgba(0,0,0,.25)}"
-            ),
-            ".sidebar-card h2{margin:0 0 8px 0;font-size:16px}",
-            ".sidebar-card h3{margin:12px 0 6px 0;font-size:13px}",
-            ".card h2{margin:0 0 10px 0;font-size:16px}",
-            ".card h3{margin:12px 0 8px 0;font-size:14px}",
-            ".nav{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}",
-            ".toc{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}",
-            ".mdblock table{border-collapse:collapse;width:100%;margin:10px 0}",
-            ".mdblock th,.mdblock td{border:1px solid #1b2330;padding:6px 8px;vertical-align:top;font-size:13px}",
-            ".mdblock th{background:#0f131a}",
-            ".mdblock pre{background:#0f131a;border:1px solid #1b2330;border-radius:10px;padding:10px;overflow:auto}",
-            ".mdblock code{background:#0f131a;border:1px solid #1b2330;border-radius:6px;padding:1px 5px}",
-            ".issues{padding-left:18px;font-size:13px}",
-            (
-                ".sev{display:inline-block;font-size:11px;letter-spacing:.02em;"
-                "padding:2px 6px;border-radius:999px;margin-right:6px;border:1px solid #1b2330;background:#0f131a}"
-            ),
-            ".sev.ERROR{border-color:#ff4d4f;color:#ffb3b3}",
-            ".sev.WARN{border-color:#fadb14;color:#fff5a3}",
-            ".sev.INFO{border-color:#40a9ff;color:#bfe3ff}",
-            "@media (max-width: 980px){.layout{grid-template-columns:1fr}.sidebar-card{position:static}}",
-            "</style>",
-            "</head>",
-            "<body>",
-            "<header>",
-            "<h1>s11r2 progress dashboard</h1>",
-            f'<p class="sub">Generated: {html.escape(now_utc.isoformat(timespec="seconds"))}</p>',
-            "</header>",
-            "<main>",
-            '<div class="layout">',
-            '<aside class="card sidebar-card">',
-            "<h2>Index</h2>",
-            "<h3>Links</h3>",
-            nav_links,
-            "<h3>Sections</h3>",
-            toc,
-            "</aside>",
-            "<section>",
-            '<div class="grid">',
-            _render_validation_card(report, dashboard_dir=dash_dir, repo_root=repo_root),
-            _render_legend_card(legend),
-            *metric_cards,
-            "</div>",
-            "</section>",
-            "</div>",
-            "</main>",
-            "</body>",
-            "</html>",
-        ])
-        + "\n"
+    refresh_meta = (
+        f'<meta http-equiv="refresh" content="{render_options.html_refresh_interval}">'
+        if render_options.html_refresh_interval is not None
+        else None
     )
+    head_lines = [
+        "<!doctype html>",
+        '<html lang="en">',
+        "<head>",
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    ]
+    if refresh_meta is not None:
+        head_lines.append(refresh_meta)
+    head_lines.extend([
+        "<title>s11r2 progress dashboard</title>",
+        "<style>",
+        (
+            "body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"
+            "Cantarell,Noto Sans,sans-serif;margin:0;background:#0b0d10;color:#e7e7e7;}"
+        ),
+        "a{color:#9dd0ff;text-decoration:none}a:hover{text-decoration:underline}",
+        "header{padding:18px 22px;border-bottom:1px solid #1b2330;background:#0f131a}",
+        "header h1{margin:0;font-size:18px}",
+        ".sub{margin:6px 0 0 0;color:#b6c2d1;font-size:13px}",
+        "main{padding:18px 22px}",
+        ".layout{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:260px 1fr;gap:16px}",
+        ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;grid-auto-flow:dense}",
+        ".sidebar-card{position:sticky;top:16px;align-self:start}",
+        ".card.wide{grid-column:1/-1}",
+        (
+            ".card{background:#101723;border:1px solid #1b2330;border-radius:12px;"
+            "padding:14px 14px 10px 14px;box-shadow:0 2px 12px rgba(0,0,0,.25)}"
+        ),
+        ".sidebar-card h2{margin:0 0 8px 0;font-size:16px}",
+        ".sidebar-card h3{margin:12px 0 6px 0;font-size:13px}",
+        ".card h2{margin:0 0 10px 0;font-size:16px}",
+        ".card h3{margin:12px 0 8px 0;font-size:14px}",
+        ".nav{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}",
+        ".toc{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}",
+        ".mdblock table{border-collapse:collapse;width:100%;margin:10px 0}",
+        ".mdblock th,.mdblock td{border:1px solid #1b2330;padding:6px 8px;vertical-align:top;font-size:13px}",
+        ".mdblock th{background:#0f131a}",
+        ".mdblock pre{background:#0f131a;border:1px solid #1b2330;border-radius:10px;padding:10px;overflow:auto}",
+        ".mdblock code{background:#0f131a;border:1px solid #1b2330;border-radius:6px;padding:1px 5px}",
+        ".issues{padding-left:18px;font-size:13px}",
+        (
+            ".sev{display:inline-block;font-size:11px;letter-spacing:.02em;"
+            "padding:2px 6px;border-radius:999px;margin-right:6px;border:1px solid #1b2330;background:#0f131a}"
+        ),
+        ".sev.ERROR{border-color:#ff4d4f;color:#ffb3b3}",
+        ".sev.WARN{border-color:#fadb14;color:#fff5a3}",
+        ".sev.INFO{border-color:#40a9ff;color:#bfe3ff}",
+        "@media (max-width: 980px){.layout{grid-template-columns:1fr}.sidebar-card{position:static}}",
+        "</style>",
+        "</head>",
+        "<body>",
+        "<header>",
+        "<h1>s11r2 progress dashboard</h1>",
+        f'<p class="sub">Generated: {html.escape(now_utc.isoformat(timespec="seconds"))}</p>',
+        "</header>",
+        "<main>",
+        '<div class="layout">',
+        '<aside class="card sidebar-card">',
+        "<h2>Index</h2>",
+        "<h3>Links</h3>",
+        nav_links,
+        "<h3>Sections</h3>",
+        toc,
+        "</aside>",
+        "<section>",
+        '<div class="grid">',
+        _render_validation_card(report, dashboard_dir=dash_dir, repo_root=render_options.repo_root),
+        *metric_cards,
+        "</div>",
+        "</section>",
+        "</div>",
+        "</main>",
+        "</body>",
+        "</html>",
+    ])
+    return "\n".join(head_lines) + "\n"
 
 
 __all__ = [
     "DashboardLinks",
+    "DashboardRenderOptions",
     "render_dashboard",
 ]

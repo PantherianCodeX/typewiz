@@ -27,6 +27,12 @@ Auto-update (long-running, dashboard only):
 python scripts/docs/s11r2-progress.py --auto-update --update-interval 10
 ```
 
+HTML auto-refresh interval (default 30s):
+
+```bash
+python scripts/docs/s11r2-progress.py --write-html --html-interval 30
+```
+
 Preview output without writing:
 
 ```bash

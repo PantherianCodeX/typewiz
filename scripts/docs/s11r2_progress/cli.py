@@ -48,7 +48,7 @@ from typing import TYPE_CHECKING
 
 from typing_extensions import override
 
-from scripts.docs.s11r2_progress.dashboard import DashboardLinks, render_dashboard
+from scripts.docs.s11r2_progress.dashboard import DashboardLinks, DashboardRenderOptions, render_dashboard
 from scripts.docs.s11r2_progress.legend import load_status_legend
 from scripts.docs.s11r2_progress.metrics import compute_metrics
 from scripts.docs.s11r2_progress.models import FailOn, Issue, IssueReport, Severity
@@ -122,6 +122,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Polling interval in seconds for --auto-update (default: 10.0)",
     )
     parser.add_argument(
+        "--html-interval",
+        type=float,
+        default=30.0,
+        help="Auto-refresh interval in seconds for the HTML dashboard (default: 30.0)",
+    )
+    parser.add_argument(
         "--fail-on",
         type=_parse_fail_on,
         default=FailOn.ERROR,
@@ -134,6 +140,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         parser.error("--check cannot be combined with --write, --write-html, or --auto-update")
     if args.update_interval <= 0:
         parser.error("--update-interval must be greater than 0")
+    if args.html_interval <= 0:
+        parser.error("--html-interval must be greater than 0")
 
     return args
 
@@ -257,6 +265,7 @@ def _generate_outputs(
     repo_root: Path,
     fail_on: FailOn,
     allow_fail: bool,
+    html_interval: float,
 ) -> tuple[S11R2Paths, IssueReport, str, str]:
     paths, paths_report = discover_paths(repo_root=repo_root)
     inputs_report = _guard_inputs_exist(paths)
@@ -279,13 +288,15 @@ def _generate_outputs(
         status_legend_href=_href(dash_dir, paths.status_legend),
     )
     html_out = render_dashboard(
-        legend=legend,
         metrics=metrics,
         report=report,
         links=links,
-        now=now,
-        dashboard_dir=dash_dir,
-        repo_root=repo_root,
+        options=DashboardRenderOptions(
+            now=now,
+            html_refresh_interval=html_interval,
+            dashboard_dir=dash_dir,
+            repo_root=repo_root,
+        ),
     )
 
     return paths, report, md_out, html_out
@@ -404,9 +415,15 @@ def _try_generate(
     fail_on: FailOn,
     emit_errors: bool,
     allow_fail: bool,
+    html_interval: float,
 ) -> tuple[S11R2Paths, IssueReport, str, str] | None:
     try:
-        return _generate_outputs(repo_root=repo_root, fail_on=fail_on, allow_fail=allow_fail)
+        return _generate_outputs(
+            repo_root=repo_root,
+            fail_on=fail_on,
+            allow_fail=allow_fail,
+            html_interval=html_interval,
+        )
     except ValueError as exc:
         report = exc.args[0] if exc.args and isinstance(exc.args[0], IssueReport) else IssueReport(())
         if emit_errors:
@@ -476,6 +493,7 @@ def _run_auto_update_loop(
     write: bool,
     write_html: bool,
     interval: float,
+    html_interval: float,
     initial_issue_fingerprint: tuple[tuple[str, str, str | None, int | None, int | None], ...] | None,
 ) -> int:
     last_issue_fingerprint = initial_issue_fingerprint
@@ -488,6 +506,7 @@ def _run_auto_update_loop(
             fail_on=fail_on,
             emit_errors=False,
             allow_fail=True,
+            html_interval=html_interval,
         )
         if result is None:
             continue
@@ -557,6 +576,7 @@ def main(argv: list[str] | None = None) -> int:
         fail_on=args.fail_on,
         emit_errors=True,
         allow_fail=args.auto_update,
+        html_interval=args.html_interval,
     )
     if result is None:
         return 2
@@ -593,6 +613,7 @@ def main(argv: list[str] | None = None) -> int:
             write=write,
             write_html=write_html,
             interval=args.update_interval,
+            html_interval=args.html_interval,
             initial_issue_fingerprint=_issues_fingerprint(report),
         )
 

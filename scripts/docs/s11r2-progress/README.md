@@ -66,7 +66,7 @@ Common modes:
   python scripts/docs/s11r2-progress.py --auto-update --update-interval 10
   ```
 
-Default behavior: `--auto-update` writes the dashboard HTML only. Use `--write` for markdown only, or `--write --write-html` for both.
+Default behavior: `--auto-update` writes the dashboard HTML only. Use `--write` for markdown only, or `--write --write-html` for both. The HTML dashboard auto-refreshes every 30s by default; override with `--html-interval <seconds>`.
 
 - Validate that generated outputs are up-to-date (CI-friendly):
 
