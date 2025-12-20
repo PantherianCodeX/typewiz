@@ -34,7 +34,7 @@ import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from scripts.docs.s11r2_progress.md import find_column, find_table_by_headers, strip_md_inline, table_rows_as_dicts
+from scripts.docs.s11r2_progress.md import find_column, find_table_by_headers, strip_md_inline, table_rows_with_lines
 from scripts.docs.s11r2_progress.models import Issue, IssueReport, Severity
 
 if TYPE_CHECKING:
@@ -146,10 +146,11 @@ class StatusLegend:
 
 def _collect_legend_entries(
     *,
-    rows: Sequence[Mapping[str, str]],
+    rows: Sequence[tuple[int, Mapping[str, str]]],
     code_col: str,
     label_col: str,
     meaning_col: str | None,
+    path: Path,
     issues: list[Issue],
 ) -> tuple[list[str], dict[str, str], dict[str, str]]:
     """Collect unique legend entries from table rows.
@@ -159,6 +160,7 @@ def _collect_legend_entries(
         code_col: Column name for codes.
         label_col: Column name for labels.
         meaning_col: Optional column name for meanings.
+        path: Path to the file.
         issues: Issue list to append warnings to.
 
     Returns:
@@ -168,7 +170,7 @@ def _collect_legend_entries(
     labels: dict[str, str] = {}
     meanings: dict[str, str] = {}
 
-    for row in rows:
+    for line_no, row in rows:
         code_raw = row.get(code_col, "")
         label_raw = row.get(label_col, "")
         meaning_raw = row.get(meaning_col, "") if meaning_col else ""
@@ -186,7 +188,7 @@ def _collect_legend_entries(
                     f"STATUS_LEGEND.md: duplicate code {code!r} with different labels "
                     f"({labels[code]!r} vs {label!r}); using first"
                 )
-                issues.append(Issue(Severity.WARN, msg))
+                issues.append(Issue(Severity.WARN, msg, path=path.as_posix(), line=line_no))
             continue
 
         codes.append(code)
@@ -209,14 +211,19 @@ def load_status_legend(path: Path) -> tuple[StatusLegend, IssueReport]:
     issues: list[Issue] = []
 
     if not path.exists():
-        issues.append(Issue(Severity.ERROR, f"STATUS_LEGEND.md: missing: {path.as_posix()}"))
+        issues.append(Issue(Severity.ERROR, f"STATUS_LEGEND.md: missing: {path.as_posix()}", path=path.as_posix()))
         return StatusLegend((), {}), IssueReport(tuple(issues))
 
     text = path.read_text(encoding="utf-8")
     table = find_table_by_headers(text, ["code", "label"])
     if table is None:
         issues.append(
-            Issue(Severity.ERROR, 'STATUS_LEGEND.md: could not locate a table with "Code" and "Label" headers')
+            Issue(
+                Severity.ERROR,
+                'STATUS_LEGEND.md: could not locate a table with "Code" and "Label" headers',
+                path=path.as_posix(),
+                line=1,
+            )
         )
         return StatusLegend((), {}), IssueReport(tuple(issues))
 
@@ -225,20 +232,35 @@ def load_status_legend(path: Path) -> tuple[StatusLegend, IssueReport]:
     meaning_col = find_column(table.header, "meaning")
 
     if code_col is None or label_col is None:
-        issues.append(Issue(Severity.ERROR, "STATUS_LEGEND.md: table found, but could not resolve Code/Label columns"))
+        issues.append(
+            Issue(
+                Severity.ERROR,
+                "STATUS_LEGEND.md: table found, but could not resolve Code/Label columns",
+                path=path.as_posix(),
+                line=table.start_line,
+            )
+        )
         return StatusLegend((), {}), IssueReport(tuple(issues))
 
-    rows = table_rows_as_dicts(table)
+    rows = table_rows_with_lines(table)
     codes, labels, meanings = _collect_legend_entries(
         rows=rows,
         code_col=code_col,
         label_col=label_col,
         meaning_col=meaning_col,
+        path=path,
         issues=issues,
     )
 
     if not codes:
-        issues.append(Issue(Severity.ERROR, "STATUS_LEGEND.md: no status codes found"))
+        issues.append(
+            Issue(
+                Severity.ERROR,
+                "STATUS_LEGEND.md: no status codes found",
+                path=path.as_posix(),
+                line=table.start_line,
+            )
+        )
 
     return StatusLegend(tuple(codes), labels, meanings), IssueReport(tuple(issues))
 

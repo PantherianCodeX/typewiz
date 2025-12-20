@@ -18,14 +18,14 @@ Track the rewrite deliverables at the artifact level. Keep this list minimal and
 | Roadmap: Windows path support | `docs/_internal/roadmap/windows_paths.md` | | DN | 2025-12-19 | Expand when promoted | Explicitly roadmap-only per plan |
 | Roadmap: Directory overrides | `docs/_internal/roadmap/directory_overrides.md` | | DN | 2025-12-19 | Expand when policy activates | Explicitly deferred per plan |
 | Roadmap: CI candidates (doc checks) | `docs/_internal/roadmap/ci_candidates.md` | | DN | 2025-12-19 | Populate opportunistically | Non-normative recommendations |
-| ADR-0001 (active rewrite) | `docs/_internal/adr/0001-*.md` | | NS | | Draft-2 extraction + mapping gate | Stub in Phase 1 |
-| ADR-0002 (active rewrite) | `docs/_internal/adr/0002-*.md` | | NS | | Draft-2 extraction + mapping gate | Stub in Phase 1 |
-| ADR-0003 (active rewrite) | `docs/_internal/adr/0003-*.md` | | NS | | Draft-2 extraction + mapping gate | Stub in Phase 1; rewrite in Phase 2 |
-| ADR-0004 (active rewrite) | `docs/_internal/adr/0004-*.md` | | NS | | Draft-2 extraction + mapping gate | Stub in Phase 1 |
-| ADR-0005 (active rewrite) | `docs/_internal/adr/0005-*.md` | | NS | | Draft-2 extraction + mapping gate | Stub in Phase 1 |
-| ADR-0006 (active rewrite) | `docs/_internal/adr/0006-*.md` | | NS | | Draft-2 extraction + mapping gate | Stub in Phase 1; rewrite in Phase 2 |
-| ADR-0007 (active rewrite) | `docs/_internal/adr/0007-*.md` | | NS | | Draft-2 extraction + mapping gate | Stub in Phase 1 |
-| ADR-0008 (active rewrite) | `docs/_internal/adr/0008-*.md` | | NS | | Draft-2 extraction + mapping gate | Stub in Phase 1 |
-| ADR-0009 (active rewrite) | `docs/_internal/adr/0009-*.md` | | NS | | Draft-2 extraction + mapping gate | Stub in Phase 1 |
-| Reference specs (folder) | `docs/reference/` | | NS | | Create minimum set per plan | Stubs in Phase 1 |
-| CLI contract docs (folder) | `docs/cli/` | | NS | | Create contract + inventories per plan | Topics exist; contract rewrite pending |
+| ADR-0001 (active rewrite) | `docs/_internal/adr/0001-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
+| ADR-0002 (active rewrite) | `docs/_internal/adr/0002-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
+| ADR-0003 (active rewrite) | `docs/_internal/adr/0003-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1; rewrite in Phase 2 |
+| ADR-0004 (active rewrite) | `docs/_internal/adr/0004-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
+| ADR-0005 (active rewrite) | `docs/_internal/adr/0005-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
+| ADR-0006 (active rewrite) | `docs/_internal/adr/0006-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1; rewrite in Phase 2 |
+| ADR-0007 (active rewrite) | `docs/_internal/adr/0007-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
+| ADR-0008 (active rewrite) | `docs/_internal/adr/0008-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
+| ADR-0009 (active rewrite) | `docs/_internal/adr/0009-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
+| Reference specs (folder) | `docs/reference/` | | IP | 2025-12-19 | Populate Phase 2-6 content | Stubs created in Phase 1 |
+| CLI contract docs (folder) | `docs/cli/` | | IP | 2025-12-19 | Populate Phase 3-6 content | Topics exist;  contract rewrite pending |

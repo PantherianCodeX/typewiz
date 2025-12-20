@@ -29,14 +29,16 @@ from __future__ import annotations
 
 import datetime as dt
 import html
+import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from scripts.docs.s11r2_progress.legend import StatusLegend
     from scripts.docs.s11r2_progress.metrics import Metrics
-    from scripts.docs.s11r2_progress.models import IssueReport
+    from scripts.docs.s11r2_progress.models import Issue, IssueReport
 
 
 @dataclass(frozen=True, slots=True)
@@ -299,34 +301,85 @@ def _render_md_block(md: str) -> str:
     return "\n".join(_clean_lines(state.out))
 
 
-def _render_issue_list(label: str, items: list[str]) -> str:
+def _issue_link(issue: Issue, *, dashboard_dir: Path, repo_root: Path | None) -> str:
+    if not issue.path:
+        return ""
+    loc = issue.path
+    if repo_root is not None:
+        try:
+            loc = Path(issue.path).resolve().relative_to(repo_root).as_posix()
+        except ValueError:
+            loc = issue.path
+    if issue.line is not None:
+        loc = f"{loc}:{issue.line}"
+        if issue.column is not None:
+            loc = f"{loc}:{issue.column}"
+    href_path = Path(issue.path)
+    if not href_path.is_absolute() and repo_root is not None:
+        href_path = (repo_root / href_path).resolve()
+    href_str = Path(os.path.relpath(href_path, start=dashboard_dir)).as_posix()
+    if issue.line is not None:
+        href_str = f"{href_str}#L{issue.line}"
+    return f'<a href="{html.escape(href_str)}">{html.escape(loc)}</a>'
+
+
+def _issue_message(issue: Issue) -> str:
+    message = issue.message
+    if issue.path:
+        basename = Path(issue.path).name
+        prefix = f"{basename}: "
+        if message.startswith(prefix):
+            message = message.removeprefix(prefix)
+    return message
+
+
+def _render_issue_list(
+    label: str,
+    items: list[Issue],
+    *,
+    dashboard_dir: Path,
+    repo_root: Path | None,
+) -> str:
     """Render a severity-tagged HTML list for issues.
 
     Args:
         label: Severity label to render.
-        items: Issue messages to render.
+        items: Issue objects to render.
+        dashboard_dir: Directory containing the dashboard output.
+        repo_root: Repository root for relative issue display.
 
     Returns:
         HTML list string.
     """
     if not items:
         return "<p><em>None.</em></p>"
-    li = "".join(f'<li><span class="sev {label}">{label}</span> {html.escape(m)}</li>' for m in items)
-    return f'<ul class="issues">{li}</ul>'
+
+    rows: list[str] = []
+    for issue in items:
+        message = _issue_message(issue)
+        link = _issue_link(issue, dashboard_dir=dashboard_dir, repo_root=repo_root)
+        if link:
+            rows.append(f'<li><span class="sev {label}">{label}</span> {link} {html.escape(message)}</li>')
+        else:
+            rows.append(f'<li><span class="sev {label}">{label}</span> {html.escape(message)}</li>')
+
+    return f'<ul class="issues">{"".join(rows)}</ul>'
 
 
-def _render_validation_card(report: IssueReport) -> str:
+def _render_validation_card(report: IssueReport, *, dashboard_dir: Path, repo_root: Path | None) -> str:
     """Render the validation findings HTML card.
 
     Args:
         report: Aggregated issue report.
+        dashboard_dir: Path to the dashboard output directory.
+        repo_root: Repository root for relative issue display.
 
     Returns:
         HTML string for the validation card.
     """
-    errors = [i.message for i in report.errors]
-    warns = [i.message for i in report.warnings]
-    infos = [i.message for i in report.infos]
+    errors = list(report.errors)
+    warns = list(report.warnings)
+    infos = list(report.infos)
 
     summary = (
         f"<p>Errors: <strong>{len(errors)}</strong> · Warnings: <strong>{len(warns)}</strong> · "
@@ -337,11 +390,11 @@ def _render_validation_card(report: IssueReport) -> str:
         "<h2>Validation findings</h2>",
         summary,
         "<h3>Errors</h3>",
-        _render_issue_list("ERROR", errors),
+        _render_issue_list("ERROR", errors, dashboard_dir=dashboard_dir, repo_root=repo_root),
         "<h3>Warnings</h3>",
-        _render_issue_list("WARN", warns),
+        _render_issue_list("WARN", warns, dashboard_dir=dashboard_dir, repo_root=repo_root),
         "<h3>Info</h3>",
-        _render_issue_list("INFO", infos),
+        _render_issue_list("INFO", infos, dashboard_dir=dashboard_dir, repo_root=repo_root),
         "</div>",
     ])
 
@@ -379,6 +432,8 @@ def render_dashboard(
     report: IssueReport,
     links: DashboardLinks,
     now: dt.datetime | None = None,
+    dashboard_dir: Path | None = None,
+    repo_root: Path | None = None,
 ) -> str:
     """Render the full HTML dashboard.
 
@@ -388,11 +443,14 @@ def render_dashboard(
         report: Aggregated issue report.
         links: Related artifact links.
         now: Optional timestamp override.
+        dashboard_dir: Directory containing the dashboard output.
+        repo_root: Repository root for relative issue display.
 
     Returns:
         HTML document as a string.
     """
     now_utc = (now or dt.datetime.now(dt.timezone.utc)).astimezone(dt.timezone.utc)
+    dash_dir = dashboard_dir or Path()
 
     toc_items: list[str] = [
         '<li><a href="#validation">Validation findings</a></li>',
@@ -422,78 +480,81 @@ def render_dashboard(
 
     toc = '<ul class="toc">' + "".join(toc_items) + "</ul>"
 
-    return "\n".join([
-        "<!doctype html>",
-        '<html lang="en">',
-        "<head>",
-        '<meta charset="utf-8">',
-        '<meta name="viewport" content="width=device-width, initial-scale=1">',
-        "<title>s11r2 progress dashboard</title>",
-        "<style>",
-        (
-            "body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"
-            "Cantarell,Noto Sans,sans-serif;margin:0;background:#0b0d10;color:#e7e7e7;}"
-        ),
-        "a{color:#9dd0ff;text-decoration:none}a:hover{text-decoration:underline}",
-        "header{padding:18px 22px;border-bottom:1px solid #1b2330;background:#0f131a}",
-        "header h1{margin:0;font-size:18px}",
-        ".sub{margin:6px 0 0 0;color:#b6c2d1;font-size:13px}",
-        "main{padding:18px 22px}",
-        ".layout{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:260px 1fr;gap:16px}",
-        ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}",
-        ".sidebar-card{position:sticky;top:16px;align-self:start}",
-        (
-            ".card{background:#101723;border:1px solid #1b2330;border-radius:12px;"
-            "padding:14px 14px 10px 14px;box-shadow:0 2px 12px rgba(0,0,0,.25)}"
-        ),
-        ".sidebar-card h2{margin:0 0 8px 0;font-size:16px}",
-        ".sidebar-card h3{margin:12px 0 6px 0;font-size:13px}",
-        ".card h2{margin:0 0 10px 0;font-size:16px}",
-        ".card h3{margin:12px 0 8px 0;font-size:14px}",
-        ".nav{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}",
-        ".toc{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}",
-        ".mdblock table{border-collapse:collapse;width:100%;margin:10px 0}",
-        ".mdblock th,.mdblock td{border:1px solid #1b2330;padding:6px 8px;vertical-align:top;font-size:13px}",
-        ".mdblock th{background:#0f131a}",
-        ".mdblock pre{background:#0f131a;border:1px solid #1b2330;border-radius:10px;padding:10px;overflow:auto}",
-        ".mdblock code{background:#0f131a;border:1px solid #1b2330;border-radius:6px;padding:1px 5px}",
-        ".issues{padding-left:18px;font-size:13px}",
-        (
-            ".sev{display:inline-block;font-size:11px;letter-spacing:.02em;"
-            "padding:2px 6px;border-radius:999px;margin-right:6px;border:1px solid #1b2330;background:#0f131a}"
-        ),
-        ".sev.ERROR{border-color:#ff4d4f;color:#ffb3b3}",
-        ".sev.WARN{border-color:#fadb14;color:#fff5a3}",
-        ".sev.INFO{border-color:#40a9ff;color:#bfe3ff}",
-        "@media (max-width: 980px){.layout{grid-template-columns:1fr}.sidebar-card{position:static}}",
-        "</style>",
-        "</head>",
-        "<body>",
-        "<header>",
-        "<h1>s11r2 progress dashboard</h1>",
-        f'<p class="sub">Generated: {html.escape(now_utc.isoformat(timespec="seconds"))}</p>',
-        "</header>",
-        "<main>",
-        '<div class="layout">',
-        '<aside class="card sidebar-card">',
-        "<h2>Index</h2>",
-        "<h3>Links</h3>",
-        nav_links,
-        "<h3>Sections</h3>",
-        toc,
-        "</aside>",
-        "<section>",
-        '<div class="grid">',
-        _render_validation_card(report),
-        _render_legend_card(legend),
-        *metric_cards,
-        "</div>",
-        "</section>",
-        "</div>",
-        "</main>",
-        "</body>",
-        "</html>",
-    ])
+    return (
+        "\n".join([
+            "<!doctype html>",
+            '<html lang="en">',
+            "<head>",
+            '<meta charset="utf-8">',
+            '<meta name="viewport" content="width=device-width, initial-scale=1">',
+            "<title>s11r2 progress dashboard</title>",
+            "<style>",
+            (
+                "body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"
+                "Cantarell,Noto Sans,sans-serif;margin:0;background:#0b0d10;color:#e7e7e7;}"
+            ),
+            "a{color:#9dd0ff;text-decoration:none}a:hover{text-decoration:underline}",
+            "header{padding:18px 22px;border-bottom:1px solid #1b2330;background:#0f131a}",
+            "header h1{margin:0;font-size:18px}",
+            ".sub{margin:6px 0 0 0;color:#b6c2d1;font-size:13px}",
+            "main{padding:18px 22px}",
+            ".layout{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:260px 1fr;gap:16px}",
+            ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}",
+            ".sidebar-card{position:sticky;top:16px;align-self:start}",
+            (
+                ".card{background:#101723;border:1px solid #1b2330;border-radius:12px;"
+                "padding:14px 14px 10px 14px;box-shadow:0 2px 12px rgba(0,0,0,.25)}"
+            ),
+            ".sidebar-card h2{margin:0 0 8px 0;font-size:16px}",
+            ".sidebar-card h3{margin:12px 0 6px 0;font-size:13px}",
+            ".card h2{margin:0 0 10px 0;font-size:16px}",
+            ".card h3{margin:12px 0 8px 0;font-size:14px}",
+            ".nav{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}",
+            ".toc{margin:10px 0 0 0;padding-left:18px;font-size:13px;color:#b6c2d1}",
+            ".mdblock table{border-collapse:collapse;width:100%;margin:10px 0}",
+            ".mdblock th,.mdblock td{border:1px solid #1b2330;padding:6px 8px;vertical-align:top;font-size:13px}",
+            ".mdblock th{background:#0f131a}",
+            ".mdblock pre{background:#0f131a;border:1px solid #1b2330;border-radius:10px;padding:10px;overflow:auto}",
+            ".mdblock code{background:#0f131a;border:1px solid #1b2330;border-radius:6px;padding:1px 5px}",
+            ".issues{padding-left:18px;font-size:13px}",
+            (
+                ".sev{display:inline-block;font-size:11px;letter-spacing:.02em;"
+                "padding:2px 6px;border-radius:999px;margin-right:6px;border:1px solid #1b2330;background:#0f131a}"
+            ),
+            ".sev.ERROR{border-color:#ff4d4f;color:#ffb3b3}",
+            ".sev.WARN{border-color:#fadb14;color:#fff5a3}",
+            ".sev.INFO{border-color:#40a9ff;color:#bfe3ff}",
+            "@media (max-width: 980px){.layout{grid-template-columns:1fr}.sidebar-card{position:static}}",
+            "</style>",
+            "</head>",
+            "<body>",
+            "<header>",
+            "<h1>s11r2 progress dashboard</h1>",
+            f'<p class="sub">Generated: {html.escape(now_utc.isoformat(timespec="seconds"))}</p>',
+            "</header>",
+            "<main>",
+            '<div class="layout">',
+            '<aside class="card sidebar-card">',
+            "<h2>Index</h2>",
+            "<h3>Links</h3>",
+            nav_links,
+            "<h3>Sections</h3>",
+            toc,
+            "</aside>",
+            "<section>",
+            '<div class="grid">',
+            _render_validation_card(report, dashboard_dir=dash_dir, repo_root=repo_root),
+            _render_legend_card(legend),
+            *metric_cards,
+            "</div>",
+            "</section>",
+            "</div>",
+            "</main>",
+            "</body>",
+            "</html>",
+        ])
+        + "\n"
+    )
 
 
 __all__ = [

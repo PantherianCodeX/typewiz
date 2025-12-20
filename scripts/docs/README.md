@@ -21,6 +21,12 @@ From repo root:
 python scripts/docs/s11r2-progress.py --write
 ```
 
+Auto-update (long-running, dashboard only):
+
+```bash
+python scripts/docs/s11r2-progress.py --auto-update --update-interval 10
+```
+
 Preview output without writing:
 
 ```bash

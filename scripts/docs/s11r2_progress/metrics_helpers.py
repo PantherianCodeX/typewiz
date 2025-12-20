@@ -20,11 +20,18 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from scripts.docs.s11r2_progress.md import find_column, find_table_by_headers, strip_md_inline, table_rows_as_dicts
+from scripts.docs.s11r2_progress.md import (
+    find_column,
+    find_table_by_headers,
+    strip_md_inline,
+    table_rows_as_dicts,
+    table_rows_with_lines,
+)
 from scripts.docs.s11r2_progress.models import Issue, Severity
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+    from pathlib import Path
 
     from scripts.docs.s11r2_progress.legend import StatusLegend
     from scripts.docs.s11r2_progress.md import MdTable
@@ -56,6 +63,7 @@ class MasterMappingSourceContext:
 class MasterMappingTableContext:
     table: MdTable
     rows: Sequence[Mapping[str, str]]
+    rows_with_lines: Sequence[tuple[int, Mapping[str, str]]]
     status_col: str
     source_col: str
     dest_col: str
@@ -64,6 +72,7 @@ class MasterMappingTableContext:
 def rewrite_status_context(
     *,
     txt: str,
+    path: Path,
     legend: StatusLegend,
     issues: list[Issue],
 ) -> RewriteStatusContext | None:
@@ -71,6 +80,7 @@ def rewrite_status_context(
 
     Args:
         txt: Full rewrite_status.md content.
+        path: Path to rewrite_status.md.
         legend: Status legend for normalization.
         issues: Issue list to append errors to.
 
@@ -79,7 +89,14 @@ def rewrite_status_context(
     """
     table = find_table_by_headers(txt, ["artifact", "status"])
     if table is None:
-        issues.append(Issue(Severity.ERROR, "rewrite_status.md: expected a table with Artifact and Status columns"))
+        issues.append(
+            Issue(
+                Severity.ERROR,
+                "rewrite_status.md: expected a table with Artifact and Status columns",
+                path=path.as_posix(),
+                line=1,
+            )
+        )
         return None
 
     rows = table_rows_as_dicts(table)
@@ -101,12 +118,14 @@ def rewrite_status_context(
 def master_mapping_sources_context(
     *,
     txt: str,
+    path: Path,
     issues: list[Issue],
 ) -> MasterMappingSourceContext | None:
     """Parse the sources table for the master mapping ledger.
 
     Args:
         txt: Full master_mapping_ledger.md content.
+        path: Path to master_mapping_ledger.md.
         issues: Issue list to append errors to.
 
     Returns:
@@ -115,7 +134,12 @@ def master_mapping_sources_context(
     sources_t = find_table_by_headers(txt, ["source id", "file", "status"])
     if sources_t is None:
         issues.append(
-            Issue(Severity.ERROR, "master_mapping_ledger.md: expected a table with Source ID / File / Status")
+            Issue(
+                Severity.ERROR,
+                "master_mapping_ledger.md: expected a table with Source ID / File / Status",
+                path=path.as_posix(),
+                line=1,
+            )
         )
         return None
 
@@ -138,11 +162,12 @@ def master_mapping_sources_context(
     )
 
 
-def master_mapping_table_context(*, txt: str, issues: list[Issue]) -> MasterMappingTableContext | None:
+def master_mapping_table_context(*, txt: str, path: Path, issues: list[Issue]) -> MasterMappingTableContext | None:
     """Locate and parse the master mapping table, if present.
 
     Args:
         txt: Full master_mapping_ledger.md content.
+        path: Path to master_mapping_ledger.md.
         issues: Issue list to append warnings to.
 
     Returns:
@@ -166,11 +191,14 @@ def master_mapping_table_context(*, txt: str, issues: list[Issue]) -> MasterMapp
                     "master_mapping_ledger.md: mapping table not found (expected headers similar to: "
                     "MAP ID / Source ID / Target / Status or Row ID / Source ID / Destination doc / Status)"
                 ),
+                path=path.as_posix(),
+                line=1,
             )
         )
         return None
 
     map_rows = table_rows_as_dicts(mapping_t)
+    map_rows_with_lines = table_rows_with_lines(mapping_t)
     map_status_col = find_column(mapping_t.header, "status") or "Status"
     map_src_col = find_column(mapping_t.header, "source id") or "Source ID"
     map_dest_col = (
@@ -180,6 +208,7 @@ def master_mapping_table_context(*, txt: str, issues: list[Issue]) -> MasterMapp
     return MasterMappingTableContext(
         table=mapping_t,
         rows=map_rows,
+        rows_with_lines=map_rows_with_lines,
         status_col=map_status_col,
         source_col=map_src_col,
         dest_col=map_dest_col,
@@ -188,10 +217,10 @@ def master_mapping_table_context(*, txt: str, issues: list[Issue]) -> MasterMapp
 
 def effective_mapping_rows(
     *,
-    rows: Sequence[Mapping[str, str]],
+    rows: Sequence[tuple[int, Mapping[str, str]]],
     source_col: str,
     dest_col: str,
-) -> tuple[list[Mapping[str, str]], int]:
+) -> tuple[list[tuple[int, Mapping[str, str]]], int]:
     """Filter out placeholder mapping rows and return effective rows + count.
 
     Args:
@@ -202,25 +231,26 @@ def effective_mapping_rows(
     Returns:
         Tuple of effective rows and placeholder row count.
     """
-    effective_rows: list[Mapping[str, str]] = []
+    effective_rows: list[tuple[int, Mapping[str, str]]] = []
     placeholder = 0
-    for row in rows:
+    for line_no, row in rows:
         sid = strip_md_inline(row.get(source_col, "") or "").strip()
         dest = strip_md_inline(row.get(dest_col, "") or "").strip()
         if not sid and not dest:
             placeholder += 1
             continue
-        effective_rows.append(row)
+        effective_rows.append((line_no, row))
 
     return (effective_rows, placeholder)
 
 
 def validate_mapping_rows(
     *,
-    rows: Sequence[Mapping[str, str]],
+    rows: Sequence[tuple[int, Mapping[str, str]]],
     source_col: str,
     dest_col: str,
     known_sources: set[str],
+    path: Path,
     issues: list[Issue],
 ) -> Counter[str]:
     """Validate mapping rows and return a per-source row count.
@@ -230,6 +260,7 @@ def validate_mapping_rows(
         source_col: Source ID column name.
         dest_col: Destination column name.
         known_sources: Known source IDs for validation.
+        path: Path to master_mapping_ledger.md.
         issues: Issue list to append errors and warnings to.
 
     Returns:
@@ -238,20 +269,39 @@ def validate_mapping_rows(
     referenced_sources: set[str] = set()
     per_source_map_rows: Counter[str] = Counter()
 
-    for row in rows:
+    for line_no, row in rows:
         sid = strip_md_inline(row.get(source_col, "") or "").strip()
         dest = strip_md_inline(row.get(dest_col, "") or "").strip()
         if sid:
             referenced_sources.add(sid)
             per_source_map_rows[sid] += 1
         if not sid:
-            issues.append(Issue(Severity.WARN, "master_mapping_ledger.md: mapping row missing Source ID"))
+            issues.append(
+                Issue(
+                    Severity.WARN,
+                    "master_mapping_ledger.md: mapping row missing Source ID",
+                    path=path.as_posix(),
+                    line=line_no,
+                )
+            )
         if not dest:
-            issues.append(Issue(Severity.WARN, "master_mapping_ledger.md: mapping row missing Destination doc"))
+            issues.append(
+                Issue(
+                    Severity.WARN,
+                    "master_mapping_ledger.md: mapping row missing Destination doc",
+                    path=path.as_posix(),
+                    line=line_no,
+                )
+            )
 
     unknown_refs = sorted(referenced_sources - known_sources)
     issues.extend(
-        Issue(Severity.ERROR, f"master_mapping_ledger.md: mapping references unknown Source ID: {sid}")
+        Issue(
+            Severity.ERROR,
+            f"master_mapping_ledger.md: mapping references unknown Source ID: {sid}",
+            path=path.as_posix(),
+            line=1,
+        )
         for sid in unknown_refs
     )
 

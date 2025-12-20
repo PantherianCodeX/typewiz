@@ -46,6 +46,9 @@ class Issue:
 
     severity: Severity
     message: str
+    path: str | None = None
+    line: int | None = None
+    column: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

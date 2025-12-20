@@ -98,6 +98,7 @@
 
 - Treat any user-made changes as intentional, even if they are unexpected.
 - Log unexpected changes and continue working unless they block your task or create a direct conflict.
+- Auto-generated docs (for example, the s11r2 progress board/dashboard) may change during `--auto-update` runs; log these as automated updates rather than manual edits.
 - Only stop for directions when a user change directly prevents progress or introduces a clear error for the current task.
 - Never revert or discard user changes unless explicitly directed. Never.
 

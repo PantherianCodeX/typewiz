@@ -16,6 +16,9 @@ If you only want one output:
 
 - Markdown only: `python scripts/docs/s11r2-progress.py --write`
 - HTML only: `python scripts/docs/s11r2-progress.py --write-html`
+- Auto-update (long-running, dashboard only): `python scripts/docs/s11r2-progress.py --auto-update --update-interval 10`
+- Auto-update markdown only: `python scripts/docs/s11r2-progress.py --auto-update --update-interval 10 --write`
+- Auto-update markdown + dashboard: `python scripts/docs/s11r2-progress.py --auto-update --update-interval 10 --write --write-html`
 
 ## CI / gating mode
 

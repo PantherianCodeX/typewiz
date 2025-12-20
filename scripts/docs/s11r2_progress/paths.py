@@ -125,7 +125,14 @@ def discover_paths(repo_root: Path) -> tuple[S11R2Paths, IssueReport]:
     missing_tags = [t for t in (*_REQUIRED_INPUT_TAGS, *_REQUIRED_OUTPUT_TAGS) if t not in tagged]
     for kind, key in missing_tags:
         # Missing tags are warnings (fallback may still succeed), but we want the index to be machine-friendly.
-        issues.append(Issue(Severity.WARN, f"registry_index.md: missing recommended tag: <!-- s11r2-{kind}:{key} -->"))
+        issues.append(
+            Issue(
+                Severity.WARN,
+                f"registry_index.md: missing recommended tag: <!-- s11r2-{kind}:{key} -->",
+                path=idx.as_posix(),
+                line=1,
+            )
+        )
 
     def _resolve(target: str) -> Path:
         # All link targets are treated as paths relative to registers_dir.
@@ -155,7 +162,14 @@ def discover_paths(repo_root: Path) -> tuple[S11R2Paths, IssueReport]:
 
     # Validate required *inputs* exist.
     if not status_legend.exists():
-        issues.append(Issue(Severity.ERROR, f"registry_index.md: status legend missing: {status_legend.as_posix()}"))
+        issues.append(
+            Issue(
+                Severity.ERROR,
+                f"registry_index.md: status legend missing: {status_legend.as_posix()}",
+                path=idx.as_posix(),
+                line=1,
+            )
+        )
 
     # Validate required *outputs* are under the progress directory.
     progress_dir = (s11r2_dir / "progress").resolve()
@@ -169,7 +183,7 @@ def discover_paths(repo_root: Path) -> tuple[S11R2Paths, IssueReport]:
                 f"registry_index.md: output for {label} must be under `{progress_dir.as_posix()}` "
                 f"(got `{out_path.as_posix()}`)"
             )
-            issues.append(Issue(Severity.ERROR, msg))
+            issues.append(Issue(Severity.ERROR, msg, path=idx.as_posix(), line=1))
 
     paths = S11R2Paths(
         repo_root=root,

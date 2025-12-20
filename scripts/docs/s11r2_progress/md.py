@@ -130,6 +130,22 @@ def table_rows_as_dicts(table: MdTable) -> list[dict[str, str]]:
     return [dict(zip(table.header, row, strict=True)) for row in table.rows]
 
 
+def table_rows_with_lines(table: MdTable) -> list[tuple[int, dict[str, str]]]:
+    """Return table rows as (line_number, row_dict) tuples.
+
+    Args:
+        table: Parsed markdown table.
+
+    Returns:
+        List of (line_number, row dict) tuples.
+    """
+    rows: list[tuple[int, dict[str, str]]] = []
+    for idx, row in enumerate(table.rows):
+        line_no = table.start_line + 2 + idx
+        rows.append((line_no, dict(zip(table.header, row, strict=True))))
+    return rows
+
+
 def find_column(headers: Iterable[str], fragment: str) -> str | None:
     """Return the first header containing the fragment (case-insensitive).
 
@@ -270,4 +286,5 @@ __all__ = [
     "split_pipe_row",
     "strip_md_inline",
     "table_rows_as_dicts",
+    "table_rows_with_lines",
 ]

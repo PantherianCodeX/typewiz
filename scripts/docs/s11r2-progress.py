@@ -23,10 +23,12 @@ Thin wrapper around the implementation in `scripts/docs/s11r2_progress/`.
 from __future__ import annotations
 
 import sys
+from importlib import import_module
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final, cast
 
-from scripts.docs.s11r2_progress import main as _main
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _REPO_ROOT_PARENT_LEVELS: Final[int] = 2
 
@@ -45,7 +47,11 @@ def main(argv: list[str]) -> int:
     if repo_root_str not in sys.path:
         sys.path.insert(0, repo_root_str)
 
-    return _main(argv)
+    main_fn = cast(
+        "Callable[[list[str]], int]",
+        import_module("scripts.docs.s11r2_progress").main,
+    )
+    return main_fn(argv)
 
 
 if __name__ == "__main__":

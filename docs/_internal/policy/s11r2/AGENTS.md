@@ -46,6 +46,7 @@ If you are working on the progress board or dashboard:
 - Do not edit files under `docs/_internal/policy/s11r2/progress/` by hand.
 - Read `docs/_internal/policy/s11r2/registers/registry_index.md` to confirm input/output paths.
 - Use `python scripts/docs/s11r2-progress.py --write --write-html` (with `PYTHONPATH=.`) to regenerate outputs.
+- Use `python scripts/docs/s11r2-progress.py --auto-update --update-interval 10` for long-running auto-updates (dashboard-only by default).
 
 ---
 
@@ -285,6 +286,42 @@ If you need a decision that is not already resolved by the plan/policy:
 ---
 
 ## Draft log
+
+### 2025-12-19 — Add update interval guidance
+
+- **Change:** Documented `--update-interval` for long-running auto-update.
+- **Preservation:** N/A (governance guidance update).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.
+
+### 2025-12-19 — Clarify auto-update defaults
+
+- **Change:** Noted that auto-update defaults to dashboard-only unless `--write` is set.
+- **Preservation:** N/A (governance guidance update).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.
+
+### 2025-12-19 — Switch to cron-friendly auto-update
+
+- **Change:** Replaced watch guidance with `--auto-update` (cron-friendly) for progress outputs.
+- **Preservation:** N/A (governance guidance update).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.
+
+### 2025-12-19 — Add auto-update guidance
+
+- **Change:** Documented the `--watch` auto-update option for progress outputs.
+- **Preservation:** N/A (governance guidance update).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.
 
 ### 2025-12-20 — Phase 0 verification updates
 

@@ -38,10 +38,15 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import logging
 import os
 import re
 import sys
+import time
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+from typing_extensions import override
 
 from scripts.docs.s11r2_progress.dashboard import DashboardLinks, render_dashboard
 from scripts.docs.s11r2_progress.legend import load_status_legend
@@ -49,6 +54,11 @@ from scripts.docs.s11r2_progress.metrics import compute_metrics
 from scripts.docs.s11r2_progress.models import FailOn, Issue, IssueReport, Severity
 from scripts.docs.s11r2_progress.paths import S11R2Paths, discover_paths
 from scripts.docs.s11r2_progress.render import compose_progress_board_output
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+_LOGGER = logging.getLogger("s11r2-progress")
 
 
 def _parse_fail_on(value: str) -> FailOn:
@@ -101,6 +111,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--auto-update",
+        action="store_true",
+        help="Run continuously and write outputs when they are missing or out of date",
+    )
+    parser.add_argument(
+        "--update-interval",
+        type=float,
+        default=10.0,
+        help="Polling interval in seconds for --auto-update (default: 10.0)",
+    )
+    parser.add_argument(
         "--fail-on",
         type=_parse_fail_on,
         default=FailOn.ERROR,
@@ -109,8 +130,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
     args = parser.parse_args(argv)
 
-    if args.check and (args.write or args.write_html):
-        parser.error("--check cannot be combined with --write or --write-html")
+    if args.check and (args.write or args.write_html or args.auto_update):
+        parser.error("--check cannot be combined with --write, --write-html, or --auto-update")
+    if args.update_interval <= 0:
+        parser.error("--update-interval must be greater than 0")
 
     return args
 
@@ -127,13 +150,32 @@ def _href(from_dir: Path, to_path: Path) -> str:
     return rel.as_posix()
 
 
-def _format_issue(issue: Issue) -> str:
+def _format_issue(issue: Issue, *, repo_root: Path | None) -> str:
     """Format an issue for stderr output.
 
     Returns:
         Formatted issue string.
     """
-    return f"{issue.severity}: {issue.message}"
+    location = ""
+    message = issue.message
+    if issue.path:
+        location = issue.path
+        if repo_root is not None:
+            try:
+                location = Path(issue.path).resolve().relative_to(repo_root).as_posix()
+            except ValueError:
+                location = issue.path
+        basename = Path(issue.path).name
+        prefix = f"{basename}: "
+        if message.startswith(prefix):
+            message = message.removeprefix(prefix)
+        if issue.line is not None:
+            location = f"{location}:{issue.line}"
+            if issue.column is not None:
+                location = f"{location}:{issue.column}"
+    if location:
+        return f"{location}: {issue.severity}: {message}"
+    return f"{issue.severity}: {message}"
 
 
 def _merge_reports(*reports: IssueReport) -> IssueReport:
@@ -148,25 +190,132 @@ def _merge_reports(*reports: IssueReport) -> IssueReport:
     return IssueReport(tuple(merged))
 
 
+class _LogFormatter(logging.Formatter):
+    @override
+    def format(self, record: logging.LogRecord) -> str:
+        """Format a log record, suppressing prefixes for continuation lines.
+
+        Returns:
+            Formatted log line.
+        """
+        if getattr(record, "continuation", False):
+            return record.getMessage()
+        return f"[{record.levelname}] {record.getMessage()}"
+
+
+def _log_lines(lines: Iterable[str]) -> None:
+    for line in lines:
+        _LOGGER.info(line, extra={"continuation": True})
+
+
+def _input_paths(paths: S11R2Paths) -> list[Path]:
+    register_paths = sorted(paths.registers_dir.glob("*.md"))
+    return [paths.registry_index, paths.status_legend, *register_paths]
+
+
+def _fingerprint(paths: Iterable[Path]) -> dict[str, tuple[int, int] | None]:
+    out: dict[str, tuple[int, int] | None] = {}
+    for path in sorted({p.resolve() for p in paths}):
+        if path.exists():
+            stat = path.stat()
+            out[path.as_posix()] = (stat.st_mtime_ns, stat.st_size)
+        else:
+            out[path.as_posix()] = None
+    return out
+
+
+def _diff_fingerprint(
+    previous: dict[str, tuple[int, int] | None],
+    current: dict[str, tuple[int, int] | None],
+) -> list[str]:
+    all_paths = set(previous) | set(current)
+    return [path for path in sorted(all_paths) if previous.get(path) != current.get(path)]
+
+
+def _format_input_path(path: str, *, base_dir: Path) -> str:
+    return Path(os.path.relpath(path, start=base_dir)).as_posix()
+
+
+def _format_updated_outputs(updated: list[str], *, base_dir: Path) -> str:
+    names = {Path(path).name for path in updated}
+    dashboard_name = Path(base_dir / "dashboard" / "index.html").name
+    progress_name = Path(base_dir / "progress_board.md").name
+    labels: list[str] = []
+    if dashboard_name in names:
+        labels.append("Dashboard")
+    if progress_name in names:
+        labels.append("Progress board")
+    if not labels:
+        labels = [Path(path).name for path in updated]
+    if len(labels) == 1:
+        return f"{labels[0]} updated"
+    return f"{', '.join(labels[:-1])} and {labels[-1]} updated"
+
+
+def _generate_outputs(
+    *,
+    repo_root: Path,
+    fail_on: FailOn,
+    allow_fail: bool,
+) -> tuple[S11R2Paths, IssueReport, str, str]:
+    paths, paths_report = discover_paths(repo_root=repo_root)
+    inputs_report = _guard_inputs_exist(paths)
+
+    legend, legend_report = load_status_legend(paths.status_legend)
+    metrics = compute_metrics(registers_dir=paths.registers_dir, registry_index=paths.registry_index, legend=legend)
+
+    report = _merge_reports(paths_report, inputs_report, legend_report, metrics.report)
+
+    if report.should_fail(fail_on=fail_on) and not allow_fail:
+        raise ValueError(report)
+
+    now = dt.datetime.now(dt.timezone.utc)
+    md_out = compose_progress_board_output(paths=paths, metrics=metrics, report=report, legend=legend, now=now)
+
+    dash_dir = paths.generated_dashboard.parent
+    links = DashboardLinks(
+        registry_index_href=_href(dash_dir, paths.registry_index),
+        progress_board_href=_href(dash_dir, paths.generated_progress_board),
+        status_legend_href=_href(dash_dir, paths.status_legend),
+    )
+    html_out = render_dashboard(
+        legend=legend,
+        metrics=metrics,
+        report=report,
+        links=links,
+        now=now,
+        dashboard_dir=dash_dir,
+        repo_root=repo_root,
+    )
+
+    return paths, report, md_out, html_out
+
+
 def _stabilize_markdown_timestamp(existing: str, new: str) -> str:
-    """Keep the existing `_Generated:` line if only the timestamp changed.
+    """Keep the existing timestamp line if only the timestamp changed.
 
     Returns:
         Stabilized markdown content.
     """
-    ts_re = re.compile(r"^_Generated:\s+.*_$", flags=re.MULTILINE)
+    patterns = (
+        re.compile(r"^_Generated:\s+.*_$", flags=re.MULTILINE),
+        re.compile(r"^Timestamp:\s+.*$", flags=re.MULTILINE),
+    )
 
-    existing_norm = ts_re.sub("*Generated: __STAMP_*", existing)
-    new_norm = ts_re.sub("*Generated: __STAMP_*", new)
+    for ts_re in patterns:
+        existing_norm = ts_re.sub("Timestamp: __STAMP__", existing)
+        new_norm = ts_re.sub("Timestamp: __STAMP__", new)
 
-    if existing_norm != new_norm:
-        return new
+        if existing_norm != new_norm:
+            continue
 
-    m = ts_re.search(existing)
-    if not m:
-        return new
+        m = ts_re.search(existing)
+        if not m:
+            continue
 
-    return ts_re.sub(m.group(0), new, count=1)
+        return ts_re.sub(m.group(0), new, count=1)
+
+    return new
 
 
 def _stabilize_html_timestamp(existing: str, new: str) -> str:
@@ -234,8 +383,151 @@ def _guard_inputs_exist(paths: S11R2Paths) -> IssueReport:
         (paths.status_legend, "status_legend"),
     ):
         if not p.exists():
-            issues.append(Issue(Severity.ERROR, f"Missing required input file: {label} -> {p.as_posix()}"))
+            issues.append(
+                Issue(
+                    Severity.ERROR,
+                    f"Missing required input file: {label} -> {p.as_posix()}",
+                    path=p.as_posix(),
+                )
+            )
     return IssueReport(tuple(issues))
+
+
+def _emit_validation_failure(report: IssueReport, *, repo_root: Path | None) -> None:
+    _LOGGER.info("validation failed (%d)", len(report.issues))
+    _log_lines([f"- {_format_issue(issue, repo_root=repo_root)}" for issue in report.issues])
+
+
+def _try_generate(
+    *,
+    repo_root: Path,
+    fail_on: FailOn,
+    emit_errors: bool,
+    allow_fail: bool,
+) -> tuple[S11R2Paths, IssueReport, str, str] | None:
+    try:
+        return _generate_outputs(repo_root=repo_root, fail_on=fail_on, allow_fail=allow_fail)
+    except ValueError as exc:
+        report = exc.args[0] if exc.args and isinstance(exc.args[0], IssueReport) else IssueReport(())
+        if emit_errors:
+            _emit_validation_failure(report, repo_root=repo_root)
+        return None
+
+
+def _check_outputs(paths: S11R2Paths, md_out: str, html_out: str) -> int:
+    missing_or_stale: list[str] = []
+    if not _is_up_to_date(paths.generated_progress_board, md_out, kind="md"):
+        missing_or_stale.append(paths.generated_progress_board.as_posix())
+    if not _is_up_to_date(paths.generated_dashboard, html_out, kind="html"):
+        missing_or_stale.append(paths.generated_dashboard.as_posix())
+
+    if missing_or_stale:
+        _LOGGER.info("outputs are missing or out of date")
+        _log_lines([f"- {_format_input_path(p, base_dir=_repo_root())}" for p in missing_or_stale])
+        return 1
+
+    return 0
+
+
+def _write_outputs(
+    paths: S11R2Paths,
+    md_out: str,
+    html_out: str,
+    *,
+    write: bool,
+    write_html: bool,
+) -> list[str]:
+    updated: list[str] = []
+    if write and not _is_up_to_date(paths.generated_progress_board, md_out, kind="md"):
+        _write_text_stable(paths.generated_progress_board, md_out, kind="md")
+        updated.append(paths.generated_progress_board.as_posix())
+
+    if write_html and not _is_up_to_date(paths.generated_dashboard, html_out, kind="html"):
+        _write_text_stable(paths.generated_dashboard, html_out, kind="html")
+        updated.append(paths.generated_dashboard.as_posix())
+
+    return updated
+
+
+def _auto_update(
+    *,
+    paths: S11R2Paths,
+    md_out: str,
+    html_out: str,
+    write: bool,
+    write_html: bool,
+) -> list[str]:
+    outputs_stale = not _is_up_to_date(paths.generated_progress_board, md_out, kind="md") or not _is_up_to_date(
+        paths.generated_dashboard, html_out, kind="html"
+    )
+    if outputs_stale:
+        return _write_outputs(paths, md_out, html_out, write=write, write_html=write_html)
+    return []
+
+
+def _issues_fingerprint(report: IssueReport) -> tuple[tuple[str, str, str | None, int | None, int | None], ...]:
+    return tuple((issue.severity, issue.message, issue.path, issue.line, issue.column) for issue in report.issues)
+
+
+def _run_auto_update_loop(
+    *,
+    repo_root: Path,
+    fail_on: FailOn,
+    write: bool,
+    write_html: bool,
+    interval: float,
+    initial_issue_fingerprint: tuple[tuple[str, str, str | None, int | None, int | None], ...] | None,
+) -> int:
+    last_issue_fingerprint = initial_issue_fingerprint
+    last_input_fingerprint: dict[str, tuple[int, int] | None] | None = None
+    _LOGGER.info("auto-update running (press Ctrl+C to stop)")
+    while True:
+        time.sleep(interval)
+        result = _try_generate(
+            repo_root=repo_root,
+            fail_on=fail_on,
+            emit_errors=False,
+            allow_fail=True,
+        )
+        if result is None:
+            continue
+        paths, report, md_out, html_out = result
+        current_inputs = _fingerprint(_input_paths(paths))
+        if last_input_fingerprint is None:
+            last_input_fingerprint = current_inputs
+        else:
+            changed_inputs = _diff_fingerprint(last_input_fingerprint, current_inputs)
+            if changed_inputs:
+                _LOGGER.info("inputs changed (%d)", len(changed_inputs))
+                _log_lines([f"- {_format_input_path(p, base_dir=repo_root)}" for p in changed_inputs])
+                last_input_fingerprint = current_inputs
+                last_issue_fingerprint = None
+        issue_fingerprint = _issues_fingerprint(report)
+        if issue_fingerprint != last_issue_fingerprint:
+            if report.issues:
+                _LOGGER.info("issues detected (%d)", len(report.issues))
+                _log_lines([f"- {_format_issue(issue, repo_root=repo_root)}" for issue in report.issues])
+            else:
+                _LOGGER.info("no issues detected")
+            last_issue_fingerprint = issue_fingerprint
+        updated = _auto_update(
+            paths=paths,
+            md_out=md_out,
+            html_out=html_out,
+            write=write,
+            write_html=write_html,
+        )
+        if updated:
+            _LOGGER.info(_format_updated_outputs(updated, base_dir=paths.generated_dashboard.parent))
+
+
+def _apply_update_policy(
+    *,
+    write: bool,
+    write_html: bool,
+    auto_update: bool,
+) -> tuple[bool, bool, bool]:
+    return write, write_html, auto_update
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -247,55 +539,66 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Exit code (0 for success).
     """
+    handler = logging.StreamHandler()
+    handler.setFormatter(_LogFormatter())
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.INFO)
     args = parse_args(sys.argv[1:] if argv is None else argv)
 
     repo_root = _repo_root()
-    paths, paths_report = discover_paths(repo_root=repo_root)
-    inputs_report = _guard_inputs_exist(paths)
+    if args.auto_update and not (args.write or args.write_html):
+        args.write = False
+        args.write_html = True
 
-    legend, legend_report = load_status_legend(paths.status_legend)
-    metrics = compute_metrics(registers_dir=paths.registers_dir, registry_index=paths.registry_index, legend=legend)
-
-    report = _merge_reports(paths_report, inputs_report, legend_report, metrics.report)
-
-    if report.should_fail(fail_on=args.fail_on):
-        sys.stderr.write("s11r2-progress: validation failed\n")
-        for issue in report.issues:
-            sys.stderr.write(f"- {_format_issue(issue)}\n")
+    result = _try_generate(
+        repo_root=repo_root,
+        fail_on=args.fail_on,
+        emit_errors=True,
+        allow_fail=args.auto_update,
+    )
+    if result is None:
         return 2
 
-    now = dt.datetime.now(dt.timezone.utc)
-
-    md_out = compose_progress_board_output(paths=paths, metrics=metrics, report=report, legend=legend, now=now)
-
-    dash_dir = paths.generated_dashboard.parent
-    links = DashboardLinks(
-        registry_index_href=_href(dash_dir, paths.registry_index),
-        progress_board_href=_href(dash_dir, paths.generated_progress_board),
-        status_legend_href=_href(dash_dir, paths.status_legend),
-    )
-    html_out = render_dashboard(legend=legend, metrics=metrics, report=report, links=links, now=now)
+    paths, report, md_out, html_out = result
 
     if args.check:
-        missing_or_stale: list[str] = []
-        if not _is_up_to_date(paths.generated_progress_board, md_out, kind="md"):
-            missing_or_stale.append(paths.generated_progress_board.as_posix())
-        if not _is_up_to_date(paths.generated_dashboard, html_out, kind="html"):
-            missing_or_stale.append(paths.generated_dashboard.as_posix())
+        return _check_outputs(paths, md_out, html_out)
 
-        if missing_or_stale:
-            sys.stderr.write("s11r2-progress: outputs are missing or out of date\n")
-            for p in missing_or_stale:
-                sys.stderr.write(f"- {p}\n")
-            return 1
+    write, write_html, auto_update = _apply_update_policy(
+        write=args.write,
+        write_html=args.write_html,
+        auto_update=args.auto_update,
+    )
 
-        return 0
+    if auto_update:
+        if report.issues:
+            _LOGGER.info("issues detected (%d)", len(report.issues))
+            _log_lines([f"- {_format_issue(issue, repo_root=repo_root)}" for issue in report.issues])
+        else:
+            _LOGGER.info("no issues detected")
+        updated = _auto_update(
+            paths=paths,
+            md_out=md_out,
+            html_out=html_out,
+            write=write,
+            write_html=write_html,
+        )
+        if updated:
+            _LOGGER.info(_format_updated_outputs(updated, base_dir=paths.generated_dashboard.parent))
+        return _run_auto_update_loop(
+            repo_root=repo_root,
+            fail_on=args.fail_on,
+            write=write,
+            write_html=write_html,
+            interval=args.update_interval,
+            initial_issue_fingerprint=_issues_fingerprint(report),
+        )
 
-    if args.write:
-        _write_text_stable(paths.generated_progress_board, md_out, kind="md")
-
-    if args.write_html:
-        _write_text_stable(paths.generated_dashboard, html_out, kind="html")
+    updated = _write_outputs(paths, md_out, html_out, write=write, write_html=write_html)
+    if updated:
+        _LOGGER.info(_format_updated_outputs(updated, base_dir=paths.generated_dashboard.parent))
 
     return 0
 

@@ -84,8 +84,10 @@ class _StatusCell:
 
 
 @dataclass(frozen=True, slots=True)
-class _StatusValidationSpec:
+# ignore JUSTIFIED: Validation spec carries multiple related fields for error reporting.
+class _StatusValidationSpec:  # pylint: disable=too-many-instance-attributes
     file_label: str
+    file_path: str
     id_col: str
     status_col: str
     legend: StatusLegend
@@ -100,7 +102,14 @@ def _read_text(path: Path, *, issues: list[Issue], label: str, required: bool) -
         return path.read_text(encoding="utf-8")
     except FileNotFoundError:
         if required:
-            issues.append(Issue(Severity.ERROR, f"Missing required register: {label}: {path.as_posix()}"))
+            issues.append(
+                Issue(
+                    Severity.ERROR,
+                    f"Missing required register: {label}: {path.as_posix()}",
+                    path=path.as_posix(),
+                    line=1,
+                )
+            )
         return None
 
 
@@ -143,12 +152,14 @@ def _validate_status_column(
     *,
     rows: Iterable[Mapping[str, str]],
     spec: _StatusValidationSpec,
+    table_start_line: int,
 ) -> None:
     allowed = set(spec.legend.codes)
 
     for idx, row in enumerate(rows, start=1):
         row_id_raw = strip_md_inline(row.get(spec.id_col, "") or "").strip()
         row_id = row_id_raw or f"row {idx}"
+        row_line = table_start_line + 2 + (idx - 1)
 
         raw_status = row.get(spec.status_col, "") or ""
         code = _normalize_status(raw_status, legend=spec.legend)
@@ -156,7 +167,14 @@ def _validate_status_column(
         if not code:
             if spec.allow_empty:
                 continue
-            spec.issues.append(Issue(spec.severity, f"{spec.file_label}: {row_id}: empty `{spec.status_col}`"))
+            spec.issues.append(
+                Issue(
+                    spec.severity,
+                    f"{spec.file_label}: {row_id}: empty `{spec.status_col}`",
+                    path=spec.file_path,
+                    line=row_line,
+                )
+            )
             continue
 
         if code not in allowed:
@@ -164,6 +182,8 @@ def _validate_status_column(
                 Issue(
                     spec.severity,
                     f"{spec.file_label}: {row_id}: invalid status code {code!r} in `{spec.status_col}`",
+                    path=spec.file_path,
+                    line=row_line,
                 )
             )
             continue
@@ -216,6 +236,7 @@ def _scan_registry_status_tables(
                     rows=rows,
                     spec=_StatusValidationSpec(
                         file_label=file_label,
+                        file_path=p.as_posix(),
                         id_col=id_col,
                         status_col=status_col,
                         legend=legend,
@@ -224,6 +245,7 @@ def _scan_registry_status_tables(
                         allow_empty=False,
                         collected=collected_cells,
                     ),
+                    table_start_line=t.start_line,
                 )
 
                 for c in collected_cells:
@@ -282,7 +304,14 @@ def _discover_registry_md_paths(
         tp = (index_dir / Path(target)).resolve()
         if tp.suffix.lower() == ".md" and tp.is_relative_to(registers_dir):
             if not tp.exists():
-                issues.append(Issue(Severity.ERROR, f"registry_index.md: linked registry missing: {target}"))
+                issues.append(
+                    Issue(
+                        Severity.ERROR,
+                        f"registry_index.md: linked registry missing: {target}",
+                        path=registry_index.as_posix(),
+                        line=1,
+                    )
+                )
             indexed.add(tp)
 
     present = {p.resolve() for p in registers_dir.rglob("*.md") if p.is_file()}
@@ -292,7 +321,14 @@ def _discover_registry_md_paths(
     unindexed = sorted(present - indexed)
     for p in unindexed:
         rel = p.relative_to(registers_dir).as_posix() if p.is_relative_to(registers_dir) else p.as_posix()
-        issues.append(Issue(Severity.WARN, f"registry_index.md: registry present but not indexed: {rel}"))
+        issues.append(
+            Issue(
+                Severity.WARN,
+                f"registry_index.md: registry present but not indexed: {rel}",
+                path=registry_index.as_posix(),
+                line=1,
+            )
+        )
 
     return indexed, present
 
@@ -600,7 +636,7 @@ def _metrics_for_rewrite_status(*, registers_dir: Path, legend: StatusLegend, is
     if txt is None:
         return []
 
-    context = rewrite_status_context(txt=txt, legend=legend, issues=issues)
+    context = rewrite_status_context(txt=txt, path=path, legend=legend, issues=issues)
     if context is None:
         return []
 
@@ -697,25 +733,25 @@ def _metrics_for_master_mapping(*, registers_dir: Path, legend: StatusLegend, is
 
     blocks: list[MetricBlock] = []
 
-    source_ctx = master_mapping_sources_context(txt=txt, issues=issues)
+    source_ctx = master_mapping_sources_context(txt=txt, path=path, issues=issues)
     if source_ctx is None:
         return []
 
     src_counts = _count_by_status(source_ctx.rows, source_ctx.status_col, legend=legend)
     blocks.append(
         MetricBlock(
-            title="Draft-2 sources: status distribution",
+            title="Sources: status distribution",
             body_md=_render_count_table(title_left="Status", counts=src_counts),
         )
     )
 
-    mapping_ctx = master_mapping_table_context(txt=txt, issues=issues)
+    mapping_ctx = master_mapping_table_context(txt=txt, path=path, issues=issues)
     if mapping_ctx is None:
         return blocks
 
     # Ignore placeholder mapping rows where Source ID and destination are both empty.
     effective_map_rows, placeholder = effective_mapping_rows(
-        rows=mapping_ctx.rows,
+        rows=mapping_ctx.rows_with_lines,
         source_col=mapping_ctx.source_col,
         dest_col=mapping_ctx.dest_col,
     )
@@ -734,13 +770,18 @@ def _metrics_for_master_mapping(*, registers_dir: Path, legend: StatusLegend, is
         source_col=mapping_ctx.source_col,
         dest_col=mapping_ctx.dest_col,
         known_sources=source_ctx.known_sources,
+        path=path,
         issues=issues,
     )
 
-    map_counts = _count_by_status(effective_map_rows, mapping_ctx.status_col, legend=legend)
+    map_counts = _count_by_status(
+        [row for _line, row in effective_map_rows],
+        mapping_ctx.status_col,
+        legend=legend,
+    )
     blocks.append(
         MetricBlock(
-            title="Draft-2 mapping rows: status distribution",
+            title="Mapping rows: status distribution",
             body_md=_render_count_table(
                 title_left="Status",
                 counts=map_counts,
@@ -765,7 +806,7 @@ def _metrics_for_master_mapping(*, registers_dir: Path, legend: StatusLegend, is
 
     blocks.append(
         MetricBlock(
-            title="Draft-2 sources: inventory",
+            title="Sources: inventory",
             body_md=render_md_table(inv_headers, inv_rows, right_align={3}),
         )
     )
@@ -776,19 +817,17 @@ def _metrics_for_master_mapping(*, registers_dir: Path, legend: StatusLegend, is
         if missing:
             blocks.append(
                 MetricBlock(
-                    title="Draft-2 sources with zero mapping rows",
+                    title="Sources with zero mapping rows",
                     body_md="\n".join(["- " + s for s in missing[:25]]),
                 )
             )
     else:
-        d2_sources = sorted(s for s in source_ctx.known_sources if s.startswith("D2-"))
-        if d2_sources:
+        sources = sorted(source_ctx.known_sources)
+        if sources:
             blocks.append(
                 MetricBlock(
-                    title="Draft-2 mapping coverage",
-                    body_md=f"- Effective mapping rows: 0\n"
-                    f"- Draft-2 sources: {len(d2_sources)}\n"
-                    "- Draft-2 sources with mapping rows: 0",
+                    title="Mapping coverage",
+                    body_md=f"- Effective mapping rows: 0\n- Sources: {len(sources)}\n- Sources with mapping rows: 0",
                 )
             )
 
