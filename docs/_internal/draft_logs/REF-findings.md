@@ -8,3 +8,12 @@
 - **Mapping:** N/A (no MAP/P/CF entries yet).
 - **Supersedence:** N/A.
 - **Notes / risks:** None.
+
+### 2025-12-20 — Phase 2 rewrite
+
+- **Change:** Defined finding schema and severity rules.
+- **Preservation:** P-0006.
+- **Overlay:** N/A.
+- **Mapping:** MAP-0006.
+- **Supersedence:** N/A.
+- **Notes / risks:** Keep message text stable for tooling.

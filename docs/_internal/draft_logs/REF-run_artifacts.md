@@ -8,3 +8,12 @@
 - **Mapping:** N/A (no MAP/P/CF entries yet).
 - **Supersedence:** N/A.
 - **Notes / risks:** None.
+
+### 2025-12-20 — Phase 2 rewrite
+
+- **Change:** Defined required artifact set and Resolution Log fields.
+- **Preservation:** P-0003.
+- **Overlay:** OVL-0002.
+- **Mapping:** MAP-0003.
+- **Supersedence:** N/A.
+- **Notes / risks:** Keep persistence rules in ADR-0007.

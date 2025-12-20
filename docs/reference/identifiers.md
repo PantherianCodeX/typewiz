@@ -1,26 +1,42 @@
 # Identifiers
 
-**Purpose:** Define stable identifiers and token rules used across run summaries, findings, and artifacts.
+**Purpose:** Define stable identifiers and token/hash rules used across run artifacts.
 **Status:** Normative (Draft)
 **Owned concepts:**
 
-- Identifier formats and stability guarantees
-- Token/hash computation rules for correlation
-- Required identifier fields referenced by other specs
+- Stable identifiers (run_id, finding_id, engine_error_id)
+- Path tokens and link-chain identifiers
 
-**Primary links:** `docs/reference/run_summary.md`, `docs/reference/findings.md`, `docs/reference/run_artifacts.md`
+**Primary links:** `docs/reference/run_summary.md`, `docs/reference/findings.md`, `docs/reference/engine_errors.md`
 
 ## Scope
 
-TBD.
+Identifiers provide stable correlation across artifacts and runs. Identifiers are
+opaque, stable, and not derived from user-visible text.
+
+## Required identifiers
+
+| Identifier | Description |
+| --- | --- |
+| `run_id` | Unique identifier for a command run. |
+| `finding_id` | Unique identifier for a finding. |
+| `engine_error_id` | Unique identifier for an engine error. |
+| `path_token` | Stable identifier for a normalized path. |
+| `link_chain_id` | Stable identifier for a link traversal chain. |
+
+## Generation rules
+
+- Identifiers are stable within a run and unique across artifacts.
+- `path_token` is derived from normalized base-relative paths and is independent
+  of host OS separators.
 
 ## Draft log
 
-### 2025-12-19 — Phase 1 stub scaffold
+### 2025-12-20 — Phase 2 rewrite
 
-- **Change:** Created Phase 1 stub with required header block and section scaffolding.
-- **Preservation:** N/A (Phase 1 stub; no draft-2 items mapped).
-- **Overlay:** N/A (no Plan v19 deltas applied).
-- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Change:** Established identifier set and stability rules.
+- **Preservation:** N/A.
+- **Overlay:** N/A.
+- **Mapping:** N/A.
 - **Supersedence:** N/A.
-- **Notes / risks:** None.
+- **Notes / risks:** Keep identifiers opaque; avoid embedding raw paths.

@@ -8,3 +8,12 @@
 - **Mapping:** N/A (no MAP/P/CF entries yet).
 - **Supersedence:** N/A.
 - **Notes / risks:** None.
+
+### 2025-12-20 — Phase 2 rewrite
+
+- **Change:** Established code format and registry governance.
+- **Preservation:** P-0006 (structured findings requirement).
+- **Overlay:** N/A.
+- **Mapping:** MAP-0006.
+- **Supersedence:** N/A.
+- **Notes / risks:** Populate registry as codes are defined.

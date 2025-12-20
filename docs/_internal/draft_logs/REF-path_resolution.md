@@ -8,3 +8,12 @@
 - **Mapping:** N/A (no MAP/P/CF entries yet).
 - **Supersedence:** N/A.
 - **Notes / risks:** None.
+
+### 2025-12-20 — Phase 2 rewrite
+
+- **Change:** Defined path resolution anchors, normalization, and absolute gating.
+- **Preservation:** P-0007, P-0008.
+- **Overlay:** OVL-0001.
+- **Mapping:** MAP-0008..MAP-0009.
+- **Supersedence:** N/A.
+- **Notes / risks:** Keep selector semantics in `selector_semantics.md`.

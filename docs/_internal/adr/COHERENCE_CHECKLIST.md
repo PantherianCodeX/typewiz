@@ -96,3 +96,36 @@
 
 - [x] No Phase 1 exceptions required beyond recorded tooling changes.
 - [x] Open questions list remains empty.
+
+## Phase 2 verification (2025-12-20)
+
+### ADR checks (MADR-sized)
+
+- [x] ADR-0003 and ADR-0006 contain required MADR headings.
+- [x] ADR-0003 and ADR-0006 link to reference specs for exhaustive detail.
+- [x] ADRs avoid inventories/grammars/schemas beyond decision scope.
+
+### Ownership and mapping
+
+- [x] Draft-2 items mapped for ADR-0003 and ADR-0006 (P-0001..P-0008).
+- [x] Carry-forward matrix updated (CF-0001..CF-0008).
+- [x] Master mapping ledger rows added (MAP-0001..MAP-0009).
+
+### Plan overlay and supersedence
+
+- [x] Plan overlay register updated (OVL-0001..OVL-0004).
+- [x] Supersedence ledger: N/A (no supersedence applied in Phase 2 drafts).
+
+### Contract surfaces and parity
+
+- [x] Reference specs created for run summary, findings, error codes, engine errors, identifiers, run artifacts, path resolution.
+
+### Precision and anchors
+
+- [x] POSIX-only posture cites Policy vCurrent in ADR-0006.
+- [x] No truncation markers used in Phase 2 docs.
+
+### Drift control
+
+- [x] Change control updated where tooling requirements changed.
+- [x] Open questions list remains empty.

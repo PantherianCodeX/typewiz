@@ -20,12 +20,12 @@ Track the rewrite deliverables at the artifact level. Keep this list minimal and
 | Roadmap: CI candidates (doc checks) | `docs/_internal/roadmap/ci_candidates.md` | | DN | 2025-12-19 | Populate opportunistically | Non-normative recommendations |
 | ADR-0001 (active rewrite) | `docs/_internal/adr/0001-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
 | ADR-0002 (active rewrite) | `docs/_internal/adr/0002-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
-| ADR-0003 (active rewrite) | `docs/_internal/adr/0003-*.md` | | IP | 2025-12-20 | Phase 2 kickoff: draft-2 extraction + mapping gate | Stub created in Phase 1; rewrite in Phase 2 |
+| ADR-0003 (active rewrite) | `docs/_internal/adr/0003-*.md` | | RV | 2025-12-20 | Review Phase 2 rewrite + mapping evidence | Phase 2 draft complete |
 | ADR-0004 (active rewrite) | `docs/_internal/adr/0004-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
 | ADR-0005 (active rewrite) | `docs/_internal/adr/0005-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
-| ADR-0006 (active rewrite) | `docs/_internal/adr/0006-*.md` | | IP | 2025-12-20 | Phase 2 kickoff: draft-2 extraction + mapping gate | Stub created in Phase 1; rewrite in Phase 2 |
+| ADR-0006 (active rewrite) | `docs/_internal/adr/0006-*.md` | | RV | 2025-12-20 | Review Phase 2 rewrite + mapping evidence | Phase 2 draft complete |
 | ADR-0007 (active rewrite) | `docs/_internal/adr/0007-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
 | ADR-0008 (active rewrite) | `docs/_internal/adr/0008-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
 | ADR-0009 (active rewrite) | `docs/_internal/adr/0009-*.md` | | IP | 2025-12-19 | Draft-2 extraction + mapping gate | Stub created in Phase 1 |
-| Reference specs (folder) | `docs/reference/` | | IP | 2025-12-20 | Phase 2 kickoff: seed run summary/findings/errors/artifacts/identifiers/path specs | Stubs created in Phase 1 |
+| Reference specs (folder) | `docs/reference/` | | RV | 2025-12-20 | Review Phase 2 reference specs for run summary/findings/errors/artifacts/identifiers/path resolution | Phase 2 draft complete |
 | CLI contract docs (folder) | `docs/cli/` | | IP | 2025-12-19 | Populate Phase 3-6 content | Topics exist;  contract rewrite pending |

@@ -39,7 +39,7 @@ main{padding:18px 22px}
 <body>
 <header>
 <h1>s11r2 progress dashboard</h1>
-<p class="sub">Generated: 2025-12-20T08:47:46+00:00</p>
+<p class="sub">Generated: 2025-12-20T09:12:34+00:00</p>
 </header>
 <main>
 <div class="layout">
@@ -48,7 +48,7 @@ main{padding:18px 22px}
 <h3>Links</h3>
 <ul class="nav"><li><a href="../../registers/registry_index.md">Registry index</a></li><li><a href="../progress_board.md">Progress board (Markdown)</a></li><li><a href="../../registers/STATUS_LEGEND.md">Status legend</a></li></ul>
 <h3>Sections</h3>
-<ul class="toc"><li><a href="#validation">Validation findings</a></li><li><a href="#summary">Summary</a></li><li><a href="#operational-snapshot">Operational snapshot</a></li><li><a href="#per-registry-status-distribution">Per-registry status distribution</a></li><li><a href="#open-questions-outstanding">Open questions: outstanding</a></li><li><a href="#rewrite-status-outstanding">Rewrite status: outstanding</a></li><li><a href="#rewrite-status-next-actions">Rewrite status: next actions</a></li><li><a href="#top-blocked-rows">Top blocked rows</a></li><li><a href="#open-questions-distribution">Open questions: distribution</a></li><li><a href="#rewrite-status-distribution">Rewrite status: distribution</a></li><li><a href="#rewrite-status-staleness-dated-outstanding">Rewrite status: staleness (dated outstanding)</a></li><li><a href="#sources-status-distribution">Sources: status distribution</a></li><li><a href="#mapping-rows-status-distribution">Mapping rows: status distribution</a></li><li><a href="#sources-inventory">Sources: inventory</a></li><li><a href="#mapping-coverage">Mapping coverage</a></li><li><a href="#registry-coverage">Registry coverage</a></li></ul>
+<ul class="toc"><li><a href="#validation">Validation findings</a></li><li><a href="#summary">Summary</a></li><li><a href="#operational-snapshot">Operational snapshot</a></li><li><a href="#per-registry-status-distribution">Per-registry status distribution</a></li><li><a href="#open-questions-outstanding">Open questions: outstanding</a></li><li><a href="#rewrite-status-outstanding">Rewrite status: outstanding</a></li><li><a href="#rewrite-status-next-actions">Rewrite status: next actions</a></li><li><a href="#top-blocked-rows">Top blocked rows</a></li><li><a href="#open-questions-distribution">Open questions: distribution</a></li><li><a href="#rewrite-status-distribution">Rewrite status: distribution</a></li><li><a href="#rewrite-status-staleness-dated-outstanding">Rewrite status: staleness (dated outstanding)</a></li><li><a href="#sources-status-distribution">Sources: status distribution</a></li><li><a href="#mapping-rows-status-distribution">Mapping rows: status distribution</a></li><li><a href="#sources-inventory">Sources: inventory</a></li><li><a href="#sources-with-zero-mapping-rows">Sources with zero mapping rows</a></li><li><a href="#registry-coverage">Registry coverage</a></li></ul>
 </aside>
 <section>
 <div class="grid">
@@ -65,16 +65,17 @@ main{padding:18px 22px}
 <div class="card" id="summary">
 <h2>Summary</h2>
 <div class="mdblock"><ul>
-<li>Status-bearing rows: 39</li>
-<li>Done (DN): 17 (43.6%)</li>
+<li>Status-bearing rows: 52</li>
+<li>Done (DN): 17 (32.7%)</li>
 </ul>
 
 <table>
 <thead><tr><th>Status</th><th>Count</th></tr></thead>
 <tbody>
+<tr><td>RV</td><td>19</td></tr>
 <tr><td>DN</td><td>17</td></tr>
-<tr><td>IP</td><td>11</td></tr>
-<tr><td>NS</td><td>11</td></tr>
+<tr><td>IP</td><td>8</td></tr>
+<tr><td>NS</td><td>8</td></tr>
 </tbody></table></div>
 </div>
 <div class="card" id="operational-snapshot">
@@ -85,14 +86,14 @@ main{padding:18px 22px}
 <tr><td>Indexed registries (markdown)</td><td>14</td></tr>
 <tr><td>Registries present on disk (markdown)</td><td>14</td></tr>
 <tr><td>Registries with status columns</td><td>9</td></tr>
-<tr><td>Registries with status-bearing rows</td><td>3</td></tr>
-<tr><td>Status-bearing rows</td><td>39</td></tr>
-<tr><td>Done rows</td><td>17 (43.6%)</td></tr>
+<tr><td>Registries with status-bearing rows</td><td>4</td></tr>
+<tr><td>Status-bearing rows</td><td>52</td></tr>
+<tr><td>Done rows</td><td>17 (32.7%)</td></tr>
 <tr><td>Blocked rows</td><td>0</td></tr>
 <tr><td>Rewrite artifacts (total / done / outstanding)</td><td>23 / 12 / 11</td></tr>
 <tr><td>Open questions (total / done / outstanding)</td><td>0 / 0 / 0</td></tr>
 <tr><td>Open questions blocking=yes (outstanding)</td><td>0</td></tr>
-<tr><td>Draft-2 sources with mapping rows</td><td>0 / 5</td></tr>
+<tr><td>Draft-2 sources with mapping rows</td><td>2 / 5</td></tr>
 </tbody></table></div>
 </div>
 <div class="card wide" id="per-registry-status-distribution">
@@ -102,10 +103,10 @@ main{padding:18px 22px}
 <tbody>
 <tr><td><a href="../../registers/change_control.md"><code>change_control.md</code></a></td><td>5</td><td>0</td><td>0</td><td>0</td><td>5</td><td>0</td></tr>
 <tr><td><a href="../../registers/cli_parity_deltas.md"><code>cli_parity_deltas.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-<tr><td><a href="../../registers/master_mapping_ledger.md"><code>master_mapping_ledger.md</code></a></td><td>11</td><td>11</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+<tr><td><a href="../../registers/master_mapping_ledger.md"><code>master_mapping_ledger.md</code></a></td><td>20</td><td>8</td><td>0</td><td>12</td><td>0</td><td>0</td></tr>
 <tr><td><a href="../../registers/open_questions.md"><code>open_questions.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-<tr><td><a href="../../registers/plan_overlay_register.md"><code>plan_overlay_register.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
-<tr><td><a href="../../registers/rewrite_status.md"><code>rewrite_status.md</code></a></td><td>23</td><td>0</td><td>11</td><td>0</td><td>12</td><td>0</td></tr>
+<tr><td><a href="../../registers/plan_overlay_register.md"><code>plan_overlay_register.md</code></a></td><td>4</td><td>0</td><td>0</td><td>4</td><td>0</td><td>0</td></tr>
+<tr><td><a href="../../registers/rewrite_status.md"><code>rewrite_status.md</code></a></td><td>23</td><td>0</td><td>8</td><td>3</td><td>12</td><td>0</td></tr>
 <tr><td><a href="../../registers/roadmap_register.md"><code>roadmap_register.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
 <tr><td><a href="../../registers/supersedence_ledger.md"><code>supersedence_ledger.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
 <tr><td><a href="../../registers/terminology_map.md"><code>terminology_map.md</code></a></td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
@@ -122,14 +123,14 @@ main{padding:18px 22px}
 <tbody>
 <tr><td>ADR-0001 (active rewrite)</td><td>IP</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
 <tr><td>ADR-0002 (active rewrite)</td><td>IP</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
-<tr><td>ADR-0003 (active rewrite)</td><td>IP</td><td></td><td>Phase 2 kickoff: draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0003 (active rewrite)</td><td>RV</td><td></td><td>Review Phase 2 rewrite + mapping evidence</td></tr>
 <tr><td>ADR-0004 (active rewrite)</td><td>IP</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
 <tr><td>ADR-0005 (active rewrite)</td><td>IP</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
-<tr><td>ADR-0006 (active rewrite)</td><td>IP</td><td></td><td>Phase 2 kickoff: draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0006 (active rewrite)</td><td>RV</td><td></td><td>Review Phase 2 rewrite + mapping evidence</td></tr>
 <tr><td>ADR-0007 (active rewrite)</td><td>IP</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
 <tr><td>ADR-0008 (active rewrite)</td><td>IP</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
 <tr><td>ADR-0009 (active rewrite)</td><td>IP</td><td></td><td>Draft-2 extraction + mapping gate</td></tr>
-<tr><td>Reference specs (folder)</td><td>IP</td><td></td><td>Phase 2 kickoff: seed run summary/findings/errors/artifacts/identifiers/path specs</td></tr>
+<tr><td>Reference specs (folder)</td><td>RV</td><td></td><td>Review Phase 2 reference specs for run summary/findings/errors/artifacts/identifiers/path resolution</td></tr>
 <tr><td>CLI contract docs (folder)</td><td>IP</td><td></td><td>Populate Phase 3-6 content</td></tr>
 </tbody></table></div>
 </div>
@@ -140,14 +141,14 @@ main{padding:18px 22px}
 <tbody>
 <tr><td>ADR-0001 (active rewrite)</td><td>IP</td><td>Draft-2 extraction + mapping gate</td></tr>
 <tr><td>ADR-0002 (active rewrite)</td><td>IP</td><td>Draft-2 extraction + mapping gate</td></tr>
-<tr><td>ADR-0003 (active rewrite)</td><td>IP</td><td>Phase 2 kickoff: draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0003 (active rewrite)</td><td>RV</td><td>Review Phase 2 rewrite + mapping evidence</td></tr>
 <tr><td>ADR-0004 (active rewrite)</td><td>IP</td><td>Draft-2 extraction + mapping gate</td></tr>
 <tr><td>ADR-0005 (active rewrite)</td><td>IP</td><td>Draft-2 extraction + mapping gate</td></tr>
-<tr><td>ADR-0006 (active rewrite)</td><td>IP</td><td>Phase 2 kickoff: draft-2 extraction + mapping gate</td></tr>
+<tr><td>ADR-0006 (active rewrite)</td><td>RV</td><td>Review Phase 2 rewrite + mapping evidence</td></tr>
 <tr><td>ADR-0007 (active rewrite)</td><td>IP</td><td>Draft-2 extraction + mapping gate</td></tr>
 <tr><td>ADR-0008 (active rewrite)</td><td>IP</td><td>Draft-2 extraction + mapping gate</td></tr>
 <tr><td>ADR-0009 (active rewrite)</td><td>IP</td><td>Draft-2 extraction + mapping gate</td></tr>
-<tr><td>Reference specs (folder)</td><td>IP</td><td>Phase 2 kickoff: seed run summary/findings/errors/artifacts/identifiers/path specs</td></tr>
+<tr><td>Reference specs (folder)</td><td>RV</td><td>Review Phase 2 reference specs for run summary/findings/errors/artifacts/identifiers/path resolution</td></tr>
 <tr><td>CLI contract docs (folder)</td><td>IP</td><td>Populate Phase 3-6 content</td></tr>
 </tbody></table></div>
 </div>
@@ -165,7 +166,8 @@ main{padding:18px 22px}
 <thead><tr><th>Status</th><th>Count</th></tr></thead>
 <tbody>
 <tr><td>DN</td><td>12</td></tr>
-<tr><td>IP</td><td>11</td></tr>
+<tr><td>IP</td><td>8</td></tr>
+<tr><td>RV</td><td>3</td></tr>
 </tbody></table></div>
 </div>
 <div class="card wide" id="rewrite-status-staleness-dated-outstanding">
@@ -181,9 +183,9 @@ main{padding:18px 22px}
 <tr><td>ADR-0008 (active rewrite)</td><td>IP</td><td>2025-12-19</td><td>1</td><td>Draft-2 extraction + mapping gate</td></tr>
 <tr><td>ADR-0009 (active rewrite)</td><td>IP</td><td>2025-12-19</td><td>1</td><td>Draft-2 extraction + mapping gate</td></tr>
 <tr><td>CLI contract docs (folder)</td><td>IP</td><td>2025-12-19</td><td>1</td><td>Populate Phase 3-6 content</td></tr>
-<tr><td>ADR-0003 (active rewrite)</td><td>IP</td><td>2025-12-20</td><td>0</td><td>Phase 2 kickoff: draft-2 extraction + mapping gate</td></tr>
-<tr><td>ADR-0006 (active rewrite)</td><td>IP</td><td>2025-12-20</td><td>0</td><td>Phase 2 kickoff: draft-2 extraction + mapping gate</td></tr>
-<tr><td>Reference specs (folder)</td><td>IP</td><td>2025-12-20</td><td>0</td><td>Phase 2 kickoff: seed run summary/findings/errors/artifacts/identifiers/path specs</td></tr>
+<tr><td>ADR-0003 (active rewrite)</td><td>RV</td><td>2025-12-20</td><td>0</td><td>Review Phase 2 rewrite + mapping evidence</td></tr>
+<tr><td>ADR-0006 (active rewrite)</td><td>RV</td><td>2025-12-20</td><td>0</td><td>Review Phase 2 rewrite + mapping evidence</td></tr>
+<tr><td>Reference specs (folder)</td><td>RV</td><td>2025-12-20</td><td>0</td><td>Review Phase 2 reference specs for run summary/findings/errors/artifacts/identifiers/path resolution</td></tr>
 </tbody></table></div>
 </div>
 <div class="card" id="sources-status-distribution">
@@ -191,24 +193,29 @@ main{padding:18px 22px}
 <div class="mdblock"><table>
 <thead><tr><th>Status</th><th>Count</th></tr></thead>
 <tbody>
-<tr><td>NS</td><td>11</td></tr>
+<tr><td>NS</td><td>8</td></tr>
+<tr><td>RV</td><td>3</td></tr>
 </tbody></table></div>
 </div>
 <div class="card" id="mapping-rows-status-distribution">
 <h2>Mapping rows: status distribution</h2>
-<div class="mdblock"><p><em>No effective mapping rows found.</em></p></div>
+<div class="mdblock"><table>
+<thead><tr><th>Status</th><th>Count</th></tr></thead>
+<tbody>
+<tr><td>RV</td><td>9</td></tr>
+</tbody></table></div>
 </div>
 <div class="card wide" id="sources-inventory">
 <h2>Sources: inventory</h2>
 <div class="mdblock"><table>
 <thead><tr><th>Source ID</th><th>File</th><th>Status</th><th>Mapping rows</th></tr></thead>
 <tbody>
-<tr><td>D2-0001</td><td><a href="../../../../adr/ADR-0001 Include and Exclude-draft-2.md"><code>ADR-0001 Include and Exclude-draft-2.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>D2-0001</td><td><a href="../../../../adr/ADR-0001 Include and Exclude-draft-2.md"><code>ADR-0001 Include and Exclude-draft-2.md</code></a></td><td>RV</td><td>2</td></tr>
 <tr><td>D2-0002</td><td><a href="../../../../adr/ADR-0002 Plugin Engines-draft-2.md"><code>ADR-0002 Plugin Engines-draft-2.md</code></a></td><td>NS</td><td>0</td></tr>
-<tr><td>D2-0003</td><td><a href="../../../../adr/ADR-0003 Policy Boundaries-draft-2.md"><code>ADR-0003 Policy Boundaries-draft-2.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>D2-0003</td><td><a href="../../../../adr/ADR-0003 Policy Boundaries-draft-2.md"><code>ADR-0003 Policy Boundaries-draft-2.md</code></a></td><td>RV</td><td>7</td></tr>
 <tr><td>D2-0004</td><td><a href="../../../../adr/ADR-0004 Taxonomy-draft-2.md"><code>ADR-0004 Taxonomy-draft-2.md</code></a></td><td>NS</td><td>0</td></tr>
 <tr><td>D2-0005</td><td><a href="../../../../adr/ADR-0005 Naming Conventions-draft-2.md"><code>ADR-0005 Naming Conventions-draft-2.md</code></a></td><td>NS</td><td>0</td></tr>
-<tr><td>PLAN-v19</td><td><a href="../../../../ADR Rewrite Plan v19.md"><code>ADR Rewrite Plan v19.md</code></a></td><td>NS</td><td>0</td></tr>
+<tr><td>PLAN-v19</td><td><a href="../../../../ADR Rewrite Plan v19.md"><code>ADR Rewrite Plan v19.md</code></a></td><td>RV</td><td>0</td></tr>
 <tr><td>SUP-0001</td><td><a href="../../../../adr/0001/path_scoping_contract.md"><code>0001/path_scoping_contract.md</code></a></td><td>NS</td><td>0</td></tr>
 <tr><td>SUP-0002</td><td><a href="../../../../adr/0001/reference_implementation_outline.md"><code>0001/reference_implementation_outline.md</code></a></td><td>NS</td><td>0</td></tr>
 <tr><td>SUP-0003</td><td><a href="../../../../adr/0001/test_matrix.md"><code>0001/test_matrix.md</code></a></td><td>NS</td><td>0</td></tr>
@@ -216,12 +223,18 @@ main{padding:18px 22px}
 <tr><td>SUP-0005</td><td><a href="../../../../adr/0002/test matrix.md"><code>0002/test matrix.md</code></a></td><td>NS</td><td>0</td></tr>
 </tbody></table></div>
 </div>
-<div class="card" id="mapping-coverage">
-<h2>Mapping coverage</h2>
+<div class="card" id="sources-with-zero-mapping-rows">
+<h2>Sources with zero mapping rows</h2>
 <div class="mdblock"><ul>
-<li>Effective mapping rows: 0</li>
-<li>Sources: 11</li>
-<li>Sources with mapping rows: 0</li>
+<li>D2-0002</li>
+<li>D2-0004</li>
+<li>D2-0005</li>
+<li>PLAN-v19</li>
+<li>SUP-0001</li>
+<li>SUP-0002</li>
+<li>SUP-0003</li>
+<li>SUP-0004</li>
+<li>SUP-0005</li>
 </ul></div>
 </div>
 <div class="card wide" id="registry-coverage">
