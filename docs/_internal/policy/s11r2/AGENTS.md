@@ -248,6 +248,23 @@ If you are not certain the script is necessary, record an Open Question rather t
 
 ---
 
+## 8.1 Commit message format (s11r2)
+
+For s11r2 work, commit messages must include the phase at the beginning and follow Conventional Commits:
+
+```text
+phase<N>: <type>(<scope>): <summary>
+```
+
+Examples:
+
+- `phase1: chore(s11r2): add stub draft logs`
+- `phase2: docs(adr): rewrite ADR-0003 resolution domains`
+
+Use a multi-line body for impact notes when needed.
+
+---
+
 ## 9. Common failure modes (avoid these)
 
 - Writing an ADR that reads like a spec (bloat).

@@ -44,3 +44,12 @@
 - **Mapping:** N/A (no MAP/P/CF entries yet).
 - **Supersedence:** N/A.
 - **Notes / risks:** None.
+
+## 2025-12-20 — Add commit message format
+
+- **Change:** Documented phase-prefixed Conventional Commit format for s11r2 work.
+- **Preservation:** N/A (governance guidance update).
+- **Overlay:** N/A (no Plan v19 deltas applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** None.

@@ -53,3 +53,46 @@
 - **Mapping:** N/A (no MAP/P/CF entries yet).
 - **Supersedence:** N/A.
 - **Notes / risks:** None.
+
+## 2025-12-20 — Phase 1 verification pass
+
+- **Change:** Completed Phase 1 coherence verification for stub scaffolding and link hygiene.
+- **Preservation:** N/A (Phase 1 stubs only; no draft-2 items mapped).
+- **Overlay:** N/A (no Plan v19 overlays applied).
+- **Mapping:** N/A (no MAP/P/CF entries yet).
+- **Supersedence:** N/A.
+- **Notes / risks:** Phase 2 mapping gates still pending.
+
+## Phase 1 verification (2025-12-20)
+
+### ADR checks (MADR-sized)
+
+- [x] MADR headings exist for ADR stubs.
+- [x] ADRs include a Links section and link out for exhaustive detail.
+- [x] No inventories/grammars/default tables/schemas appear in ADR stubs.
+- [x] Decision Drivers preserved or justified: N/A (Phase 1 stubs only).
+
+### Ownership and mapping
+
+- [x] Canonical ownership list present in `docs/_internal/policy/s11r2/registers/owner_index.md`.
+- [x] Mapping entries pending: Phase 2 mapping gate not yet executed.
+
+### Plan overlay and supersedence
+
+- [x] Plan overlays pending: Phase 2 overlay gate not yet executed.
+- [x] Supersedence pointers pending: Phase 2 overlay gate not yet executed.
+
+### Contract surfaces and parity
+
+- [x] CLI contract stubs and topics created; parity deltas tracked separately.
+
+### Precision and anchors
+
+- [x] ADR stub anchors are stable and explicitly linked.
+- [x] No truncation markers present in Phase 1 stubs.
+- [x] Anchor changes: N/A (no anchor edits in Phase 1 stubs).
+
+### Drift control
+
+- [x] No Phase 1 exceptions required beyond recorded tooling changes.
+- [x] Open questions list remains empty.

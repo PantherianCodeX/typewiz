@@ -2,7 +2,7 @@
 
 ## Generated
 
-Timestamp: 2025-12-20T08:34:34+00:00
+Timestamp: 2025-12-20T08:47:46+00:00
 
 This file is generated from the canonical s11r2 registries. Edit source registries under `../registers/`, then regenerate progress outputs.
 
@@ -107,14 +107,14 @@ Run from repo root:
 |---|---|---|---|
 |ADR-0001 (active rewrite)|IP||Draft-2 extraction + mapping gate|
 |ADR-0002 (active rewrite)|IP||Draft-2 extraction + mapping gate|
-|ADR-0003 (active rewrite)|IP||Draft-2 extraction + mapping gate|
+|ADR-0003 (active rewrite)|IP||Phase 2 kickoff: draft-2 extraction + mapping gate|
 |ADR-0004 (active rewrite)|IP||Draft-2 extraction + mapping gate|
 |ADR-0005 (active rewrite)|IP||Draft-2 extraction + mapping gate|
-|ADR-0006 (active rewrite)|IP||Draft-2 extraction + mapping gate|
+|ADR-0006 (active rewrite)|IP||Phase 2 kickoff: draft-2 extraction + mapping gate|
 |ADR-0007 (active rewrite)|IP||Draft-2 extraction + mapping gate|
 |ADR-0008 (active rewrite)|IP||Draft-2 extraction + mapping gate|
 |ADR-0009 (active rewrite)|IP||Draft-2 extraction + mapping gate|
-|Reference specs (folder)|IP||Populate Phase 2-6 content|
+|Reference specs (folder)|IP||Phase 2 kickoff: seed run summary/findings/errors/artifacts/identifiers/path specs|
 |CLI contract docs (folder)|IP||Populate Phase 3-6 content|
 
 #### Rewrite status: next actions
@@ -123,14 +123,14 @@ Run from repo root:
 |---|---|---|
 |ADR-0001 (active rewrite)|IP|Draft-2 extraction + mapping gate|
 |ADR-0002 (active rewrite)|IP|Draft-2 extraction + mapping gate|
-|ADR-0003 (active rewrite)|IP|Draft-2 extraction + mapping gate|
+|ADR-0003 (active rewrite)|IP|Phase 2 kickoff: draft-2 extraction + mapping gate|
 |ADR-0004 (active rewrite)|IP|Draft-2 extraction + mapping gate|
 |ADR-0005 (active rewrite)|IP|Draft-2 extraction + mapping gate|
-|ADR-0006 (active rewrite)|IP|Draft-2 extraction + mapping gate|
+|ADR-0006 (active rewrite)|IP|Phase 2 kickoff: draft-2 extraction + mapping gate|
 |ADR-0007 (active rewrite)|IP|Draft-2 extraction + mapping gate|
 |ADR-0008 (active rewrite)|IP|Draft-2 extraction + mapping gate|
 |ADR-0009 (active rewrite)|IP|Draft-2 extraction + mapping gate|
-|Reference specs (folder)|IP|Populate Phase 2-6 content|
+|Reference specs (folder)|IP|Phase 2 kickoff: seed run summary/findings/errors/artifacts/identifiers/path specs|
 |CLI contract docs (folder)|IP|Populate Phase 3-6 content|
 
 #### Rewrite status: staleness (dated outstanding)
@@ -139,15 +139,15 @@ Run from repo root:
 |---|---|---|---:|---|
 |ADR-0001 (active rewrite)|IP|2025-12-19|1|Draft-2 extraction + mapping gate|
 |ADR-0002 (active rewrite)|IP|2025-12-19|1|Draft-2 extraction + mapping gate|
-|ADR-0003 (active rewrite)|IP|2025-12-19|1|Draft-2 extraction + mapping gate|
 |ADR-0004 (active rewrite)|IP|2025-12-19|1|Draft-2 extraction + mapping gate|
 |ADR-0005 (active rewrite)|IP|2025-12-19|1|Draft-2 extraction + mapping gate|
-|ADR-0006 (active rewrite)|IP|2025-12-19|1|Draft-2 extraction + mapping gate|
 |ADR-0007 (active rewrite)|IP|2025-12-19|1|Draft-2 extraction + mapping gate|
 |ADR-0008 (active rewrite)|IP|2025-12-19|1|Draft-2 extraction + mapping gate|
 |ADR-0009 (active rewrite)|IP|2025-12-19|1|Draft-2 extraction + mapping gate|
 |CLI contract docs (folder)|IP|2025-12-19|1|Populate Phase 3-6 content|
-|Reference specs (folder)|IP|2025-12-19|1|Populate Phase 2-6 content|
+|ADR-0003 (active rewrite)|IP|2025-12-20|0|Phase 2 kickoff: draft-2 extraction + mapping gate|
+|ADR-0006 (active rewrite)|IP|2025-12-20|0|Phase 2 kickoff: draft-2 extraction + mapping gate|
+|Reference specs (folder)|IP|2025-12-20|0|Phase 2 kickoff: seed run summary/findings/errors/artifacts/identifiers/path specs|
 
 #### Sources: status distribution
 
